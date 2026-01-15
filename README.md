@@ -41,7 +41,7 @@ export OPENAI_API_KEY=your_api_key_here
 
 3. **Run PatchPal**:
 ```bash
-# Use default model (claude-3-7-sonnet-latest)
+# Use default model (claude-sonnet-4-5-latest)
 patchpal
 
 # Use a specific model via command-line argument
@@ -82,13 +82,13 @@ patchpal
 ```
 
 ### 3. Default Model
-If no model is specified, PatchPal uses `anthropic/claude-3-7-sonnet-latest`.
+If no model is specified, PatchPal uses `anthropic/claude-sonnet-4-5-latest` (Claude Sonnet 4.5).
 
 ### Supported Models
 
 PatchPal works with any model supported by LiteLLM, including:
 
-- **Anthropic**: `anthropic/claude-opus-4`, `anthropic/claude-3-7-sonnet-latest`, `anthropic/claude-3-5-sonnet-latest`
+- **Anthropic**: `anthropic/claude-sonnet-4-5-latest`, `anthropic/claude-opus-4-5-latest`, `anthropic/claude-3-7-sonnet-latest`
 - **OpenAI**: `openai/gpt-4o`, `openai/gpt-4-turbo`, `openai/gpt-3.5-turbo`
 - **Ollama (Local)**: `ollama/llama3.1`, `ollama/llama3.2`, `ollama/codellama`, `ollama/mistral` - Run models locally without API keys!
 - **Google**: `gemini/gemini-pro`, `vertex_ai/gemini-pro`

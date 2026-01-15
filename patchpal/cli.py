@@ -19,7 +19,7 @@ Examples:
   PATCHPAL_MODEL=openai/gpt-4o patchpal       # Use environment variable
 
 Supported models: Any LiteLLM-supported model
-  - Anthropic: anthropic/claude-3-7-sonnet-latest, anthropic/claude-opus-4, etc.
+  - Anthropic: anthropic/claude-sonnet-4-5-latest (default), anthropic/claude-opus-4-5-latest, etc.
   - OpenAI: openai/gpt-4o, openai/gpt-3.5-turbo, etc.
   - Ollama (local): ollama/llama3.1, ollama/codellama, ollama/deepseek-coder, etc.
   - Others: See https://docs.litellm.ai/docs/providers
@@ -35,7 +35,7 @@ Supported models: Any LiteLLM-supported model
     args = parser.parse_args()
 
     # Determine model to use (priority: CLI arg > env var > default)
-    model_id = args.model or os.getenv("PATCHPAL_MODEL") or "anthropic/claude-3-7-sonnet-latest"
+    model_id = args.model or os.getenv("PATCHPAL_MODEL") or "anthropic/claude-sonnet-4-5-latest"
 
     # Check for API key
     if not os.getenv("ANTHROPIC_API_KEY"):
