@@ -28,6 +28,9 @@ def temp_repo(monkeypatch):
         monkeypatch.setattr("patchpal.tools.BACKUP_DIR", tmpdir_path / ".patchpal_backups")
         monkeypatch.setattr("patchpal.tools.AUDIT_LOG_FILE", tmpdir_path / ".patchpal_audit.log")
 
+        # Disable permission prompts during tests
+        monkeypatch.setenv("PATCHPAL_REQUIRE_PERMISSION", "false")
+
         # Reset operation counter
         from patchpal.tools import reset_operation_counter
         reset_operation_counter()

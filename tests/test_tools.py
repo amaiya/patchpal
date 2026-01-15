@@ -21,6 +21,9 @@ def temp_repo(monkeypatch):
         # Monkey-patch REPO_ROOT
         monkeypatch.setattr("patchpal.tools.REPO_ROOT", tmpdir_path)
 
+        # Disable permission prompts during tests
+        monkeypatch.setenv("PATCHPAL_REQUIRE_PERMISSION", "false")
+
         # Reset operation counter before each test
         from patchpal.tools import reset_operation_counter
         reset_operation_counter()

@@ -30,6 +30,9 @@ def temp_repo(monkeypatch):
         import patchpal.tools as tools_enhanced
         monkeypatch.setattr(tools_enhanced, "REPO_ROOT", tmpdir_path)
 
+        # Disable permission prompts during tests
+        monkeypatch.setenv("PATCHPAL_REQUIRE_PERMISSION", "false")
+
         yield tmpdir_path
 
 

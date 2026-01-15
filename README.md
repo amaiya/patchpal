@@ -248,6 +248,7 @@ The agent operates within a sandboxed environment with several restrictions:
 PatchPal includes comprehensive security protections enabled by default:
 
 **Critical Security:**
+- **Permission prompts**: Agent asks for permission before executing commands or modifying files (like Claude Code)
 - **Sensitive file protection**: Blocks access to `.env`, credentials, API keys
 - **File size limits**: Prevents OOM with configurable size limits (10MB default)
 - **Binary file detection**: Blocks reading non-text files
@@ -266,6 +267,8 @@ PatchPal includes comprehensive security protections enabled by default:
 **Configuration via environment variables:**
 ```bash
 # Critical Security Controls
+export PATCHPAL_REQUIRE_PERMISSION=true  # Prompt for permission before executing commands/modifying files (default: true)
+                                          # Set to false to disable prompts (not recommended for production use)
 export PATCHPAL_MAX_FILE_SIZE=5242880     # Maximum file size in bytes for read/write operations (default: 10485760 = 10MB)
 export PATCHPAL_READ_ONLY=true            # Prevent all file modifications, analysis-only mode (default: false)
                                            # Useful for: code review, exploration, security audits, CI/CD analysis, or trying PatchPal risk-free
@@ -277,6 +280,31 @@ export PATCHPAL_AUDIT_LOG=false           # Log all operations to ~/.patchpal/<r
 export PATCHPAL_ENABLE_BACKUPS=true       # Auto-backup files to ~/.patchpal/<repo-name>/backups/ before modification (default: false)
 export PATCHPAL_MAX_OPERATIONS=5000       # Maximum operations per session to prevent infinite loops (default: 1000)
 ```
+
+**Permission System:**
+
+When the agent wants to execute a command or modify a file, you'll see a prompt like:
+
+```
+================================================================================
+Run Shell
+--------------------------------------------------------------------------------
+   pytest tests/test_cli.py -v
+--------------------------------------------------------------------------------
+
+Do you want to proceed?
+  1. Yes
+  2. Yes, and don't ask again for 'pytest' in this repository
+  3. No
+
+Choice [1-3]:
+```
+
+- Option 1: Allow this one operation
+- Option 2: Allow and remember (saves permission to `~/.patchpal/<repo-name>/permissions.json`)
+- Option 3: Cancel the operation
+
+Permissions are stored per-repository and persist across sessions. You can edit `~/.patchpal/<repo-name>/permissions.json` to manage saved permissions.
 
 **Test coverage:** 70 tests including 38 dedicated security tests
 
