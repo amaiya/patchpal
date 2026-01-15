@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "patchpal"
 version = "0.1.0"
-description = "A Claude Code clone implemented using smolagents"
+description = "A Claude Code clone with custom agent loop using LiteLLM"
 readme = "README.md"
 authors = [
     { name = "PatchPal Contributors" }
@@ -25,7 +25,6 @@ classifiers = [
 ]
 requires-python = ">=3.10"
 dependencies = [
-    "smolagents>=0.1.0",
     "litellm>=1.0.0",
 ]
 

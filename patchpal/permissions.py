@@ -141,45 +141,26 @@ class PermissionManager:
 
         while True:
             try:
-                # Cross-platform terminal input
+                # Use getpass which reads directly from terminal, bypassing stdio
+                import getpass
                 import sys
-                import platform
 
-                choice = None
+                # getpass doesn't support custom prompts well, so we write prompt separately
+                sys.stderr.write("\n\033[1;36mChoice [1-3]:\033[0m ")
+                sys.stderr.flush()
 
-                # Try platform-specific terminal access
-                if platform.system() != 'Windows':
-                    # Unix/Linux/Mac: Use /dev/tty for direct terminal access
+                # getpass.getpass() reads from /dev/tty on Unix, console on Windows
+                # Pass empty string as prompt since we already wrote it
+                try:
+                    choice = getpass.getpass(prompt='').strip()
+                except Exception:
+                    # If getpass fails, fall back to direct /dev/tty access
                     try:
-                        with open('/dev/tty', 'r') as tty_in, open('/dev/tty', 'w') as tty_out:
-                            tty_out.write("\n\033[1;36mChoice [1-3]:\033[0m ")
-                            tty_out.flush()
+                        with open('/dev/tty', 'r') as tty_in:
                             choice = tty_in.readline().strip()
-                    except (FileNotFoundError, PermissionError, OSError):
-                        pass
-                else:
-                    # Windows: Try to use console directly
-                    try:
-                        import msvcrt
-                        sys.stderr.write("\n\033[1;36mChoice [1-3]:\033[0m ")
-                        sys.stderr.flush()
-                        # Read characters until newline
-                        chars = []
-                        while True:
-                            if msvcrt.kbhit():
-                                c = msvcrt.getwche()
-                                if c in ('\r', '\n'):
-                                    break
-                                chars.append(c)
-                        choice = ''.join(chars).strip()
-                    except (ImportError, OSError):
-                        pass
-
-                # Fallback to stderr+stdin (may not work if stdout/stdin are captured)
-                if choice is None:
-                    sys.stderr.write("\n\033[1;36mChoice [1-3]:\033[0m ")
-                    sys.stderr.flush()
-                    choice = sys.stdin.readline().strip()
+                    except:
+                        # Last resort: try stdin
+                        choice = sys.stdin.readline().strip()
 
                 if choice == '1':
                     return True

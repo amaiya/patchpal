@@ -1,6 +1,6 @@
 # PatchPal - A Claude Code Clone
 
-An educational implementation of a Claude Code-like agent using smolagents.
+An educational implementation of a Claude Code-like agent.
 
 ## Installation
 

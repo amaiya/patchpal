@@ -1,5 +1,9 @@
+"""Custom agent implementation using LiteLLM directly."""
+
 import os
-from smolagents import ToolCallingAgent, LiteLLMModel, tool
+import json
+from typing import Any, Dict, List, Optional
+import litellm
 from patchpal.tools import read_file, list_files, apply_patch, run_shell
 
 
@@ -54,54 +58,87 @@ def _setup_bedrock_env():
         os.environ['AWS_BEDROCK_RUNTIME_ENDPOINT'] = bedrock_endpoint
 
 
-def create_agent(model_id="anthropic/claude-sonnet-4-5"):
-    """Create and configure the PatchPal agent.
+# Define tools in LiteLLM format
+TOOLS = [
+    {
+        "type": "function",
+        "function": {
+            "name": "read_file",
+            "description": "Read the contents of a file in the repository.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "Relative path to the file from the repository root"
+                    }
+                },
+                "required": ["path"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "list_files",
+            "description": "List all files in the repository (excludes hidden and binary files).",
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": []
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "apply_patch",
+            "description": "Modify a file by replacing its contents. Returns a unified diff of changes.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "Relative path to the file from the repository root"
+                    },
+                    "new_content": {
+                        "type": "string",
+                        "description": "The complete new content for the file"
+                    }
+                },
+                "required": ["path", "new_content"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "run_shell",
+            "description": "Run a safe shell command in the repository. Dangerous commands (rm, mv, sudo, etc.) are blocked.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "cmd": {
+                        "type": "string",
+                        "description": "The shell command to execute"
+                    }
+                },
+                "required": ["cmd"]
+            }
+        }
+    }
+]
 
-    Args:
-        model_id: LiteLLM model identifier (default: anthropic/claude-sonnet-4-5)
+# Map tool names to functions
+TOOL_FUNCTIONS = {
+    "read_file": read_file,
+    "list_files": list_files,
+    "apply_patch": apply_patch,
+    "run_shell": run_shell,
+}
 
-                  For AWS Bedrock, you can use:
-                    - Standard model ID: "anthropic.claude-sonnet-4-5-20250929-v1:0"
-                    - With bedrock/ prefix: "bedrock/anthropic.claude-sonnet-4-5-20250929-v1:0"
-                    - Full ARN (auto-detected): "arn:aws-us-gov:bedrock:us-gov-east-1:012345678901:inference-profile/..."
 
-                  Note: bedrock/ prefix is automatically added for Bedrock ARNs and model IDs
-
-                  Configure via environment variables:
-                    - AWS_ACCESS_KEY_ID: AWS access key
-                    - AWS_SECRET_ACCESS_KEY: AWS secret key
-                    - AWS_BEDROCK_REGION: Custom region (e.g., us-gov-east-1)
-                    - AWS_BEDROCK_ENDPOINT: Custom endpoint URL (e.g., VPC endpoint)
-    """
-    # Normalize model ID (auto-add bedrock/ prefix if needed)
-    model_id = _normalize_bedrock_model_id(model_id)
-
-    # Set up Bedrock environment if using Bedrock models
-    if model_id.startswith('bedrock/'):
-        _setup_bedrock_env()
-
-    tools = [
-        tool(read_file),
-        tool(list_files),
-        tool(apply_patch),
-        tool(run_shell),
-    ]
-
-    # Configure model with Bedrock-specific settings if needed
-    model_kwargs = {}
-    if model_id.startswith('bedrock/'):
-        # Enable drop_params for Bedrock to handle unsupported OpenAI params
-        model_kwargs['drop_params'] = True
-
-    model = LiteLLMModel(
-        model_id=model_id,
-        **model_kwargs,
-    )
-
-    agent = ToolCallingAgent(
-        model=model,
-        tools=tools,
-        instructions="""You are an expert software engineer assistant helping with code tasks in a repository.
+SYSTEM_PROMPT = """You are an expert software engineer assistant helping with code tasks in a repository.
 
 # Available Tools
 
@@ -168,8 +205,121 @@ Example: "The authentication logic is in src/auth.py:45"
 - Stop when the task is complete - don't continue working unless asked
 - If you're unsure about requirements, ask for clarification
 - Focus on what needs to be done, not when (don't suggest timelines)
-- Maintain consistency with the existing codebase style and patterns
-""",
-    )
+- Maintain consistency with the existing codebase style and patterns"""
 
-    return agent
+
+class PatchPalAgent:
+    """Simple agent that uses LiteLLM for tool calling."""
+
+    def __init__(self, model_id: str = "anthropic/claude-sonnet-4-5"):
+        """Initialize the agent.
+
+        Args:
+            model_id: LiteLLM model identifier
+        """
+        self.model_id = _normalize_bedrock_model_id(model_id)
+
+        # Set up Bedrock environment if needed
+        if self.model_id.startswith('bedrock/'):
+            _setup_bedrock_env()
+
+        # Conversation history (list of message dicts)
+        self.messages: List[Dict[str, Any]] = []
+
+        # LiteLLM settings for Bedrock
+        self.litellm_kwargs = {}
+        if self.model_id.startswith('bedrock/'):
+            self.litellm_kwargs['drop_params'] = True
+
+    def run(self, user_message: str, max_iterations: int = 10) -> str:
+        """Run the agent on a user message.
+
+        Args:
+            user_message: The user's request
+            max_iterations: Maximum number of agent iterations
+
+        Returns:
+            The agent's final response
+        """
+        # Add user message to history
+        self.messages.append({
+            "role": "user",
+            "content": user_message
+        })
+
+        # Agent loop
+        for iteration in range(max_iterations):
+            # Call LiteLLM with tools
+            try:
+                response = litellm.completion(
+                    model=self.model_id,
+                    messages=[{"role": "system", "content": SYSTEM_PROMPT}] + self.messages,
+                    tools=TOOLS,
+                    tool_choice="auto",
+                    **self.litellm_kwargs
+                )
+            except Exception as e:
+                return f"Error calling model: {e}"
+
+            # Get the assistant's response
+            assistant_message = response.choices[0].message
+
+            # Add assistant message to history
+            self.messages.append({
+                "role": "assistant",
+                "content": assistant_message.content or "",
+                "tool_calls": assistant_message.tool_calls if hasattr(assistant_message, 'tool_calls') and assistant_message.tool_calls else None
+            })
+
+            # Check if there are tool calls
+            if hasattr(assistant_message, 'tool_calls') and assistant_message.tool_calls:
+                # Execute each tool call
+                for tool_call in assistant_message.tool_calls:
+                    tool_name = tool_call.function.name
+                    tool_args_str = tool_call.function.arguments
+
+                    # Parse arguments
+                    try:
+                        tool_args = json.loads(tool_args_str)
+                    except json.JSONDecodeError:
+                        tool_result = f"Error: Invalid JSON arguments for {tool_name}"
+                    else:
+                        # Get the tool function
+                        tool_func = TOOL_FUNCTIONS.get(tool_name)
+                        if tool_func is None:
+                            tool_result = f"Error: Unknown tool {tool_name}"
+                        else:
+                            # Execute the tool (permission checks happen inside the tool)
+                            try:
+                                tool_result = tool_func(**tool_args)
+                            except Exception as e:
+                                tool_result = f"Error executing {tool_name}: {e}"
+
+                    # Add tool result to messages
+                    self.messages.append({
+                        "role": "tool",
+                        "tool_call_id": tool_call.id,
+                        "name": tool_name,
+                        "content": str(tool_result)
+                    })
+
+                # Continue loop to let agent process tool results
+                continue
+            else:
+                # No tool calls, agent is done
+                return assistant_message.content or "Task completed"
+
+        # Max iterations reached
+        return "Maximum iterations reached. Task may be incomplete."
+
+
+def create_agent(model_id: str = "anthropic/claude-sonnet-4-5") -> PatchPalAgent:
+    """Create and return a PatchPal agent.
+
+    Args:
+        model_id: LiteLLM model identifier (default: anthropic/claude-sonnet-4-5)
+
+    Returns:
+        A configured PatchPalAgent instance
+    """
+    return PatchPalAgent(model_id=model_id)
