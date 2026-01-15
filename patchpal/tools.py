@@ -301,12 +301,6 @@ def apply_patch(path: str, new_content: str) -> str:
     Raises:
         ValueError: If in read-only mode or file is too large
     """
-    # Check permission before proceeding
-    permission_manager = _get_permission_manager()
-    description = f"   Modify file: {path}\n   New content size: {len(new_content)} bytes"
-    if not permission_manager.request_permission('apply_patch', description, pattern=path):
-        return "Operation cancelled by user."
-
     _operation_limiter.check_limit(f"apply_patch({path})")
 
     if READ_ONLY_MODE:
@@ -385,13 +379,6 @@ def run_shell(cmd: str) -> str:
     Raises:
         ValueError: If command contains forbidden operations
     """
-    # Check permission before proceeding
-    permission_manager = _get_permission_manager()
-    description = f"   {cmd}"
-    pattern = cmd.split()[0] if cmd.split() else None
-    if not permission_manager.request_permission('run_shell', description, pattern=pattern):
-        return "Operation cancelled by user."
-
     _operation_limiter.check_limit(f"run_shell({cmd[:50]}...)")
 
     # Basic token-based blocking
