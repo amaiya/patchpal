@@ -9,7 +9,6 @@ import logging
 import shutil
 from datetime import datetime
 from typing import Optional
-from patchpal.permissions import PermissionManager
 
 REPO_ROOT = Path(".").resolve()
 
@@ -62,16 +61,6 @@ def _get_patchpal_dir() -> Path:
 PATCHPAL_DIR = _get_patchpal_dir()
 BACKUP_DIR = PATCHPAL_DIR / 'backups'
 AUDIT_LOG_FILE = PATCHPAL_DIR / 'audit.log'
-
-# Permission manager
-_permission_manager = None
-
-def _get_permission_manager() -> PermissionManager:
-    """Get or create the global permission manager."""
-    global _permission_manager
-    if _permission_manager is None:
-        _permission_manager = PermissionManager(PATCHPAL_DIR)
-    return _permission_manager
 
 # Audit logging setup
 audit_logger = logging.getLogger('patchpal.audit')
