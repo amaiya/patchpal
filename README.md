@@ -204,7 +204,7 @@ The agent operates within a sandboxed environment with several restrictions:
 
 PatchPal includes comprehensive security protections enabled by default:
 
-**Phase 1 - Critical Security:**
+**Critical Security:**
 - **Sensitive file protection**: Blocks access to `.env`, credentials, API keys
 - **File size limits**: Prevents OOM with configurable size limits (10MB default)
 - **Binary file detection**: Blocks reading non-text files
@@ -214,9 +214,9 @@ PatchPal includes comprehensive security protections enabled by default:
 - **Pattern-based blocking**: Blocks dangerous command patterns (`> /dev/`, `--force`, etc.)
 - **Path traversal protection**: Prevents access outside repository root
 
-**Phase 2 & 3 - Operational Safety:**
-- **Operation audit logging**: All file operations and commands logged to `.patchpal_audit.log`
-- **Automatic backups**: Files backed up to `.patchpal_backups/` before modification
+**Operational Safety:**
+- **Operation audit logging**: All file operations and commands logged to `~/.patchpal/<repo-name>/audit.log` (enabled by default)
+- **Automatic backups**: Optional auto-backup of files to `~/.patchpal/<repo-name>/backups/` before modification
 - **Resource limits**: Configurable operation counter prevents infinite loops (1000 operations default)
 - **Git state awareness**: Warns when modifying files with uncommitted changes
 
@@ -224,15 +224,17 @@ See `GUARDRAILS.md` for detailed information on all security features.
 
 **Configuration via environment variables:**
 ```bash
-# Security controls
-export PATCHPAL_MAX_FILE_SIZE=5242880     # 5MB limit
-export PATCHPAL_READ_ONLY=true            # Enable read-only mode
-export PATCHPAL_ALLOW_SENSITIVE=true      # Allow .env access (not recommended)
+# Critical Security Controls
+export PATCHPAL_MAX_FILE_SIZE=5242880     # Maximum file size in bytes for read/write operations (default: 10485760 = 10MB)
+export PATCHPAL_READ_ONLY=true            # Prevent all file modifications, analysis-only mode (default: false)
+                                           # Useful for: code review, exploration, security audits, CI/CD analysis, or trying PatchPal risk-free
+export PATCHPAL_ALLOW_SENSITIVE=true      # Allow access to .env, credentials, API keys (default: false - blocked for safety)
+                                           # Only enable when working with test/dummy credentials or intentionally managing config files
 
-# Operational features
-export PATCHPAL_AUDIT_LOG=true            # Enable audit logging (default: true)
-export PATCHPAL_ENABLE_BACKUPS=true       # Enable backups (default: true)
-export PATCHPAL_MAX_OPERATIONS=1000       # Operation limit (default: 1000)
+# Operational Safety Controls
+export PATCHPAL_AUDIT_LOG=false           # Log all operations to ~/.patchpal/<repo-name>/audit.log (default: true)
+export PATCHPAL_ENABLE_BACKUPS=true       # Auto-backup files to ~/.patchpal/<repo-name>/backups/ before modification (default: false)
+export PATCHPAL_MAX_OPERATIONS=5000       # Maximum operations per session to prevent infinite loops (default: 1000)
 ```
 
 **Test coverage:** 70 tests including 38 dedicated security tests

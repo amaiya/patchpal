@@ -38,10 +38,29 @@ MAX_FILE_SIZE = int(os.getenv('PATCHPAL_MAX_FILE_SIZE', 10 * 1024 * 1024))  # 10
 READ_ONLY_MODE = os.getenv('PATCHPAL_READ_ONLY', 'false').lower() == 'true'
 ALLOW_SENSITIVE = os.getenv('PATCHPAL_ALLOW_SENSITIVE', 'false').lower() == 'true'
 ENABLE_AUDIT_LOG = os.getenv('PATCHPAL_AUDIT_LOG', 'true').lower() == 'true'
-ENABLE_BACKUPS = os.getenv('PATCHPAL_ENABLE_BACKUPS', 'true').lower() == 'true'
+ENABLE_BACKUPS = os.getenv('PATCHPAL_ENABLE_BACKUPS', 'false').lower() == 'true'
 MAX_OPERATIONS = int(os.getenv('PATCHPAL_MAX_OPERATIONS', 1000))
-BACKUP_DIR = REPO_ROOT / '.patchpal_backups'
-AUDIT_LOG_FILE = REPO_ROOT / '.patchpal_audit.log'
+
+# Create patchpal directory structure in home directory
+# Format: ~/.patchpal/<repo-name>/
+def _get_patchpal_dir() -> Path:
+    """Get the patchpal directory for this repository."""
+    home = Path.home()
+    patchpal_root = home / '.patchpal'
+
+    # Use repo name (last part of path) to create unique directory
+    repo_name = REPO_ROOT.name
+    repo_dir = patchpal_root / repo_name
+
+    # Create directories if they don't exist
+    repo_dir.mkdir(parents=True, exist_ok=True)
+    (repo_dir / 'backups').mkdir(exist_ok=True)
+
+    return repo_dir
+
+PATCHPAL_DIR = _get_patchpal_dir()
+BACKUP_DIR = PATCHPAL_DIR / 'backups'
+AUDIT_LOG_FILE = PATCHPAL_DIR / 'audit.log'
 
 # Audit logging setup
 audit_logger = logging.getLogger('patchpal.audit')
