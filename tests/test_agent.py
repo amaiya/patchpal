@@ -88,8 +88,10 @@ def test_create_agent_instructions():
         assert "apply_patch" in instructions
         assert "run_shell" in instructions
 
-        # Verify instructions have guidance
-        assert "senior software engineer" in instructions.lower()
+        # Verify instructions have guidance and key principles
+        assert "expert software engineer" in instructions.lower()
+        assert "avoid over-engineering" in instructions.lower()
+        assert "read before modifying" in instructions.lower()
 
 
 def test_create_agent_bedrock_env_setup(monkeypatch):
