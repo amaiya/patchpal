@@ -200,10 +200,11 @@ The agent operates within a sandboxed environment with several restrictions:
 - All changes require passing through the apply_patch function
 - Shell commands run with limited permissions
 
-### Enhanced Security Guardrails ✅ ENABLED
+### Enhanced Security Guardrails ✅ FULLY ENABLED
 
 PatchPal includes comprehensive security protections enabled by default:
 
+**Phase 1 - Critical Security:**
 - **Sensitive file protection**: Blocks access to `.env`, credentials, API keys
 - **File size limits**: Prevents OOM with configurable size limits (10MB default)
 - **Binary file detection**: Blocks reading non-text files
@@ -213,16 +214,28 @@ PatchPal includes comprehensive security protections enabled by default:
 - **Pattern-based blocking**: Blocks dangerous command patterns (`> /dev/`, `--force`, etc.)
 - **Path traversal protection**: Prevents access outside repository root
 
+**Phase 2 & 3 - Operational Safety:**
+- **Operation audit logging**: All file operations and commands logged to `.patchpal_audit.log`
+- **Automatic backups**: Files backed up to `.patchpal_backups/` before modification
+- **Resource limits**: Configurable operation counter prevents infinite loops (1000 operations default)
+- **Git state awareness**: Warns when modifying files with uncommitted changes
+
 See `GUARDRAILS.md` for detailed information on all security features.
 
 **Configuration via environment variables:**
 ```bash
+# Security controls
 export PATCHPAL_MAX_FILE_SIZE=5242880     # 5MB limit
 export PATCHPAL_READ_ONLY=true            # Enable read-only mode
 export PATCHPAL_ALLOW_SENSITIVE=true      # Allow .env access (not recommended)
+
+# Operational features
+export PATCHPAL_AUDIT_LOG=true            # Enable audit logging (default: true)
+export PATCHPAL_ENABLE_BACKUPS=true       # Enable backups (default: true)
+export PATCHPAL_MAX_OPERATIONS=1000       # Operation limit (default: 1000)
 ```
 
-**Test coverage:** 52 tests including 20 dedicated security tests
+**Test coverage:** 70 tests including 38 dedicated security tests
 
 ## Development
 

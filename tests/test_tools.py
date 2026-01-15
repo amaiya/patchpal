@@ -21,6 +21,10 @@ def temp_repo(monkeypatch):
         # Monkey-patch REPO_ROOT
         monkeypatch.setattr("patchpal.tools.REPO_ROOT", tmpdir_path)
 
+        # Reset operation counter before each test
+        from patchpal.tools import reset_operation_counter
+        reset_operation_counter()
+
         yield tmpdir_path
 
 

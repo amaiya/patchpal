@@ -5,6 +5,10 @@ import subprocess
 import difflib
 import os
 import mimetypes
+import logging
+import shutil
+from datetime import datetime
+from typing import Optional
 
 REPO_ROOT = Path(".").resolve()
 
@@ -33,6 +37,106 @@ CRITICAL_FILES = {
 MAX_FILE_SIZE = int(os.getenv('PATCHPAL_MAX_FILE_SIZE', 10 * 1024 * 1024))  # 10MB default
 READ_ONLY_MODE = os.getenv('PATCHPAL_READ_ONLY', 'false').lower() == 'true'
 ALLOW_SENSITIVE = os.getenv('PATCHPAL_ALLOW_SENSITIVE', 'false').lower() == 'true'
+ENABLE_AUDIT_LOG = os.getenv('PATCHPAL_AUDIT_LOG', 'true').lower() == 'true'
+ENABLE_BACKUPS = os.getenv('PATCHPAL_ENABLE_BACKUPS', 'true').lower() == 'true'
+MAX_OPERATIONS = int(os.getenv('PATCHPAL_MAX_OPERATIONS', 1000))
+BACKUP_DIR = REPO_ROOT / '.patchpal_backups'
+AUDIT_LOG_FILE = REPO_ROOT / '.patchpal_audit.log'
+
+# Audit logging setup
+audit_logger = logging.getLogger('patchpal.audit')
+if ENABLE_AUDIT_LOG and not audit_logger.handlers:
+    audit_logger.setLevel(logging.INFO)
+    handler = logging.FileHandler(AUDIT_LOG_FILE)
+    handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+    audit_logger.addHandler(handler)
+
+# Operation counter for resource limits
+class OperationLimiter:
+    """Track operations to prevent abuse."""
+    def __init__(self):
+        self.operations = 0
+        self.max_operations = MAX_OPERATIONS
+
+    def check_limit(self, operation: str):
+        """Check if operation limit has been exceeded."""
+        self.operations += 1
+        if self.operations > self.max_operations:
+            raise ValueError(
+                f"Operation limit exceeded ({self.max_operations} operations)\n"
+                f"This prevents infinite loops. Increase with PATCHPAL_MAX_OPERATIONS env var."
+            )
+        audit_logger.info(f"Operation {self.operations}/{self.max_operations}: {operation}")
+
+    def reset(self):
+        """Reset operation counter."""
+        self.operations = 0
+
+# Global operation limiter
+_operation_limiter = OperationLimiter()
+
+
+def reset_operation_counter():
+    """Reset the operation counter. Useful for testing or starting new tasks."""
+    _operation_limiter.reset()
+
+
+def get_operation_count() -> int:
+    """Get current operation count."""
+    return _operation_limiter.operations
+
+
+def _check_git_status() -> dict:
+    """Check git repository status."""
+    try:
+        # Check if we're in a git repo
+        result = subprocess.run(
+            ['git', 'rev-parse', '--git-dir'],
+            capture_output=True,
+            text=True,
+            cwd=REPO_ROOT,
+            timeout=5
+        )
+        if result.returncode != 0:
+            return {'is_repo': False}
+
+        # Get status
+        result = subprocess.run(
+            ['git', 'status', '--porcelain'],
+            capture_output=True,
+            text=True,
+            cwd=REPO_ROOT,
+            timeout=5
+        )
+
+        return {
+            'is_repo': True,
+            'has_uncommitted': bool(result.stdout.strip()),
+            'changes': result.stdout.strip().split('\n') if result.stdout.strip() else []
+        }
+    except (subprocess.TimeoutExpired, FileNotFoundError, Exception):
+        return {'is_repo': False}
+
+
+def _backup_file(path: Path) -> Optional[Path]:
+    """Create backup of file before modification."""
+    if not ENABLE_BACKUPS or not path.exists():
+        return None
+
+    try:
+        BACKUP_DIR.mkdir(exist_ok=True)
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        # Include path structure in backup name to handle same filenames
+        relative = path.relative_to(REPO_ROOT)
+        backup_name = f"{str(relative).replace('/', '_')}.{timestamp}"
+        backup_path = BACKUP_DIR / backup_name
+
+        shutil.copy2(path, backup_path)
+        audit_logger.info(f"BACKUP: {path} -> {backup_path}")
+        return backup_path
+    except Exception as e:
+        audit_logger.warning(f"BACKUP FAILED: {path} - {e}")
+        return None
 
 
 def _is_sensitive_file(path: Path) -> bool:
@@ -101,6 +205,8 @@ def read_file(path: str) -> str:
     Raises:
         ValueError: If file is too large, binary, or sensitive
     """
+    _operation_limiter.check_limit(f"read_file({path})")
+
     p = _check_path(path)
 
     # Check file size
@@ -118,7 +224,9 @@ def read_file(path: str) -> str:
             f"Type: {mimetypes.guess_type(str(p))[0] or 'unknown'}"
         )
 
-    return p.read_text()
+    content = p.read_text()
+    audit_logger.info(f"READ: {path} ({size} bytes)")
+    return content
 
 
 def list_files() -> list[str]:
@@ -128,6 +236,8 @@ def list_files() -> list[str]:
     Returns:
         A list of relative file paths (excludes hidden and binary files)
     """
+    _operation_limiter.check_limit("list_files()")
+
     files = []
     for p in REPO_ROOT.rglob("*"):
         if not p.is_file():
@@ -143,6 +253,7 @@ def list_files() -> list[str]:
 
         files.append(str(p.relative_to(REPO_ROOT)))
 
+    audit_logger.info(f"LIST: Found {len(files)} files")
     return files
 
 
@@ -160,6 +271,8 @@ def apply_patch(path: str, new_content: str) -> str:
     Raises:
         ValueError: If in read-only mode or file is too large
     """
+    _operation_limiter.check_limit(f"apply_patch({path})")
+
     if READ_ONLY_MODE:
         raise ValueError(
             "Cannot modify files in read-only mode\n"
@@ -174,6 +287,19 @@ def apply_patch(path: str, new_content: str) -> str:
         raise ValueError(
             f"New content too large: {new_size:,} bytes (max {MAX_FILE_SIZE:,} bytes)"
         )
+
+    # Check git status for uncommitted changes
+    git_status = _check_git_status()
+    git_warning = ""
+    if git_status.get('is_repo') and git_status.get('has_uncommitted'):
+        relative_path = str(p.relative_to(REPO_ROOT))
+        if any(relative_path in change for change in git_status.get('changes', [])):
+            git_warning = "\n⚠️  Note: File has uncommitted changes in git\n"
+
+    # Backup existing file
+    backup_path = None
+    if p.exists():
+        backup_path = _backup_file(p)
 
     # Read old content if file exists
     if p.exists():
@@ -201,7 +327,13 @@ def apply_patch(path: str, new_content: str) -> str:
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text(new_content)
 
-    return f"Successfully updated {path}{warning}\n\nDiff:\n{diff_str}"
+    # Audit log
+    audit_logger.info(f"WRITE: {path} ({new_size} bytes)" +
+                     (f" [BACKUP: {backup_path}]" if backup_path else ""))
+
+    backup_msg = f"\n[Backup saved: {backup_path}]" if backup_path else ""
+
+    return f"Successfully updated {path}{warning}{git_warning}{backup_msg}\n\nDiff:\n{diff_str}"
 
 
 def run_shell(cmd: str) -> str:
@@ -217,6 +349,8 @@ def run_shell(cmd: str) -> str:
     Raises:
         ValueError: If command contains forbidden operations
     """
+    _operation_limiter.check_limit(f"run_shell({cmd[:50]}...)")
+
     # Basic token-based blocking
     if any(tok in FORBIDDEN for tok in cmd.split()):
         raise ValueError(
@@ -235,6 +369,8 @@ def run_shell(cmd: str) -> str:
     for pattern in dangerous_patterns:
         if pattern in cmd:
             raise ValueError(f"Blocked dangerous pattern in command: {pattern}")
+
+    audit_logger.info(f"SHELL: {cmd}")
 
     result = subprocess.run(
         cmd,
