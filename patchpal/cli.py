@@ -108,6 +108,10 @@ Supported models: Any LiteLLM-supported model
             # Use \001 and \002 to mark non-printing characters (ANSI codes) for readline
             user_input = input("\n\001\033[1;36m\002You:\001\033[0m\002 ").strip()
 
+            # Replace newlines with spaces to prevent history file corruption
+            # This can happen if user pastes multi-line text
+            user_input = user_input.replace('\n', ' ').replace('\r', ' ')
+
             # Check for exit commands
             if user_input.lower() in ['exit', 'quit', 'q']:
                 print("\nGoodbye!")
