@@ -1,0 +1,298 @@
+"""Tests for enhanced security guardrails.
+
+These tests demonstrate the additional safety features in tools.py.
+Run with: pytest tests/test_enhanced_guardrails.py
+"""
+
+import pytest
+from pathlib import Path
+from unittest.mock import patch
+import tempfile
+import os
+
+
+@pytest.fixture
+def temp_repo(monkeypatch):
+    """Create a temporary repository for testing."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmpdir_path = Path(tmpdir)
+
+        # Create test files
+        (tmpdir_path / "normal.txt").write_text("normal file")
+        (tmpdir_path / "large.txt").write_text("x" * (11 * 1024 * 1024))  # 11MB
+        (tmpdir_path / ".env").write_text("SECRET_KEY=abc123")
+        (tmpdir_path / "package.json").write_text('{"name": "test"}')
+
+        # Create binary file
+        (tmpdir_path / "binary.bin").write_bytes(b"\x00\x01\x02\x03")
+
+        # Monkey-patch REPO_ROOT
+        import patchpal.tools as tools_enhanced
+        monkeypatch.setattr(tools_enhanced, "REPO_ROOT", tmpdir_path)
+
+        yield tmpdir_path
+
+
+class TestSensitiveFileProtection:
+    """Test sensitive file detection and blocking."""
+
+    def test_blocks_env_file_access(self, temp_repo):
+        """Test that .env files are blocked by default."""
+        from patchpal.tools import read_file
+
+        with pytest.raises(ValueError, match="sensitive file"):
+            read_file(".env")
+
+    def test_blocks_credentials_file(self, temp_repo, monkeypatch):
+        """Test that credential files are blocked."""
+        from patchpal.tools import read_file
+
+        (temp_repo / "credentials.json").write_text('{"key": "secret"}')
+
+        with pytest.raises(ValueError, match="sensitive file"):
+            read_file("credentials.json")
+
+    def test_allows_with_override(self, temp_repo, monkeypatch):
+        """Test that ALLOW_SENSITIVE override works."""
+        monkeypatch.setenv("PATCHPAL_ALLOW_SENSITIVE", "true")
+
+        # Reimport to pick up env var
+        import importlib
+        import patchpal.tools
+        importlib.reload(patchpal.tools)
+
+        # Re-monkeypatch REPO_ROOT after reload
+        monkeypatch.setattr("patchpal.tools.REPO_ROOT", temp_repo)
+
+        content = patchpal.tools.read_file(".env")
+        assert "SECRET_KEY" in content
+
+
+class TestFileSizeLimits:
+    """Test file size restrictions."""
+
+    def test_blocks_large_file_read(self, temp_repo):
+        """Test that files over size limit are blocked."""
+        from patchpal.tools import read_file
+
+        with pytest.raises(ValueError, match="too large"):
+            read_file("large.txt")
+
+    def test_blocks_large_file_write(self, temp_repo):
+        """Test that writing large content is blocked."""
+        from patchpal.tools import apply_patch
+
+        large_content = "x" * (11 * 1024 * 1024)
+
+        with pytest.raises(ValueError, match="too large"):
+            apply_patch("output.txt", large_content)
+
+    def test_allows_normal_size_file(self, temp_repo):
+        """Test that normal-sized files work."""
+        from patchpal.tools import read_file
+
+        content = read_file("normal.txt")
+        assert content == "normal file"
+
+
+class TestBinaryFileDetection:
+    """Test binary file handling."""
+
+    def test_blocks_binary_file_read(self, temp_repo):
+        """Test that binary files are blocked."""
+        from patchpal.tools import read_file
+
+        with pytest.raises(ValueError, match="binary file"):
+            read_file("binary.bin")
+
+    def test_allows_text_file(self, temp_repo):
+        """Test that text files are allowed."""
+        from patchpal.tools import read_file
+
+        content = read_file("normal.txt")
+        assert content == "normal file"
+
+
+class TestCriticalFileWarnings:
+    """Test warnings for critical files."""
+
+    def test_warns_on_package_json_modify(self, temp_repo):
+        """Test that modifying package.json shows warning."""
+        from patchpal.tools import apply_patch
+
+        result = apply_patch("package.json", '{"name": "modified"}')
+        assert "WARNING" in result
+        assert "critical" in result.lower()
+
+    def test_no_warning_on_normal_file(self, temp_repo):
+        """Test that normal files don't show warning."""
+        from patchpal.tools import apply_patch
+
+        result = apply_patch("normal.txt", "modified content")
+        assert "WARNING" not in result
+
+
+class TestReadOnlyMode:
+    """Test read-only mode."""
+
+    def test_blocks_writes_in_readonly(self, temp_repo, monkeypatch):
+        """Test that writes are blocked in read-only mode."""
+        monkeypatch.setenv("PATCHPAL_READ_ONLY", "true")
+
+        # Reimport to pick up env var
+        import importlib
+        import patchpal.tools
+        importlib.reload(patchpal.tools)
+
+        with pytest.raises(ValueError, match="read-only mode"):
+            patchpal.tools.apply_patch("test.txt", "content")
+
+    def test_allows_reads_in_readonly(self, temp_repo, monkeypatch):
+        """Test that reads work in read-only mode."""
+        monkeypatch.setenv("PATCHPAL_READ_ONLY", "true")
+
+        # Reimport to pick up env var
+        import importlib
+        import patchpal.tools
+        importlib.reload(patchpal.tools)
+
+        # Re-monkeypatch REPO_ROOT after reload
+        monkeypatch.setattr("patchpal.tools.REPO_ROOT", temp_repo)
+
+        content = patchpal.tools.read_file("normal.txt")
+        assert content == "normal file"
+
+
+class TestCommandSafety:
+    """Test enhanced command safety."""
+
+    def test_blocks_dangerous_patterns(self, temp_repo):
+        """Test that dangerous command patterns are blocked."""
+        from patchpal.tools import run_shell
+
+        dangerous_commands = [
+            "echo test > /dev/sda",
+            "rm -rf /",
+            "cat file | dd of=/dev/sda",
+            "git push --force",
+        ]
+
+        for cmd in dangerous_commands:
+            with pytest.raises(ValueError, match="dangerous"):
+                run_shell(cmd)
+
+    def test_allows_safe_commands(self, temp_repo):
+        """Test that safe commands work."""
+        from patchpal.tools import run_shell
+
+        result = run_shell("echo 'test'")
+        assert "test" in result
+
+    def test_command_timeout(self, temp_repo):
+        """Test that long-running commands timeout."""
+        from patchpal.tools import run_shell
+        import subprocess
+
+        with pytest.raises(subprocess.TimeoutExpired):
+            run_shell("sleep 60")
+
+
+class TestPathTraversal:
+    """Test path traversal attack prevention."""
+
+    def test_blocks_parent_directory_access(self, temp_repo):
+        """Test that ../.. attacks are blocked."""
+        from patchpal.tools import read_file
+
+        with pytest.raises(ValueError, match="outside repository"):
+            read_file("../../etc/passwd")
+
+    def test_blocks_absolute_paths(self, temp_repo):
+        """Test that absolute paths are blocked."""
+        from patchpal.tools import read_file
+
+        with pytest.raises(ValueError, match="outside repository"):
+            read_file("/etc/passwd")
+
+    def test_blocks_symlink_escape(self, temp_repo):
+        """Test that symlinks can't escape repository."""
+        from patchpal.tools import read_file
+
+        # Create symlink pointing outside repo
+        outside_file = temp_repo.parent / "outside.txt"
+        outside_file.write_text("outside content")
+
+        symlink = temp_repo / "link.txt"
+        symlink.symlink_to(outside_file)
+
+        with pytest.raises(ValueError, match="outside repository"):
+            read_file("link.txt")
+
+
+class TestConfigurability:
+    """Test configuration via environment variables."""
+
+    def test_custom_max_file_size(self, temp_repo, monkeypatch):
+        """Test that MAX_FILE_SIZE can be configured."""
+        monkeypatch.setenv("PATCHPAL_MAX_FILE_SIZE", "1000")
+
+        # Reimport to pick up env var
+        import importlib
+        import patchpal.tools
+        importlib.reload(patchpal.tools)
+
+        # Re-monkeypatch REPO_ROOT after reload
+        monkeypatch.setattr("patchpal.tools.REPO_ROOT", temp_repo)
+
+        # Should now block even small files
+        (temp_repo / "medium.txt").write_text("x" * 2000)
+
+        with pytest.raises(ValueError, match="too large"):
+            patchpal.tools.read_file("medium.txt")
+
+
+# Summary test to demonstrate all guardrails
+def test_comprehensive_security_demo(temp_repo):
+    """Comprehensive test showing all security features."""
+    from patchpal.tools import (
+        read_file, apply_patch, run_shell, list_files
+    )
+
+    # 1. Normal operations work
+    content = read_file("normal.txt")
+    assert content == "normal file"
+
+    result = apply_patch("test.txt", "new content")
+    assert "Successfully updated" in result
+
+    output = run_shell("ls normal.txt")
+    assert "normal.txt" in output
+
+    files = list_files()
+    assert "normal.txt" in files
+
+    # 2. Sensitive files blocked
+    with pytest.raises(ValueError, match="sensitive"):
+        read_file(".env")
+
+    # 3. Large files blocked
+    with pytest.raises(ValueError, match="too large"):
+        read_file("large.txt")
+
+    # 4. Binary files blocked
+    with pytest.raises(ValueError, match="binary"):
+        read_file("binary.bin")
+
+    # 5. Critical files warned
+    result = apply_patch("package.json", '{"modified": true}')
+    assert "WARNING" in result
+
+    # 6. Dangerous commands blocked
+    with pytest.raises(ValueError, match="dangerous"):
+        run_shell("rm -rf /")
+
+    # 7. Path traversal blocked
+    with pytest.raises(ValueError, match="outside"):
+        read_file("../../etc/passwd")
+
+    print("✅ All security guardrails working correctly!")
