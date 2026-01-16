@@ -130,18 +130,8 @@ Supported models: Any LiteLLM-supported model
     # Determine model to use (priority: CLI arg > env var > default)
     model_id = args.model or os.getenv("PATCHPAL_MODEL") or "anthropic/claude-sonnet-4-5"
 
-    # Check for API key
-    if not os.getenv("ANTHROPIC_API_KEY"):
-        print("Error: ANTHROPIC_API_KEY environment variable not set.")
-        print("\nTo fix this:")
-        print("1. Get your API key from https://console.anthropic.com/")
-        print("2. Set it in your environment:")
-        print("   export ANTHROPIC_API_KEY=your_api_key_here")
-        print("\nOr create a .env file with:")
-        print("   ANTHROPIC_API_KEY=your_api_key_here")
-        sys.exit(1)
-
     # Create the agent with the specified model
+    # LiteLLM will handle API key validation and provide appropriate error messages
     agent = create_agent(model_id=model_id)
 
     # Get max iterations from environment variable or use default
