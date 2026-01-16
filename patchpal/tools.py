@@ -444,6 +444,163 @@ def get_file_info(path: str) -> str:
     return output
 
 
+def find_files(pattern: str, case_sensitive: bool = True) -> str:
+    """
+    Find files by name pattern (glob-style wildcards).
+
+    Args:
+        pattern: Glob pattern (e.g., '*.py', 'test_*.txt', 'src/**/*.js')
+        case_sensitive: Whether to match case-sensitively (default: True)
+
+    Returns:
+        List of matching file paths, one per line
+
+    Examples:
+        find_files("*.py")           # All Python files in repo
+        find_files("test_*.py")      # All test files
+        find_files("**/*.md")        # All markdown files recursively
+        find_files("*.TXT", False)   # All .txt files (case-insensitive)
+    """
+    _operation_limiter.check_limit(f"find_files({pattern})")
+
+    try:
+        # Use glob to find matching files
+        if case_sensitive:
+            matches = list(REPO_ROOT.glob(pattern))
+        else:
+            # Case-insensitive: convert pattern to lowercase and match
+            pattern_lower = pattern.lower()
+            all_files = REPO_ROOT.glob(pattern.replace('*', '[!.]*'))  # Exclude hidden by default
+            matches = [f for f in REPO_ROOT.rglob('*') if f.is_file() and
+                      not any(part.startswith('.') for part in f.relative_to(REPO_ROOT).parts) and
+                      f.name.lower() == pattern_lower.replace('*', f.name.lower())]
+
+            # Simpler approach: just do case-insensitive glob matching
+            import fnmatch
+            matches = []
+            for file_path in REPO_ROOT.rglob('*'):
+                if file_path.is_file():
+                    # Skip hidden files
+                    relative_path = file_path.relative_to(REPO_ROOT)
+                    if any(part.startswith('.') for part in relative_path.parts):
+                        continue
+                    # Check if matches pattern (case-insensitive)
+                    if fnmatch.fnmatch(str(relative_path).lower(), pattern.lower()):
+                        matches.append(file_path)
+
+        # Filter to only files (not directories) and exclude hidden
+        files = []
+        for match in matches:
+            if match.is_file():
+                relative_path = match.relative_to(REPO_ROOT)
+                # Skip hidden files/directories
+                if not any(part.startswith('.') for part in relative_path.parts):
+                    files.append(str(relative_path))
+
+        if not files:
+            audit_logger.info(f"FIND_FILES: {pattern} - No matches")
+            return f"No files matching pattern: {pattern}"
+
+        # Sort for consistent output
+        files.sort()
+
+        header = f"Files matching '{pattern}' ({len(files)} found):"
+        separator = "-" * 100
+
+        audit_logger.info(f"FIND_FILES: {pattern} - {len(files)} file(s)")
+        return f"{header}\n{separator}\n" + "\n".join(files)
+
+    except Exception as e:
+        raise ValueError(f"Error finding files: {e}")
+
+
+def tree(path: str = ".", max_depth: int = 3, show_hidden: bool = False) -> str:
+    """
+    Show directory tree structure.
+
+    Args:
+        path: Starting directory path (default: current directory)
+        max_depth: Maximum depth to traverse (default: 3, max: 10)
+        show_hidden: Include hidden files/directories (default: False)
+
+    Returns:
+        Visual tree structure of the directory
+
+    Example output:
+        .
+        ├── patchpal/
+        │   ├── __init__.py
+        │   ├── agent.py
+        │   └── tools.py
+        └── tests/
+            ├── test_agent.py
+            └── test_tools.py
+    """
+    _operation_limiter.check_limit(f"tree({path})")
+
+    # Limit max_depth
+    max_depth = min(max_depth, 10)
+
+    # Validate and resolve path
+    start_path = (REPO_ROOT / path).resolve()
+
+    # Check if path is within repository
+    if not str(start_path).startswith(str(REPO_ROOT)):
+        raise ValueError(f"Path outside repository: {path}")
+
+    # Check if path exists and is a directory
+    if not start_path.exists():
+        raise ValueError(f"Path not found: {path}")
+
+    if not start_path.is_dir():
+        raise ValueError(f"Path is not a directory: {path}")
+
+    def _build_tree(dir_path: Path, prefix: str = "", depth: int = 0) -> list:
+        """Recursively build tree structure."""
+        if depth >= max_depth:
+            return []
+
+        try:
+            # Get all items in directory
+            items = sorted(dir_path.iterdir(), key=lambda x: (not x.is_dir(), x.name.lower()))
+
+            # Filter hidden files if needed
+            if not show_hidden:
+                items = [item for item in items if not item.name.startswith('.')]
+
+            lines = []
+            for i, item in enumerate(items):
+                is_last = i == len(items) - 1
+
+                # Build the tree characters
+                connector = "└── " if is_last else "├── "
+                item_name = item.name + "/" if item.is_dir() else item.name
+
+                lines.append(f"{prefix}{connector}{item_name}")
+
+                # Recurse into directories
+                if item.is_dir():
+                    extension = "    " if is_last else "│   "
+                    lines.extend(_build_tree(item, prefix + extension, depth + 1))
+
+            return lines
+
+        except PermissionError:
+            return [f"{prefix}[Permission Denied]"]
+
+    try:
+        # Build the tree
+        relative_path = start_path.relative_to(REPO_ROOT) if start_path != REPO_ROOT else Path(".")
+        result = [str(relative_path) + "/"]
+        result.extend(_build_tree(start_path))
+
+        audit_logger.info(f"TREE: {path} (depth={max_depth})")
+        return "\n".join(result)
+
+    except Exception as e:
+        raise ValueError(f"Error generating tree: {e}")
+
+
 def apply_patch(path: str, new_content: str) -> str:
     """
     Apply changes to a file by replacing its contents.

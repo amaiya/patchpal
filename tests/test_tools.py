@@ -647,4 +647,150 @@ def test_web_fetch_no_truncation_needed(temp_repo, monkeypatch):
 
         # Verify content was not truncated
         assert result == "Hello World"
+
+
+def test_find_files_simple_pattern(temp_repo):
+    """Test finding files with simple pattern."""
+    from patchpal.tools import find_files
+
+    # Create test files
+    (temp_repo / "test1.py").write_text("test")
+    (temp_repo / "test2.py").write_text("test")
+    (temp_repo / "readme.md").write_text("test")
+
+    result = find_files("*.py")
+    assert "test1.py" in result
+    assert "test2.py" in result
+    assert "readme.md" not in result
+    assert "2 found" in result
+
+
+def test_find_files_recursive_pattern(temp_repo):
+    """Test finding files recursively."""
+    from patchpal.tools import find_files
+
+    # Create nested structure
+    (temp_repo / "src").mkdir()
+    (temp_repo / "src" / "main.py").write_text("test")
+    (temp_repo / "tests").mkdir()
+    (temp_repo / "tests" / "test_main.py").write_text("test")
+
+    result = find_files("**/*.py")
+    assert "src/main.py" in result or "src\\main.py" in result  # Handle Windows paths
+    assert "test_main.py" in result
+    # Note: temp_repo already has subdir/file.py, so 3 total
+    assert "3 found" in result
+
+
+def test_find_files_case_insensitive(temp_repo):
+    """Test case-insensitive file finding."""
+    from patchpal.tools import find_files
+
+    (temp_repo / "README.TXT").write_text("test")
+    (temp_repo / "notes.txt").write_text("test")
+
+    result = find_files("*.txt", case_sensitive=False)
+    assert "README.TXT" in result
+    assert "notes.txt" in result
+    # Note: temp_repo already has test.txt, so 3 total
+    assert "3 found" in result
+
+
+def test_find_files_no_matches(temp_repo):
+    """Test find_files with no matches."""
+    from patchpal.tools import find_files
+
+    result = find_files("*.nonexistent")
+    assert "No files matching pattern" in result
+
+
+def test_find_files_excludes_hidden(temp_repo):
+    """Test that find_files excludes hidden files."""
+    from patchpal.tools import find_files
+
+    (temp_repo / ".hidden.py").write_text("test")
+    (temp_repo / "visible.py").write_text("test")
+    (temp_repo / ".git").mkdir()
+    (temp_repo / ".git" / "config.py").write_text("test")
+
+    result = find_files("*.py")
+    assert ".hidden.py" not in result
+    assert ".git" not in result
+    assert "visible.py" in result
+
+
+def test_tree_basic(temp_repo):
+    """Test basic tree functionality."""
+    from patchpal.tools import tree
+
+    result = tree(".")
+    assert "test.txt" in result
+    assert "subdir/" in result
+    assert "file.py" in result
+    # Check for tree characters
+    assert "├──" in result or "└──" in result
+
+
+def test_tree_max_depth(temp_repo):
+    """Test tree respects max_depth."""
+    from patchpal.tools import tree
+
+    # Create deep directory structure
+    (temp_repo / "level1").mkdir()
+    (temp_repo / "level1" / "level2").mkdir()
+    (temp_repo / "level1" / "level2" / "level3").mkdir()
+    (temp_repo / "level1" / "level2" / "level3" / "deep.txt").write_text("test")
+
+    result = tree(".", max_depth=2)
+    assert "level1" in result
+    assert "level2" in result
+    # level3 should not appear due to max_depth=2
+    assert "level3" not in result
+
+
+def test_tree_specific_directory(temp_repo):
+    """Test tree on specific directory."""
+    from patchpal.tools import tree
+
+    result = tree("subdir")
+    assert "file.py" in result
+    # Should not show files from parent directory
+    assert "test.txt" not in result
+
+
+def test_tree_hidden_files(temp_repo):
+    """Test tree with show_hidden option."""
+    from patchpal.tools import tree
+
+    (temp_repo / ".hidden").write_text("test")
+    (temp_repo / ".git").mkdir()
+    (temp_repo / ".git" / "config").write_text("test")
+
+    # Without show_hidden
+    result_no_hidden = tree(".", show_hidden=False)
+    assert ".hidden" not in result_no_hidden
+    assert ".git" not in result_no_hidden
+
+    # With show_hidden
+    result_with_hidden = tree(".", show_hidden=True)
+    assert ".hidden" in result_with_hidden
+    assert ".git" in result_with_hidden
+
+
+def test_tree_limits_max_depth_to_10(temp_repo):
+    """Test that tree limits max_depth to 10."""
+    from patchpal.tools import tree
+
+    # This should not raise an error, but internally limit to 10
+    result = tree(".", max_depth=100)
+    # Should succeed without errors
+    assert "test.txt" in result
+
+
+def test_tree_nonexistent_path(temp_repo):
+    """Test tree on nonexistent path."""
+    from patchpal.tools import tree
+
+    with pytest.raises(ValueError, match="not found"):
+        tree("nonexistent_directory")
         assert "[WARNING" not in result

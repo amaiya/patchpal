@@ -9,7 +9,7 @@ import litellm
 from patchpal.tools import (
     read_file, list_files, apply_patch, run_shell, grep_code,
     web_fetch, web_search, get_file_info, edit_file,
-    git_status, git_diff, git_log
+    git_status, git_diff, git_log, find_files, tree
 )
 
 
@@ -109,6 +109,52 @@ TOOLS = [
                     }
                 },
                 "required": ["path"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "find_files",
+            "description": "Find files by name pattern using glob-style wildcards (e.g., '*.py', 'test_*.txt', '**/*.md'). Faster than list_files when searching for specific file names.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "pattern": {
+                        "type": "string",
+                        "description": "Glob pattern to match file names (e.g., '*.py' for Python files, 'test_*.py' for test files)"
+                    },
+                    "case_sensitive": {
+                        "type": "boolean",
+                        "description": "Whether to match case-sensitively (default: true)"
+                    }
+                },
+                "required": ["pattern"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "tree",
+            "description": "Show directory tree structure to understand folder organization. Useful for getting an overview of the codebase structure.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "Starting directory path (default: current directory '.')"
+                    },
+                    "max_depth": {
+                        "type": "integer",
+                        "description": "Maximum depth to traverse (default: 3, max: 10)"
+                    },
+                    "show_hidden": {
+                        "type": "boolean",
+                        "description": "Include hidden files/directories (default: false)"
+                    }
+                },
+                "required": []
             }
         }
     },
@@ -307,6 +353,8 @@ TOOL_FUNCTIONS = {
     "read_file": read_file,
     "list_files": list_files,
     "get_file_info": get_file_info,
+    "find_files": find_files,
+    "tree": tree,
     "edit_file": edit_file,
     "apply_patch": apply_patch,
     "git_status": git_status,
@@ -370,6 +418,8 @@ Today is {current_date}. Current time is {current_time}.
 - **read_file**: Read the contents of any file in the repository
 - **list_files**: List all files in the repository
 - **get_file_info**: Get metadata for file(s) - size, type, modified time (supports globs like '*.py')
+- **find_files**: Find files by name pattern using glob wildcards (e.g., '*.py', 'test_*.txt')
+- **tree**: Show directory tree structure to understand folder organization
 - **edit_file**: Edit a file by replacing an exact string (more efficient than apply_patch for small changes)
 - **apply_patch**: Modify a file by providing the complete new content
 - **git_status**: Get git status (modified, staged, untracked files) - no permission required
@@ -420,9 +470,11 @@ The user will primarily request software engineering tasks like solving bugs, ad
 
 ## Tool Usage Guidelines
 
-- Use list_files to explore the repository structure
+- Use tree to get a quick overview of directory structure
+- Use list_files to explore all files in the repository
+- Use find_files to locate specific files by name pattern (e.g., '*.py', 'test_*.txt')
 - Use get_file_info to check file metadata (size, type, timestamps) - supports globs
-- Use grep_code to search for patterns across files (preferred over run_shell with grep)
+- Use grep_code to search for patterns in file contents (preferred over run_shell with grep)
 - Use read_file to examine specific files before modifying them
 - For modifications:
   - Use edit_file for small, targeted changes (replacing a specific string)
@@ -567,6 +619,10 @@ class PatchPalAgent:
                                 print(f"\033[2m🔀 Git log...\033[0m", flush=True)
                             elif tool_name == 'grep_code':
                                 print(f"\033[2m🔍 Searching: {tool_args.get('pattern', '')}\033[0m", flush=True)
+                            elif tool_name == 'find_files':
+                                print(f"\033[2m🔍 Finding: {tool_args.get('pattern', '')}\033[0m", flush=True)
+                            elif tool_name == 'tree':
+                                print(f"\033[2m🌳 Tree: {tool_args.get('path', '.')}\033[0m", flush=True)
                             elif tool_name == 'web_search':
                                 print(f"\033[2m🌐 Searching web: {tool_args.get('query', '')}\033[0m", flush=True)
                             elif tool_name == 'web_fetch':

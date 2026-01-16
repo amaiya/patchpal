@@ -84,6 +84,15 @@ The agent has the following tools:
   - Supports single files: `get_file_info("file.txt")`
   - Supports directories: `get_file_info("src/")`
   - Supports glob patterns: `get_file_info("tests/*.py")`
+- **find_files**: Find files by name pattern using glob-style wildcards
+  - Example: `find_files("*.py")` - all Python files
+  - Example: `find_files("test_*.py")` - all test files
+  - Example: `find_files("**/*.md")` - all markdown files recursively
+  - Supports case-insensitive matching
+- **tree**: Show directory tree structure to understand folder organization
+  - Example: `tree(".")` - show tree from current directory
+  - Configurable max depth (default: 3, max: 10)
+  - Option to show/hide hidden files
 - **grep_code**: Search for patterns in code files (regex support, file filtering)
 - **edit_file**: Edit a file by replacing an exact string (efficient for small changes)
   - Example: `edit_file("config.py", "port = 3000", "port = 8080")`
@@ -386,7 +395,7 @@ Choice [1-3]:
 
 Permissions are stored per-repository and persist across sessions. You can edit `~/.patchpal/<repo-name>/permissions.json` to manage saved permissions.
 
-**Test coverage:** 109 tests including 38 dedicated security tests
+**Test coverage:** 120 tests including 38 dedicated security tests
 
 ## Development
 
