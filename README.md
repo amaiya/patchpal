@@ -233,6 +233,25 @@ patchpal --model ollama_chat/qwen2.5-coder:32b
 
 No API keys required for local models - everything runs on your machine!
 
+### Air-Gapped and Offline Environments
+
+For environments without internet access (air-gapped, offline, or restricted networks), you can disable web search and fetch tools:
+
+```bash
+# Disable web tools for air-gapped environment
+export PATCHPAL_ENABLE_WEB=false
+patchpal
+
+# Or combine with local models for complete offline operation
+export PATCHPAL_ENABLE_WEB=false
+patchpal --model ollama_chat/qwen2.5-coder:32b
+```
+
+When web tools are disabled:
+- `web_search` and `web_fetch` are removed from available tools
+- The agent won't attempt any network requests
+- Perfect for secure, isolated, or offline development environments
+
 ### Viewing Help
 ```bash
 patchpal --help
@@ -324,6 +343,8 @@ export PATCHPAL_ENABLE_BACKUPS=true       # Auto-backup files to ~/.patchpal/<re
 export PATCHPAL_MAX_OPERATIONS=5000       # Maximum operations per session to prevent infinite loops (default: 1000)
 
 # Web Tool Controls
+export PATCHPAL_ENABLE_WEB=false          # Enable/disable web search and fetch tools (default: true)
+                                          # Set to false for air-gapped or offline environments
 export PATCHPAL_WEB_TIMEOUT=60            # Timeout for web requests in seconds (default: 30)
 export PATCHPAL_MAX_WEB_SIZE=10485760     # Maximum web content size in bytes (default: 5242880 = 5MB)
 export PATCHPAL_MAX_WEB_CHARS=500000      # Maximum characters from web content to prevent context overflow (default: 500000 ≈ 125k tokens)
@@ -354,7 +375,7 @@ Choice [1-3]:
 
 Permissions are stored per-repository and persist across sessions. You can edit `~/.patchpal/<repo-name>/permissions.json` to manage saved permissions.
 
-**Test coverage:** 101 tests including 38 dedicated security tests
+**Test coverage:** 106 tests including 38 dedicated security tests
 
 ## Development
 

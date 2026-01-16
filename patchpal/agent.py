@@ -318,6 +318,14 @@ TOOL_FUNCTIONS = {
     "run_shell": run_shell,
 }
 
+# Check if web tools should be disabled (for air-gapped environments)
+WEB_TOOLS_ENABLED = os.getenv('PATCHPAL_ENABLE_WEB', 'true').lower() in ('true', '1', 'yes')
+
+if not WEB_TOOLS_ENABLED:
+    # Remove web tools from available tools
+    TOOLS = [tool for tool in TOOLS if tool['function']['name'] not in ('web_search', 'web_fetch')]
+    TOOL_FUNCTIONS = {k: v for k, v in TOOL_FUNCTIONS.items() if k not in ('web_search', 'web_fetch')}
+
 
 # Detect platform and generate platform-specific guidance
 os_name = platform.system()  # 'Linux', 'Darwin', 'Windows'
@@ -339,6 +347,17 @@ When using run_shell, use Unix commands:
 - Chain commands with `&&` or `;`
 """
 
+# Build web tools description
+WEB_TOOLS_DESC = ""
+WEB_USAGE_DESC = ""
+if WEB_TOOLS_ENABLED:
+    WEB_TOOLS_DESC = """- **web_search**: Search the web for information (error messages, documentation, best practices)
+- **web_fetch**: Fetch and read content from a URL (documentation, examples, references)
+"""
+    WEB_USAGE_DESC = """
+- Use web_search when you encounter unfamiliar errors, need documentation, or want to research solutions
+- Use web_fetch to read specific documentation pages or references you find"""
+
 SYSTEM_PROMPT = """You are an expert software engineer assistant helping with code tasks in a repository.
 
 ## Current Date and Time
@@ -357,9 +376,7 @@ Today is {current_date}. Current time is {current_time}.
 - **git_diff**: Get git diff to see changes - no permission required
 - **git_log**: Get git commit history - no permission required
 - **grep_code**: Search for patterns in code files (faster than run_shell with grep)
-- **web_search**: Search the web for information (error messages, documentation, best practices)
-- **web_fetch**: Fetch and read content from a URL (documentation, examples, references)
-- **run_shell**: Run shell commands (requires permission; privilege escalation blocked)
+{web_tools}- **run_shell**: Run shell commands (requires permission; privilege escalation blocked)
 
 # Core Principles
 
@@ -410,9 +427,7 @@ The user will primarily request software engineering tasks like solving bugs, ad
 - For modifications:
   - Use edit_file for small, targeted changes (replacing a specific string)
   - Use apply_patch for larger changes or when rewriting significant portions
-- Use git_status, git_diff, git_log to understand repository state (no permission needed)
-- Use web_search when you encounter unfamiliar errors, need documentation, or want to research solutions
-- Use web_fetch to read specific documentation pages or references you find
+- Use git_status, git_diff, git_log to understand repository state (no permission needed){web_usage}
 - Use run_shell only when no dedicated tool exists (requires permission)
 - Never use run_shell for file operations or git commands - dedicated tools are available
 
@@ -436,11 +451,13 @@ if not current_time.endswith(('EST', 'CST', 'MST', 'PST', 'UTC')):
     # If no timezone abbreviation, just show time without timezone
     current_time = now.strftime("%I:%M %p").strip()
 
-# Substitute platform information and date/time into the system prompt
+# Substitute platform information, date/time, and web tools into the system prompt
 SYSTEM_PROMPT = SYSTEM_PROMPT.format(
     platform_info=PLATFORM_INFO,
     current_date=current_date,
-    current_time=current_time
+    current_time=current_time,
+    web_tools=WEB_TOOLS_DESC,
+    web_usage=WEB_USAGE_DESC
 )
 
 

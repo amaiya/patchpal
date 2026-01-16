@@ -196,3 +196,77 @@ def test_agent_run_with_tool_call(monkeypatch):
             assert result == "Found 3 files"
             # Should have: user message, assistant with tool call, tool result, assistant response
             assert len(agent.messages) == 4
+
+
+def test_web_tools_enabled_by_default():
+    """Test that web tools are enabled by default."""
+    # Need to reload module to pick up default env var
+    import sys
+    import importlib
+
+    # Remove patchpal.agent from cache if present
+    if 'patchpal.agent' in sys.modules:
+        del sys.modules['patchpal.agent']
+
+    # Import fresh module
+    from patchpal.agent import TOOLS, TOOL_FUNCTIONS
+
+    # Verify web tools are present
+    tool_names = [tool['function']['name'] for tool in TOOLS]
+    assert 'web_search' in tool_names
+    assert 'web_fetch' in tool_names
+    assert 'web_search' in TOOL_FUNCTIONS
+    assert 'web_fetch' in TOOL_FUNCTIONS
+
+
+def test_web_tools_can_be_disabled(monkeypatch):
+    """Test that web tools can be disabled via environment variable."""
+    import sys
+
+    # Set environment variable before importing
+    monkeypatch.setenv('PATCHPAL_ENABLE_WEB', 'false')
+
+    # Remove patchpal.agent from cache to force reload
+    if 'patchpal.agent' in sys.modules:
+        del sys.modules['patchpal.agent']
+
+    # Import module with web tools disabled
+    from patchpal.agent import TOOLS, TOOL_FUNCTIONS, SYSTEM_PROMPT
+
+    # Verify web tools are not present
+    tool_names = [tool['function']['name'] for tool in TOOLS]
+    assert 'web_search' not in tool_names
+    assert 'web_fetch' not in tool_names
+    assert 'web_search' not in TOOL_FUNCTIONS
+    assert 'web_fetch' not in TOOL_FUNCTIONS
+
+    # Verify system prompt doesn't mention web tools
+    assert 'web_search' not in SYSTEM_PROMPT
+    assert 'web_fetch' not in SYSTEM_PROMPT
+
+    # Clean up - remove from cache so other tests get default behavior
+    del sys.modules['patchpal.agent']
+
+
+def test_web_tools_disabled_with_various_values(monkeypatch):
+    """Test that PATCHPAL_ENABLE_WEB accepts various false values."""
+    import sys
+
+    for false_value in ['false', 'False', 'FALSE', '0', 'no', 'No', 'NO']:
+        # Set environment variable
+        monkeypatch.setenv('PATCHPAL_ENABLE_WEB', false_value)
+
+        # Remove patchpal.agent from cache
+        if 'patchpal.agent' in sys.modules:
+            del sys.modules['patchpal.agent']
+
+        # Import module
+        from patchpal.agent import TOOLS
+
+        # Verify web tools are not present
+        tool_names = [tool['function']['name'] for tool in TOOLS]
+        assert 'web_search' not in tool_names, f"web_search should be disabled with value '{false_value}'"
+        assert 'web_fetch' not in tool_names, f"web_fetch should be disabled with value '{false_value}'"
+
+        # Clean up
+        del sys.modules['patchpal.agent']
