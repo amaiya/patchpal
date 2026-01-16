@@ -44,7 +44,7 @@ export ANTHROPIC_API_KEY=your_api_key_here
 # For OpenAI
 export OPENAI_API_KEY=your_api_key_here
 
-# For vLLM or Ollama (local) - no API key needed!
+# For vLLM or Ollama (local) - no API key needed (unless configured)!
 
 # For other providers, check LiteLLM docs
 ```
@@ -57,7 +57,7 @@ patchpal
 # Use a specific model via command-line argument
 patchpal --model openai/gpt-4o
 
-# Use vLLM (local, no API key required - faster than Ollama!)
+# Use vLLM (local)
 # Note: vLLM server must be started with --tool-call-parser and --enable-auto-tool-choice
 # See "Using Local Models (Ollama & vLLM)" section below for details
 export OPENAI_API_BASE=http://localhost:8000/v1
@@ -299,6 +299,8 @@ vLLM is significantly faster than Ollama due to optimized inference with continu
 
 **Important:** vLLM >= 0.10.2 is required for proper tool calling support.
 
+**Using Local vLLM Server:**
+
 ```bash
 # 1. Install vLLM (>= 0.10.2)
 pip install vllm
@@ -311,10 +313,36 @@ vllm serve Qwen/Qwen2.5-Coder-32B-Instruct \
   --enable-auto-tool-choice
 
 # 3. Use with PatchPal (in another terminal)
+# Option A: Using openai/ prefix (recommended)
 export OPENAI_API_BASE=http://localhost:8000/v1
 export OPENAI_API_KEY=token-abc123
 patchpal --model openai/Qwen2.5-Coder-32B-Instruct
+
+# Option B: Using hosted_vllm/ prefix
+export HOSTED_VLLM_API_BASE=http://localhost:8000
+export HOSTED_VLLM_API_KEY=token-abc123
+patchpal --model hosted_vllm/Qwen2.5-Coder-32B-Instruct
 ```
+
+**Using Remote/Hosted vLLM Server:**
+
+```bash
+# For remote vLLM servers (e.g., hosted by your organization)
+# Option A: Using openai/ prefix (recommended)
+export OPENAI_API_BASE=https://your-vllm-server.com/v1
+export OPENAI_API_KEY=your_api_key_here
+patchpal --model openai/your-model-name
+
+# Option B: Using hosted_vllm/ prefix
+export HOSTED_VLLM_API_BASE=https://your-vllm-server.com
+export HOSTED_VLLM_API_KEY=your_api_key_here
+patchpal --model hosted_vllm/your-model-name
+```
+
+**Environment Variables:**
+- For `openai/` prefix: Use `OPENAI_API_BASE` and `OPENAI_API_KEY`
+- For `hosted_vllm/` prefix: Use `HOSTED_VLLM_API_BASE` and `HOSTED_VLLM_API_KEY`
+- **Note:** The `openai/` prefix is recommended as it's more widely compatible
 
 **Using YAML Configuration (Alternative):**
 
