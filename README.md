@@ -58,6 +58,8 @@ patchpal
 patchpal --model openai/gpt-4o
 
 # Use vLLM (local, no API key required - faster than Ollama!)
+# Note: vLLM server must be started with --tool-call-parser and --enable-auto-tool-choice
+# See "Using Local Models (Ollama & vLLM)" section below for details
 export OPENAI_API_BASE=http://localhost:8000/v1
 export OPENAI_API_KEY=token-abc123
 patchpal --model openai/Qwen2.5-Coder-32B-Instruct
@@ -295,12 +297,18 @@ Run models locally on your machine without needing API keys or internet access.
 
 vLLM is significantly faster than Ollama due to optimized inference with continuous batching and PagedAttention.
 
+**Important:** vLLM >= 0.10.2 is required for proper tool calling support.
+
 ```bash
-# 1. Install vLLM
+# 1. Install vLLM (>= 0.10.2)
 pip install vllm
 
-# 2. Start vLLM server with a model (example: Qwen 2.5 Coder)
-vllm serve Qwen/Qwen2.5-Coder-32B-Instruct --dtype auto --api-key token-abc123
+# 2. Start vLLM server with tool calling enabled
+vllm serve Qwen/Qwen2.5-Coder-32B-Instruct \
+  --dtype auto \
+  --api-key token-abc123 \
+  --tool-call-parser qwen3_xml \
+  --enable-auto-tool-choice
 
 # 3. Use with PatchPal (in another terminal)
 export OPENAI_API_BASE=http://localhost:8000/v1
@@ -308,10 +316,36 @@ export OPENAI_API_KEY=token-abc123
 patchpal --model openai/Qwen2.5-Coder-32B-Instruct
 ```
 
+**Using YAML Configuration (Alternative):**
+
+Create a `config.yaml`:
+```yaml
+host: "0.0.0.0"
+port: 8000
+api-key: "token-abc123"
+tool-call-parser: "openai"  # Use appropriate parser for your model
+enable-auto-tool-choice: true
+dtype: "auto"
+```
+
+Then start vLLM:
+```bash
+vllm serve openai/gpt-oss-20b --config config.yaml
+
+# Use with PatchPal
+export OPENAI_API_BASE=http://localhost:8000/v1
+export OPENAI_API_KEY=token-abc123
+patchpal --model openai/gpt-oss-20b
+```
+
 **Recommended models for vLLM:**
-- `Qwen/Qwen2.5-Coder-32B-Instruct` - Excellent tool calling and coding (RECOMMENDED)
-- `deepseek-ai/deepseek-coder-33b-instruct` - Strong coding and tool support
-- `meta-llama/Meta-Llama-3.1-70B-Instruct` - Good performance, needs 64GB+ RAM
+- `Qwen/Qwen2.5-Coder-32B-Instruct` - Excellent tool calling and coding (use parser: `qwen3_xml`) (RECOMMENDED)
+- `openai/gpt-oss-20b` - OpenAI's open-source model (use parser: `openai`)
+- `deepseek-ai/deepseek-coder-33b-instruct` - Strong coding and tool support (use parser: `deepseek_v3`)
+- `meta-llama/Meta-Llama-3.1-70B-Instruct` - Good performance, needs 64GB+ RAM (use parser: `llama3_json`)
+
+**Tool Call Parser Reference:**
+Different models require different parsers. Common parsers include: `qwen3_xml`, `openai`, `deepseek_v3`, `llama3_json`, `mistral`, `hermes`, `pythonic`, `xlam`. See [vLLM Tool Calling docs](https://docs.vllm.ai/en/latest/features/tool_calling/) for the complete list.
 
 #### Ollama (Easier Setup, Slower Performance)
 
