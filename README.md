@@ -416,7 +416,7 @@ tests/
 ├── test_tools.py                 - Tests for tools module (26 tests)
 ├── test_agent.py                 - Tests for agent module (10 tests)
 ├── test_cli.py                   - Tests for CLI module (13 tests)
-├── test_enhanced_guardrails.py   - Security guardrail tests (19 tests)
+├── test_guardrails.py            - Security guardrail tests (20 tests)
 └── test_operational_safety.py    - Operational safety tests (19 tests)
 ```
 
