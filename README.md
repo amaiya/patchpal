@@ -316,6 +316,7 @@ export PATCHPAL_MAX_OPERATIONS=5000       # Maximum operations per session to pr
 # Web Tool Controls
 export PATCHPAL_WEB_TIMEOUT=60            # Timeout for web requests in seconds (default: 30)
 export PATCHPAL_MAX_WEB_SIZE=10485760     # Maximum web content size in bytes (default: 5242880 = 5MB)
+export PATCHPAL_MAX_WEB_CHARS=500000      # Maximum characters from web content to prevent context overflow (default: 500000 ≈ 125k tokens)
 ```
 
 **Permission System:**
@@ -398,6 +399,8 @@ tests/
 - The agent can only access files within the repository
 - Use relative paths from the repository root
 
-**Error: "Blocked command"**
-- Some dangerous commands are forbidden for safety
-- Check the FORBIDDEN list in tools.py
+**Error: "SSL certificate verification failed" (Web search)**
+- This typically occurs due to corporate proxy/firewall, VPN, or network configuration
+- The agent will gracefully handle this and continue with other tools
+- If you need web content, use `web_fetch` with a specific URL instead
+- Alternative: Configure SSL certificates for your environment

@@ -586,3 +586,65 @@ def test_git_log_success(temp_repo, monkeypatch):
     assert "Recent commits" in result
     assert "abc123" in result
     assert "John Doe" in result
+
+
+def test_web_fetch_truncation(temp_repo, monkeypatch):
+    """Test that web_fetch truncates large content to prevent context window overflow."""
+    from patchpal.tools import web_fetch
+    import patchpal.tools
+
+    # Disable permission requirement
+    monkeypatch.setenv("PATCHPAL_REQUIRE_PERMISSION", "false")
+
+    # Set a small character limit for testing
+    original_limit = patchpal.tools.MAX_WEB_CONTENT_CHARS
+    patchpal.tools.MAX_WEB_CONTENT_CHARS = 100
+
+    try:
+        # Create large content (200 chars)
+        large_content = "A" * 200
+
+        # Mock requests.get
+        mock_response = MagicMock()
+        mock_response.headers = {'Content-Type': 'text/plain', 'Content-Length': '200'}
+        mock_response.encoding = 'utf-8'
+        mock_response.raise_for_status = MagicMock()
+        mock_response.iter_content = MagicMock(return_value=[large_content.encode('utf-8')])
+
+        with patch('patchpal.tools.requests.get', return_value=mock_response):
+            result = web_fetch("http://example.com/large.txt", extract_text=False)
+
+            # Verify content was truncated (100 chars + "\n\n" before warning)
+            truncated_part = result.split('[WARNING')[0]
+            assert truncated_part.rstrip() == "A" * 100  # Content without trailing newlines
+            assert "[WARNING: Content truncated" in result
+            assert "200 to 100 characters" in result
+            assert "PATCHPAL_MAX_WEB_CHARS" in result
+    finally:
+        # Restore original limit
+        patchpal.tools.MAX_WEB_CONTENT_CHARS = original_limit
+
+
+def test_web_fetch_no_truncation_needed(temp_repo, monkeypatch):
+    """Test that web_fetch doesn't truncate when content is within limit."""
+    from patchpal.tools import web_fetch
+
+    # Disable permission requirement
+    monkeypatch.setenv("PATCHPAL_REQUIRE_PERMISSION", "false")
+
+    # Create small content
+    small_content = "Hello World"
+
+    # Mock requests.get
+    mock_response = MagicMock()
+    mock_response.headers = {'Content-Type': 'text/plain', 'Content-Length': '11'}
+    mock_response.encoding = 'utf-8'
+    mock_response.raise_for_status = MagicMock()
+    mock_response.iter_content = MagicMock(return_value=[small_content.encode('utf-8')])
+
+    with patch('patchpal.tools.requests.get', return_value=mock_response):
+        result = web_fetch("http://example.com/small.txt", extract_text=False)
+
+        # Verify content was not truncated
+        assert result == "Hello World"
+        assert "[WARNING" not in result

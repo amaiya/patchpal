@@ -13,7 +13,11 @@ from typing import Optional
 from patchpal.permissions import PermissionManager
 import requests
 from bs4 import BeautifulSoup
-from duckduckgo_search import DDGS
+try:
+    from ddgs import DDGS
+except ImportError:
+    # Fall back to old package name if new one not installed
+    from duckduckgo_search import DDGS
 
 # Import version for user agent
 try:
@@ -60,7 +64,8 @@ MAX_OPERATIONS = int(os.getenv('PATCHPAL_MAX_OPERATIONS', 1000))
 
 # Web request configuration
 WEB_REQUEST_TIMEOUT = int(os.getenv('PATCHPAL_WEB_TIMEOUT', 30))  # 30 seconds
-MAX_WEB_CONTENT_SIZE = int(os.getenv('PATCHPAL_MAX_WEB_SIZE', 5 * 1024 * 1024))  # 5MB
+MAX_WEB_CONTENT_SIZE = int(os.getenv('PATCHPAL_MAX_WEB_SIZE', 5 * 1024 * 1024))  # 5MB download limit
+MAX_WEB_CONTENT_CHARS = int(os.getenv('PATCHPAL_MAX_WEB_CHARS', 500_000))  # 500k chars (~125k tokens)
 WEB_USER_AGENT = f'PatchPal/{__version__} (AI Code Assistant)'
 
 # Create patchpal directory structure in home directory
@@ -934,6 +939,17 @@ def web_fetch(url: str, extract_text: bool = True) -> str:
             chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
             text_content = '\n'.join(chunk for chunk in chunks if chunk)
 
+        # Truncate content if it exceeds character limit to prevent context window overflow
+        if len(text_content) > MAX_WEB_CONTENT_CHARS:
+            truncated_content = text_content[:MAX_WEB_CONTENT_CHARS]
+            warning_msg = (
+                f"\n\n[WARNING: Content truncated from {len(text_content):,} to "
+                f"{MAX_WEB_CONTENT_CHARS:,} characters to prevent context window overflow. "
+                f"Set PATCHPAL_MAX_WEB_CHARS environment variable to adjust limit.]"
+            )
+            audit_logger.info(f"WEB_FETCH: {url} ({len(text_content)} chars, truncated to {MAX_WEB_CONTENT_CHARS})")
+            return truncated_content + warning_msg
+
         audit_logger.info(f"WEB_FETCH: {url} ({len(text_content)} chars)")
         return text_content
 
@@ -991,7 +1007,25 @@ def web_search(query: str, max_results: int = 5) -> str:
         return output
 
     except Exception as e:
-        raise ValueError(f"Web search failed: {e}")
+        error_msg = str(e)
+
+        # Provide helpful error messages for common issues
+        if "CERTIFICATE_VERIFY_FAILED" in error_msg or "TLS handshake failed" in error_msg:
+            return (
+                f"Web search unavailable: SSL certificate verification failed.\n"
+                f"This may be due to:\n"
+                f"- Corporate proxy/firewall blocking requests\n"
+                f"- Network configuration issues\n"
+                f"- VPN interference\n\n"
+                f"Consider using web_fetch with a specific URL if you have one."
+            )
+        elif "RuntimeError" in error_msg or "error sending request" in error_msg:
+            return (
+                f"Web search unavailable: Network connection failed.\n"
+                f"Please check your internet connection and try again."
+            )
+        else:
+            raise ValueError(f"Web search failed: {e}")
 
 
 def run_shell(cmd: str) -> str:
