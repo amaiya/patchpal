@@ -602,7 +602,11 @@ class PatchPalAgent:
                 return assistant_message.content or "Task completed"
 
         # Max iterations reached
-        return "Maximum iterations reached. Task may be incomplete."
+        return (
+            f"Maximum iterations ({max_iterations}) reached. Task may be incomplete.\n\n"
+            "💡 Tip: Type 'continue' or 'please continue' to resume where I left off, "
+            "or provide more specific instructions."
+        )
 
 
 def create_agent(model_id: str = "anthropic/claude-sonnet-4-5") -> PatchPalAgent:
