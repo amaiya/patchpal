@@ -8,9 +8,15 @@ Example skills demonstrate how to create reusable workflows:
 
 ### Available Examples
 
+**PatchPal-created examples:**
 - **commit**: Best practices for creating git commits with proper formatting
 - **review**: Comprehensive code review checklist
 - **add-tests**: Add comprehensive pytest tests with code templates and examples
+
+**From Anthropic's official skills repository:**
+- **slack-gif-creator**: Create animated GIFs optimized for Slack (demonstrates Claude Code skill compatibility)
+  - Source: https://github.com/anthropics/skills
+  - License: MIT (see ATTRIBUTION.md)
 
 ### Using These Examples
 
