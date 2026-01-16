@@ -4,7 +4,8 @@
 
 A very lean, open-source clone of Claude Code implemented purely in Python.
 
-One of the goals of this project is to get as close as possible to Claude Code performance while remaining lightweight and lean for educational purposes and experimentation:
+One of the project’s goals is to approach Claude Code–level performance while remaining lightweight and easy to understand, making it well-suited for education and experimentation:
+
 ```bash
 $ls ./patchpal
 __init__.py agent.py  cli.py  permissions.py  skills.py  tools.py
