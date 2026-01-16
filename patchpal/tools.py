@@ -276,25 +276,23 @@ def _is_inside_repo(path: Path) -> bool:
     return str(path).startswith(str(REPO_ROOT))
 
 
-def _check_path(path: str, must_exist: bool = True, operation: str = 'read') -> Path:
+def _check_path(path: str, must_exist: bool = True) -> Path:
     """
     Validate and resolve a path.
 
     Args:
         path: Path to validate (relative or absolute)
         must_exist: Whether the file must exist
-        operation: Type of operation ('read' or 'write')
 
     Returns:
         Resolved Path object
 
     Raises:
-        ValueError: If path validation fails or permission denied
+        ValueError: If path validation fails
 
     Note:
-        Matches Claude Code security model:
-        - Read operations: Allowed anywhere (system files, libraries, etc.)
-        - Write operations: Restricted to repository unless permission granted
+        Can access files anywhere on the system (repository or outside).
+        Sensitive files (.env, credentials) are always blocked for safety.
     """
     # Resolve path (handle both absolute and relative paths)
     path_obj = Path(path)
@@ -302,20 +300,6 @@ def _check_path(path: str, must_exist: bool = True, operation: str = 'read') -> 
         p = path_obj.resolve()
     else:
         p = (REPO_ROOT / path).resolve()
-
-    # Check if path is within repository
-    is_outside_repo = not _is_inside_repo(p)
-
-    if is_outside_repo and operation == 'write':
-        # Enforce boundary for write operations (like Claude Code)
-        # Require explicit permission for writes outside repository
-        permission_manager = _get_permission_manager()
-        if not permission_manager.request_permission(
-            'write_file',
-            f"Write file outside repository: {p}",
-            str(p)
-        ):
-            raise ValueError(f"Permission denied to write outside repository: {path}")
 
     # Check if file exists when required
     if must_exist and not p.is_file():
@@ -346,7 +330,7 @@ def read_file(path: str) -> str:
     """
     _operation_limiter.check_limit(f"read_file({path})")
 
-    p = _check_path(path, operation='read')
+    p = _check_path(path)
 
     # Check file size
     size = p.stat().st_size
@@ -434,7 +418,7 @@ def get_file_info(path: str) -> str:
             return f"No files found matching pattern: {path}"
     else:
         # Single path
-        p = _check_path(path, must_exist=False, operation='read')
+        p = _check_path(path, must_exist=False)
 
         if not p.exists():
             return f"Path does not exist: {path}"
@@ -753,7 +737,7 @@ def apply_patch(path: str, new_content: str) -> str:
             "Set PATCHPAL_READ_ONLY=false to allow modifications"
         )
 
-    p = _check_path(path, must_exist=False, operation='write')
+    p = _check_path(path, must_exist=False)
 
     # Check size of new content
     new_size = len(new_content.encode('utf-8'))
@@ -774,7 +758,13 @@ def apply_patch(path: str, new_content: str) -> str:
     permission_manager = _get_permission_manager()
     operation = "Create" if not p.exists() else "Update"
     diff_display = _format_colored_diff(old_content, new_content, max_lines=15)
-    description = f"   ● {operation}({path})\n\n{diff_display}"
+
+    # Add warning if writing outside repository
+    outside_repo_warning = ""
+    if not _is_inside_repo(p):
+        outside_repo_warning = "\n   ⚠️  WARNING: Writing file outside repository\n"
+
+    description = f"   ● {operation}({path}){outside_repo_warning}\n{diff_display}"
 
     if not permission_manager.request_permission('apply_patch', description, pattern=path):
         return "Operation cancelled by user."
@@ -844,7 +834,7 @@ def edit_file(path: str, old_string: str, new_string: str) -> str:
             "Set PATCHPAL_READ_ONLY=false to allow modifications"
         )
 
-    p = _check_path(path, must_exist=True, operation='write')
+    p = _check_path(path, must_exist=True)
 
     # Read current content
     try:
@@ -873,7 +863,13 @@ def edit_file(path: str, old_string: str, new_string: str) -> str:
 
     # Format colored diff for permission prompt
     diff_display = _format_colored_diff(old_string, new_string)
-    description = f"   ● Update({path})\n\n{diff_display}"
+
+    # Add warning if writing outside repository
+    outside_repo_warning = ""
+    if not _is_inside_repo(p):
+        outside_repo_warning = "\n   ⚠️  WARNING: Writing file outside repository\n"
+
+    description = f"   ● Update({path}){outside_repo_warning}\n{diff_display}"
 
     if not permission_manager.request_permission('edit_file', description, pattern=path):
         return "Operation cancelled by user."
@@ -991,7 +987,7 @@ def git_diff(path: Optional[str] = None, staged: bool = False) -> str:
 
         if path:
             # Validate path
-            p = _check_path(path, must_exist=False, operation='read')
+            p = _check_path(path, must_exist=False)
             # Git operations only work on repository files
             if not _is_inside_repo(p):
                 raise ValueError(f"Git operations only work on repository files. Path {path} is outside the repository.")
@@ -1066,7 +1062,7 @@ def git_log(max_count: int = 10, path: Optional[str] = None) -> str:
 
         if path:
             # Validate path
-            p = _check_path(path, must_exist=False, operation='read')
+            p = _check_path(path, must_exist=False)
             # Git operations only work on repository files
             if not _is_inside_repo(p):
                 raise ValueError(f"Git operations only work on repository files. Path {path} is outside the repository.")

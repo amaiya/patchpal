@@ -265,9 +265,9 @@ class TestPathTraversal:
         # Try to write to parent directory
         outside_path = temp_repo.parent / "test_write.txt"
 
-        # Should be blocked (or require permission)
-        with pytest.raises(ValueError, match="Permission denied"):
-            apply_patch(str(outside_path), "malicious content")
+        # Should be blocked - permission denied returns a cancellation message
+        result = apply_patch(str(outside_path), "malicious content")
+        assert "cancelled" in result.lower()
 
     def test_blocks_editing_outside_repository(self, temp_repo, monkeypatch):
         """Test that edit operations outside repository are blocked/require permission."""
@@ -298,9 +298,9 @@ class TestPathTraversal:
         outside_file.write_text("original content")
 
         try:
-            # Should be blocked (or require permission)
-            with pytest.raises(ValueError, match="Permission denied"):
-                edit_file(str(outside_file), "original", "modified")
+            # Should be blocked - permission denied returns a cancellation message
+            result = edit_file(str(outside_file), "original", "modified")
+            assert "cancelled" in result.lower()
         finally:
             if outside_file.exists():
                 outside_file.unlink()
@@ -354,9 +354,17 @@ def test_comprehensive_security_demo(temp_repo, monkeypatch):
     original_perm_mgr = None
 
     def mock_request_permission(self, tool_name, description, pattern=None):
-        # Only deny write_file for paths outside repo
-        if tool_name == 'write_file' and pattern and not str(pattern).startswith(str(temp_repo)):
-            return False
+        # Only deny write operations (apply_patch/edit_file) for paths outside repo
+        if tool_name in ('apply_patch', 'edit_file') and pattern:
+            # Convert pattern to Path to handle both relative and absolute paths
+            from pathlib import Path
+            pattern_path = Path(pattern)
+            # If it's not absolute, it's relative to repo, so it's inside repo
+            if not pattern_path.is_absolute():
+                return True
+            # If absolute, check if it's inside repo
+            if not str(pattern_path).startswith(str(temp_repo)):
+                return False
         # Allow everything else by returning True or checking original behavior
         return True
 
@@ -406,7 +414,7 @@ def test_comprehensive_security_demo(temp_repo, monkeypatch):
 
     # 7. Write operations outside repo blocked
     outside_path = temp_repo.parent / "test_outside.txt"
-    with pytest.raises(ValueError, match="Permission denied"):
-        apply_patch(str(outside_path), "test")
+    result = apply_patch(str(outside_path), "test")
+    assert "cancelled" in result.lower()
 
     print("✅ All security guardrails working correctly!")
