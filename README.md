@@ -396,20 +396,6 @@ patchpal --model ollama_chat/qwen2.5-coder:32b
 - Smaller models (<32B parameters) struggle with tool calling
 - `llama3.1:8b` often fails to properly format tool arguments
 
-#### Performance Comparison
-
-| Setup | Speed | Setup Difficulty | Best For |
-|-------|-------|------------------|----------|
-| **Cloud APIs** (Claude, GPT-4) | 1-3s per step | Easy | Production, best results |
-| **vLLM** (local) | 3-10s per step | Medium | Privacy, local deployment |
-| **Ollama** (local) | 30-90s per step | Easy | Quick testing, learning |
-
-**Hardware requirements:**
-- 32B models: ~20GB RAM/VRAM
-- 70B models: ~40GB+ RAM/VRAM
-- GPU highly recommended for acceptable performance
-
-No API keys required for local models - everything runs on your machine!
 
 ### Air-Gapped and Offline Environments
 
