@@ -142,40 +142,66 @@ def get_operation_count() -> int:
     return _operation_limiter.operations
 
 
-def _format_colored_diff(old_text: str, new_text: str, max_lines: int = 10) -> str:
-    """Format text changes with colors: red for old, green for new.
+def _format_colored_diff(old_text: str, new_text: str, max_lines: int = 50) -> str:
+    """Format text changes with colors showing actual differences.
 
     Args:
         old_text: Original text
         new_text: New text
-        max_lines: Maximum lines to show per section
+        max_lines: Maximum diff lines to show (default: 50)
 
     Returns:
-        Formatted string with colored diff
+        Formatted string with colored unified diff
     """
+    import difflib
+
+    # Split into lines for diffing
+    old_lines = old_text.splitlines(keepends=True)
+    new_lines = new_text.splitlines(keepends=True)
+
+    # Generate unified diff
+    diff = difflib.unified_diff(
+        old_lines,
+        new_lines,
+        lineterm='',
+        n=3  # Show 3 lines of context around changes
+    )
+
     result = []
+    line_count = 0
 
-    # Split into lines
-    old_lines = old_text.split('\n')
-    new_lines = new_text.split('\n')
+    for line in diff:
+        # Skip the file headers (--- and +++)
+        if line.startswith('---') or line.startswith('+++'):
+            continue
 
-    # Truncate if too long
-    if len(old_lines) > max_lines:
-        old_lines = old_lines[:max_lines]
-        old_lines.append('...')
-    if len(new_lines) > max_lines:
-        new_lines = new_lines[:max_lines]
-        new_lines.append('...')
+        # Skip hunk headers but count them
+        if line.startswith('@@'):
+            if line_count >= max_lines:
+                result.append("   \033[90m... (truncated)\033[0m")
+                break
+            result.append(f"   \033[36m{line}\033[0m")  # Cyan for hunk headers
+            line_count += 1
+            continue
 
-    # Show old lines in red
-    for line in old_lines:
-        result.append(f"   \033[31m- {line}\033[0m")
+        # Check line limit
+        if line_count >= max_lines:
+            result.append("   \033[90m... (truncated)\033[0m")
+            break
 
-    result.append("")  # Blank line between old and new
+        # Color the diff lines
+        if line.startswith('-'):
+            result.append(f"   \033[31m{line}\033[0m")  # Red for removed
+        elif line.startswith('+'):
+            result.append(f"   \033[32m{line}\033[0m")  # Green for added
+        else:
+            result.append(f"   \033[90m{line}\033[0m")  # Gray for context
 
-    # Show new lines in green
-    for line in new_lines:
-        result.append(f"   \033[32m+ {line}\033[0m")
+        line_count += 1
+
+    # If no diff output (identical content), show a message
+    if not result:
+        return "   \033[90m(no changes)\033[0m"
 
     return '\n'.join(result)
 
@@ -757,7 +783,7 @@ def apply_patch(path: str, new_content: str) -> str:
     # Check permission with colored diff
     permission_manager = _get_permission_manager()
     operation = "Create" if not p.exists() else "Update"
-    diff_display = _format_colored_diff(old_content, new_content, max_lines=15)
+    diff_display = _format_colored_diff(old_content, new_content)
 
     # Add warning if writing outside repository
     outside_repo_warning = ""
