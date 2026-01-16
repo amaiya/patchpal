@@ -5,7 +5,7 @@ import json
 import platform
 from typing import Any, Dict, List, Optional
 import litellm
-from patchpal.tools import read_file, list_files, apply_patch, run_shell, grep_code, web_fetch, web_search
+from patchpal.tools import read_file, list_files, apply_patch, run_shell, grep_code, web_fetch, web_search, get_file_info
 
 
 def _is_bedrock_arn(model_id: str) -> bool:
@@ -87,6 +87,23 @@ TOOLS = [
                 "type": "object",
                 "properties": {},
                 "required": []
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_file_info",
+            "description": "Get detailed metadata for file(s) - size, modification time, type. Supports single files, directories, or glob patterns (e.g., 'tests/*.py').",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "Path to file, directory, or glob pattern (e.g., 'tests/*.txt', 'src/', 'file.py')"
+                    }
+                },
+                "required": ["path"]
             }
         }
     },
@@ -205,6 +222,7 @@ TOOLS = [
 TOOL_FUNCTIONS = {
     "read_file": read_file,
     "list_files": list_files,
+    "get_file_info": get_file_info,
     "apply_patch": apply_patch,
     "grep_code": grep_code,
     "web_search": web_search,
@@ -241,6 +259,7 @@ SYSTEM_PROMPT = """You are an expert software engineer assistant helping with co
 
 - **read_file**: Read the contents of any file in the repository
 - **list_files**: List all files in the repository
+- **get_file_info**: Get metadata for file(s) - size, type, modified time (supports globs like '*.py')
 - **grep_code**: Search for patterns in code files (faster than run_shell with grep)
 - **web_search**: Search the web for information (error messages, documentation, best practices)
 - **web_fetch**: Fetch and read content from a URL (documentation, examples, references)
@@ -406,6 +425,8 @@ class PatchPalAgent:
                                 print(f"\033[2m📖 Reading: {tool_args.get('path', '')}\033[0m", flush=True)
                             elif tool_name == 'list_files':
                                 print(f"\033[2m📁 Listing files...\033[0m", flush=True)
+                            elif tool_name == 'get_file_info':
+                                print(f"\033[2m📊 Getting info: {tool_args.get('path', '')}\033[0m", flush=True)
                             elif tool_name == 'grep_code':
                                 print(f"\033[2m🔍 Searching: {tool_args.get('pattern', '')}\033[0m", flush=True)
                             elif tool_name == 'web_search':

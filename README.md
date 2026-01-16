@@ -62,6 +62,10 @@ The agent has the following tools:
 ### File Operations
 - **read_file**: Read contents of files in the repository
 - **list_files**: List all files in the repository
+- **get_file_info**: Get detailed metadata for file(s) - size, modification time, type
+  - Supports single files: `get_file_info("file.txt")`
+  - Supports directories: `get_file_info("src/")`
+  - Supports glob patterns: `get_file_info("tests/*.py")`
 - **grep_code**: Search for patterns in code files (regex support, file filtering)
 - **apply_patch**: Modify files by providing new content
 - **run_shell**: Execute shell commands (requires user permission; privilege escalation blocked)
@@ -328,7 +332,7 @@ Choice [1-3]:
 
 Permissions are stored per-repository and persist across sessions. You can edit `~/.patchpal/<repo-name>/permissions.json` to manage saved permissions.
 
-**Test coverage:** 87 tests including 38 dedicated security tests
+**Test coverage:** 92 tests including 38 dedicated security tests
 
 ## Development
 

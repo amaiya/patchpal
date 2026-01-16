@@ -308,6 +308,99 @@ def list_files() -> list[str]:
     return files
 
 
+def get_file_info(path: str) -> str:
+    """
+    Get metadata for file(s) at the specified path.
+
+    Args:
+        path: Path to file, directory, or glob pattern (e.g., "tests/*.txt")
+              Relative to repository root
+
+    Returns:
+        Formatted string with file metadata (name, size, modified time, type)
+        For multiple files, returns one line per file
+
+    Raises:
+        ValueError: If path is outside repository or no files found
+    """
+    _operation_limiter.check_limit(f"get_file_info({path[:30]}...)")
+
+    # Handle glob patterns
+    if '*' in path or '?' in path:
+        # It's a glob pattern
+        pattern_path = REPO_ROOT / path
+        base_dir = REPO_ROOT / Path(path).parts[0] if '/' in path else REPO_ROOT
+
+        # Use glob to find matching files
+        try:
+            matches = list(REPO_ROOT.glob(path))
+        except Exception as e:
+            raise ValueError(f"Invalid glob pattern: {e}")
+
+        if not matches:
+            return f"No files found matching pattern: {path}"
+
+        # Filter to files only
+        files = [p for p in matches if p.is_file()]
+        if not files:
+            return f"No files found matching pattern: {path}"
+    else:
+        # Single path
+        p = _check_path(path, must_exist=False)
+
+        if not p.exists():
+            return f"Path does not exist: {path}"
+
+        if p.is_file():
+            files = [p]
+        elif p.is_dir():
+            # List all files in directory (non-recursive)
+            files = [f for f in p.iterdir() if f.is_file() and not f.name.startswith('.')]
+            if not files:
+                return f"No files found in directory: {path}"
+        else:
+            return f"Path is not a file or directory: {path}"
+
+    # Format file information
+    results = []
+    for file_path in sorted(files):
+        try:
+            stat = file_path.stat()
+            relative_path = file_path.relative_to(REPO_ROOT)
+
+            # Format size
+            size = stat.st_size
+            if size < 1024:
+                size_str = f"{size}B"
+            elif size < 1024 * 1024:
+                size_str = f"{size / 1024:.1f}KB"
+            else:
+                size_str = f"{size / (1024 * 1024):.1f}MB"
+
+            # Format modification time
+            from datetime import datetime
+            mtime = datetime.fromtimestamp(stat.st_mtime).strftime('%Y-%m-%d %H:%M:%S')
+
+            # Detect file type
+            if _is_binary_file(file_path):
+                file_type = "binary"
+            else:
+                mime_type, _ = mimetypes.guess_type(str(file_path))
+                file_type = mime_type or "text"
+
+            results.append(f"{str(relative_path):<50} {size_str:>10}  {mtime}  {file_type}")
+
+        except Exception as e:
+            results.append(f"{str(relative_path):<50} ERROR: {e}")
+
+    header = f"{'Path':<50} {'Size':>10}  {'Modified'}            {'Type'}"
+    separator = "-" * 100
+
+    output = f"{header}\n{separator}\n" + "\n".join(results)
+    audit_logger.info(f"FILE_INFO: {path} - {len(files)} file(s)")
+    return output
+
+
 def apply_patch(path: str, new_content: str) -> str:
     """
     Apply changes to a file by replacing its contents.

@@ -384,3 +384,57 @@ def test_web_search_limits_results(monkeypatch):
     result = web_search("test", max_results=3)
     # Should call with max_results=3
     mock_ddgs_instance.text.assert_called_once_with("test", max_results=3)
+
+
+def test_get_file_info_single_file(temp_repo):
+    """Test getting info for a single file."""
+    from patchpal.tools import get_file_info
+
+    # Create a test file
+    (temp_repo / "info_test.txt").write_text("test content")
+
+    result = get_file_info("info_test.txt")
+    assert "info_test.txt" in result
+    assert "B" in result or "KB" in result  # Size should be shown
+    assert "20" in result  # Year in timestamp
+
+
+def test_get_file_info_directory(temp_repo):
+    """Test getting info for files in a directory."""
+    from patchpal.tools import get_file_info
+
+    # Files already exist in temp_repo: test.txt and subdir/file.py
+    result = get_file_info("subdir")
+    assert "file.py" in result
+    assert "B" in result or "KB" in result
+
+
+def test_get_file_info_glob_pattern(temp_repo):
+    """Test getting info with glob pattern."""
+    from patchpal.tools import get_file_info
+
+    # Create multiple Python files
+    (temp_repo / "test1.py").write_text("# test 1")
+    (temp_repo / "test2.py").write_text("# test 2")
+    (temp_repo / "test.txt").write_text("not python")
+
+    result = get_file_info("*.py")
+    assert "test1.py" in result
+    assert "test2.py" in result
+    assert "test.txt" not in result  # Should not match .txt files
+
+
+def test_get_file_info_nonexistent(temp_repo):
+    """Test getting info for nonexistent file."""
+    from patchpal.tools import get_file_info
+
+    result = get_file_info("nonexistent.txt")
+    assert "does not exist" in result.lower()
+
+
+def test_get_file_info_no_matches(temp_repo):
+    """Test getting info with pattern that matches nothing."""
+    from patchpal.tools import get_file_info
+
+    result = get_file_info("*.xyz")
+    assert "No files found" in result
