@@ -141,10 +141,15 @@ def test_run_shell_with_output(temp_repo):
 
 
 def test_run_shell_forbidden_commands(temp_repo):
-    """Test that forbidden commands are blocked."""
+    """Test that privilege escalation commands are blocked (platform-specific)."""
     from patchpal.tools import run_shell
+    import platform
 
-    forbidden_cmds = ["rm test.txt", "sudo ls", "mv a b", "chmod 777 file", "dd if=/dev/zero"]
+    # Only privilege escalation commands are blocked now (permission system handles the rest)
+    if platform.system() == 'Windows':
+        forbidden_cmds = ["runas /user:Administrator cmd", "psexec -s cmd"]
+    else:
+        forbidden_cmds = ["sudo ls", "su root"]
 
     for cmd in forbidden_cmds:
         with pytest.raises(ValueError, match="Blocked dangerous command|Blocked command"):

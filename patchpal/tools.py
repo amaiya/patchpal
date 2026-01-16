@@ -4,6 +4,7 @@ from pathlib import Path
 import subprocess
 import difflib
 import os
+import platform
 import mimetypes
 import logging
 import shutil
@@ -22,8 +23,14 @@ except ImportError:
 
 REPO_ROOT = Path(".").resolve()
 
-# Command blocking
-FORBIDDEN = {"rm", "mv", "sudo", "chmod", "chown", "dd", "curl", "wget"}
+# Platform-aware command blocking - minimal list since we have permission system
+# Only block privilege escalation commands specific to each platform
+if platform.system() == 'Windows':
+    # Windows privilege escalation commands
+    FORBIDDEN = {"runas", "psexec"}  # Run as different user, SysInternals elevated execution
+else:
+    # Unix/Linux/macOS privilege escalation commands
+    FORBIDDEN = {"sudo", "su"}  # Privilege escalation
 
 # Sensitive file patterns
 SENSITIVE_PATTERNS = {

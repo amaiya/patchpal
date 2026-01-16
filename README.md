@@ -64,7 +64,7 @@ The agent has the following tools:
 - **list_files**: List all files in the repository
 - **grep_code**: Search for patterns in code files (regex support, file filtering)
 - **apply_patch**: Modify files by providing new content
-- **run_shell**: Execute safe shell commands (forbidden: rm, mv, sudo, etc.)
+- **run_shell**: Execute shell commands (requires user permission; privilege escalation blocked)
 
 ### Web Capabilities
 - **web_search**: Search the web using DuckDuckGo (no API key required!)
@@ -251,12 +251,15 @@ Look up the latest FastAPI documentation and add dependency injection
 
 ## Safety
 
-The agent operates within a sandboxed environment with several restrictions:
+The agent operates within a sandboxed environment with the following security model:
 
-- All file operations are restricted to the repository root
-- Dangerous shell commands are blocked (rm, mv, sudo, etc.)
-- All changes require passing through the apply_patch function
-- Shell commands run with limited permissions
+- **Permission system**: User approval required for all shell commands and file modifications (can be customized)
+- **Repository boundary enforcement**: All file operations restricted to the repository root
+- **Privilege escalation blocking**: Platform-aware blocking of privilege escalation commands
+  - Unix/Linux/macOS: `sudo`, `su`
+  - Windows: `runas`, `psexec`
+- **Dangerous pattern detection**: Blocks patterns like `> /dev/`, `rm -rf /`, `| dd`, `--force`
+- **Timeout protection**: Shell commands timeout after 30 seconds
 
 ### Enhanced Security Guardrails ✅ FULLY ENABLED
 

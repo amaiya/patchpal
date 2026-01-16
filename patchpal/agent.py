@@ -2,6 +2,7 @@
 
 import os
 import json
+import platform
 from typing import Any, Dict, List, Optional
 import litellm
 from patchpal.tools import read_file, list_files, apply_patch, run_shell, grep_code, web_fetch, web_search
@@ -212,7 +213,29 @@ TOOL_FUNCTIONS = {
 }
 
 
+# Detect platform and generate platform-specific guidance
+os_name = platform.system()  # 'Linux', 'Darwin', 'Windows'
+
+if os_name == 'Windows':
+    PLATFORM_INFO = """## Platform: Windows
+When using run_shell, use Windows commands:
+- File operations: `dir`, `type`, `copy`, `move`, `del`, `mkdir`, `rmdir`
+- Search: `where`, `findstr`
+- Path format: Use backslashes `C:\\path\\file.txt` or forward slashes (both work)
+- Chain commands with `&&`
+"""
+else:  # Linux or macOS
+    PLATFORM_INFO = f"""## Platform: {os_name} (Unix-like)
+When using run_shell, use Unix commands:
+- File operations: `ls`, `cat`, `cp`, `mv`, `rm`, `mkdir`, `rmdir`
+- Search: `grep`, `find`, `which`
+- Path format: Forward slashes `/path/to/file.txt`
+- Chain commands with `&&` or `;`
+"""
+
 SYSTEM_PROMPT = """You are an expert software engineer assistant helping with code tasks in a repository.
+
+{platform_info}
 
 # Available Tools
 
@@ -222,7 +245,7 @@ SYSTEM_PROMPT = """You are an expert software engineer assistant helping with co
 - **web_search**: Search the web for information (error messages, documentation, best practices)
 - **web_fetch**: Fetch and read content from a URL (documentation, examples, references)
 - **apply_patch**: Modify a file by providing the complete new content
-- **run_shell**: Run safe shell commands (dangerous commands like rm, mv, sudo are blocked)
+- **run_shell**: Run shell commands (requires permission; privilege escalation blocked)
 
 # Core Principles
 
@@ -286,6 +309,9 @@ Example: "The authentication logic is in src/auth.py:45"
 - If you're unsure about requirements, ask for clarification
 - Focus on what needs to be done, not when (don't suggest timelines)
 - Maintain consistency with the existing codebase style and patterns"""
+
+# Substitute platform information into the system prompt
+SYSTEM_PROMPT = SYSTEM_PROMPT.format(platform_info=PLATFORM_INFO)
 
 
 class PatchPalAgent:
