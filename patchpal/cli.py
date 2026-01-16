@@ -51,6 +51,42 @@ class SkillCompleter(Completer):
             pass
 
 
+class SmartPathCompleter(Completer):
+    """Path completer that works anywhere in the text, not just at the start."""
+
+    def __init__(self):
+        self.path_completer = PathCompleter(expanduser=True)
+
+    def get_completions(self, document, complete_event):
+        text = document.text_before_cursor
+
+        # Find the start of the current path-like token
+        # Look for common path prefixes: ./ ../ / ~/
+        import re
+
+        # Find all potential path starts
+        path_pattern = r'(?:^|[\s])([.~/][\S]*?)$'
+        match = re.search(path_pattern, text)
+
+        if match:
+            # Extract the path portion
+            path_start = match.group(1)
+
+            # Create a fake document with just the path for PathCompleter
+            fake_doc = Document(path_start, len(path_start))
+
+            # Get completions from PathCompleter
+            for completion in self.path_completer.get_completions(fake_doc, complete_event):
+                # Use the PathCompleter's start_position directly
+                # It's already calculated correctly relative to the cursor
+                yield Completion(
+                    completion.text,
+                    start_position=completion.start_position,
+                    display=completion.display,
+                    display_meta=completion.display_meta
+                )
+
+
 def _get_patchpal_dir() -> Path:
     """Get the patchpal directory for this repository.
 
@@ -141,7 +177,7 @@ Supported models: Any LiteLLM-supported model
     console = Console()
 
     # Create completers for paths and skills
-    path_completer = PathCompleter(expanduser=True)
+    path_completer = SmartPathCompleter()
     skill_completer = SkillCompleter()
     # Merge completers - skill completer takes precedence for / commands
     completer = merge_completers([skill_completer, path_completer])
