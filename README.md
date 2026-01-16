@@ -25,6 +25,7 @@ pip install -e .
 1. **Get an API key** (or use local models):
    - For Anthropic models (default): Sign up at https://console.anthropic.com/
    - For OpenAI models: Get a key from https://platform.openai.com/
+   - For vLLM (local): Install from https://docs.vllm.ai/ (no API key needed, faster than Ollama!)
    - For Ollama (local): Install from https://ollama.ai/ (no API key needed!)
    - For other providers: Check the [LiteLLM documentation](https://docs.litellm.ai/docs/providers)
 
@@ -36,7 +37,7 @@ export ANTHROPIC_API_KEY=your_api_key_here
 # For OpenAI
 export OPENAI_API_KEY=your_api_key_here
 
-# For Ollama (local) - no API key needed!
+# For vLLM or Ollama (local) - no API key needed!
 
 # For other providers, check LiteLLM docs
 ```
@@ -49,7 +50,12 @@ patchpal
 # Use a specific model via command-line argument
 patchpal --model openai/gpt-4o
 
-# Use Ollama (local, no API key required - use larger models for better results)
+# Use vLLM (local, no API key required - faster than Ollama!)
+export OPENAI_API_BASE=http://localhost:8000/v1
+export OPENAI_API_KEY=token-abc123
+patchpal --model openai/Qwen2.5-Coder-32B-Instruct
+
+# Use Ollama (local, no API key required - easier setup than vLLM)
 patchpal --model ollama_chat/qwen2.5-coder:32b
 
 # Or set the model via environment variable
@@ -190,8 +196,9 @@ pip install vllm
 vllm serve Qwen/Qwen2.5-Coder-32B-Instruct --dtype auto --api-key token-abc123
 
 # 3. Use with PatchPal (in another terminal)
+export OPENAI_API_BASE=http://localhost:8000/v1
 export OPENAI_API_KEY=token-abc123
-patchpal --model openai/Qwen/Qwen2.5-Coder-32B-Instruct --api_base http://localhost:8000/v1
+patchpal --model openai/Qwen2.5-Coder-32B-Instruct
 ```
 
 **Recommended models for vLLM:**
