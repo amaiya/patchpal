@@ -71,13 +71,13 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "read_file",
-            "description": "Read the contents of a file in the repository.",
+            "description": "Read the contents of a file. Can read files anywhere on the system (repository files, system configs like /etc/fstab, logs, etc.) for automation and debugging. Sensitive files (.env, credentials) are blocked for safety.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "path": {
                         "type": "string",
-                        "description": "Relative path to the file from the repository root"
+                        "description": "Path to the file - can be relative to repository root or an absolute path (e.g., /etc/fstab, /var/log/app.log)"
                     }
                 },
                 "required": ["path"]
@@ -100,13 +100,13 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "get_file_info",
-            "description": "Get detailed metadata for file(s) - size, modification time, type. Supports single files, directories, or glob patterns (e.g., 'tests/*.py').",
+            "description": "Get detailed metadata for file(s) - size, modification time, type. Works with any file on the system. Supports single files, directories, or glob patterns (e.g., 'tests/*.py', '/etc/*.conf').",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "path": {
                         "type": "string",
-                        "description": "Path to file, directory, or glob pattern (e.g., 'tests/*.txt', 'src/', 'file.py')"
+                        "description": "Path to file, directory, or glob pattern - can be relative or absolute (e.g., 'tests/*.txt', '/var/log/', '/etc/fstab')"
                     }
                 },
                 "required": ["path"]
@@ -138,13 +138,13 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "tree",
-            "description": "Show directory tree structure to understand folder organization. Useful for getting an overview of the codebase structure.",
+            "description": "Show directory tree structure to understand folder organization. Works with any directory on the system - use for exploring repository structure, system directories (/etc, /var/log), or any other location.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "path": {
                         "type": "string",
-                        "description": "Starting directory path (default: current directory '.')"
+                        "description": "Starting directory path - can be relative or absolute (default: current directory '.', examples: '/etc', '/var/log', 'src')"
                     },
                     "max_depth": {
                         "type": "integer",
@@ -163,13 +163,13 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "edit_file",
-            "description": "Edit a file by replacing an exact string. More efficient than apply_patch for small changes. The old_string must match exactly and appear only once.",
+            "description": "Edit a file by replacing an exact string. More efficient than apply_patch for small changes. Primarily for repository files. Writing outside repository requires explicit user permission. The old_string must match exactly and appear only once.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "path": {
                         "type": "string",
-                        "description": "Relative path to the file from the repository root"
+                        "description": "Path to the file - relative to repository root or absolute path (note: writes outside repository require permission)"
                     },
                     "old_string": {
                         "type": "string",
@@ -188,13 +188,13 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "apply_patch",
-            "description": "Modify a file by replacing its contents. Returns a unified diff of changes.",
+            "description": "Modify a file by replacing its contents. Primarily for repository files. Writing outside repository requires explicit user permission. Returns a unified diff of changes.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "path": {
                         "type": "string",
-                        "description": "Relative path to the file from the repository root"
+                        "description": "Path to the file - relative to repository root or absolute path (note: writes outside repository require permission)"
                     },
                     "new_content": {
                         "type": "string",
@@ -454,13 +454,13 @@ Today is {current_date}. Current time is {current_time}.
 
 # Available Tools
 
-- **read_file**: Read the contents of any file in the repository
-- **list_files**: List all files in the repository
-- **get_file_info**: Get metadata for file(s) - size, type, modified time (supports globs like '*.py')
-- **find_files**: Find files by name pattern using glob wildcards (e.g., '*.py', 'test_*.txt')
-- **tree**: Show directory tree structure to understand folder organization
-- **edit_file**: Edit a file by replacing an exact string (more efficient than apply_patch for small changes)
-- **apply_patch**: Modify a file by providing the complete new content
+- **read_file**: Read any file on the system (repository files, /etc configs, logs, etc.) - sensitive files blocked for safety
+- **list_files**: List all files in the repository (repository-only)
+- **get_file_info**: Get metadata for any file(s) - size, type, modified time (supports globs like '*.py', '/etc/*.conf')
+- **find_files**: Find files by name pattern using glob wildcards in repository (e.g., '*.py', 'test_*.txt')
+- **tree**: Show directory tree for any location (repository dirs, /etc, /var/log, etc.)
+- **edit_file**: Edit repository files (outside requires permission) by replacing an exact string
+- **apply_patch**: Modify repository files (outside requires permission) by providing complete new content
 - **git_status**: Get git status (modified, staged, untracked files) - no permission required
 - **git_diff**: Get git diff to see changes - no permission required
 - **git_log**: Get git commit history - no permission required
@@ -471,11 +471,15 @@ Today is {current_date}. Current time is {current_time}.
 
 ## Tool Overview and Scope
 
-You are a LOCAL CODE ASSISTANT focused on file navigation and code understanding. Your tools are organized into:
+You are a LOCAL CODE ASSISTANT with flexible file access. Security model (inspired by Claude Code):
+- **Read operations**: Can access ANY file on the system (repository, /etc configs, logs, user files) for automation and debugging. Sensitive files (.env, credentials) are blocked.
+- **Write operations**: Primarily for repository files. Writing outside repository requires explicit user permission.
 
-- **File navigation/reading**: read_file, list_files, find_files, tree, get_file_info
-- **Code search**: grep_code
-- **File modification**: edit_file, apply_patch
+Your tools are organized into:
+
+- **File navigation/reading**: read_file (system-wide), list_files (repo-only), find_files (repo-only), tree (system-wide), get_file_info (system-wide)
+- **Code search**: grep_code (repo-only)
+- **File modification**: edit_file, apply_patch (repo files; outside requires permission)
 - **Git operations**: git_status, git_diff, git_log (read-only, no permission needed)
 - **Skills**: list_skills, use_skill (custom reusable workflows)
 {web_tools_scope_desc}- **Shell execution**: run_shell (safety-restricted, requires permission)
@@ -533,18 +537,22 @@ The user will primarily request software engineering tasks like solving bugs, ad
 
 ## Tool Usage Guidelines
 
-- Use tree to get a quick overview of directory structure
-- Use list_files to explore all files in the repository
-- Use find_files to locate specific files by name pattern (e.g., '*.py', 'test_*.txt')
-- Use get_file_info to check file metadata (size, type, timestamps) - supports globs
-- Use grep_code to search for patterns in file contents (preferred over run_shell with grep)
-- Use read_file to examine specific files before modifying them
+- Use tree to explore directory structure anywhere (repository, /etc, /var/log, etc.)
+- Use list_files to explore all files in the repository (repository-only)
+- Use find_files to locate specific files by name pattern in repository (e.g., '*.py', 'test_*.txt')
+- Use get_file_info to check file metadata anywhere (supports globs like '/etc/*.conf')
+- Use read_file to examine any file on the system (repository, configs, logs, etc.)
+- Use grep_code to search for patterns in repository file contents
+- For system file exploration (outside repository):
+  - Use tree for directory listing (e.g., tree("/etc") to list /etc)
+  - Use read_file for reading files (e.g., read_file("/etc/fstab"))
+  - Use run_shell for operations like ls, find, grep when needed
 - For modifications:
-  - Use edit_file for small, targeted changes (replacing a specific string)
-  - Use apply_patch for larger changes or when rewriting significant portions
+  - Use edit_file for small, targeted changes (repository files; outside requires permission)
+  - Use apply_patch for larger changes or rewriting significant portions
 - Use git_status, git_diff, git_log to understand repository state (no permission needed){web_usage}
-- Use run_shell only when no dedicated tool exists (requires permission)
-- Never use run_shell for file operations or git commands - dedicated tools are available
+- Use run_shell when no dedicated tool exists (requires permission)
+- Never use run_shell for repository file operations - dedicated tools are available
 
 ## Code References
 When referencing specific functions or code, include the pattern `file_path:line_number` to help users navigate.

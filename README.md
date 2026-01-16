@@ -478,10 +478,12 @@ Look up the latest FastAPI documentation and add dependency injection
 
 ## Safety
 
-The agent operates within a sandboxed environment with the following security model:
+The agent operates with a security model inspired by Claude Code:
 
 - **Permission system**: User approval required for all shell commands and file modifications (can be customized)
-- **Repository boundary enforcement**: All file operations restricted to the repository root
+- **Write boundary enforcement**: Write operations restricted to repository (matches Claude Code)
+  - Read operations allowed anywhere (system files, libraries, debugging, automation)
+  - Write operations outside repository require explicit permission
 - **Privilege escalation blocking**: Platform-aware blocking of privilege escalation commands
   - Unix/Linux/macOS: `sudo`, `su`
   - Windows: `runas`, `psexec`
@@ -501,7 +503,7 @@ PatchPal includes comprehensive security protections enabled by default:
 - **Read-only mode**: Optional mode that prevents all modifications
 - **Command timeout**: 30-second timeout on shell commands
 - **Pattern-based blocking**: Blocks dangerous command patterns (`> /dev/`, `--force`, etc.)
-- **Path traversal protection**: Prevents access outside repository root
+- **Write boundary protection**: Restricts write operations to repository (reads allowed system-wide for automation/debugging)
 
 **Operational Safety:**
 - **Operation audit logging**: All file operations and commands logged to `~/.patchpal/<repo-name>/audit.log` (enabled by default)

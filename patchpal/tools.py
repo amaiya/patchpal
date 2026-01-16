@@ -220,9 +220,16 @@ def _backup_file(path: Path) -> Optional[Path]:
     try:
         BACKUP_DIR.mkdir(exist_ok=True)
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+
         # Include path structure in backup name to handle same filenames
-        relative = path.relative_to(REPO_ROOT)
-        backup_name = f"{str(relative).replace('/', '_')}.{timestamp}"
+        # Handle both repo-relative and absolute paths
+        if _is_inside_repo(path):
+            relative = path.relative_to(REPO_ROOT)
+            backup_name = f"{str(relative).replace('/', '_')}.{timestamp}"
+        else:
+            # For files outside repo, use absolute path in backup name
+            backup_name = f"{str(path).replace('/', '_')}.{timestamp}"
+
         backup_path = BACKUP_DIR / backup_name
 
         shutil.copy2(path, backup_path)
@@ -264,19 +271,57 @@ def _is_binary_file(path: Path) -> bool:
         return True
 
 
-def _check_path(path: str, must_exist: bool = True) -> Path:
-    """Validate and resolve a path within the repository."""
-    p = (REPO_ROOT / path).resolve()
+def _is_inside_repo(path: Path) -> bool:
+    """Check if a path is inside the repository."""
+    return str(path).startswith(str(REPO_ROOT))
+
+
+def _check_path(path: str, must_exist: bool = True, operation: str = 'read') -> Path:
+    """
+    Validate and resolve a path.
+
+    Args:
+        path: Path to validate (relative or absolute)
+        must_exist: Whether the file must exist
+        operation: Type of operation ('read' or 'write')
+
+    Returns:
+        Resolved Path object
+
+    Raises:
+        ValueError: If path validation fails or permission denied
+
+    Note:
+        Matches Claude Code security model:
+        - Read operations: Allowed anywhere (system files, libraries, etc.)
+        - Write operations: Restricted to repository unless permission granted
+    """
+    # Resolve path (handle both absolute and relative paths)
+    path_obj = Path(path)
+    if path_obj.is_absolute():
+        p = path_obj.resolve()
+    else:
+        p = (REPO_ROOT / path).resolve()
 
     # Check if path is within repository
-    if not str(p).startswith(str(REPO_ROOT)):
-        raise ValueError(f"Path outside repository: {path}")
+    is_outside_repo = not _is_inside_repo(p)
+
+    if is_outside_repo and operation == 'write':
+        # Enforce boundary for write operations (like Claude Code)
+        # Require explicit permission for writes outside repository
+        permission_manager = _get_permission_manager()
+        if not permission_manager.request_permission(
+            'write_file',
+            f"Write file outside repository: {p}",
+            str(p)
+        ):
+            raise ValueError(f"Permission denied to write outside repository: {path}")
 
     # Check if file exists when required
     if must_exist and not p.is_file():
         raise ValueError(f"File not found: {path}")
 
-    # Check if file is sensitive
+    # Check if file is sensitive (regardless of location)
     if _is_sensitive_file(p) and not ALLOW_SENSITIVE:
         raise ValueError(
             f"Access to sensitive file blocked: {path}\n"
@@ -288,10 +333,10 @@ def _check_path(path: str, must_exist: bool = True) -> Path:
 
 def read_file(path: str) -> str:
     """
-    Read the contents of a file in the repository.
+    Read the contents of a file.
 
     Args:
-        path: Relative path to the file from the repository root
+        path: Path to the file (relative to repository root or absolute)
 
     Returns:
         The file contents as a string
@@ -301,7 +346,7 @@ def read_file(path: str) -> str:
     """
     _operation_limiter.check_limit(f"read_file({path})")
 
-    p = _check_path(path)
+    p = _check_path(path, operation='read')
 
     # Check file size
     size = p.stat().st_size
@@ -357,14 +402,14 @@ def get_file_info(path: str) -> str:
 
     Args:
         path: Path to file, directory, or glob pattern (e.g., "tests/*.txt")
-              Relative to repository root
+              Can be relative to repository root or absolute
 
     Returns:
         Formatted string with file metadata (name, size, modified time, type)
         For multiple files, returns one line per file
 
     Raises:
-        ValueError: If path is outside repository or no files found
+        ValueError: If no files found
     """
     _operation_limiter.check_limit(f"get_file_info({path[:30]}...)")
 
@@ -389,7 +434,7 @@ def get_file_info(path: str) -> str:
             return f"No files found matching pattern: {path}"
     else:
         # Single path
-        p = _check_path(path, must_exist=False)
+        p = _check_path(path, must_exist=False, operation='read')
 
         if not p.exists():
             return f"Path does not exist: {path}"
@@ -519,7 +564,7 @@ def tree(path: str = ".", max_depth: int = 3, show_hidden: bool = False) -> str:
     Show directory tree structure.
 
     Args:
-        path: Starting directory path (default: current directory)
+        path: Starting directory path (relative to repo or absolute)
         max_depth: Maximum depth to traverse (default: 3, max: 10)
         show_hidden: Include hidden files/directories (default: False)
 
@@ -541,12 +586,12 @@ def tree(path: str = ".", max_depth: int = 3, show_hidden: bool = False) -> str:
     # Limit max_depth
     max_depth = min(max_depth, 10)
 
-    # Validate and resolve path
-    start_path = (REPO_ROOT / path).resolve()
-
-    # Check if path is within repository
-    if not str(start_path).startswith(str(REPO_ROOT)):
-        raise ValueError(f"Path outside repository: {path}")
+    # Resolve path (handle both absolute and relative paths)
+    path_obj = Path(path)
+    if path_obj.is_absolute():
+        start_path = path_obj.resolve()
+    else:
+        start_path = (REPO_ROOT / path).resolve()
 
     # Check if path exists and is a directory
     if not start_path.exists():
@@ -590,8 +635,13 @@ def tree(path: str = ".", max_depth: int = 3, show_hidden: bool = False) -> str:
 
     try:
         # Build the tree
-        relative_path = start_path.relative_to(REPO_ROOT) if start_path != REPO_ROOT else Path(".")
-        result = [str(relative_path) + "/"]
+        # Show relative path if inside repo, absolute path if outside
+        if _is_inside_repo(start_path):
+            display_path = start_path.relative_to(REPO_ROOT) if start_path != REPO_ROOT else Path(".")
+        else:
+            display_path = start_path
+
+        result = [str(display_path) + "/"]
         result.extend(_build_tree(start_path))
 
         audit_logger.info(f"TREE: {path} (depth={max_depth})")
@@ -703,7 +753,7 @@ def apply_patch(path: str, new_content: str) -> str:
             "Set PATCHPAL_READ_ONLY=false to allow modifications"
         )
 
-    p = _check_path(path, must_exist=False)
+    p = _check_path(path, must_exist=False, operation='write')
 
     # Check size of new content
     new_size = len(new_content.encode('utf-8'))
@@ -729,10 +779,10 @@ def apply_patch(path: str, new_content: str) -> str:
     if not permission_manager.request_permission('apply_patch', description, pattern=path):
         return "Operation cancelled by user."
 
-    # Check git status for uncommitted changes
+    # Check git status for uncommitted changes (only for files inside repo)
     git_status = _check_git_status()
     git_warning = ""
-    if git_status.get('is_repo') and git_status.get('has_uncommitted'):
+    if _is_inside_repo(p) and git_status.get('is_repo') and git_status.get('has_uncommitted'):
         relative_path = str(p.relative_to(REPO_ROOT))
         if any(relative_path in change for change in git_status.get('changes', [])):
             git_warning = "\n⚠️  Note: File has uncommitted changes in git\n"
@@ -794,7 +844,7 @@ def edit_file(path: str, old_string: str, new_string: str) -> str:
             "Set PATCHPAL_READ_ONLY=false to allow modifications"
         )
 
-    p = _check_path(path, must_exist=True)
+    p = _check_path(path, must_exist=True, operation='write')
 
     # Read current content
     try:
@@ -941,7 +991,10 @@ def git_diff(path: Optional[str] = None, staged: bool = False) -> str:
 
         if path:
             # Validate path
-            p = _check_path(path, must_exist=False)
+            p = _check_path(path, must_exist=False, operation='read')
+            # Git operations only work on repository files
+            if not _is_inside_repo(p):
+                raise ValueError(f"Git operations only work on repository files. Path {path} is outside the repository.")
             cmd.append(str(p.relative_to(REPO_ROOT)))
 
         result = subprocess.run(
@@ -1013,7 +1066,10 @@ def git_log(max_count: int = 10, path: Optional[str] = None) -> str:
 
         if path:
             # Validate path
-            p = _check_path(path, must_exist=False)
+            p = _check_path(path, must_exist=False, operation='read')
+            # Git operations only work on repository files
+            if not _is_inside_repo(p):
+                raise ValueError(f"Git operations only work on repository files. Path {path} is outside the repository.")
             cmd.append('--')
             cmd.append(str(p.relative_to(REPO_ROOT)))
 

@@ -201,35 +201,128 @@ class TestCommandSafety:
 
 
 class TestPathTraversal:
-    """Test path traversal attack prevention."""
+    """Test path access security model (matches Claude Code approach).
 
-    def test_blocks_parent_directory_access(self, temp_repo):
-        """Test that ../.. attacks are blocked."""
+    - Read operations: Allowed anywhere (system files, libraries, etc.)
+    - Write operations: Restricted to repository unless permission granted
+    """
+
+    def test_allows_reading_parent_directories(self, temp_repo):
+        """Test that read operations can access parent directories."""
         from patchpal.tools import read_file
 
-        with pytest.raises(ValueError, match="outside repository"):
-            read_file("../../etc/passwd")
+        # Create a file in parent directory for testing
+        outside_file = temp_repo.parent / "test_file.txt"
+        outside_file.write_text("outside content")
 
-    def test_blocks_absolute_paths(self, temp_repo):
-        """Test that absolute paths are blocked."""
+        try:
+            # Should now allow reading files outside repository
+            content = read_file(str(outside_file))
+            assert content == "outside content"
+        finally:
+            outside_file.unlink()
+
+    def test_allows_reading_absolute_paths(self, temp_repo):
+        """Test that read operations can access absolute paths."""
         from patchpal.tools import read_file
 
-        with pytest.raises(ValueError, match="outside repository"):
-            read_file("/etc/passwd")
+        # Create a temp file with absolute path
+        import tempfile
+        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.txt') as f:
+            f.write("absolute path content")
+            temp_path = f.name
 
-    def test_blocks_symlink_escape(self, temp_repo):
-        """Test that symlinks can't escape repository."""
+        try:
+            content = read_file(temp_path)
+            assert content == "absolute path content"
+        finally:
+            Path(temp_path).unlink()
+
+    def test_blocks_writing_outside_repository(self, temp_repo, monkeypatch):
+        """Test that write operations outside repository are blocked/require permission."""
+        # Enable permission system for this test
+        monkeypatch.setenv("PATCHPAL_REQUIRE_PERMISSION", "true")
+        monkeypatch.setenv("PATCHPAL_READ_ONLY", "false")
+
+        # Reload module to pick up new env vars
+        import importlib
+        import patchpal.tools
+        import patchpal.permissions
+        importlib.reload(patchpal.permissions)
+        importlib.reload(patchpal.tools)
+
+        # Re-monkeypatch REPO_ROOT after reload
+        monkeypatch.setattr("patchpal.tools.REPO_ROOT", temp_repo)
+
+        # Mock permission request to deny access
+        def mock_request_permission(self, tool_name, description, pattern=None):
+            return False  # Deny permission
+
+        monkeypatch.setattr("patchpal.permissions.PermissionManager.request_permission", mock_request_permission)
+
+        from patchpal.tools import apply_patch
+
+        # Try to write to parent directory
+        outside_path = temp_repo.parent / "test_write.txt"
+
+        # Should be blocked (or require permission)
+        with pytest.raises(ValueError, match="Permission denied"):
+            apply_patch(str(outside_path), "malicious content")
+
+    def test_blocks_editing_outside_repository(self, temp_repo, monkeypatch):
+        """Test that edit operations outside repository are blocked/require permission."""
+        # Enable permission system for this test
+        monkeypatch.setenv("PATCHPAL_REQUIRE_PERMISSION", "true")
+        monkeypatch.setenv("PATCHPAL_READ_ONLY", "false")
+
+        # Reload module to pick up new env vars
+        import importlib
+        import patchpal.tools
+        import patchpal.permissions
+        importlib.reload(patchpal.permissions)
+        importlib.reload(patchpal.tools)
+
+        # Re-monkeypatch REPO_ROOT after reload
+        monkeypatch.setattr("patchpal.tools.REPO_ROOT", temp_repo)
+
+        # Mock permission request to deny access
+        def mock_request_permission(self, tool_name, description, pattern=None):
+            return False  # Deny permission
+
+        monkeypatch.setattr("patchpal.permissions.PermissionManager.request_permission", mock_request_permission)
+
+        from patchpal.tools import edit_file
+
+        # Create a file outside repo to try editing
+        outside_file = temp_repo.parent / "test_edit.txt"
+        outside_file.write_text("original content")
+
+        try:
+            # Should be blocked (or require permission)
+            with pytest.raises(ValueError, match="Permission denied"):
+                edit_file(str(outside_file), "original", "modified")
+        finally:
+            if outside_file.exists():
+                outside_file.unlink()
+
+    def test_allows_reading_symlink_outside_repo(self, temp_repo):
+        """Test that symlinks pointing outside repo can be read."""
         from patchpal.tools import read_file
 
-        # Create symlink pointing outside repo
+        # Create file outside repo and symlink to it
         outside_file = temp_repo.parent / "outside.txt"
         outside_file.write_text("outside content")
 
         symlink = temp_repo / "link.txt"
         symlink.symlink_to(outside_file)
 
-        with pytest.raises(ValueError, match="outside repository"):
-            read_file("link.txt")
+        try:
+            # Should now allow reading via symlink
+            content = read_file("link.txt")
+            assert content == "outside content"
+        finally:
+            symlink.unlink()
+            outside_file.unlink()
 
 
 class TestConfigurability:
@@ -255,11 +348,28 @@ class TestConfigurability:
 
 
 # Summary test to demonstrate all guardrails
-def test_comprehensive_security_demo(temp_repo):
+def test_comprehensive_security_demo(temp_repo, monkeypatch):
     """Comprehensive test showing all security features."""
+    # Mock permission request to deny only for outside-repo writes
+    original_perm_mgr = None
+
+    def mock_request_permission(self, tool_name, description, pattern=None):
+        # Only deny write_file for paths outside repo
+        if tool_name == 'write_file' and pattern and not str(pattern).startswith(str(temp_repo)):
+            return False
+        # Allow everything else by returning True or checking original behavior
+        return True
+
+    # Enable permissions but set up mock
+    monkeypatch.setenv("PATCHPAL_REQUIRE_PERMISSION", "true")
+
     from patchpal.tools import (
         read_file, apply_patch, run_shell, list_files
     )
+    import patchpal.permissions
+
+    # Mock the request_permission method
+    monkeypatch.setattr(patchpal.permissions.PermissionManager, "request_permission", mock_request_permission)
 
     # 1. Normal operations work
     content = read_file("normal.txt")
@@ -294,8 +404,9 @@ def test_comprehensive_security_demo(temp_repo):
     with pytest.raises(ValueError, match="dangerous"):
         run_shell("rm -rf /")
 
-    # 7. Path traversal blocked
-    with pytest.raises(ValueError, match="outside"):
-        read_file("../../etc/passwd")
+    # 7. Write operations outside repo blocked
+    outside_path = temp_repo.parent / "test_outside.txt"
+    with pytest.raises(ValueError, match="Permission denied"):
+        apply_patch(str(outside_path), "test")
 
     print("✅ All security guardrails working correctly!")
