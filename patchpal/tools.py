@@ -9,7 +9,7 @@ import mimetypes
 import logging
 import shutil
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Tuple
 from patchpal.permissions import PermissionManager
 import requests
 from bs4 import BeautifulSoup
@@ -140,6 +140,44 @@ def reset_operation_counter():
 def get_operation_count() -> int:
     """Get current operation count."""
     return _operation_limiter.operations
+
+
+def _format_colored_diff(old_text: str, new_text: str, max_lines: int = 10) -> str:
+    """Format text changes with colors: red for old, green for new.
+
+    Args:
+        old_text: Original text
+        new_text: New text
+        max_lines: Maximum lines to show per section
+
+    Returns:
+        Formatted string with colored diff
+    """
+    result = []
+
+    # Split into lines
+    old_lines = old_text.split('\n')
+    new_lines = new_text.split('\n')
+
+    # Truncate if too long
+    if len(old_lines) > max_lines:
+        old_lines = old_lines[:max_lines]
+        old_lines.append('...')
+    if len(new_lines) > max_lines:
+        new_lines = new_lines[:max_lines]
+        new_lines.append('...')
+
+    # Show old lines in red
+    for line in old_lines:
+        result.append(f"   \033[31m- {line}\033[0m")
+
+    result.append("")  # Blank line between old and new
+
+    # Show new lines in green
+    for line in new_lines:
+        result.append(f"   \033[32m+ {line}\033[0m")
+
+    return '\n'.join(result)
 
 
 def _check_git_status() -> dict:
@@ -420,12 +458,6 @@ def apply_patch(path: str, new_content: str) -> str:
     Raises:
         ValueError: If in read-only mode or file is too large
     """
-    # Check permission before proceeding
-    permission_manager = _get_permission_manager()
-    description = f"   Modify file: {path}\n   New content size: {len(new_content)} bytes"
-    if not permission_manager.request_permission('apply_patch', description, pattern=path):
-        return "Operation cancelled by user."
-
     _operation_limiter.check_limit(f"apply_patch({path})")
 
     if READ_ONLY_MODE:
@@ -443,6 +475,23 @@ def apply_patch(path: str, new_content: str) -> str:
             f"New content too large: {new_size:,} bytes (max {MAX_FILE_SIZE:,} bytes)"
         )
 
+    # Read old content if file exists (needed for diff in permission prompt)
+    old_content = ""
+    if p.exists():
+        old_content = p.read_text()
+        old = old_content.splitlines(keepends=True)
+    else:
+        old = []
+
+    # Check permission with colored diff
+    permission_manager = _get_permission_manager()
+    operation = "Create" if not p.exists() else "Update"
+    diff_display = _format_colored_diff(old_content, new_content, max_lines=15)
+    description = f"   ● {operation}({path})\n\n{diff_display}"
+
+    if not permission_manager.request_permission('apply_patch', description, pattern=path):
+        return "Operation cancelled by user."
+
     # Check git status for uncommitted changes
     git_status = _check_git_status()
     git_warning = ""
@@ -455,12 +504,6 @@ def apply_patch(path: str, new_content: str) -> str:
     backup_path = None
     if p.exists():
         backup_path = _backup_file(p)
-
-    # Read old content if file exists
-    if p.exists():
-        old = p.read_text().splitlines(keepends=True)
-    else:
-        old = []
 
     new = new_content.splitlines(keepends=True)
 
@@ -540,7 +583,11 @@ def edit_file(path: str, old_string: str, new_string: str) -> str:
 
     # Check permission before proceeding
     permission_manager = _get_permission_manager()
-    description = f"   Edit {path}\n   Replace: {old_string[:60]}{'...' if len(old_string) > 60 else ''}\n   With: {new_string[:60]}{'...' if len(new_string) > 60 else ''}"
+
+    # Format colored diff for permission prompt
+    diff_display = _format_colored_diff(old_string, new_string)
+    description = f"   ● Update({path})\n\n{diff_display}"
+
     if not permission_manager.request_permission('edit_file', description, pattern=path):
         return "Operation cancelled by user."
 
