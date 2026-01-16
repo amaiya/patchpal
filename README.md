@@ -4,7 +4,7 @@
 
 A very lean, open-source clone of Claude Code implemented purely in Python.
 
-One of the project’s goals is to approach Claude Code–level performance while remaining lightweight and easy to understand, making it well-suited for education and experimentation:
+A key goal is to mimic Claude Code's core functionality while maintaining a lightweight, accessible codebase, making it ideal for education and experimentation:
 
 ```bash
 $ls ./patchpal
@@ -562,7 +562,7 @@ Choice [1-3]:
 
 Permissions are stored per-repository and persist across sessions. You can edit `~/.patchpal/<repo-name>/permissions.json` to manage saved permissions.
 
-**Test coverage:** 131 tests including 38 dedicated security tests and 11 skills tests
+<!--**Test coverage:** 131 tests including 38 dedicated security tests and 11 skills tests-->
 
 ## Development
 
@@ -609,16 +609,6 @@ tests/
 
 ## Troubleshooting
 
-**Error: "model: claude-3-5-sonnet-20240620"**
-- Make sure your ANTHROPIC_API_KEY is set correctly
-- Check that your API key has sufficient credits
-
-**Error: "Invalid path"**
-- The agent can only access files within the repository
-- Use relative paths from the repository root
-
-**Error: "SSL certificate verification failed" (Web search)**
-- This typically occurs due to corporate proxy/firewall, VPN, or network configuration
-- The agent will gracefully handle this and continue with other tools
-- If you need web content, use `web_fetch` with a specific URL instead
-- Alternative: Configure SSL certificates for your environment
+**Error: "maximum iterations reached"**
+- The default number of iterations is 100.
+- You can increase by setting the environment variable, `export PATCHPAL_MAX_ITERATIONS`
