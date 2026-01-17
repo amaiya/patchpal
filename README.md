@@ -1,4 +1,4 @@
-# PatchPal - A Claude Code Clone
+# PatchPal - A Lean Claude Code Clone in Python
 
 ![PatchPal Screenshot](patchpal_screenshot.png)
 
