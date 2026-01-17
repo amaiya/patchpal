@@ -24,11 +24,11 @@ pip install patchpal
 1. **Get an API key** (or use local models):
    - For Anthropic models (default): Sign up at https://console.anthropic.com/
    - For OpenAI models: Get a key from https://platform.openai.com/
-   - For vLLM (local): Install from https://docs.vllm.ai/ (free - no API charges!)
-   - For Ollama (local): Install from https://ollama.ai/  (free - no API charges!)
+   - For vLLM (local): Install from https://docs.vllm.ai/ (free - no API charges!) **← RECOMMENDED FOR LOCAL**
+   - For Ollama (local): Install from https://ollama.ai/ (free - ⚠️ limited tool calling, experimental only)
    - For other providers: Check the [LiteLLM documentation](https://docs.litellm.ai/docs/providers)
 
-2. **Set up your API key** (skip for local models like Ollama):
+2. **Set up your API key**:
 ```bash
 # For Anthropic (default)
 export ANTHROPIC_API_KEY=your_api_key_here
@@ -36,7 +36,7 @@ export ANTHROPIC_API_KEY=your_api_key_here
 # For OpenAI
 export OPENAI_API_KEY=your_api_key_here
 
-# For vLLM or Ollama (local) - no API key needed (unless configured)!
+# For vLLM - no API key needed (unless configured)!
 
 # For other providers, check LiteLLM docs
 ```
@@ -51,13 +51,13 @@ patchpal --model openai/gpt-4o
 
 # Use vLLM (local)
 # Note: vLLM server must be started with --tool-call-parser and --enable-auto-tool-choice
-# See "Using Local Models (Ollama & vLLM)" section below for details
+# See "Using Local Models (vLLM & Ollama)" section below for details
 export OPENAI_API_BASE=http://localhost:8000/v1
 export OPENAI_API_KEY=token-abc123
 patchpal --model openai/Qwen2.5-Coder-32B-Instruct
 
-# Use Ollama (local, no API key required - easier setup than vLLM)
-patchpal --model ollama_chat/qwen2.5-coder:32b
+# Use Ollama (local, ⚠️ experimental - limited multi-turn support)
+patchpal --model ollama/llama3.1
 
 # Or set the model via environment variable
 export PATCHPAL_MODEL=openai/gpt-4o
@@ -217,8 +217,8 @@ PatchPal supports any LiteLLM-compatible model. You can configure the model in t
 ### 1. Command-line Argument
 ```bash
 patchpal --model openai/gpt-4o
-patchpal --model anthropic/claude-opus-4
-patchpal --model ollama_chat/qwen2.5-coder:32b
+patchpal --model anthropic/claude-sonnet-4-5
+patchpal --model hosted_vllm/gpt-oss-20b # local model - no API charges
 ```
 
 ### 2. Environment Variable
@@ -234,10 +234,11 @@ If no model is specified, PatchPal uses `anthropic/claude-sonnet-4-5` (Claude So
 
 PatchPal works with any model supported by LiteLLM, including:
 
-- **Anthropic**: `anthropic/claude-sonnet-4-5`, `anthropic/claude-opus-4-5`, `anthropic/claude-3-7-sonnet-latest`
+- **Anthropic** (Recommended): `anthropic/claude-sonnet-4-5`, `anthropic/claude-opus-4-5`, `anthropic/claude-3-7-sonnet-latest`
 - **OpenAI**: `openai/gpt-4o`, `openai/gpt-4-turbo`, `openai/gpt-3.5-turbo`
 - **AWS Bedrock**: `bedrock/anthropic.claude-sonnet-4-5-v1:0`, or full ARNs for GovCloud/VPC endpoints
-- **Ollama (Local)**: `ollama_chat/llama3.1`, `ollama_chat/llama3.2`, `ollama_chat/codellama`, `ollama_chat/mistral` - Run models locally without API keys!
+- **vLLM (Local)** (Recommended for local): See vLLM section for setup
+- **Ollama (Local)** (⚠️ Experimental): `ollama/llama3.1` - Limited multi-turn support, not for production
 - **Google**: `gemini/gemini-pro`, `vertex_ai/gemini-pro`
 - **Others**: Cohere, Azure OpenAI, and many more
 
@@ -279,11 +280,16 @@ patchpal --model "arn:aws-us-gov:bedrock:us-gov-east-1:012345678901:inference-pr
 - `AWS_BEDROCK_REGION`: Custom AWS region (e.g., `us-gov-east-1` for GovCloud)
 - `AWS_BEDROCK_ENDPOINT`: Custom endpoint URL for VPC endpoints or GovCloud
 
-### Using Local Models (Ollama & vLLM)
+### Using Local Models (vLLM & Ollama)
 
 Run models locally on your machine without needing API keys or internet access.
 
-**⚠️ Important: For local models, use vLLM instead of Ollama for much better performance!**
+**⚠️ IMPORTANT: For local models, use vLLM instead of Ollama for reliable tool calling!**
+
+vLLM provides:
+- ✅ Robust multi-turn tool calling
+- ✅ 3-10x faster inference than Ollama
+- ✅ Production-ready reliability
 
 #### vLLM (Recommended for Local Models)
 
@@ -367,27 +373,30 @@ patchpal --model openai/gpt-oss-20b
 **Tool Call Parser Reference:**
 Different models require different parsers. Common parsers include: `qwen3_xml`, `openai`, `deepseek_v3`, `llama3_json`, `mistral`, `hermes`, `pythonic`, `xlam`. See [vLLM Tool Calling docs](https://docs.vllm.ai/en/latest/features/tool_calling/) for the complete list.
 
-#### Ollama (Easier Setup, Slower Performance)
+#### Ollama (⚠️ Limited Support - Experimental Only)
 
-Ollama is easier to install but 3-10x slower than vLLM for the same models.
+**⚠️ WARNING: Ollama has significant limitations with multi-turn tool calling and is NOT recommended for production use.**
+
+**Known Limitations:**
+- ❌ Cannot handle complex multi-step workflows (explore → read → modify → test)
+- ❌ Stops making tool calls after first result (reverts to text output)
+- ❌ Gives vague summaries instead of including tool results
+- ❌ After tool errors, stops using tools entirely
+
+**For production use, we strongly recommend:**
+- **Cloud**: Claude Sonnet 4.5 (`anthropic/claude-sonnet-4-5`) or GPT-4 (`openai/gpt-4`)
+- **Local**: vLLM with gpt-oss-20b (see vLLM section above)
+
+**If you still want to try Ollama** (for experimentation only):
 
 ```bash
 # 1. Install Ollama: Download from https://ollama.ai/
 # 2. Pull a model
-ollama pull qwen2.5-coder:32b
+ollama pull llama3.1
 
 # 3. Run PatchPal
-patchpal --model ollama_chat/qwen2.5-coder:32b
+patchpal --model ollama/llama3.1
 ```
-
-**Recommended Ollama models:**
-- `ollama_chat/qwen2.5-coder:32b` - Best tool calling for Ollama
-- `ollama_chat/deepseek-coder:33b` - Good coding support
-
-**Not recommended** (poor tool calling):
-- Smaller models (<32B parameters) struggle with tool calling
-- `llama3.1:8b` often fails to properly format tool arguments
-
 
 ### Air-Gapped and Offline Environments
 
@@ -398,9 +407,11 @@ For environments without internet access (air-gapped, offline, or restricted net
 export PATCHPAL_ENABLE_WEB=false
 patchpal
 
-# Or combine with local models for complete offline operation
+# Or combine with local vLLM for complete offline operation (recommended)
 export PATCHPAL_ENABLE_WEB=false
-patchpal --model ollama_chat/qwen2.5-coder:32b
+export OPENAI_API_BASE=http://localhost:8000/v1
+export OPENAI_API_KEY=token-abc123
+patchpal --model openai/Qwen2.5-Coder-32B-Instruct # using "openai" because vLLM is openai-compatible
 ```
 
 When web tools are disabled:

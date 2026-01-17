@@ -3,6 +3,7 @@
 import os
 import json
 import platform
+import inspect
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 import litellm
@@ -88,7 +89,7 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "list_files",
-            "description": "List all files in the repository (excludes hidden and binary files).",
+            "description": "List ALL files in the ENTIRE repository - no filtering by directory. This tool shows every file across all folders. To list files in a specific directory, use the 'tree' tool with a path parameter instead.",
             "parameters": {
                 "type": "object",
                 "properties": {},
@@ -138,7 +139,7 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "tree",
-            "description": "Show directory tree structure to understand folder organization. Works with any directory on the system - use for exploring repository structure, system directories (/etc, /var/log), or any other location.",
+            "description": "Show directory tree structure for a specific directory path. Use this to list files in a particular folder (e.g., './tests', 'src/components'). Works with any directory on the system - repository folders, /etc, /var/log, etc.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -527,6 +528,10 @@ class PatchPalAgent:
         Args:
             model_id: LiteLLM model identifier
         """
+        # Convert ollama/ to ollama_chat/ for LiteLLM compatibility
+        if model_id.startswith('ollama/'):
+            model_id = model_id.replace('ollama/', 'ollama_chat/', 1)
+
         self.model_id = _normalize_bedrock_model_id(model_id)
 
         # Set up Bedrock environment if needed
@@ -568,7 +573,7 @@ class PatchPalAgent:
             # Show thinking message
             print("\033[2m🤔 Thinking...\033[0m", flush=True)
 
-            # Call LiteLLM with tools
+            # Use LiteLLM for all providers
             try:
                 response = litellm.completion(
                     model=self.model_id,
@@ -650,7 +655,26 @@ class PatchPalAgent:
 
                             # Execute the tool (permission checks happen inside the tool)
                             try:
-                                tool_result = tool_func(**tool_args)
+                                # Filter tool_args to only include parameters the function accepts
+                                sig = inspect.signature(tool_func)
+                                valid_params = set(sig.parameters.keys())
+                                filtered_args = {k: v for k, v in tool_args.items() if k in valid_params}
+
+                                # Coerce types for parameters (Ollama sometimes passes strings)
+                                for param_name, param in sig.parameters.items():
+                                    if param_name in filtered_args:
+                                        expected_type = param.annotation
+                                        actual_value = filtered_args[param_name]
+
+                                        # Convert strings to expected types
+                                        if expected_type == int and isinstance(actual_value, str):
+                                            filtered_args[param_name] = int(actual_value)
+                                        elif expected_type == bool and isinstance(actual_value, str):
+                                            filtered_args[param_name] = actual_value.lower() in ('true', '1', 'yes')
+
+                                # Silently filter out invalid args (models sometimes hallucinate parameters)
+
+                                tool_result = tool_func(**filtered_args)
                             except Exception as e:
                                 tool_result = f"Error executing {tool_name}: {e}"
                                 print(f"\033[1;31m✗ {tool_display}: {e}\033[0m")
