@@ -694,10 +694,6 @@ class PatchPalAgent:
             # Get the assistant's response
             assistant_message = response.choices[0].message
 
-            # Print assistant's text content if present
-            if assistant_message.content and assistant_message.content.strip():
-                print(f"\n{assistant_message.content}\n", flush=True)
-
             # Add assistant message to history
             self.messages.append({
                 "role": "assistant",
@@ -707,6 +703,9 @@ class PatchPalAgent:
 
             # Check if there are tool calls
             if hasattr(assistant_message, 'tool_calls') and assistant_message.tool_calls:
+                # Print explanation text before executing tools
+                if assistant_message.content and assistant_message.content.strip():
+                    print(f"\n{assistant_message.content}\n", flush=True)
                 # Execute each tool call
                 for tool_call in assistant_message.tool_calls:
                     tool_name = tool_call.function.name
