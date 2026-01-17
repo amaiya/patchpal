@@ -631,6 +631,9 @@ class PatchPalAgent:
         self.litellm_kwargs = {}
         if self.model_id.startswith('bedrock/'):
             self.litellm_kwargs['drop_params'] = True
+            # Configure LiteLLM to handle Bedrock's strict message alternation requirement
+            # This must be set globally, not as a completion parameter
+            litellm.modify_params = True
         elif self.model_id.startswith('openai/') and os.getenv('OPENAI_API_BASE'):
             # Custom OpenAI-compatible servers (vLLM, etc.) often don't support all parameters
             self.litellm_kwargs['drop_params'] = True
