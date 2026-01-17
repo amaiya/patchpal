@@ -762,7 +762,7 @@ class PatchPalAgent:
         return (
             f"Maximum iterations ({max_iterations}) reached. Task may be incomplete.\n\n"
             "💡 Tip: Type 'continue' or 'please continue' to resume where I left off, "
-            "or provide more specific instructions."
+            "or set PATCHPAL_MAX_ITERATIONS=<large #> as environment variable."
         )
 
 
