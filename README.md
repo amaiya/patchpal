@@ -4,7 +4,7 @@
 
 > A lightweight clone of Claude Code in Python -- supports both local and cloud LLMs.
 
-A key goal is to mimic Claude Code's core functionality while maintaining a lean, lightweight, accessible codebase, making it ideal for education and experimentation:
+A key goal is to approximate Claude Code’s core functionality while preserving a lean, lightweight, and accessible codebase—making it well suited for education and flexible application.
 
 ```bash
 $ls ./patchpal
@@ -24,8 +24,8 @@ pip install patchpal
 1. **Get an API key** (or use local models):
    - For Anthropic models (default): Sign up at https://console.anthropic.com/
    - For OpenAI models: Get a key from https://platform.openai.com/
-   - For vLLM (local): Install from https://docs.vllm.ai/ (no API key needed, faster than Ollama!)
-   - For Ollama (local): Install from https://ollama.ai/ (no API key needed!)
+   - For vLLM (local): Install from https://docs.vllm.ai/ (free - no API charges!)
+   - For Ollama (local): Install from https://ollama.ai/  (free - no API charges!)
    - For other providers: Check the [LiteLLM documentation](https://docs.litellm.ai/docs/providers)
 
 2. **Set up your API key** (skip for local models like Ollama):
@@ -506,6 +506,11 @@ export PATCHPAL_ENABLE_BACKUPS=true       # Auto-backup files to ~/.patchpal/<re
 export PATCHPAL_MAX_OPERATIONS=5000       # Maximum operations per session to prevent infinite loops (default: 1000)
 export PATCHPAL_MAX_ITERATIONS=150        # Maximum agent iterations per task (default: 100)
                                           # Increase for very complex multi-file tasks, decrease for testing
+
+# Customization
+export PATCHPAL_SYSTEM_PROMPT=~/.patchpal/my_prompt.md  # Use custom system prompt file (default: built-in prompt)
+                                                         # The file can use template variables like {current_date}, {platform_info}, etc.
+                                                         # Useful for: custom agent behavior, team standards, domain-specific instructions
 
 # Web Tool Controls
 export PATCHPAL_ENABLE_WEB=false          # Enable/disable web search and fetch tools (default: true)

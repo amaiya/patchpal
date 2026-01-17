@@ -189,6 +189,12 @@ Supported models: Any LiteLLM-supported model
     print("PatchPal - a lightweight, flexible Claude Code clone")
     print("=" * 80)
     print(f"\nUsing model: {model_id}")
+    
+    # Show custom prompt indicator if set
+    custom_prompt_path = os.getenv('PATCHPAL_SYSTEM_PROMPT')
+    if custom_prompt_path:
+        print(f"\033[1;36m🔧 Using custom system prompt: {custom_prompt_path}\033[0m")
+    
     print("\nType 'exit' or 'quit' to exit the program.")
     print("Ask 'list skills' to see available skills, or use /skillname to invoke one.")
     print("Press Ctrl-C during agent execution to interrupt the agent.\n")
