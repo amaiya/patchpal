@@ -142,18 +142,37 @@ def get_operation_count() -> int:
     return _operation_limiter.operations
 
 
-def _format_colored_diff(old_text: str, new_text: str, max_lines: int = 50) -> str:
+def _format_colored_diff(old_text: str, new_text: str, max_lines: int = 50, file_path: Optional[str] = None, start_line: Optional[int] = None) -> str:
     """Format text changes with colors showing actual differences.
 
     Args:
         old_text: Original text
         new_text: New text
         max_lines: Maximum diff lines to show (default: 50)
+        file_path: Optional file path to read full content for accurate line numbers
+        start_line: Optional starting line number for context (for edit_file)
 
     Returns:
-        Formatted string with colored unified diff
+        Formatted string with colored unified diff with line numbers
     """
     import difflib
+    import re
+
+    # If we have a file path, read the full content to get accurate line numbers
+    if file_path:
+        try:
+            p = Path(file_path)
+            if not p.is_absolute():
+                p = REPO_ROOT / file_path
+            if p.exists():
+                full_content = p.read_text()
+                # Find the position of old_text in the full file
+                pos = full_content.find(old_text)
+                if pos != -1:
+                    # Count lines before the match to get the starting line number
+                    start_line = full_content[:pos].count('\n') + 1
+        except:
+            pass  # If reading fails, fall back to relative line numbers
 
     # Split into lines for diffing
     old_lines = old_text.splitlines(keepends=True)
@@ -169,19 +188,31 @@ def _format_colored_diff(old_text: str, new_text: str, max_lines: int = 50) -> s
 
     result = []
     line_count = 0
+    old_line_num = start_line if start_line else 1
+    new_line_num = start_line if start_line else 1
 
     for line in diff:
         # Skip the file headers (--- and +++)
         if line.startswith('---') or line.startswith('+++'):
             continue
 
-        # Skip hunk headers but count them
+        # Parse hunk headers to track line numbers
         if line.startswith('@@'):
             if line_count >= max_lines:
                 result.append("   \033[90m... (truncated)\033[0m")
                 break
-            result.append(f"   \033[36m{line}\033[0m")  # Cyan for hunk headers
-            line_count += 1
+            
+            # Extract line numbers from hunk header: @@ -old_start,old_count +new_start,new_count @@
+            match = re.match(r'@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@', line)
+            if match and not start_line:
+                # Only use hunk header line numbers if we don't have a specific start_line
+                old_line_num = int(match.group(1))
+                new_line_num = int(match.group(2))
+            
+            # Don't show the hunk header for small diffs if we have start_line
+            if not start_line or len(old_lines) > 10:
+                result.append(f"   \033[36m{line}\033[0m")  # Cyan for hunk headers
+                line_count += 1
             continue
 
         # Check line limit
@@ -189,13 +220,19 @@ def _format_colored_diff(old_text: str, new_text: str, max_lines: int = 50) -> s
             result.append("   \033[90m... (truncated)\033[0m")
             break
 
-        # Color the diff lines
+        # Color and number the diff lines
         if line.startswith('-'):
-            result.append(f"   \033[31m{line}\033[0m")  # Red for removed
+            result.append(f"   \033[31m{old_line_num:4d} {line}\033[0m")  # Red for removed
+            old_line_num += 1
         elif line.startswith('+'):
-            result.append(f"   \033[32m{line}\033[0m")  # Green for added
+            result.append(f"   \033[32m{new_line_num:4d} {line}\033[0m")  # Green for added
+            new_line_num += 1
         else:
-            result.append(f"   \033[90m{line}\033[0m")  # Gray for context
+            # Context lines (start with space in unified diff format)
+            # Show the old line number for context (both old and new have same content)
+            result.append(f"   \033[90m{old_line_num:4d} {line}\033[0m")  # Gray for context
+            old_line_num += 1
+            new_line_num += 1
 
         line_count += 1
 
@@ -783,7 +820,7 @@ def apply_patch(path: str, new_content: str) -> str:
     # Check permission with colored diff
     permission_manager = _get_permission_manager()
     operation = "Create" if not p.exists() else "Update"
-    diff_display = _format_colored_diff(old_content, new_content)
+    diff_display = _format_colored_diff(old_content, new_content, file_path=path)
 
     # Add warning if writing outside repository
     outside_repo_warning = ""
@@ -888,7 +925,7 @@ def edit_file(path: str, old_string: str, new_string: str) -> str:
     permission_manager = _get_permission_manager()
 
     # Format colored diff for permission prompt
-    diff_display = _format_colored_diff(old_string, new_string)
+    diff_display = _format_colored_diff(old_string, new_string, file_path=path)
 
     # Add warning if writing outside repository
     outside_repo_warning = ""
