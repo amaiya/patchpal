@@ -19,14 +19,6 @@ Install PatchPal from PyPI:
 pip install patchpal
 ```
 
-Or install from source:
-
-```bash
-git clone https://github.com/amaiya/patchpal.git
-cd patchpal
-pip install -e .
-```
-
 ## Setup
 
 1. **Get an API key** (or use local models):
