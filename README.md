@@ -62,8 +62,8 @@ export HOSTED_VLLM_API_BASE=http://localhost:8000
 export HOSTED_VLLM_API_KEY=token-abc123
 patchpal --model hosted_vllm/openai/gpt-oss-20b
 
-# Use Ollama (local, ⚠️ not recommended due to issues with tool support)
-patchpal --model ollama/llama3.1
+# Use Ollama (local, ⚠️ not recommended - use vLLM)
+patchpal --model ollama/qwen3 # qwen3 is loadable but low-performing
 
 # Or set the model via environment variable
 export PATCHPAL_MODEL=openai/gpt-5
@@ -235,11 +235,11 @@ PatchPal works with any model supported by LiteLLM, including:
 - **Anthropic** (Recommended): `anthropic/claude-sonnet-4-5`, `anthropic/claude-opus-4-5`, `anthropic/claude-3-7-sonnet-latest`
 - **OpenAI**: `openai/gpt-5`, `openai/gpt-4o`
 - **AWS Bedrock**: `bedrock/anthropic.claude-sonnet-4-5-v1:0`, or full ARNs for GovCloud/VPC endpoints
-- **vLLM (Local)** (Recommended for local): See vLLM section for setup
+- **vLLM (Local)** (Recommended for local): See vLLM section below for setup
+- **Ollama (Local)**:  See Ollama section below for setup
 - **Google**: `gemini/gemini-pro`, `vertex_ai/gemini-pro`
 - **Others**: Cohere, Azure OpenAI, and many more
 
-Ollama models do not typically work well due to issues with tool-calling.
 
 See the [LiteLLM providers documentation](https://docs.litellm.ai/docs/providers) for the complete list.
 
@@ -283,7 +283,7 @@ patchpal --model "arn:aws-us-gov:bedrock:us-gov-east-1:012345678901:inference-pr
 
 Run models locally on your machine without needing API keys or internet access.
 
-**⚠️ IMPORTANT: For local models, use vLLM instead of Ollama for reliable tool calling!**
+**⚠️ IMPORTANT: For local models, we recommend vLLM.**
 
 vLLM provides:
 - ✅ Robust multi-turn tool calling
@@ -354,6 +354,16 @@ patchpal --model hosted_vllm/openai/gpt-oss-20b
 
 **Tool Call Parser Reference:**
 Different models require different parsers. Common parsers include: `qwen3_xml`, `openai`, `deepseek_v3`, `llama3_json`, `mistral`, `hermes`, `pythonic`, `xlam`. See [vLLM Tool Calling docs](https://docs.vllm.ai/en/latest/features/tool_calling/) for the complete list.
+
+#### Ollama
+
+We find that fast and popular Ollama models like `qwen3` and `llama3.1` do not work well in practical agentic settings. We recommend using models like `gpt-oss-20b`.  If you encounter issues with `gpt-oss-20b` on Ollama then use **vLLM** instead.
+
+**Example: Loading Qwen3 in Ollama**
+
+```bash
+patchpal --model ollama_chat/qwen3
+```
 
 ### Air-Gapped and Offline Environments
 
