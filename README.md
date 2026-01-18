@@ -504,6 +504,9 @@ export PATCHPAL_ENABLE_WEB=false          # Enable/disable web search and fetch 
 export PATCHPAL_WEB_TIMEOUT=60            # Timeout for web requests in seconds (default: 30)
 export PATCHPAL_MAX_WEB_SIZE=10485760     # Maximum web content size in bytes (default: 5242880 = 5MB)
 export PATCHPAL_MAX_WEB_CHARS=500000      # Maximum characters from web content to prevent context overflow (default: 500000 ≈ 125k tokens)
+
+# Shell Command Controls
+export PATCHPAL_SHELL_TIMEOUT=60          # Timeout for shell commands in seconds (default: 30)
 ```
 
 **Permission System:**

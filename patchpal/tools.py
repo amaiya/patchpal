@@ -68,6 +68,9 @@ MAX_WEB_CONTENT_SIZE = int(os.getenv('PATCHPAL_MAX_WEB_SIZE', 5 * 1024 * 1024)) 
 MAX_WEB_CONTENT_CHARS = int(os.getenv('PATCHPAL_MAX_WEB_CHARS', 500_000))  # 500k chars (~125k tokens)
 WEB_USER_AGENT = f'PatchPal/{__version__} (AI Code Assistant)'
 
+# Shell command configuration
+SHELL_TIMEOUT = int(os.getenv('PATCHPAL_SHELL_TIMEOUT', 30))  # 30 seconds default
+
 # Create patchpal directory structure in home directory
 # Format: ~/.patchpal/<repo-name>/
 def _get_patchpal_dir() -> Path:
@@ -1475,7 +1478,7 @@ def run_shell(cmd: str) -> str:
         shell=True,
         capture_output=True,
         cwd=REPO_ROOT,
-        timeout=30,  # 30 second timeout
+        timeout=SHELL_TIMEOUT,
     )
 
     # Decode output with error handling for problematic characters

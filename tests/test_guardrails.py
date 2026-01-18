@@ -191,13 +191,24 @@ class TestCommandSafety:
         result = run_shell("echo 'test'")
         assert "test" in result
 
-    def test_command_timeout(self, temp_repo):
+    def test_command_timeout(self, temp_repo, monkeypatch):
         """Test that long-running commands timeout."""
+        # Set a short timeout for faster testing
+        monkeypatch.setenv("PATCHPAL_SHELL_TIMEOUT", "2")
+        
+        # Reload module to pick up new timeout
+        import importlib
+        import patchpal.tools
+        importlib.reload(patchpal.tools)
+        
+        # Re-monkeypatch REPO_ROOT after reload
+        monkeypatch.setattr("patchpal.tools.REPO_ROOT", temp_repo)
+        
         from patchpal.tools import run_shell
         import subprocess
 
         with pytest.raises(subprocess.TimeoutExpired):
-            run_shell("sleep 60")
+            run_shell("sleep 10")
 
 
 class TestPathTraversal:
