@@ -463,7 +463,7 @@ PatchPal includes comprehensive security protections enabled by default:
 - **Read-only mode**: Optional mode that prevents all modifications
 - **Command timeout**: 30-second timeout on shell commands
 - **Pattern-based blocking**: Blocks dangerous command patterns (`> /dev/`, `--force`, etc.)
-- **Write boundary protection**: Restricts write operations to repository (reads allowed system-wide for automation/debugging)
+- **Write boundary protection**: Requires permission for write operations
 
 **Operational Safety:**
 - **Operation audit logging**: All file operations and commands logged to `~/.patchpal/<repo-name>/audit.log` (enabled by default)
