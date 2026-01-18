@@ -29,7 +29,7 @@ Running PatchPal direcly on a Windows 11 OS should work but is not officially su
 1. **Get an API key** (or use local models):
    - **[Cloud]** For Anthropic models (default): Sign up at https://console.anthropic.com/
    - **[Cloud]** For OpenAI models: Get a key from https://platform.openai.com/
-   - **[Local]** For vLLM: Install from https://docs.vllm.ai/ (free - no API charges) **Recommended for Local/Private Use**
+   - **[Local]** For vLLM: Install from https://docs.vllm.ai/ (free - no API charges) **Recommended for Local Use**
    - For other providers: Check the [LiteLLM documentation](https://docs.litellm.ai/docs/providers)
 
 2. **Set up your API key as environment variable**:
