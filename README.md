@@ -27,8 +27,10 @@ pip install patchpal
    - **[Local]** For vLLM: Install from https://docs.vllm.ai/ (free - no API charges)
    - For other providers: Check the [LiteLLM documentation](https://docs.litellm.ai/docs/providers)
 
-2. **Set up your API key**:
+2. **Set up your API key as environment variable**:
 ```bash
+# Linux/MacOS examples of setting environment variable
+
 # For Anthropic (default)
 export ANTHROPIC_API_KEY=your_api_key_here
 
