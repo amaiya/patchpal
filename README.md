@@ -182,6 +182,9 @@ cp -r examples/skills/add-tests ~/.patchpal/skills/
 **View examples online:**
 Browse the [examples/skills/](https://github.com/amaiya/patchpal/tree/main/examples/skills) directory on GitHub to see the skill format and create your own.
 
+You can also try out the example skills at [anthropic/skills](https://github.com/anthropics/skills).
+
+
 **Using Skills:**
 
 There are two ways to invoke skills:
