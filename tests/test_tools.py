@@ -166,7 +166,7 @@ def test_check_path_validates_existence():
     from patchpal.tools import _check_path
 
     with tempfile.TemporaryDirectory() as tmpdir:
-        tmpdir_path = Path(tmpdir)
+        tmpdir_path = Path(tmpdir).resolve()  # Resolve to handle symlinks (e.g., macOS /private)
 
         with patch("patchpal.tools.REPO_ROOT", tmpdir_path):
             # Test non-existent file with must_exist=True

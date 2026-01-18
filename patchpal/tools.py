@@ -566,6 +566,11 @@ def get_file_info(path: str) -> str:
             results.append(f"{str(relative_path):<50} {size_str:>10}  {mtime}  {file_type}")
 
         except Exception as e:
+            # Get relative path for error message (may fail if path is invalid)
+            try:
+                relative_path = path.relative_to(REPO_ROOT)
+            except Exception:
+                relative_path = path
             results.append(f"{str(relative_path):<50} ERROR: {e}")
 
     header = f"{'Path':<50} {'Size':>10}  {'Modified'}            {'Type'}"
