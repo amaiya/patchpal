@@ -63,7 +63,7 @@ export HOSTED_VLLM_API_BASE=http://localhost:8000
 export HOSTED_VLLM_API_KEY=token-abc123
 patchpal --model hosted_vllm/openai/gpt-oss-20b
 
-# Use Ollama (local, ⚠️ not recommended due to Ollama's limited tool support)
+# Use Ollama (local, ⚠️ not recommended due to issues with tool support)
 patchpal --model ollama/llama3.1
 
 # Or set the model via environment variable
