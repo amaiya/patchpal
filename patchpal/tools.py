@@ -203,7 +203,7 @@ def _format_colored_diff(
             if not p.is_absolute():
                 p = REPO_ROOT / file_path
             if p.exists():
-                full_content = p.read_text()
+                full_content = p.read_text(encoding="utf-8", errors="replace")
                 # Find the position of old_text in the full file
                 pos = full_content.find(old_text)
                 if pos != -1:
@@ -452,7 +452,7 @@ def read_file(path: str) -> str:
             f"Cannot read binary file: {path}\nType: {mimetypes.guess_type(str(p))[0] or 'unknown'}"
         )
 
-    content = p.read_text()
+    content = p.read_text(encoding="utf-8", errors="replace")
     audit_logger.info(f"READ: {path} ({size} bytes)")
     return content
 
@@ -870,7 +870,7 @@ def apply_patch(path: str, new_content: str) -> str:
     # Read old content if file exists (needed for diff in permission prompt)
     old_content = ""
     if p.exists():
-        old_content = p.read_text()
+        old_content = p.read_text(encoding="utf-8", errors="replace")
         old = old_content.splitlines(keepends=True)
     else:
         old = []
@@ -960,7 +960,7 @@ def edit_file(path: str, old_string: str, new_string: str) -> str:
 
     # Read current content
     try:
-        content = p.read_text()
+        content = p.read_text(encoding="utf-8", errors="replace")
     except Exception as e:
         raise ValueError(f"Failed to read file: {e}")
 
