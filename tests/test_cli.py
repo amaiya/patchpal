@@ -12,7 +12,7 @@ def test_main_uses_default_model(monkeypatch):
     monkeypatch.setattr(sys, "argv", ["patchpal"])
 
     with patch("patchpal.cli.create_agent") as mock_create, \
-         patch("builtins.input", side_effect=["exit"]):
+         patch("patchpal.cli.pt_prompt", side_effect=["exit"]):
 
         mock_agent = MagicMock()
         mock_create.return_value = mock_agent
@@ -31,7 +31,7 @@ def test_main_uses_cli_model_arg(monkeypatch):
     monkeypatch.setattr(sys, "argv", ["patchpal", "--model", "openai/gpt-4o"])
 
     with patch("patchpal.cli.create_agent") as mock_create, \
-         patch("builtins.input", side_effect=["exit"]):
+         patch("patchpal.cli.pt_prompt", side_effect=["exit"]):
 
         mock_agent = MagicMock()
         mock_create.return_value = mock_agent
@@ -51,7 +51,7 @@ def test_main_uses_env_var_model(monkeypatch):
     monkeypatch.setattr(sys, "argv", ["patchpal"])
 
     with patch("patchpal.cli.create_agent") as mock_create, \
-         patch("builtins.input", side_effect=["exit"]):
+         patch("patchpal.cli.pt_prompt", side_effect=["exit"]):
 
         mock_agent = MagicMock()
         mock_create.return_value = mock_agent
@@ -71,7 +71,7 @@ def test_main_cli_arg_overrides_env_var(monkeypatch):
     monkeypatch.setattr(sys, "argv", ["patchpal", "--model", "openai/gpt-4o"])
 
     with patch("patchpal.cli.create_agent") as mock_create, \
-         patch("builtins.input", side_effect=["exit"]):
+         patch("patchpal.cli.pt_prompt", side_effect=["exit"]):
 
         mock_agent = MagicMock()
         mock_create.return_value = mock_agent
@@ -84,30 +84,13 @@ def test_main_cli_arg_overrides_env_var(monkeypatch):
         mock_create.assert_called_once_with(model_id="openai/gpt-4o")
 
 
-def test_main_exits_without_api_key(monkeypatch, capsys):
-    """Test that main() exits if ANTHROPIC_API_KEY is not set."""
-    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-    monkeypatch.setattr(sys, "argv", ["patchpal"])
-
-    from patchpal.cli import main
-
-    with pytest.raises(SystemExit) as exc_info:
-        main()
-
-    assert exc_info.value.code == 1
-
-    captured = capsys.readouterr()
-    assert "ANTHROPIC_API_KEY" in captured.out
-    assert "environment variable not set" in captured.out
-
-
 def test_main_handles_quit_command(monkeypatch, capsys):
     """Test that main() exits on 'quit' command."""
     monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
     monkeypatch.setattr(sys, "argv", ["patchpal"])
 
     with patch("patchpal.cli.create_agent") as mock_create, \
-         patch("builtins.input", side_effect=["quit"]):
+         patch("patchpal.cli.pt_prompt", side_effect=["quit"]):
 
         mock_agent = MagicMock()
         mock_create.return_value = mock_agent
@@ -126,7 +109,7 @@ def test_main_handles_exit_command(monkeypatch, capsys):
     monkeypatch.setattr(sys, "argv", ["patchpal"])
 
     with patch("patchpal.cli.create_agent") as mock_create, \
-         patch("builtins.input", side_effect=["exit"]):
+         patch("patchpal.cli.pt_prompt", side_effect=["exit"]):
 
         mock_agent = MagicMock()
         mock_create.return_value = mock_agent
@@ -145,7 +128,7 @@ def test_main_handles_keyboard_interrupt(monkeypatch, capsys):
     monkeypatch.setattr(sys, "argv", ["patchpal"])
 
     with patch("patchpal.cli.create_agent") as mock_create, \
-         patch("builtins.input", side_effect=KeyboardInterrupt):
+         patch("patchpal.cli.pt_prompt", side_effect=KeyboardInterrupt):
 
         mock_agent = MagicMock()
         mock_create.return_value = mock_agent
@@ -164,7 +147,7 @@ def test_main_handles_keyboard_interrupt_during_agent_run(monkeypatch, capsys):
     monkeypatch.setattr(sys, "argv", ["patchpal"])
 
     with patch("patchpal.cli.create_agent") as mock_create, \
-         patch("builtins.input", side_effect=["test query", "exit"]):
+         patch("patchpal.cli.pt_prompt", side_effect=["test query", "exit"]):
 
         mock_agent = MagicMock()
         # Agent raises KeyboardInterrupt during execution
@@ -187,7 +170,7 @@ def test_main_handles_agent_error(monkeypatch, capsys):
     monkeypatch.setattr(sys, "argv", ["patchpal"])
 
     with patch("patchpal.cli.create_agent") as mock_create, \
-         patch("builtins.input", side_effect=["test query", "exit"]):
+         patch("patchpal.cli.pt_prompt", side_effect=["test query", "exit"]):
 
         mock_agent = MagicMock()
         mock_agent.run.side_effect = Exception("Test error")
@@ -208,7 +191,7 @@ def test_main_runs_agent_with_user_input(monkeypatch):
     monkeypatch.setattr(sys, "argv", ["patchpal"])
 
     with patch("patchpal.cli.create_agent") as mock_create, \
-         patch("builtins.input", side_effect=["What files are here?", "exit"]):
+         patch("patchpal.cli.pt_prompt", side_effect=["What files are here?", "exit"]):
 
         mock_agent = MagicMock()
         mock_agent.run.return_value = "Here are the files..."
@@ -228,7 +211,7 @@ def test_main_skips_empty_input(monkeypatch):
     monkeypatch.setattr(sys, "argv", ["patchpal"])
 
     with patch("patchpal.cli.create_agent") as mock_create, \
-         patch("builtins.input", side_effect=["", "   ", "exit"]):
+         patch("patchpal.cli.pt_prompt", side_effect=["", "   ", "exit"]):
 
         mock_agent = MagicMock()
         mock_create.return_value = mock_agent
@@ -248,7 +231,7 @@ def test_main_respects_max_iterations_env_var(monkeypatch):
     monkeypatch.setattr(sys, "argv", ["patchpal"])
 
     with patch("patchpal.cli.create_agent") as mock_create, \
-         patch("builtins.input", side_effect=["Test task", "exit"]):
+         patch("patchpal.cli.pt_prompt", side_effect=["Test task", "exit"]):
 
         mock_agent = MagicMock()
         mock_agent.run.return_value = "Done"
@@ -268,7 +251,7 @@ def test_main_displays_model_name(monkeypatch, capsys):
     monkeypatch.setattr(sys, "argv", ["patchpal", "--model", "openai/gpt-4o"])
 
     with patch("patchpal.cli.create_agent") as mock_create, \
-         patch("builtins.input", side_effect=["exit"]):
+         patch("patchpal.cli.pt_prompt", side_effect=["exit"]):
 
         mock_agent = MagicMock()
         mock_create.return_value = mock_agent

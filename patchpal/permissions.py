@@ -133,9 +133,9 @@ class PermissionManager:
         sys.stderr.write("\nDo you want to proceed?\n")
         sys.stderr.write("  1. Yes\n")
         if pattern:
-            sys.stderr.write(f"  2. Yes, and don't ask again for '{pattern}' in this repository\n")
+            sys.stderr.write(f"  2. Yes, and don't ask again this session for '{pattern}'\n")
         else:
-            sys.stderr.write(f"  2. Yes, and don't ask again for {tool_name} in this repository\n")
+            sys.stderr.write(f"  2. Yes, and don't ask again this session for {tool_name}\n")
         sys.stderr.write("  3. No\n")
         sys.stderr.flush()
 
@@ -150,8 +150,8 @@ class PermissionManager:
                 if choice == '1':
                     return True
                 elif choice == '2':
-                    # Grant persistent permission
-                    self._grant_permission(tool_name, persistent=True, pattern=pattern)
+                    # Grant session-only permission (like Claude Code)
+                    self._grant_permission(tool_name, persistent=False, pattern=pattern)
                     return True
                 elif choice == '3':
                     sys.stderr.write("\n\033[1;31mOperation cancelled.\033[0m\n")

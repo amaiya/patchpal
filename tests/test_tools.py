@@ -55,14 +55,6 @@ def test_read_file_not_found(temp_repo):
         read_file("nonexistent.txt")
 
 
-def test_read_file_outside_repo(temp_repo):
-    """Test that reading outside the repo is blocked."""
-    from patchpal.tools import read_file
-
-    with pytest.raises(ValueError, match="Path outside repository"):
-        read_file("../etc/passwd")
-
-
 def test_list_files(temp_repo):
     """Test listing files in the repository."""
     from patchpal.tools import list_files

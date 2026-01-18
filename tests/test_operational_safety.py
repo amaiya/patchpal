@@ -62,9 +62,16 @@ class TestAuditLogging:
             content = audit_log.read_text()
             assert "READ: test.txt" in content or "read_file" in content
 
-    def test_audit_log_records_write(self, temp_repo):
+    def test_audit_log_records_write(self, temp_repo, monkeypatch):
         """Test that write operations are logged."""
         from patchpal.tools import apply_patch
+        import patchpal.tools
+
+        # Disable permission prompts for this test
+        monkeypatch.setenv('PATCHPAL_REQUIRE_PERMISSION', 'false')
+
+        # Reset the cached permission manager so it picks up the new env var
+        patchpal.tools._permission_manager = None
 
         apply_patch("test.txt", "new content")
 
@@ -73,9 +80,16 @@ class TestAuditLogging:
             content = audit_log.read_text()
             assert "WRITE: test.txt" in content or "apply_patch" in content
 
-    def test_audit_log_records_shell(self, temp_repo):
+    def test_audit_log_records_shell(self, temp_repo, monkeypatch):
         """Test that shell commands are logged."""
         from patchpal.tools import run_shell
+        import patchpal.tools
+
+        # Disable permission prompts for this test
+        monkeypatch.setenv('PATCHPAL_REQUIRE_PERMISSION', 'false')
+
+        # Reset the cached permission manager so it picks up the new env var
+        patchpal.tools._permission_manager = None
 
         run_shell("echo test")
 

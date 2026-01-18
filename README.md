@@ -31,6 +31,7 @@ pip install patchpal
    - **[Cloud]** For Anthropic models (default): Sign up at https://console.anthropic.com/
    - **[Cloud]** For OpenAI models: Get a key from https://platform.openai.com/
    - **[Local]** For vLLM: Install from https://docs.vllm.ai/ (free - no API charges) **Recommended for Local Use**
+   - **[Local]** For Ollama: Install from https://ollama.com/ (not well-suited for agents - use vLLM)
    - For other providers: Check the [LiteLLM documentation](https://docs.litellm.ai/docs/providers)
 
 2. **Set up your API key as environment variable**:
@@ -65,7 +66,7 @@ export HOSTED_VLLM_API_KEY=token-abc123
 patchpal --model hosted_vllm/openai/gpt-oss-20b
 
 # Use Ollama (local, ⚠️ not recommended - use vLLM)
-patchpal --model ollama_chat/qwen3 # qwen3 is loadable but low-performing
+patchpal --model ollama_chat/qwen3:32b # vLLM is better for agents
 
 # Or set the model via environment variable
 export PATCHPAL_MODEL=openai/gpt-5
@@ -362,12 +363,14 @@ Different models require different parsers. Common parsers include: `qwen3_xml`,
 
 #### Ollama
 
-We find that fast and popular Ollama models like `qwen3` and `llama3.1` do not work well in practical agentic settings. We recommend using models like `gpt-oss-20b`.  If you encounter issues with `gpt-oss-20b` on Ollama then use **vLLM** instead.
+We find that models in Ollama models do not work well in agentic settings. For instance, while `gpt-oss-20b` works well in vLLM, it performs poorly in Ollama. vLLM is recommended for local deployments.
 
-**Example: Using Qwen3 served from Ollama**
+**Examples:**
 
 ```bash
-patchpal --model ollama_chat/qwen3
+patchpal --model ollama_chat/qwen3:32b          # local model: performs poorly
+patchpal --model ollama_chat/gpt-oss:20b        # local model: performs poorly
+patchpal --model hosted_vllm/openai/gpt-oss-20b # local model: performs well
 ```
 
 ### Air-Gapped and Offline Environments
@@ -516,17 +519,17 @@ Run Shell
 
 Do you want to proceed?
   1. Yes
-  2. Yes, and don't ask again for 'pytest' in this repository
+  2. Yes, and don't ask again this session for 'pytest'
   3. No
 
 Choice [1-3]:
 ```
 
 - Option 1: Allow this one operation
-- Option 2: Allow and remember (saves permission to `~/.patchpal/<repo-name>/permissions.json`)
+- Option 2: Allow for the rest of this session (like Claude Code - resets when you restart PatchPal)
 - Option 3: Cancel the operation
 
-Permissions are stored per-repository and persist across sessions. You can edit `~/.patchpal/<repo-name>/permissions.json` to manage saved permissions.
+**Advanced:** You can manually edit `~/.patchpal/<repo-name>/permissions.json` to grant persistent permissions across sessions.
 
 **Example permissions.json:**
 
