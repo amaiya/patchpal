@@ -514,6 +514,20 @@ Choice [1-3]:
 
 Permissions are stored per-repository and persist across sessions. You can edit `~/.patchpal/<repo-name>/permissions.json` to manage saved permissions.
 
+**Example permissions.json:**
+
+```json
+{
+  "run_shell": ["pytest", "npm", "git"],
+  "apply_patch": true,
+  "edit_file": ["config.py", "settings.json"]
+}
+```
+
+Format:
+- `"tool_name": true` - Grant all operations for this tool (no more prompts)
+- `"tool_name": ["pattern1", "pattern2"]` - Grant only specific patterns (e.g., specific commands or file names)
+
 <!--**Test coverage:** 131 tests including 38 dedicated security tests and 11 skills tests-->
 
 ## Development
