@@ -63,7 +63,7 @@ export HOSTED_VLLM_API_KEY=token-abc123
 patchpal --model hosted_vllm/openai/gpt-oss-20b
 
 # Use Ollama (local, ⚠️ not recommended - use vLLM)
-patchpal --model ollama/qwen3 # qwen3 is loadable but low-performing
+patchpal --model ollama_chat/qwen3 # qwen3 is loadable but low-performing
 
 # Or set the model via environment variable
 export PATCHPAL_MODEL=openai/gpt-5
@@ -359,7 +359,7 @@ Different models require different parsers. Common parsers include: `qwen3_xml`,
 
 We find that fast and popular Ollama models like `qwen3` and `llama3.1` do not work well in practical agentic settings. We recommend using models like `gpt-oss-20b`.  If you encounter issues with `gpt-oss-20b` on Ollama then use **vLLM** instead.
 
-**Example: Loading Qwen3 in Ollama**
+**Example: Using Qwen3 served from Ollama**
 
 ```bash
 patchpal --model ollama_chat/qwen3
