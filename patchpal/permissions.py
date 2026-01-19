@@ -146,11 +146,9 @@ class PermissionManager:
 
         while True:
             try:
-                # Use regular input() which works cross-platform and shows user input
-                sys.stderr.write("\n\033[1;36mChoice [1-3]:\033[0m ")
-                sys.stderr.flush()
-
-                choice = input().strip()
+                # Use input() with prompt parameter to avoid terminal issues
+                # The prompt parameter ensures the prompt stays visible during editing
+                choice = input("\n\033[1;36mChoice [1-3]:\033[0m ").strip()
 
                 if choice == "1":
                     return True
