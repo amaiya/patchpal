@@ -21,7 +21,7 @@ Install PatchPal from PyPI:
 pip install patchpal
 ```
 
-**Recommended Operating Systems:** Linux, Windows Subsystem for Linux ([WSL](https://learn.microsoft.com/en-us/windows/wsl/install)), and MacOS are the recommended OS environments. Running PatchPal direcly on a Windows 11 OS should also work but is not thoroughly tested.
+**Supported Operating Systems:**  Linux, MacOS, MS Windows.
 
 
 ## Setup
