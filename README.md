@@ -609,33 +609,45 @@ You can test the context management system with small values to trigger compacti
 ```bash
 # Set up small context window for testing
 export PATCHPAL_CONTEXT_LIMIT=10000      # Force 10k token limit (instead of 200k for Claude)
-export PATCHPAL_COMPACT_THRESHOLD=0.10   # Trigger at 10% (instead of 85%)
-export PATCHPAL_PRUNE_PROTECT=1000       # Keep only last 1k tokens
-export PATCHPAL_PRUNE_MINIMUM=500        # Prune if we can save 500+ tokens
+export PATCHPAL_COMPACT_THRESHOLD=0.75   # Trigger at 75% (instead of 85%)
+                                         # Note: System prompt + output reserve = ~6.4k tokens baseline
+                                         # So 75% of 10k = 7.5k, leaving ~1k for conversation
+export PATCHPAL_PRUNE_PROTECT=500        # Keep only last 500 tokens of tool outputs
+export PATCHPAL_PRUNE_MINIMUM=100        # Prune if we can save 100+ tokens
 
 # Start PatchPal and watch it compact quickly
 patchpal
 
-# Generate context with tool calls
+# Generate context with tool calls (tool outputs consume tokens)
 You: list all python files
-You: read the main file
-You: search for "context" in all files
+You: read patchpal/agent.py
+You: read patchpal/tools.py
 
 # Check status - should show compaction happening
 You: /status
+
+# Continue - should see pruning messages
+You: search for "context" in all files
+# You should see:
+# ⚠️  Context window at 85% capacity. Compacting...
+#    Pruned old tool outputs (saved ~400 tokens)
+# ✓ Compaction complete. Saved 850 tokens (85% → 68%)
 ```
 
 **How It Works:**
 
 1. **Phase 1 - Pruning**: When context fills up, old tool outputs are pruned first
-   - Keeps last 40k tokens of tool outputs protected
+   - Keeps last 40k tokens of tool outputs protected (only tool outputs, not conversation)
    - Only prunes if it saves >20k tokens
    - Pruning is transparent and fast
+   - Requires at least 5 messages in history
 
 2. **Phase 2 - Compaction**: If pruning isn't enough, full compaction occurs
+   - Requires at least 5 messages to be effective
    - LLM summarizes the entire conversation
-   - Summary replaces old messages
+   - Summary replaces old messages, keeping last 2 complete conversation turns
    - Work continues seamlessly from the summary
+   - Preserves complete tool call/result pairs (important for Bedrock compatibility)
 
 **Example:**
 ```
