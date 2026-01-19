@@ -127,13 +127,13 @@ def test_main_handles_exit_command(monkeypatch, capsys):
 
 
 def test_main_handles_keyboard_interrupt(monkeypatch, capsys):
-    """Test that main() handles KeyboardInterrupt during input gracefully."""
+    """Test that main() handles KeyboardInterrupt during input by showing message and continuing."""
     monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
     monkeypatch.setattr(sys, "argv", ["patchpal"])
 
     with (
         patch("patchpal.cli.create_agent") as mock_create,
-        patch("patchpal.cli.pt_prompt", side_effect=KeyboardInterrupt),
+        patch("patchpal.cli.pt_prompt", side_effect=[KeyboardInterrupt, "exit"]),
     ):
         mock_agent = MagicMock()
         mock_create.return_value = mock_agent
@@ -143,6 +143,10 @@ def test_main_handles_keyboard_interrupt(monkeypatch, capsys):
         main()
 
         captured = capsys.readouterr()
+        # Should show message about using 'exit' instead of exiting immediately
+        assert "Use 'exit' to quit" in captured.out
+        assert "Ctrl-C is reserved for interrupting the agent" in captured.out
+        # Eventually exits with "exit" command
         assert "Goodbye" in captured.out
 
 
