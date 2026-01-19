@@ -241,16 +241,27 @@ Supported models: Any LiteLLM-supported model
                 print("\033[1;36mContext Window Status\033[0m")
                 print("=" * 70)
                 print(f"  Model: {model_id}")
+
+                # Show context limit info
+                override = os.getenv("PATCHPAL_CONTEXT_LIMIT")
+                if override:
+                    print(
+                        f"  \033[1;33m⚠️  Context limit overridden: {stats['context_limit']:,} tokens (PATCHPAL_CONTEXT_LIMIT={override})\033[0m"
+                    )
+                else:
+                    print(f"  Context limit: {stats['context_limit']:,} tokens (model default)")
+
                 print(f"  Messages in history: {len(agent.messages)}")
                 print(f"  System prompt: {stats['system_tokens']:,} tokens")
                 print(f"  Conversation: {stats['message_tokens']:,} tokens")
                 print(f"  Output reserve: {stats['output_reserve']:,} tokens")
-                print(f"  Total: {stats['total_tokens']:,} / {stats['context_limit']:,} tokens")
+                print(f"  Total: {stats['total_tokens']:,} tokens")
                 print(f"  Usage: {stats['usage_percent']}%")
 
-                # Visual progress bar
+                # Visual progress bar (cap at 100% for display)
                 bar_width = 50
-                filled = int(bar_width * stats["usage_ratio"])
+                display_ratio = min(stats["usage_ratio"], 1.0)  # Cap at 100% for visual
+                filled = int(bar_width * display_ratio)
                 empty = bar_width - filled
                 bar = "█" * filled + "░" * empty
 
@@ -263,6 +274,29 @@ Supported models: Any LiteLLM-supported model
                     color = "\033[31m"  # Red
 
                 print(f"  {color}[{bar}]\033[0m")
+
+                # Show warning if over capacity
+                if stats["usage_ratio"] > 1.0:
+                    print(
+                        f"\n  \033[1;31m⚠️  Context is {stats['usage_percent']}% over capacity!\033[0m"
+                    )
+                    if not agent.enable_auto_compact:
+                        print(
+                            "  \033[1;33m   Enable auto-compaction or start a new session.\033[0m"
+                        )
+                    else:
+                        print(
+                            "  \033[1;33m   Compaction may have failed. Consider starting a new session.\033[0m"
+                        )
+
+                    # Also check if context limit is artificially low
+                    if override and int(override) < 50000:
+                        print(
+                            f"  \033[1;33m   Note: Context limit is overridden to a very low value ({override})\033[0m"
+                        )
+                        print(
+                            "  \033[1;33m   Run 'unset PATCHPAL_CONTEXT_LIMIT' to use model's actual capacity.\033[0m"
+                        )
 
                 # Show auto-compaction status
                 if agent.enable_auto_compact:
