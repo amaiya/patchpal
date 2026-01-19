@@ -107,6 +107,158 @@ class TestContextManager:
             if original_limit is not None:
                 os.environ["PATCHPAL_CONTEXT_LIMIT"] = original_limit
 
+    def test_model_matching_litellm_format(self):
+        """Test that model matching works correctly with LiteLLM format (provider/model)."""
+        import os
+
+        # Save original env var
+        original_limit = os.environ.get("PATCHPAL_CONTEXT_LIMIT")
+
+        try:
+            # Clear any test override
+            if "PATCHPAL_CONTEXT_LIMIT" in os.environ:
+                del os.environ["PATCHPAL_CONTEXT_LIMIT"]
+
+            # Test cases: (model_id, expected_context_limit)
+            test_cases = [
+                # Anthropic Claude models
+                ("anthropic/claude-opus-4", 200_000),
+                ("anthropic/claude-sonnet-4-5", 200_000),
+                ("anthropic/claude-haiku-4", 200_000),
+                ("anthropic/claude-3-5-sonnet", 200_000),
+                ("anthropic/claude-3-7-sonnet", 200_000),
+                # OpenAI GPT models - test version matching
+                ("openai/gpt-5", 400_000),
+                ("openai/gpt-5.1", 128_000),  # Should match gpt-5.1, not gpt-5
+                ("openai/gpt-5.2", 400_000),
+                ("openai/gpt-5-mini", 400_000),
+                ("openai/gpt-4o", 128_000),
+                ("openai/gpt-4-turbo", 128_000),
+                ("openai/gpt-4.1", 128_000),
+                ("openai/gpt-4", 8_000),
+                ("openai/gpt-3.5-turbo", 16_385),
+                ("openai/o3-mini", 128_000),
+                # Google Gemini models
+                ("gemini/gemini-3-pro", 1_000_000),
+                ("gemini/gemini-2.5-pro", 1_048_576),
+                ("gemini/gemini-1.5-flash", 1_000_000),
+                ("gemini/gemini-pro", 32_000),
+                # xAI Grok models
+                ("xai/grok-4", 256_000),
+                ("xai/grok-4-fast", 2_000_000),
+                ("xai/grok-3-mini", 131_072),
+                ("xai/grok-2", 131_072),
+                # DeepSeek models
+                ("deepseek/deepseek-v3.1", 128_000),
+                ("deepseek/deepseek-r1", 128_000),
+                ("deepseek/deepseek-chat", 128_000),
+                ("deepseek/deepseek-coder", 128_000),
+                # Qwen models
+                ("qwen/qwen-turbo", 1_000_000),
+                ("qwen/qwen-plus", 1_000_000),
+                ("qwen/qwen3-coder", 262_144),
+                ("qwen/qwq-32b", 131_072),
+                # Meta Llama models
+                ("meta/llama-4", 131_072),
+                ("meta/llama-3.3-70b", 128_000),
+                ("meta/llama-3.1-405b", 128_000),
+                ("meta/llama-3", 8_192),
+                # Mistral models
+                ("mistral/mistral-large", 128_000),
+                ("mistral/codestral", 128_000),
+                ("mistral/ministral", 262_144),
+                # Cohere Command models
+                ("cohere/command-r-plus", 128_000),
+                ("cohere/command-a", 256_000),
+                # Other models
+                ("openai/gpt-oss-120b", 128_000),
+                ("minimax/minimax-m2", 128_000),
+                ("kimi/kimi-k2", 262_144),
+                # Bedrock format (provider stripped in agent)
+                ("bedrock/anthropic.claude-sonnet-4-5", 200_000),
+                # Hosted vLLM format
+                ("hosted_vllm/openai/gpt-oss-20b", 128_000),
+            ]
+
+            for model_id, expected_limit in test_cases:
+                manager = ContextManager(model_id, "test")
+                assert manager.context_limit == expected_limit, (
+                    f"Model {model_id}: expected {expected_limit:,}, got {manager.context_limit:,}"
+                )
+
+        finally:
+            # Restore original env var
+            if original_limit is not None:
+                os.environ["PATCHPAL_CONTEXT_LIMIT"] = original_limit
+
+    def test_model_matching_longest_first(self):
+        """Test that longer model names are matched before shorter ones."""
+        import os
+
+        original_limit = os.environ.get("PATCHPAL_CONTEXT_LIMIT")
+
+        try:
+            if "PATCHPAL_CONTEXT_LIMIT" in os.environ:
+                del os.environ["PATCHPAL_CONTEXT_LIMIT"]
+
+            # Test that gpt-5.1 matches correctly (not gpt-5)
+            manager = ContextManager("openai/gpt-5.1", "test")
+            assert manager.context_limit == 128_000, "gpt-5.1 should be 128K, not 400K (gpt-5)"
+
+            # Test that gpt-5.2 matches correctly
+            manager = ContextManager("openai/gpt-5.2", "test")
+            assert manager.context_limit == 400_000, "gpt-5.2 should be 400K"
+
+            # Test that gpt-5 still works
+            manager = ContextManager("openai/gpt-5", "test")
+            assert manager.context_limit == 400_000, "gpt-5 should be 400K"
+
+            # Test that gpt-4-turbo matches correctly (not gpt-4)
+            manager = ContextManager("openai/gpt-4-turbo", "test")
+            assert manager.context_limit == 128_000, "gpt-4-turbo should be 128K, not 8K (gpt-4)"
+
+            # Test that claude-3-5-sonnet matches correctly
+            manager = ContextManager("anthropic/claude-3-5-sonnet", "test")
+            assert manager.context_limit == 200_000, "claude-3-5-sonnet should be 200K"
+
+        finally:
+            if original_limit is not None:
+                os.environ["PATCHPAL_CONTEXT_LIMIT"] = original_limit
+
+    def test_model_family_fallback(self):
+        """Test fallback to model family when specific model not in dict."""
+        import os
+
+        original_limit = os.environ.get("PATCHPAL_CONTEXT_LIMIT")
+
+        try:
+            if "PATCHPAL_CONTEXT_LIMIT" in os.environ:
+                del os.environ["PATCHPAL_CONTEXT_LIMIT"]
+
+            # Test unknown Claude version falls back to 200K
+            manager = ContextManager("anthropic/claude-opus-99", "test")
+            assert manager.context_limit == 200_000
+
+            # Test unknown GPT-5 version falls back to 400K
+            manager = ContextManager("openai/gpt-5.99", "test")
+            assert manager.context_limit == 400_000
+
+            # Test unknown Gemini 2 version falls back to 1M
+            manager = ContextManager("gemini/gemini-2.9-ultra", "test")
+            assert manager.context_limit == 1_000_000
+
+            # Test unknown DeepSeek version falls back to 128K
+            manager = ContextManager("deepseek/deepseek-v99", "test")
+            assert manager.context_limit == 128_000
+
+            # Test completely unknown model falls back to 128K default
+            manager = ContextManager("unknown-provider/unknown-model", "test")
+            assert manager.context_limit == 128_000
+
+        finally:
+            if original_limit is not None:
+                os.environ["PATCHPAL_CONTEXT_LIMIT"] = original_limit
+
     def test_get_usage_stats(self):
         """Test getting usage statistics."""
         manager = ContextManager("gpt-4", "System prompt")

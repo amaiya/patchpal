@@ -123,20 +123,90 @@ class ContextManager:
     )  # Compact at 85% capacity
 
     # Model context limits (tokens)
-    # Conservative estimates to account for model-specific formatting
+    # From OpenCode's models.dev data - see https://models.dev/api.json
     MODEL_LIMITS = {
+        # Anthropic Claude models
+        "claude-opus-4": 200_000,
+        "claude-sonnet-4": 200_000,
+        "claude-haiku-4": 200_000,
         "claude-3-5-sonnet": 200_000,
         "claude-3-5-haiku": 200_000,
+        "claude-3-7-sonnet": 200_000,
         "claude-sonnet": 200_000,
         "claude-opus": 200_000,
         "claude-haiku": 200_000,
-        "gpt-4-turbo": 128_000,
+        # OpenAI GPT models
+        "gpt-5": 400_000,
+        "gpt-5.1": 128_000,
+        "gpt-5.2": 400_000,
+        "gpt-5-mini": 400_000,
+        "gpt-5-nano": 400_000,
         "gpt-4o": 128_000,
-        "gpt-4": 8_000,  # Original GPT-4
+        "gpt-4-turbo": 128_000,
+        "gpt-4.1": 128_000,
+        "gpt-4": 8_000,
         "gpt-3.5-turbo": 16_385,
-        "gemini-pro": 32_000,
+        "o3": 128_000,
+        "o3-mini": 128_000,
+        "o4-mini": 128_000,
+        # Google Gemini models
+        "gemini-3-pro": 1_000_000,
+        "gemini-3-flash": 1_048_576,
+        "gemini-2.5-pro": 1_048_576,
+        "gemini-2.5-flash": 1_048_576,
+        "gemini-2.0-flash": 1_000_000,
         "gemini-1.5-pro": 1_000_000,
         "gemini-1.5-flash": 1_000_000,
+        "gemini-pro": 32_000,
+        # xAI Grok models
+        "grok-4": 256_000,
+        "grok-4-fast": 2_000_000,
+        "grok-3": 131_072,
+        "grok-3-fast": 131_072,
+        "grok-3-mini": 131_072,
+        "grok-2": 131_072,
+        "grok-code-fast": 256_000,
+        # DeepSeek models
+        "deepseek-v3": 128_000,
+        "deepseek-v3.1": 128_000,
+        "deepseek-r1": 128_000,
+        "deepseek-chat": 128_000,
+        "deepseek-coder": 128_000,
+        "deepseek-reasoner": 128_000,
+        # Qwen models
+        "qwen-turbo": 1_000_000,
+        "qwen-plus": 1_000_000,
+        "qwen-max": 32_768,
+        "qwen-flash": 1_000_000,
+        "qwen3": 131_072,
+        "qwen3-coder": 262_144,
+        "qwen2.5": 131_072,
+        "qwq": 131_072,
+        "qvq": 131_072,
+        # Meta Llama models
+        "llama-4": 131_072,
+        "llama-3.3": 128_000,
+        "llama-3.2": 128_000,
+        "llama-3.1": 128_000,
+        "llama-3": 8_192,
+        "llama-guard": 8_192,
+        # Mistral models
+        "mistral-large": 128_000,
+        "mistral-small": 128_000,
+        "codestral": 128_000,
+        "ministral": 262_144,
+        "devstral": 262_144,
+        # Cohere models
+        "command-r": 128_000,
+        "command-r-plus": 128_000,
+        "command-r7b": 128_000,
+        "command-a": 256_000,
+        # OpenAI open-source models
+        "gpt-oss": 128_000,
+        # MiniMax models
+        "minimax": 128_000,
+        # Kimi models
+        "kimi": 262_144,
     }
 
     # Compaction prompt
@@ -185,20 +255,41 @@ Be comprehensive but concise. The goal is to continue work seamlessly without lo
 
         model_lower = self.model_id.lower()
 
-        # Try exact matches first
-        for key, limit in self.MODEL_LIMITS.items():
+        # Try exact matches first (longest first to match more specific models)
+        # Sort keys by length descending to match "gpt-5.1" before "gpt-5"
+        for key in sorted(self.MODEL_LIMITS.keys(), key=len, reverse=True):
             if key in model_lower:
-                return limit
+                return self.MODEL_LIMITS[key]
 
-        # Check for model families
+        # Check for model families (fallback for versions not explicitly listed)
         if "claude" in model_lower:
             return 200_000  # Modern Claude models
+        elif "gpt-5" in model_lower:
+            return 400_000  # GPT-5 family
         elif "gpt-4" in model_lower:
-            return 128_000  # Modern GPT-4 models
-        elif "gpt-3.5" in model_lower:
+            return 128_000  # GPT-4 family
+        elif "gpt-3.5" in model_lower or "gpt-3" in model_lower:
             return 16_385
+        elif "gemini-3" in model_lower or "gemini-2" in model_lower or "gemini-1.5" in model_lower:
+            return 1_000_000  # Modern Gemini models
         elif "gemini" in model_lower:
-            return 32_000  # Conservative default for Gemini
+            return 32_000  # Older Gemini models
+        elif "grok" in model_lower:
+            return 131_072  # Grok models
+        elif "deepseek" in model_lower:
+            return 128_000  # DeepSeek models
+        elif "qwen" in model_lower or "qwq" in model_lower or "qvq" in model_lower:
+            return 131_072  # Qwen models
+        elif "llama" in model_lower:
+            return 128_000  # Llama models
+        elif "mistral" in model_lower or "codestral" in model_lower or "ministral" in model_lower:
+            return 128_000  # Mistral models
+        elif "command" in model_lower:
+            return 128_000  # Cohere Command models
+        elif "kimi" in model_lower:
+            return 262_144  # Kimi models
+        elif "minimax" in model_lower:
+            return 128_000  # MiniMax models
 
         # Default conservative limit for unknown models
         return 128_000
