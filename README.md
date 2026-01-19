@@ -10,7 +10,7 @@ A key goal of this project is to approximate Claude Code's core functionality wh
 
 ```bash
 $ls ./patchpal
-__init__.py agent.py  cli.py  permissions.py  skills.py system_prompt.md tools.py
+__init__.py agent.py  cli.py context.py permissions.py  skills.py system_prompt.md tools.py
 ```
 
 ## Installation
