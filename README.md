@@ -552,18 +552,6 @@ Format:
 <!--**Test coverage:** 131 tests including 38 dedicated security tests and 11 skills tests-->
 
 
-## Troubleshooting
-
-**Error: "maximum iterations reached"**
-- The default number of iterations is 100.
-- You can increase by setting the environment variable, `export PATCHPAL_MAX_ITERATIONS`
-
-**Error: "Context Window Error - Input is too long"**
-- PatchPal includes automatic context management (compaction) to prevent this error.
-- Use `/status` to check your context window usage.
-- If auto-compaction is disabled, re-enable it: `unset PATCHPAL_DISABLE_AUTOCOMPACT`
-- Context is automatically managed at 85% capacity through pruning and compaction.
-
 ## Context Management
 
 PatchPal automatically manages the context window to prevent "input too long" errors during long coding sessions.
@@ -667,3 +655,15 @@ Context Window Status
 ```
 
 The system ensures you can work for extended periods without hitting context limits.
+
+## Troubleshooting
+
+**Error: "maximum iterations reached"**
+- The default number of iterations is 100.
+- You can increase by setting the environment variable, `export PATCHPAL_MAX_ITERATIONS`
+
+**Error: "Context Window Error - Input is too long"**
+- PatchPal includes automatic context management (compaction) to prevent this error.
+- Use `/status` to check your context window usage.
+- If auto-compaction is disabled, re-enable it: `unset PATCHPAL_DISABLE_AUTOCOMPACT`
+- Context is automatically managed at 85% capacity through pruning and compaction.
