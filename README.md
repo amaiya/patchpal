@@ -1,7 +1,7 @@
 # PatchPal — A Claude Code–Style Agent in Python
 
 <!--![PatchPal Screenshot](patchpal_screenshot.png)-->
-<img src="patchpal_screenshot.png" alt="PatchPal Screenshot" width="650"/>
+<img src="https://raw.githubusercontent.com/amaiya/patchpal/refs/heads/main/patchpal_screenshot.png" alt="PatchPal Screenshot" width="650"/>
 
 > A lightweight Claude Code–inspired coding and automation assistant -- supports both local and cloud LLMs.
 
