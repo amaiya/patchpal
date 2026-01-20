@@ -242,7 +242,7 @@ PatchPal works with any model supported by LiteLLM, including:
 
 - **Anthropic** (Recommended): `anthropic/claude-sonnet-4-5`, `anthropic/claude-opus-4-5`, `anthropic/claude-3-7-sonnet-latest`
 - **OpenAI**: `openai/gpt-5`, `openai/gpt-4o`
-- **AWS Bedrock**: `bedrock/anthropic.claude-sonnet-4-5-v1:0`, or full ARNs for GovCloud/VPC endpoints
+- **AWS Bedrock**: `bedrock/anthropic.claude-sonnet-4-5-v1:0`
 - **vLLM (Local)** (Recommended for local): See vLLM section below for setup
 - **Ollama (Local)**:  See Ollama section below for setup
 - **Google**: `gemini/gemini-pro`, `vertex_ai/gemini-pro`
@@ -251,41 +251,41 @@ PatchPal works with any model supported by LiteLLM, including:
 
 See the [LiteLLM providers documentation](https://docs.litellm.ai/docs/providers) for the complete list.
 
-### Using AWS Bedrock (Including GovCloud and VPC Endpoints)
+<!--### Using AWS Bedrock (Including GovCloud and VPC Endpoints)-->
 
-PatchPal supports AWS Bedrock with custom regions and VPC endpoints for secure enterprise deployments.
+<!--PatchPal supports AWS Bedrock with custom regions and VPC endpoints for secure enterprise deployments.-->
 
-**Basic AWS Bedrock Setup:**
-```bash
-# Set AWS credentials
-export AWS_ACCESS_KEY_ID=your_access_key
-export AWS_SECRET_ACCESS_KEY=your_secret_key
+<!--**Basic AWS Bedrock Setup:**-->
+<!--```bash-->
+<!--# Set AWS credentials-->
+<!--export AWS_ACCESS_KEY_ID=your_access_key-->
+<!--export AWS_SECRET_ACCESS_KEY=your_secret_key-->
 
-# Use Bedrock model
-patchpal --model bedrock/anthropic.claude-sonnet-4-5-20250929-v1:0
-```
+<!--# Use Bedrock model-->
+<!--patchpal --model bedrock/anthropic.claude-sonnet-4-5-20250929-v1:0-->
+<!--```-->
 
-**AWS GovCloud or VPC Endpoint Setup:**
-```bash
-# Set AWS credentials
-export AWS_ACCESS_KEY_ID=your_access_key
-export AWS_SECRET_ACCESS_KEY=your_secret_key
+<!--**AWS GovCloud or VPC Endpoint Setup:**-->
+<!--```bash-->
+<!--# Set AWS credentials-->
+<!--export AWS_ACCESS_KEY_ID=your_access_key-->
+<!--export AWS_SECRET_ACCESS_KEY=your_secret_key-->
 
-# Set custom region (e.g., GovCloud)
-export AWS_BEDROCK_REGION=us-gov-east-1
+<!--# Set custom region (e.g., GovCloud)-->
+<!--export AWS_BEDROCK_REGION=us-gov-east-1-->
 
-# Set VPC endpoint URL (optional, for VPC endpoints)
-export AWS_BEDROCK_ENDPOINT=https://vpce-xxxxx.bedrock-runtime.us-gov-east-1.vpce.amazonaws.com
+<!--# Set VPC endpoint URL (optional, for VPC endpoints)-->
+<!--export AWS_BEDROCK_ENDPOINT=https://vpce-xxxxx.bedrock-runtime.us-gov-east-1.vpce.amazonaws.com-->
 
-# Use Bedrock with full ARN (bedrock/ prefix is optional - auto-detected)
-patchpal --model "arn:aws-us-gov:bedrock:us-gov-east-1:012345678901:inference-profile/us-gov.anthropic.claude-sonnet-4-5-20250929-v1:0"
-```
+<!--# Use Bedrock with full ARN (bedrock/ prefix is optional - auto-detected)-->
+<!--patchpal --model "arn:aws-us-gov:bedrock:us-gov-east-1:012345678901:inference-profile/us-gov.anthropic.claude-sonnet-4-5-20250929-v1:0"-->
+<!--```-->
 
-**Environment Variables for Bedrock:**
-- `AWS_ACCESS_KEY_ID`: AWS access key ID (required)
-- `AWS_SECRET_ACCESS_KEY`: AWS secret access key (required)
-- `AWS_BEDROCK_REGION`: Custom AWS region (e.g., `us-gov-east-1` for GovCloud)
-- `AWS_BEDROCK_ENDPOINT`: Custom endpoint URL for VPC endpoints or GovCloud
+<!--**Environment Variables for Bedrock:**-->
+<!--- `AWS_ACCESS_KEY_ID`: AWS access key ID (required)-->
+<!--- `AWS_SECRET_ACCESS_KEY`: AWS secret access key (required)-->
+<!--- `AWS_BEDROCK_REGION`: Custom AWS region (e.g., `us-gov-east-1` for GovCloud)-->
+<!--- `AWS_BEDROCK_ENDPOINT`: Custom endpoint URL for VPC endpoints or GovCloud-->
 
 ### Using Local Models (vLLM & Ollama)
 
