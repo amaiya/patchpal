@@ -1,0 +1,19 @@
+# Changes
+
+Most recent releases are shown at the top. Each release shows:
+
+- **New**: New classes, methods, functions, etc
+- **Changed**: Additional parameters, changes to inputs or outputs, etc
+- **Fixed**: Bug fixes that don't change documented behaviour
+
+
+## 0.1.0 (2026-01-20)
+
+### new:
+- first release
+
+### changed
+- N/A
+
+### fixed:
+- N/A
