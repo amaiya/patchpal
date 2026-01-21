@@ -7,6 +7,18 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
+## 0.1.5 (2026-01-21)
+
+### new:
+- N/A
+
+### changed
+- N/A
+
+### fixed:
+- Ensure `web_search` and `web_fetch` tools require permission by defaultt
+
+
 ## 0.1.4 (2026-01-21)
 
 ### new:

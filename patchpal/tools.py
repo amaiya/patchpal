@@ -1345,6 +1345,12 @@ def web_fetch(url: str, extract_text: bool = True) -> str:
     Raises:
         ValueError: If request fails or content is too large
     """
+    # Check permission before proceeding
+    permission_manager = _get_permission_manager()
+    description = f"   Fetch: {url}"
+    if not permission_manager.request_permission("web_fetch", description):
+        return "Operation cancelled by user."
+
     _operation_limiter.check_limit(f"web_fetch({url[:50]}...)")
 
     # Validate URL format
@@ -1433,6 +1439,12 @@ def web_search(query: str, max_results: int = 5) -> str:
     Raises:
         ValueError: If search fails
     """
+    # Check permission before proceeding
+    permission_manager = _get_permission_manager()
+    description = f"   Search: {query}"
+    if not permission_manager.request_permission("web_search", description):
+        return "Operation cancelled by user."
+
     _operation_limiter.check_limit(f"web_search({query[:30]}...)")
 
     # Limit max_results

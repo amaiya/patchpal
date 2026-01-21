@@ -113,15 +113,17 @@ The agent has the following tools:
 - **git_log**: Show commit history
   - Optional parameters: `max_count` (number of commits, max 50), `path` (specific file history)
 
-### Web Capabilities
+### Web Capabilities (Requires Permission)
 - **web_search**: Search the web using DuckDuckGo (no API key required!)
   - Look up error messages and solutions
   - Find current documentation and best practices
   - Research library versions and compatibility
+  - Requires permission to prevent information leakage about your codebase
 - **web_fetch**: Fetch and read content from URLs
   - Read documentation pages
   - Access API references
   - Extract readable text from HTML pages
+  - Requires permission to prevent information leakage about your codebase
 
 ### Skills System
 

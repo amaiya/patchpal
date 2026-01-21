@@ -304,7 +304,7 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "web_search",
-            "description": "Search the web for information. Useful for looking up error messages, documentation, best practices, or current information.",
+            "description": "Search the web for information. Requires permission to prevent information leakage about your codebase.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -322,7 +322,7 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "web_fetch",
-            "description": "Fetch and read content from a URL. Useful for reading documentation, error references, or code examples.",
+            "description": "Fetch and read content from a URL. Requires permission to prevent information leakage about your codebase.",
             "parameters": {
                 "type": "object",
                 "properties": {
