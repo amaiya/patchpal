@@ -100,6 +100,31 @@ WEB_USER_AGENT = f"PatchPal/{__version__} (AI Code Assistant)"
 # Shell command configuration
 SHELL_TIMEOUT = int(os.getenv("PATCHPAL_SHELL_TIMEOUT", 30))  # 30 seconds default
 
+# Global flag for requiring permission on ALL operations (including reads)
+# Set via CLI flag --require-permission-for-all
+_REQUIRE_PERMISSION_FOR_ALL = False
+
+
+def set_require_permission_for_all(enabled: bool):
+    """Set the global flag for requiring permission on all operations.
+
+    This is called by the CLI when --require-permission-for-all is used.
+
+    Args:
+        enabled: If True, require permission for all operations including reads
+    """
+    global _REQUIRE_PERMISSION_FOR_ALL
+    _REQUIRE_PERMISSION_FOR_ALL = enabled
+
+
+def get_require_permission_for_all() -> bool:
+    """Check if permission is required for all operations.
+
+    Returns:
+        True if --require-permission-for-all mode is active
+    """
+    return _REQUIRE_PERMISSION_FOR_ALL
+
 
 # Create patchpal directory structure in home directory
 # Format: ~/.patchpal/<repo-name>/
@@ -395,6 +420,58 @@ def _is_inside_repo(path: Path) -> bool:
     return str(path).startswith(str(REPO_ROOT))
 
 
+def require_permission_for_read(tool_name: str, get_description, get_pattern=None):
+    """Decorator to optionally require permission for read operations.
+
+    This decorator only prompts if --require-permission-for-all mode is active.
+
+    Args:
+        tool_name: Name of the tool (e.g., 'read_file')
+        get_description: Function that takes tool args and returns a description string
+        get_pattern: Optional function that takes tool args and returns a pattern string for session grants
+
+    Example:
+        @require_permission_for_read('read_file',
+                                     get_description=lambda path: f"   Read: {path}",
+                                     get_pattern=lambda path: path)
+        def read_file(path: str):
+            ...
+    """
+    from functools import wraps
+
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            # Only check permission if --require-permission-for-all is active
+            if not _REQUIRE_PERMISSION_FOR_ALL:
+                return func(*args, **kwargs)
+
+            # Get the permission manager
+            try:
+                permission_manager = _get_permission_manager()
+
+                # Get description and pattern
+                description = get_description(*args, **kwargs)
+                pattern = get_pattern(*args, **kwargs) if get_pattern else None
+
+                # Request permission with pattern for granular session grants
+                if not permission_manager.request_permission(
+                    tool_name, description, pattern=pattern
+                ):
+                    return "Operation cancelled by user."
+
+            except Exception as e:
+                # If permission check fails, print warning but continue
+                print(f"Warning: Permission check failed: {e}")
+
+            # Execute the tool
+            return func(*args, **kwargs)
+
+        return wrapper
+
+    return decorator
+
+
 def _check_path(path: str, must_exist: bool = True) -> Path:
     """
     Validate and resolve a path.
@@ -434,6 +511,9 @@ def _check_path(path: str, must_exist: bool = True) -> Path:
     return p
 
 
+@require_permission_for_read(
+    "read_file", get_description=lambda path: f"   Read: {path}", get_pattern=lambda path: path
+)
 def read_file(path: str) -> str:
     """
     Read the contents of a file.
@@ -470,6 +550,9 @@ def read_file(path: str) -> str:
     return content
 
 
+@require_permission_for_read(
+    "list_files", get_description=lambda: "   List all files in repository"
+)
 def list_files() -> list[str]:
     """
     List all files in the repository.
@@ -498,6 +581,11 @@ def list_files() -> list[str]:
     return files
 
 
+@require_permission_for_read(
+    "get_file_info",
+    get_description=lambda path: f"   Get info: {path}",
+    get_pattern=lambda path: path,
+)
 def get_file_info(path: str) -> str:
     """
     Get metadata for file(s) at the specified path.
@@ -613,6 +701,11 @@ def get_file_info(path: str) -> str:
     return output
 
 
+@require_permission_for_read(
+    "find_files",
+    get_description=lambda pattern, case_sensitive=True: f"   Find files: {pattern}",
+    get_pattern=lambda pattern, case_sensitive=True: pattern,
+)
 def find_files(pattern: str, case_sensitive: bool = True) -> str:
     """
     Find files by name pattern (glob-style wildcards).
@@ -677,6 +770,11 @@ def find_files(pattern: str, case_sensitive: bool = True) -> str:
         raise ValueError(f"Error finding files: {e}")
 
 
+@require_permission_for_read(
+    "tree",
+    get_description=lambda path=".", max_depth=3, show_hidden=False: f"   Show tree: {path}",
+    get_pattern=lambda path=".", max_depth=3, show_hidden=False: path,
+)
 def tree(path: str = ".", max_depth: int = 3, show_hidden: bool = False) -> str:
     """
     Show directory tree structure.
@@ -1030,6 +1128,7 @@ def edit_file(path: str, old_string: str, new_string: str) -> str:
     return f"Successfully edited {path}{backup_msg}\n\nChange:\n{diff_str}"
 
 
+@require_permission_for_read("git_status", get_description=lambda: "   Git status")
 def git_status() -> str:
     """
     Get the status of the git repository.
@@ -1081,6 +1180,11 @@ def git_status() -> str:
         raise ValueError(f"Git status error: {e}")
 
 
+@require_permission_for_read(
+    "git_diff",
+    get_description=lambda path=None, staged=False: f"   Git diff{': ' + path if path else ''}",
+    get_pattern=lambda path=None, staged=False: path if path else None,
+)
 def git_diff(path: Optional[str] = None, staged: bool = False) -> str:
     """
     Get the git diff for the repository or a specific file.
@@ -1146,6 +1250,12 @@ def git_diff(path: Optional[str] = None, staged: bool = False) -> str:
         raise ValueError(f"Git diff error: {e}")
 
 
+@require_permission_for_read(
+    "git_log",
+    get_description=lambda max_count=10,
+    path=None: f"   Git log ({max_count} commits{': ' + path if path else ''})",
+    get_pattern=lambda max_count=10, path=None: path if path else None,
+)
 def git_log(max_count: int = 10, path: Optional[str] = None) -> str:
     """
     Get the git commit history.
@@ -1217,6 +1327,14 @@ def git_log(max_count: int = 10, path: Optional[str] = None) -> str:
         raise ValueError(f"Git log error: {e}")
 
 
+@require_permission_for_read(
+    "grep_code",
+    get_description=lambda pattern,
+    file_glob=None,
+    case_sensitive=True,
+    max_results=100: f"   Search code: {pattern}",
+    get_pattern=lambda pattern, file_glob=None, case_sensitive=True, max_results=100: pattern,
+)
 def grep_code(
     pattern: str,
     file_glob: Optional[str] = None,

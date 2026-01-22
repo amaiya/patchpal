@@ -194,7 +194,19 @@ Supported models: Any LiteLLM-supported model
         help="LiteLLM model identifier (e.g., openai/gpt-4o, anthropic/claude-opus-4, ollama_chat/llama3.1). "
         "Can also be set via PATCHPAL_MODEL environment variable.",
     )
+    parser.add_argument(
+        "--require-permission-for-all",
+        action="store_true",
+        help="Require permission for ALL operations including read operations (read_file, list_files, etc.). "
+        "Use this for maximum security when you want to review every operation the agent performs.",
+    )
     args = parser.parse_args()
+
+    # Set the require-permission-for-all flag if specified
+    if args.require_permission_for_all:
+        from patchpal.tools import set_require_permission_for_all
+
+        set_require_permission_for_all(True)
 
     # Determine model to use (priority: CLI arg > env var > default)
     model_id = args.model or os.getenv("PATCHPAL_MODEL") or "anthropic/claude-sonnet-4-5"
@@ -225,6 +237,10 @@ Supported models: Any LiteLLM-supported model
     print("PatchPal - Claude Code–inspired coding and automation assistant")
     print("=" * 80)
     print(f"\nUsing model: {model_id}")
+
+    # Show require-permission-for-all indicator if active
+    if args.require_permission_for_all:
+        print("\033[1;33m🔒 Permission required for ALL operations (including reads)\033[0m")
 
     # Show custom prompt indicator if set
     custom_prompt_path = os.getenv("PATCHPAL_SYSTEM_PROMPT")

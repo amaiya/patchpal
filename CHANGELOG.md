@@ -13,6 +13,18 @@ Most recent releases are shown at the top. Each release shows:
 - N/A
 
 ### changed
+- Added `--require-permission-for-all` (#20)
+
+### fixed:
+- N/A
+
+
+## 0.1.5 (2026-01-21)
+
+### new:
+- N/A
+
+### changed
 - N/A
 
 ### fixed:
