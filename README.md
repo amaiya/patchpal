@@ -27,6 +27,7 @@ A key goal of this project is to approximate Claude Code's core functionality wh
   - [Air-Gapped and Offline Environments](https://github.com/amaiya/patchpal?tab=readme-ov-file#air-gapped-and-offline-environments)
   - [Maximum Security Mode](https://github.com/amaiya/patchpal?tab=readme-ov-file#maximum-security-mode)
 - [Usage](https://github.com/amaiya/patchpal?tab=readme-ov-file#usage)
+- [Configuration](https://github.com/amaiya/patchpal?tab=readme-ov-file#configuration)
 - [Example Tasks](https://github.com/amaiya/patchpal?tab=readme-ov-file#example-tasks)
 - [Safety](https://github.com/amaiya/patchpal?tab=readme-ov-file#safety)
 - [Context Management](https://github.com/amaiya/patchpal?tab=readme-ov-file#context-management)
@@ -630,6 +631,116 @@ The agent will process your request and show you the results. You can continue w
 - **Interrupt Agent**: Press `Ctrl-C` during agent execution to stop the current task without exiting PatchPal
 - **Exit**: Type `exit`, `quit`, or press `Ctrl-C` at the prompt to exit PatchPal
 
+## Configuration
+
+PatchPal can be configured through `PATCHPAL_*` environment variables to customize behavior, security, and performance.
+
+### Model Selection
+
+```bash
+export PATCHPAL_MODEL=openai/gpt-4o          # Override default model
+# Priority: CLI arg > PATCHPAL_MODEL env var > default (anthropic/claude-sonnet-4-5)
+```
+
+### Security & Permissions
+
+```bash
+# Permission System
+export PATCHPAL_REQUIRE_PERMISSION=true      # Prompt before executing commands/modifying files (default: true)
+                                              # ⚠️  WARNING: Setting to false disables prompts - only use in trusted environments
+
+# File Safety
+export PATCHPAL_MAX_FILE_SIZE=10485760       # Maximum file size in bytes for read/write (default: 10MB)
+export PATCHPAL_READ_ONLY=true               # Prevent ALL file modifications (default: false)
+                                              # Useful for: code review, exploration, security audits
+export PATCHPAL_ALLOW_SENSITIVE=true         # Allow access to .env, credentials (default: false - blocked)
+                                              # Only enable with test/dummy credentials
+
+# Command Safety
+export PATCHPAL_ALLOW_SUDO=true              # Allow sudo/privilege escalation (default: false - blocked)
+                                              # ⚠️  WARNING: Only enable in trusted, controlled environments
+export PATCHPAL_SHELL_TIMEOUT=60             # Shell command timeout in seconds (default: 30)
+```
+
+### Operational Controls
+
+```bash
+# Logging & Auditing
+export PATCHPAL_AUDIT_LOG=false              # Log operations to ~/.patchpal/<repo-name>/audit.log (default: true)
+export PATCHPAL_ENABLE_BACKUPS=true          # Auto-backup files before modification (default: false)
+
+# Resource Limits
+export PATCHPAL_MAX_OPERATIONS=10000         # Max operations per session (default: 10000)
+export PATCHPAL_MAX_ITERATIONS=150           # Max agent iterations per task (default: 100)
+                                              # Increase for complex multi-file tasks
+```
+
+### Context Window Management
+
+```bash
+# Auto-Compaction
+export PATCHPAL_DISABLE_AUTOCOMPACT=true     # Disable auto-compaction (default: false - enabled)
+export PATCHPAL_COMPACT_THRESHOLD=0.85       # Trigger compaction at % full (default: 0.85 = 85%)
+
+# Context Limits
+export PATCHPAL_CONTEXT_LIMIT=100000         # Override model's context limit (for testing)
+                                              # Leave unset to use model's actual capacity
+
+# Pruning Controls
+export PATCHPAL_PRUNE_PROTECT=40000          # Keep last N tokens of tool outputs (default: 40000)
+export PATCHPAL_PRUNE_MINIMUM=20000          # Minimum tokens to prune (default: 20000)
+```
+
+### Web Tools
+
+```bash
+# Enable/Disable Web Access
+export PATCHPAL_ENABLE_WEB=false             # Disable web search/fetch for air-gapped environments (default: true)
+
+# Web Request Limits
+export PATCHPAL_WEB_TIMEOUT=60               # Web request timeout in seconds (default: 30)
+export PATCHPAL_MAX_WEB_SIZE=10485760        # Max web content size in bytes (default: 5MB)
+export PATCHPAL_MAX_WEB_CHARS=500000         # Max characters from web content (default: 500k ≈ 125k tokens)
+```
+
+### Custom System Prompt
+
+```bash
+export PATCHPAL_SYSTEM_PROMPT=~/.patchpal/my_prompt.md  # Use custom system prompt
+                                                         # File can use template variables: {current_date}, {platform_info}
+                                                         # Useful for: custom behavior, team standards, domain-specific instructions
+```
+
+### Configuration Examples
+
+**Air-Gapped Environment (Offline, No Web Access):**
+```bash
+export PATCHPAL_ENABLE_WEB=false
+patchpal --model hosted_vllm/openai/gpt-oss-20b
+```
+
+**Maximum Security (Read-Only Analysis):**
+```bash
+export PATCHPAL_READ_ONLY=true
+export PATCHPAL_REQUIRE_PERMISSION=true
+patchpal --require-permission-for-all
+```
+
+**Testing Context Management:**
+```bash
+export PATCHPAL_CONTEXT_LIMIT=10000          # Small limit to trigger compaction quickly
+export PATCHPAL_COMPACT_THRESHOLD=0.75       # Trigger at 75% instead of 85%
+export PATCHPAL_PRUNE_PROTECT=500            # Keep only last 500 tokens
+patchpal
+```
+
+**Autonomous Mode (Trusted Environment Only):**
+```bash
+export PATCHPAL_REQUIRE_PERMISSION=false     # ⚠️  Disables all permission prompts
+export PATCHPAL_MAX_ITERATIONS=200           # Allow longer runs
+patchpal
+```
+
 ## Example Tasks
 
 ```
@@ -693,43 +804,7 @@ PatchPal includes comprehensive security protections enabled by default:
 - **Resource limits**: Configurable operation counter prevents infinite loops (10000 operations default)
 - **Git state awareness**: Warns when modifying files with uncommitted changes
 
-**Configuration via environment variables:**
-```bash
-# Critical Security Controls
-export PATCHPAL_REQUIRE_PERMISSION=true  # Prompt for permission before executing commands/modifying files (default: true)
-                                          # ⚠️  WARNING: Setting to false disables prompts - only use in trusted, controlled environments
-                                          # When disabled, the agent can modify files and run commands without asking
-export PATCHPAL_MAX_FILE_SIZE=5242880     # Maximum file size in bytes for read/write operations (default: 10485760 = 10MB)
-export PATCHPAL_READ_ONLY=true            # Prevent all file modifications, analysis-only mode (default: false)
-                                           # Useful for: code review, exploration, security audits, CI/CD analysis, or trying PatchPal risk-free
-export PATCHPAL_ALLOW_SENSITIVE=true      # Allow access to .env, credentials, API keys (default: false - blocked for safety)
-                                           # Only enable when working with test/dummy credentials or intentionally managing config files
-export PATCHPAL_ALLOW_SUDO=true           # Allow sudo commands (default: false - blocked for safety)
-                                           # ⚠️  WARNING: Only enable in trusted, controlled environments where sudo is necessary
-                                           # When enabled, all privilege escalation blocking is disabled
-
-# Operational Safety Controls
-export PATCHPAL_AUDIT_LOG=false           # Log all operations to ~/.patchpal/<repo-name>/audit.log (default: true)
-export PATCHPAL_ENABLE_BACKUPS=true       # Auto-backup files to ~/.patchpal/<repo-name>/backups/ before modification (default: false)
-export PATCHPAL_MAX_OPERATIONS=5000       # Maximum operations per session to prevent infinite loops (default: 10000)
-export PATCHPAL_MAX_ITERATIONS=150        # Maximum agent iterations per task (default: 100)
-                                          # Increase for very complex multi-file tasks, decrease for testing
-
-# Customization
-export PATCHPAL_SYSTEM_PROMPT=~/.patchpal/my_prompt.md  # Use custom system prompt file (default: built-in prompt)
-                                                         # The file can use template variables like {current_date}, {platform_info}, etc.
-                                                         # Useful for: custom agent behavior, team standards, domain-specific instructions
-
-# Web Tool Controls
-export PATCHPAL_ENABLE_WEB=false          # Enable/disable web search and fetch tools (default: true)
-                                          # Set to false for air-gapped or offline environments
-export PATCHPAL_WEB_TIMEOUT=60            # Timeout for web requests in seconds (default: 30)
-export PATCHPAL_MAX_WEB_SIZE=10485760     # Maximum web content size in bytes (default: 5242880 = 5MB)
-export PATCHPAL_MAX_WEB_CHARS=500000      # Maximum characters from web content to prevent context overflow (default: 500000 ≈ 125k tokens)
-
-# Shell Command Controls
-export PATCHPAL_SHELL_TIMEOUT=60          # Timeout for shell commands in seconds (default: 30)
-```
+See the [Configuration](https://github.com/amaiya/patchpal?tab=readme-ov-file#configuration) section for all available `PATCHPAL_*` environment variables to customize security, permissions, logging, and more.
 
 **Permission System:**
 
@@ -805,20 +880,12 @@ You: /compact
 ```
 
 **Configuration:**
-```bash
-# Disable auto-compaction (not recommended for long sessions)
-export PATCHPAL_DISABLE_AUTOCOMPACT=true
 
-# Adjust compaction threshold (default: 0.85 = 85%)
-export PATCHPAL_COMPACT_THRESHOLD=0.90
-
-# Adjust pruning thresholds
-export PATCHPAL_PRUNE_PROTECT=40000   # Keep last 40k tokens (default)
-export PATCHPAL_PRUNE_MINIMUM=20000   # Min tokens to prune (default)
-
-# Override context limit for testing (useful for testing compaction with small values)
-export PATCHPAL_CONTEXT_LIMIT=10000   # Force 10k token limit instead of model default
-```
+See the [Configuration](https://github.com/amaiya/patchpal?tab=readme-ov-file#configuration) section for context management settings including:
+- `PATCHPAL_DISABLE_AUTOCOMPACT` - Disable auto-compaction
+- `PATCHPAL_COMPACT_THRESHOLD` - Adjust compaction threshold
+- `PATCHPAL_CONTEXT_LIMIT` - Override context limit for testing
+- `PATCHPAL_PRUNE_PROTECT` / `PATCHPAL_PRUNE_MINIMUM` - Pruning controls
 
 **Testing Context Management:**
 
@@ -890,10 +957,11 @@ The system ensures you can work for extended periods without hitting context lim
 
 **Error: "maximum iterations reached"**
 - The default number of iterations is 100.
-- You can increase by setting the environment variable, `export PATCHPAL_MAX_ITERATIONS`
+- Increase with `export PATCHPAL_MAX_ITERATIONS=200` (see [Configuration](https://github.com/amaiya/patchpal?tab=readme-ov-file#configuration))
 
 **Error: "Context Window Error - Input is too long"**
 - PatchPal includes automatic context management (compaction) to prevent this error.
 - Use `/status` to check your context window usage.
 - If auto-compaction is disabled, re-enable it: `unset PATCHPAL_DISABLE_AUTOCOMPACT`
 - Context is automatically managed at 85% capacity through pruning and compaction.
+- See [Configuration](https://github.com/amaiya/patchpal?tab=readme-ov-file#configuration) for context management settings.
