@@ -249,7 +249,7 @@ Supported models: Any LiteLLM-supported model
 
     print("\nType 'exit' to quit.")
     print("Use '/status' to check context window usage, '/compact' to manually compact.")
-    print("Use 'list skills' or /skillname to invoke skills.")
+    print("Use 'list skills' to see available skills or /skillname to invoke skills.")
     print("Press Ctrl-C during agent execution to interrupt the agent.\n")
 
     while True:
