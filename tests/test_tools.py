@@ -1776,3 +1776,43 @@ def function2():
     # File should NOT have trailing newline (preserving original)
     assert not new_content.endswith("\n")
     assert 'print("changed")' in new_content
+
+
+def test_edit_file_auto_adjusts_indentation(temp_repo):
+    """Test that edit_file automatically adjusts indentation of new_string to match matched_string."""
+    from patchpal.tools import edit_file
+
+    # Create a file with specific indentation (28 spaces for elif)
+    content = """                            elif tool_name == "todo_add":
+                                print(
+                                    f"Adding TODO",
+                                    flush=True,
+                                )
+"""
+    (temp_repo / "indent_adjust_test.py").write_text(content)
+
+    # Provide new_string with WRONG indentation (30 spaces)
+    old_string = """elif tool_name == "todo_add":
+    print(
+        f"Adding TODO",
+        flush=True,
+    )"""
+
+    new_string = """                              elif tool_name == "todo_add":
+                                  print(
+                                      f"Modified TODO",
+                                      flush=True,
+                                  )"""
+
+    edit_file("indent_adjust_test.py", old_string, new_string)
+
+    # Verify the indentation was AUTO-ADJUSTED to match original (28 spaces)
+    new_content = (temp_repo / "indent_adjust_test.py").read_text()
+
+    # Should have 28 spaces before elif (not 30)
+    assert "                            elif tool_name" in new_content
+    # Should have 32 spaces before print (not 34)
+    assert "                                print(" in new_content
+    # Content should be updated
+    assert "Modified TODO" in new_content
+    assert "Adding TODO" not in new_content

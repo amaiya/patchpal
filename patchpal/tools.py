@@ -1758,13 +1758,50 @@ def edit_file(path: str, old_string: str, new_string: str) -> str:
     backup_path = _backup_file(p)
 
     # Perform replacement using the matched string
-    # Important: Preserve trailing newlines from matched_string to maintain file structure
+    # Important: Adjust indentation and preserve trailing newlines to maintain file structure
     adjusted_new_string = new_string
-    if matched_string.endswith("\n") and not new_string.endswith("\n"):
+
+    # Step 1: Adjust indentation if needed
+    # Get the indentation of the first line in matched_string vs new_string
+    matched_lines = matched_string.split("\n")
+    new_lines = new_string.split("\n")
+
+    if matched_lines and new_lines and matched_lines[0] and new_lines[0]:
+        # Get leading whitespace of first line in matched string
+        matched_indent = len(matched_lines[0]) - len(matched_lines[0].lstrip())
+        new_indent = len(new_lines[0]) - len(new_lines[0].lstrip())
+
+        if matched_indent != new_indent:
+            # Need to adjust indentation
+            indent_diff = matched_indent - new_indent
+
+            # Apply the indentation adjustment to all non-empty lines in new_string
+            adjusted_lines = []
+            for line in new_lines:
+                if line.strip():  # Non-empty line
+                    if indent_diff > 0:
+                        # Need to add spaces
+                        adjusted_lines.append((" " * indent_diff) + line)
+                    else:
+                        # Need to remove spaces (if possible)
+                        spaces_to_remove = abs(indent_diff)
+                        if line[:spaces_to_remove].strip() == "":  # All spaces
+                            adjusted_lines.append(line[spaces_to_remove:])
+                        else:
+                            # Can't remove that many spaces, keep as-is
+                            adjusted_lines.append(line)
+                else:
+                    # Empty line, keep as-is
+                    adjusted_lines.append(line)
+
+            adjusted_new_string = "\n".join(adjusted_lines)
+
+    # Step 2: Preserve trailing newlines from matched_string
+    if matched_string.endswith("\n") and not adjusted_new_string.endswith("\n"):
         # Matched block had trailing newline(s), preserve them
         # Count consecutive trailing newlines in matched_string
         trailing_newlines = len(matched_string) - len(matched_string.rstrip("\n"))
-        adjusted_new_string = new_string + ("\n" * trailing_newlines)
+        adjusted_new_string = adjusted_new_string + ("\n" * trailing_newlines)
 
     new_content = content.replace(matched_string, adjusted_new_string)
 
