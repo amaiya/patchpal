@@ -7,7 +7,7 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
-## 0.3.2 (TBD)
+## 0.3.2 (2026-01-28)
 
 ### new:
 - N/A
@@ -16,6 +16,7 @@ Most recent releases are shown at the top. Each release shows:
 - Updated tool description for `run_shell`
 
 ### fixed:
+- Ensure colored diff in `edit_file` displays proper indentation (#29)
 
 
 ## 0.3.1 (2026-01-28)

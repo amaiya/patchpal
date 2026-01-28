@@ -1926,26 +1926,7 @@ def edit_file(path: str, old_string: str, new_string: str) -> str:
             f"💡 Tip: Use read_lines() to see the exact context, or use apply_patch() for multiple changes."
         )
 
-    # Check permission before proceeding
-    permission_manager = _get_permission_manager()
-
-    # Format colored diff for permission prompt (use the matched string for accurate diff)
-    diff_display = _format_colored_diff(matched_string, new_string, file_path=path)
-
-    # Add warning if writing outside repository
-    outside_repo_warning = ""
-    if not _is_inside_repo(p):
-        outside_repo_warning = "\n   ⚠️  WARNING: Writing file outside repository\n"
-
-    description = f"   ● Update({path}){outside_repo_warning}\n{diff_display}"
-
-    if not permission_manager.request_permission("edit_file", description, pattern=path):
-        return "Operation cancelled by user."
-
-    # Backup if enabled
-    backup_path = _backup_file(p)
-
-    # Perform replacement using the matched string
+    # Perform indentation adjustment and trailing newline preservation BEFORE showing diff
     # Important: Adjust indentation and preserve trailing newlines to maintain file structure
     adjusted_new_string = new_string
 
@@ -1990,6 +1971,25 @@ def edit_file(path: str, old_string: str, new_string: str) -> str:
         # Count consecutive trailing newlines in matched_string
         trailing_newlines = len(matched_string) - len(matched_string.rstrip("\n"))
         adjusted_new_string = adjusted_new_string + ("\n" * trailing_newlines)
+
+    # Check permission before proceeding (use adjusted_new_string for accurate diff display)
+    permission_manager = _get_permission_manager()
+
+    # Format colored diff for permission prompt (use adjusted_new_string so user sees what will actually be written)
+    diff_display = _format_colored_diff(matched_string, adjusted_new_string, file_path=path)
+
+    # Add warning if writing outside repository
+    outside_repo_warning = ""
+    if not _is_inside_repo(p):
+        outside_repo_warning = "\n   ⚠️  WARNING: Writing file outside repository\n"
+
+    description = f"   ● Update({path}){outside_repo_warning}\n{diff_display}"
+
+    if not permission_manager.request_permission("edit_file", description, pattern=path):
+        return "Operation cancelled by user."
+
+    # Backup if enabled
+    backup_path = _backup_file(p)
 
     new_content = content.replace(matched_string, adjusted_new_string)
 
