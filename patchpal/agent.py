@@ -702,6 +702,73 @@ def _load_system_prompt() -> str:
 SYSTEM_PROMPT = _load_system_prompt()
 
 
+def _supports_prompt_caching(model_id: str) -> bool:
+    """Check if the model supports prompt caching.
+
+    Args:
+        model_id: LiteLLM model identifier
+
+    Returns:
+        True if the model supports prompt caching
+    """
+    # Anthropic models support caching (direct API or via Bedrock)
+    if "anthropic" in model_id.lower() or "claude" in model_id.lower():
+        return True
+    # Bedrock with Anthropic models
+    if model_id.startswith("bedrock/") and "anthropic" in model_id.lower():
+        return True
+    return False
+
+
+def _apply_prompt_caching(messages: List[Dict[str, Any]], model_id: str) -> List[Dict[str, Any]]:
+    """Apply prompt caching markers to messages following OpenCode's strategy.
+
+    Caches:
+    - System messages (first 1-2 messages with role="system")
+    - Last 2 conversation messages (recent context)
+
+    This provides 90% cost reduction on cached content after the first request.
+
+    Args:
+        messages: List of message dictionaries
+        model_id: LiteLLM model identifier
+
+    Returns:
+        Modified messages with cache markers
+    """
+    if not _supports_prompt_caching(model_id):
+        return messages
+
+    # Determine cache marker format based on provider
+    if model_id.startswith("bedrock/"):
+        # Bedrock uses cachePoint
+        cache_marker = {"cachePoint": {"type": "ephemeral"}}
+    else:
+        # Direct Anthropic API uses cacheControl
+        cache_marker = {"cacheControl": {"type": "ephemeral"}}
+
+    # Find system messages (usually at the start)
+    system_messages = [i for i, msg in enumerate(messages) if msg.get("role") == "system"]
+
+    # Find last 2 non-system messages (recent context)
+    non_system_messages = [i for i, msg in enumerate(messages) if msg.get("role") != "system"]
+    last_two_indices = (
+        non_system_messages[-2:] if len(non_system_messages) >= 2 else non_system_messages
+    )
+
+    # Apply caching to system messages (first 2)
+    for idx in system_messages[:2]:
+        if "cache_control" not in messages[idx] and "cachePoint" not in messages[idx]:
+            messages[idx] = {**messages[idx], **cache_marker}
+
+    # Apply caching to last 2 messages
+    for idx in last_two_indices:
+        if "cache_control" not in messages[idx] and "cachePoint" not in messages[idx]:
+            messages[idx] = {**messages[idx], **cache_marker}
+
+    return messages
+
+
 class PatchPalAgent:
     """Simple agent that uses LiteLLM for tool calling."""
 
@@ -824,13 +891,20 @@ class PatchPalAgent:
 
         try:
             # Create compaction using the LLM
+            def compaction_completion(msgs):
+                # Prepare messages with system prompt
+                messages = [{"role": "system", "content": SYSTEM_PROMPT}] + msgs
+                # Apply prompt caching for supported models
+                messages = _apply_prompt_caching(messages, self.model_id)
+                return litellm.completion(
+                    model=self.model_id,
+                    messages=messages,
+                    **self.litellm_kwargs,
+                )
+
             summary_msg, summary_text = self.context_manager.create_compaction(
                 self.messages,
-                lambda msgs: litellm.completion(
-                    model=self.model_id,
-                    messages=[{"role": "system", "content": SYSTEM_PROMPT}] + msgs,
-                    **self.litellm_kwargs,
-                ),
+                compaction_completion,
             )
 
             # Replace message history with compacted version
@@ -906,11 +980,17 @@ class PatchPalAgent:
             # Show thinking message
             print("\033[2m🤔 Thinking...\033[0m", flush=True)
 
+            # Prepare messages with system prompt
+            messages = [{"role": "system", "content": SYSTEM_PROMPT}] + self.messages
+
+            # Apply prompt caching for supported models (Anthropic/Claude)
+            messages = _apply_prompt_caching(messages, self.model_id)
+
             # Use LiteLLM for all providers
             try:
                 response = litellm.completion(
                     model=self.model_id,
-                    messages=[{"role": "system", "content": SYSTEM_PROMPT}] + self.messages,
+                    messages=messages,
                     tools=TOOLS,
                     tool_choice="auto",
                     **self.litellm_kwargs,

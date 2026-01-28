@@ -408,3 +408,103 @@ def test_agent_doesnt_trigger_on_file_containing_cancellation_text(monkeypatch):
     finally:
         # Restore original function
         TOOL_FUNCTIONS["read_file"] = original_read_file
+
+
+def test_prompt_caching_detection():
+    """Test that prompt caching is correctly detected for supported models."""
+    from patchpal.agent import _supports_prompt_caching
+
+    # Anthropic models should support caching
+    assert _supports_prompt_caching("anthropic/claude-sonnet-4-5")
+    assert _supports_prompt_caching("anthropic/claude-opus-4")
+
+    # Bedrock Anthropic models should support caching
+    assert _supports_prompt_caching("bedrock/anthropic.claude-sonnet-4-5-v1:0")
+    assert _supports_prompt_caching("bedrock/anthropic.claude-v2")
+
+    # Non-Anthropic models should not support caching
+    assert not _supports_prompt_caching("openai/gpt-4o")
+    assert not _supports_prompt_caching("ollama_chat/llama3.1")
+
+
+def test_prompt_caching_application_anthropic():
+    """Test that prompt caching markers are correctly applied for Anthropic models."""
+    from patchpal.agent import _apply_prompt_caching
+
+    messages = [
+        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "user", "content": "Hello"},
+        {"role": "assistant", "content": "Hi there!"},
+        {"role": "user", "content": "How are you?"},
+    ]
+
+    # Test with direct Anthropic API
+    cached_messages = _apply_prompt_caching(messages.copy(), "anthropic/claude-sonnet-4-5")
+
+    # System message should have cacheControl
+    assert "cacheControl" in cached_messages[0]
+    assert cached_messages[0]["cacheControl"] == {"type": "ephemeral"}
+
+    # Last 2 messages should have cacheControl
+    assert "cacheControl" in cached_messages[-1]  # Last user message
+    assert "cacheControl" in cached_messages[-2]  # Last assistant message
+
+
+def test_prompt_caching_application_bedrock():
+    """Test that prompt caching markers use correct format for Bedrock."""
+    from patchpal.agent import _apply_prompt_caching
+
+    messages = [
+        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "user", "content": "Hello"},
+        {"role": "assistant", "content": "Hi there!"},
+        {"role": "user", "content": "How are you?"},
+    ]
+
+    # Test with Bedrock
+    cached_messages = _apply_prompt_caching(
+        messages.copy(), "bedrock/anthropic.claude-sonnet-4-5-v1:0"
+    )
+
+    # System message should have cachePoint (Bedrock format)
+    assert "cachePoint" in cached_messages[0]
+    assert cached_messages[0]["cachePoint"] == {"type": "ephemeral"}
+
+    # Last 2 messages should have cachePoint
+    assert "cachePoint" in cached_messages[-1]
+    assert "cachePoint" in cached_messages[-2]
+
+
+def test_prompt_caching_no_modification_for_unsupported():
+    """Test that prompt caching doesn't modify messages for unsupported models."""
+    from patchpal.agent import _apply_prompt_caching
+
+    messages = [
+        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "user", "content": "Hello"},
+    ]
+
+    # Test with non-Anthropic model
+    cached_messages = _apply_prompt_caching(messages.copy(), "openai/gpt-4o")
+
+    # Messages should be unchanged
+    assert "cacheControl" not in cached_messages[0]
+    assert "cachePoint" not in cached_messages[0]
+    assert cached_messages == messages
+
+
+def test_prompt_caching_idempotent():
+    """Test that applying caching multiple times doesn't add duplicate markers."""
+    from patchpal.agent import _apply_prompt_caching
+
+    messages = [
+        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "user", "content": "Hello"},
+    ]
+
+    # Apply caching twice
+    cached_once = _apply_prompt_caching(messages.copy(), "anthropic/claude-sonnet-4-5")
+    cached_twice = _apply_prompt_caching(cached_once.copy(), "anthropic/claude-sonnet-4-5")
+
+    # Should be the same after second application
+    assert cached_once == cached_twice
