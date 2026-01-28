@@ -351,7 +351,10 @@ Supported models: Any LiteLLM-supported model
 
                 # Show auto-compaction status
                 if agent.enable_auto_compact:
-                    print("\n  Auto-compaction: \033[32mEnabled\033[0m (triggers at 85%)")
+                    threshold_pct = int(agent.context_manager.COMPACT_THRESHOLD * 100)
+                    print(
+                        f"\n  Auto-compaction: \033[32mEnabled\033[0m (triggers at {threshold_pct}%)"
+                    )
                 else:
                     print(
                         "\n  Auto-compaction: \033[33mDisabled\033[0m (set PATCHPAL_DISABLE_AUTOCOMPACT=false to enable)"

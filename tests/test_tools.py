@@ -1548,7 +1548,7 @@ def test_edit_file_real_world_agent_scenario(temp_repo):
                                   tool_result = tool_func(**filtered_args)
                               except Exception as e:
                                   tool_result = f"Error executing {tool_name}: {e}"
-                                  print(f"\\033[1;31m✗ {tool_display}: {e}\\033[0m")
+                                  print(f"\\033[1;31mX {tool_display}: {e}\\033[0m")
 
                       # Add tool result to messages"""
 

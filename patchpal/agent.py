@@ -832,7 +832,7 @@ class PatchPalAgent:
     def _perform_auto_compaction(self):
         """Perform automatic context window compaction.
 
-        This method is called when the context window reaches 85% capacity.
+        This method is called when the context window reaches 75% capacity.
         It attempts pruning first, then full compaction if needed.
         """
         # Don't compact if we have very few messages - compaction summary

@@ -7,16 +7,17 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
-## 0.3.0 (TBD)
+## 0.3.0 (2026-01-28)
 
 ### new:
 - Support for prompt-caching Anthropic models (#26)
 
 ### changed
-- N/A
+- change default compaction threshold to 75% (#27)
 
 ### fixed:
 - Make `edit_file` more robust (#25)
+
 
 ## 0.2.1 (2026-01-27)
 

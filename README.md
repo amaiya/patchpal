@@ -680,7 +680,7 @@ export PATCHPAL_MAX_ITERATIONS=150           # Max agent iterations per task (de
 ```bash
 # Auto-Compaction
 export PATCHPAL_DISABLE_AUTOCOMPACT=true     # Disable auto-compaction (default: false - enabled)
-export PATCHPAL_COMPACT_THRESHOLD=0.85       # Trigger compaction at % full (default: 0.85 = 85%)
+export PATCHPAL_COMPACT_THRESHOLD=0.75       # Trigger compaction at % full (default: 0.75 = 75%)
 
 # Context Limits
 export PATCHPAL_CONTEXT_LIMIT=100000         # Override model's context limit (for testing)
@@ -855,7 +855,7 @@ PatchPal automatically manages the context window to prevent "input too long" er
 **Features:**
 - **Automatic token tracking**: Monitors context usage in real-time
 - **Smart pruning**: Removes old tool outputs (keeps last 40k tokens) before resorting to full compaction
-- **Auto-compaction**: Summarizes conversation history when approaching 85% capacity
+- **Auto-compaction**: Summarizes conversation history when approaching 75% capacity
 - **Manual control**: Check status with `/status`, disable with environment variable
 
 **Commands:**
@@ -894,7 +894,7 @@ You can test the context management system with small values to trigger compacti
 ```bash
 # Set up small context window for testing
 export PATCHPAL_CONTEXT_LIMIT=10000      # Force 10k token limit (instead of 200k for Claude)
-export PATCHPAL_COMPACT_THRESHOLD=0.75   # Trigger at 75% (instead of 85%)
+export PATCHPAL_COMPACT_THRESHOLD=0.75   # Trigger at 75% (default, but shown for clarity)
                                          # Note: System prompt + output reserve = ~6.4k tokens baseline
                                          # So 75% of 10k = 7.5k, leaving ~1k for conversation
 export PATCHPAL_PRUNE_PROTECT=500        # Keep only last 500 tokens of tool outputs
@@ -914,9 +914,9 @@ You: /status
 # Continue - should see pruning messages
 You: search for "context" in all files
 # You should see:
-# ⚠️  Context window at 85% capacity. Compacting...
+# ⚠️  Context window at 75% capacity. Compacting...
 #    Pruned old tool outputs (saved ~400 tokens)
-# ✓ Compaction complete. Saved 850 tokens (85% → 68%)
+# ✓ Compaction complete. Saved 850 tokens (75% → 58%)
 ```
 
 **How It Works:**
@@ -947,7 +947,7 @@ Context Window Status
   Usage: 80%
   [████████████████████████████████████████░░░░░░░░░]
 
-  Auto-compaction: Enabled (triggers at 85%)
+  Auto-compaction: Enabled (triggers at 75%)
 ======================================================================
 ```
 
@@ -961,7 +961,9 @@ The system ensures you can work for extended periods without hitting context lim
 
 **Error: "Context Window Error - Input is too long"**
 - PatchPal includes automatic context management (compaction) to prevent this error.
-- Use `/status` to check your context window usage.
+- **Quick fix:** Run `/compact` to immediately compact the conversation history and free up space.
+- Use `/status` to check your context window usage and see how close you are to the limit.
 - If auto-compaction is disabled, re-enable it: `unset PATCHPAL_DISABLE_AUTOCOMPACT`
-- Context is automatically managed at 85% capacity through pruning and compaction.
+- Context is automatically managed at 75% capacity through pruning and compaction.
+- **Note:** Token estimation may be slightly inaccurate compared to the model's actual counting. If you see this error despite auto-compaction being enabled, the 75% threshold may need to be lowered further for your workload. You can adjust it with `export PATCHPAL_COMPACT_THRESHOLD=0.70` (or lower).
 - See [Configuration](https://github.com/amaiya/patchpal?tab=readme-ov-file#configuration) for context management settings.

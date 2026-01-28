@@ -57,8 +57,9 @@ class TokenEstimator:
             except Exception:
                 pass
 
-        # Fallback: ~4 chars per token average
-        return len(str(text)) // 4
+        # Fallback: ~3 chars per token (conservative for code-heavy content)
+        # This is more accurate than 4 chars/token for technical content
+        return len(str(text)) // 3
 
     def estimate_message_tokens(self, message: Dict[str, Any]) -> int:
         """Estimate tokens in a single message.
@@ -119,8 +120,8 @@ class ContextManager:
         os.getenv("PATCHPAL_PRUNE_MINIMUM", "20000")
     )  # Minimum tokens to prune to make it worthwhile
     COMPACT_THRESHOLD = float(
-        os.getenv("PATCHPAL_COMPACT_THRESHOLD", "0.85")
-    )  # Compact at 85% capacity
+        os.getenv("PATCHPAL_COMPACT_THRESHOLD", "0.75")
+    )  # Compact at 75% capacity (lower due to estimation inaccuracy)
 
     # Model context limits (tokens)
     # From OpenCode's models.dev data - see https://models.dev/api.json
