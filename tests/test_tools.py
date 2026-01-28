@@ -1445,3 +1445,256 @@ def test_ask_user_empty_options_list(monkeypatch):
     with patch("rich.prompt.Prompt.ask", return_value="Free form answer"):
         result = ask_user("What do you think?", options=[])
         assert result == "Free form answer"
+
+
+# ============================================================================
+# Flexible edit_file Matching Strategy Tests
+# ============================================================================
+
+
+def test_edit_file_with_wrong_indentation(temp_repo):
+    """Test edit_file with flexible matching but proper indentation in new_string."""
+    from patchpal.tools import edit_file
+
+    # Create a Python file with proper indentation
+    content = """def hello():
+    if True:
+        print("world")
+        return 42
+"""
+    (temp_repo / "indent_test.py").write_text(content)
+
+    # Search without indentation (flexible matching finds it),
+    # but provide new_string WITH proper indentation (OpenCode behavior)
+    result = edit_file("indent_test.py", 'print("world")', '        print("universe")')
+
+    assert "Successfully edited" in result
+
+    # Verify the edit preserved indentation (because we provided it in new_string)
+    new_content = (temp_repo / "indent_test.py").read_text()
+    assert '        print("universe")' in new_content  # 8 spaces preserved
+    assert '        print("world")' not in new_content
+    # Other lines should be unchanged
+    assert "def hello():" in new_content
+    assert "    if True:" in new_content
+
+
+def test_edit_file_multiline_wrong_indentation(temp_repo):
+    """Test edit_file with multi-line blocks - new_string must have proper indentation."""
+    from patchpal.tools import edit_file
+
+    content = """class MyClass:
+    def process(self):
+        if self.valid:
+            result = self.compute()
+            return result
+        return None
+"""
+    (temp_repo / "multiline_test.py").write_text(content)
+
+    # Search without proper indentation (flexible matching),
+    # but provide replacement WITH proper indentation
+    old_string = """if self.valid:
+    result = self.compute()
+    return result"""
+
+    new_string = """        if self.valid:
+            result = self.compute_new()
+            return result"""
+
+    result = edit_file("multiline_test.py", old_string, new_string)
+
+    assert "Successfully edited" in result
+
+    # Verify correct indentation (because we provided it in new_string)
+    new_content = (temp_repo / "multiline_test.py").read_text()
+    assert "        if self.valid:" in new_content
+    assert "            result = self.compute_new()" in new_content
+    assert "            return result" in new_content
+
+
+def test_edit_file_whitespace_normalization(temp_repo):
+    """Test edit_file handles extra whitespace in search string."""
+    from patchpal.tools import edit_file
+
+    content = """x = 42
+y = 100
+z = x + y
+"""
+    (temp_repo / "whitespace_test.py").write_text(content)
+
+    # User provides with extra spaces (e.g., copied from terminal with weird formatting)
+    old_string = "x    =    42"
+
+    result = edit_file("whitespace_test.py", old_string, "x = 99")
+
+    assert "Successfully edited" in result
+
+    # Verify the edit worked
+    new_content = (temp_repo / "whitespace_test.py").read_text()
+    assert "x = 99" in new_content
+    assert "x = 42" not in new_content
+
+
+def test_edit_file_real_world_agent_scenario(temp_repo):
+    """Test the actual scenario that failed before: editing agent.py with indentation issues."""
+    from patchpal.tools import edit_file
+
+    # Simulate content from agent.py around tool execution
+    content = """                              )
+
+                                  # Silently filter out invalid args (models sometimes hallucinate parameters)
+
+                                  tool_result = tool_func(**filtered_args)
+                              except Exception as e:
+                                  tool_result = f"Error executing {tool_name}: {e}"
+                                  print(f"\\033[1;31m✗ {tool_display}: {e}\\033[0m")
+
+                      # Add tool result to messages"""
+
+    (temp_repo / "agent_snippet.py").write_text(content)
+
+    # What the LLM might provide (without correct indentation)
+    old_string = """# Silently filter out invalid args (models sometimes hallucinate parameters)
+
+                                  tool_result = tool_func(**filtered_args)"""
+
+    new_string = """# Silently filter out invalid args (models sometimes hallucinate parameters)
+
+                                  tool_result = tool_func(**filtered_args)
+
+                                  # Display result for certain tools where the result contains important info
+                                  if tool_name == "todo_add" and not isinstance(tool_result, Exception):
+                                      # Extract and display the task number from the result
+                                      print(f"\\033[2m{tool_result.split(':')[0]}\\033[0m", flush=True)"""
+
+    result = edit_file("agent_snippet.py", old_string, new_string)
+
+    assert "Successfully edited" in result
+
+    # Verify the edit preserved original indentation
+    new_content = (temp_repo / "agent_snippet.py").read_text()
+    assert "                                  # Display result for certain tools" in new_content
+    assert "tool_result.split" in new_content
+
+
+def test_edit_file_code_without_indentation_prefers_line_match(temp_repo):
+    """Test that code patterns without indentation prefer line-level matching over substring."""
+    from patchpal.tools import edit_file
+
+    content = """def calculate():
+    result = compute()
+    return result
+"""
+    (temp_repo / "code_test.py").write_text(content)
+
+    # Search without indentation (flexible matching finds full line),
+    # provide replacement WITH proper indentation
+    old_string = "return result"
+    new_string = "    return final_result"  # With proper indentation
+
+    edit_file("code_test.py", old_string, new_string)
+
+    new_content = (temp_repo / "code_test.py").read_text()
+    assert "    return final_result" in new_content
+    assert "result = compute()" in new_content  # Should not have changed this line
+
+
+def test_edit_file_preserves_exact_match_when_possible(temp_repo):
+    """Test that exact matches are still preferred when indentation is correct."""
+    from patchpal.tools import edit_file
+
+    content = """def hello():
+    print("world")
+"""
+    (temp_repo / "exact_test.py").write_text(content)
+
+    # With correct indentation, should use exact match
+    old_string = '    print("world")'
+
+    result = edit_file("exact_test.py", old_string, '    print("universe")')
+
+    assert "Successfully edited" in result
+
+    new_content = (temp_repo / "exact_test.py").read_text()
+    assert '    print("universe")' in new_content
+
+
+def test_edit_file_flexible_matching_error_message(temp_repo):
+    """Test error message when string not found."""
+    from patchpal.tools import edit_file
+
+    (temp_repo / "test_error.py").write_text("def hello():\n    pass\n")
+
+    # Try to find something that doesn't exist
+    with pytest.raises(ValueError) as exc_info:
+        edit_file("test_error.py", "goodbye()", "farewell()")
+
+    error_msg = str(exc_info.value)
+    assert "String not found" in error_msg
+    assert "read_lines()" in error_msg  # Should suggest using read_lines()
+
+
+def test_edit_file_matching_strategies_helper_functions(temp_repo):
+    """Test the underlying matching strategy helper functions directly."""
+    from patchpal.tools import (
+        _try_line_trimmed_match,
+        _try_simple_match,
+        _try_whitespace_normalized_match,
+    )
+
+    content = """def hello():
+    print("world")
+    return 42
+"""
+
+    # Test simple match
+    assert _try_simple_match(content, 'print("world")') == 'print("world")'
+    assert _try_simple_match(content, "nonexistent") is None
+
+    # Test line trimmed match (should find with correct indentation)
+    match = _try_line_trimmed_match(content, 'print("world")')
+    assert match == '    print("world")'
+
+    # Test whitespace normalized match
+    content2 = "x    =    42"
+    match = _try_whitespace_normalized_match(content2, "x = 42")
+    assert match == "x    =    42"
+
+
+def test_edit_file_multiline_trimmed_match_helper(temp_repo):
+    """Test line-trimmed matching with multi-line blocks."""
+    from patchpal.tools import _try_line_trimmed_match
+
+    content = """class Test:
+    def method(self):
+        if True:
+            do_something()
+            return value
+"""
+
+    # Search without proper indentation
+    search = """if True:
+    do_something()
+    return value"""
+
+    match = _try_line_trimmed_match(content, search)
+    # Should return with proper indentation (8 spaces)
+    assert match == "        if True:\n            do_something()\n            return value"
+
+
+def test_edit_file_finds_match_with_strategy_order(temp_repo):
+    """Test that strategies are tried in correct order."""
+    from patchpal.tools import _find_match_with_strategies
+
+    # Scenario: content has both a substring and a full line
+    # Should prefer full line match for code patterns
+    content = """def calculate():
+    result = process()  # result is important
+    return result
+"""
+
+    # Without indentation, should match the full line not substring in comment
+    match = _find_match_with_strategies(content, "return result")
+    assert match == "    return result"
+    # Should NOT match just "result" in the comment or variable name

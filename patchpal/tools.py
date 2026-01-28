@@ -1438,6 +1438,122 @@ def ask_user(question: str, options: Optional[list] = None) -> str:
 
 
 # ============================================================================
+# Edit File - Multi-Strategy String Matching
+# ============================================================================
+# Based on approaches from gemini-cli and OpenCode: try multiple matching
+# strategies to handle # whitespace/indentation issues without requiring
+# exact character-by-character matching
+
+
+def _try_simple_match(content: str, old_string: str) -> Optional[str]:
+    """Try exact string match."""
+    if old_string in content:
+        return old_string
+    return None
+
+
+def _try_line_trimmed_match(content: str, old_string: str) -> Optional[str]:
+    """Try matching lines where content is the same when trimmed."""
+    content_lines = content.split("\n")
+    search_lines = old_string.split("\n")
+
+    # Remove trailing empty line if present
+    if search_lines and search_lines[-1] == "":
+        search_lines.pop()
+
+    # Scan through content looking for matching block
+    for i in range(len(content_lines) - len(search_lines) + 1):
+        matches = True
+        for j, search_line in enumerate(search_lines):
+            if content_lines[i + j].strip() != search_line.strip():
+                matches = False
+                break
+
+        if matches:
+            # Found a match - return the original lines (with indentation) joined
+            matched_lines = content_lines[i : i + len(search_lines)]
+            return "\n".join(matched_lines)
+
+    return None
+
+
+def _try_whitespace_normalized_match(content: str, old_string: str) -> Optional[str]:
+    """Try matching with normalized whitespace (all whitespace becomes single space)."""
+
+    def normalize(text: str) -> str:
+        return " ".join(text.split())
+
+    normalized_search = normalize(old_string)
+
+    # Try single line matches
+    for line in content.split("\n"):
+        if normalize(line) == normalized_search:
+            return line
+
+    # Try multi-line matches
+    search_lines = old_string.split("\n")
+    if len(search_lines) > 1:
+        content_lines = content.split("\n")
+        for i in range(len(content_lines) - len(search_lines) + 1):
+            block_lines = content_lines[i : i + len(search_lines)]
+            if normalize("\n".join(block_lines)) == normalized_search:
+                return "\n".join(block_lines)
+
+    return None
+
+
+def _find_match_with_strategies(content: str, old_string: str) -> Optional[str]:
+    """
+    Try multiple matching strategies in order.
+    Returns the matched string from content (preserving original formatting).
+    """
+    # Strategy 1: Exact match (but only if it's not a substring that would match better with trimming)
+    # Skip exact match if old_string doesn't have leading/trailing whitespace
+    # and we're searching for what looks like a complete statement
+    use_exact = old_string in content
+
+    # If the old_string has no leading whitespace but contains a newline or looks like code,
+    # skip exact match and try trimmed matching first
+    if use_exact and not old_string.startswith((" ", "\t", "\n")):
+        # Check if this looks like we're searching for a line of code
+        # (contains common code patterns but no leading indentation)
+        code_patterns = [
+            "(",
+            ")",
+            "=",
+            "def ",
+            "class ",
+            "if ",
+            "for ",
+            "while ",
+            "return ",
+            "print(",
+        ]
+        if any(pattern in old_string for pattern in code_patterns):
+            # Try trimmed match first for code-like patterns
+            match = _try_line_trimmed_match(content, old_string)
+            if match:
+                return match
+
+    # Now try exact match
+    match = _try_simple_match(content, old_string)
+    if match:
+        return match
+
+    # Strategy 2: Line-trimmed match (handles indentation differences)
+    match = _try_line_trimmed_match(content, old_string)
+    if match:
+        return match
+
+    # Strategy 3: Whitespace-normalized match (handles spacing differences)
+    match = _try_whitespace_normalized_match(content, old_string)
+    if match:
+        return match
+
+    return None
+
+
+# ============================================================================
 
 
 def apply_patch(path: str, new_content: str) -> str:
@@ -1537,18 +1653,31 @@ def apply_patch(path: str, new_content: str) -> str:
 
 def edit_file(path: str, old_string: str, new_string: str) -> str:
     """
-    Edit a file by replacing an exact string match.
+    Edit a file by replacing a string match with flexible whitespace handling.
+
+    Uses multiple matching strategies to find old_string:
+    1. Exact match
+    2. Trimmed line match (ignores indentation differences in search)
+    3. Normalized whitespace match (ignores spacing differences in search)
+
+    Important: The flexible matching only applies to FINDING old_string.
+    The new_string is used exactly as provided, so it should include proper
+    indentation/formatting to match the surrounding code.
 
     Args:
         path: Relative path to the file from the repository root
-        old_string: The exact string to find and replace
-        new_string: The string to replace it with
+        old_string: The string to find (whitespace can be approximate)
+        new_string: The replacement string (use exact whitespace/indentation you want)
 
     Returns:
         Confirmation message with the changes made
 
     Raises:
         ValueError: If file not found, old_string not found, or multiple matches
+
+    Example:
+        # Find with flexible matching, but provide new_string with proper indent
+        edit_file("test.py", "print('hello')", "    print('world')")  # 4 spaces
     """
     _operation_limiter.check_limit(f"edit_file({path[:30]}...)")
 
@@ -1566,28 +1695,25 @@ def edit_file(path: str, old_string: str, new_string: str) -> str:
     except Exception as e:
         raise ValueError(f"Failed to read file: {e}")
 
-    # Check for old_string
-    if old_string not in content:
-        # Show first 5 lines of file to help user
-        lines = content.split("\n")[:5]
-        preview = "\n".join(f"  {i + 1}: {line[:80]}" for i, line in enumerate(lines))
+    # Try to find a match using multiple strategies
+    matched_string = _find_match_with_strategies(content, old_string)
 
+    if not matched_string:
+        # No match found with any strategy
         raise ValueError(
             f"String not found in {path}.\n\n"
             f"Searched for:\n{old_string[:200]}\n\n"
-            f"File starts with:\n{preview}\n\n"
-            f"💡 Tip: Use read_lines() to get exact text including whitespace, "
-            f"or use apply_patch() for larger changes."
+            f"💡 Tip: Use read_lines() to see exact content, or use apply_patch() for larger changes."
         )
 
-    # Count occurrences
-    count = content.count(old_string)
+    # Count occurrences of the matched string
+    count = content.count(matched_string)
     if count > 1:
         # Show WHERE the matches are
         positions = []
         start = 0
         while True:
-            pos = content.find(old_string, start)
+            pos = content.find(matched_string, start)
             if pos == -1:
                 break
             line_num = content[:pos].count("\n") + 1
@@ -1603,8 +1729,8 @@ def edit_file(path: str, old_string: str, new_string: str) -> str:
     # Check permission before proceeding
     permission_manager = _get_permission_manager()
 
-    # Format colored diff for permission prompt
-    diff_display = _format_colored_diff(old_string, new_string, file_path=path)
+    # Format colored diff for permission prompt (use the matched string for accurate diff)
+    diff_display = _format_colored_diff(matched_string, new_string, file_path=path)
 
     # Add warning if writing outside repository
     outside_repo_warning = ""
@@ -1619,19 +1745,21 @@ def edit_file(path: str, old_string: str, new_string: str) -> str:
     # Backup if enabled
     backup_path = _backup_file(p)
 
-    # Perform replacement
-    new_content = content.replace(old_string, new_string)
+    # Perform replacement using the matched string
+    # Note: newString is used as-is (OpenCode behavior)
+    # The LLM should provide newString with proper indentation matching the original
+    new_content = content.replace(matched_string, new_string)
 
     # Write the new content
     p.write_text(new_content)
 
-    # Generate diff for the specific change
-    old_lines = old_string.split("\n")
+    # Generate diff for the specific change (use matched_string for accurate diff)
+    old_lines = matched_string.split("\n")
     new_lines = new_string.split("\n")
     diff = difflib.unified_diff(old_lines, new_lines, fromfile="old", tofile="new", lineterm="")
     diff_str = "\n".join(diff)
 
-    audit_logger.info(f"EDIT: {path} ({len(old_string)} -> {len(new_string)} chars)")
+    audit_logger.info(f"EDIT: {path} ({len(matched_string)} -> {len(new_string)} chars)")
 
     backup_msg = f"\n[Backup saved: {backup_path}]" if backup_path else ""
     return f"Successfully edited {path}{backup_msg}\n\nChange:\n{diff_str}"
