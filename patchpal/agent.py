@@ -1048,7 +1048,7 @@ class PatchPalAgent:
                                 print("\033[2m📋 Listing TODO tasks...\033[0m", flush=True)
                             elif tool_name == "todo_complete":
                                 print(
-                                    f"\033[2m✓ Completing task #{tool_args.get('task_id', '')}\033[0m",
+                                    f"\033[2m✓ Completed task #{tool_args.get('task_id', '')}\033[0m",
                                     flush=True,
                                 )
                             elif tool_name == "todo_update":
