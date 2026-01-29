@@ -725,9 +725,7 @@ def _apply_prompt_caching(messages: List[Dict[str, Any]], model_id: str) -> List
 
     Caches:
     - System messages (first 1-2 messages with role="system")
-    - Last 2 conversation messages (recent context)
-
-    This provides 90% cost reduction on cached content after the first request.
+    - Last 2 non-system messages (recent context, any role except system)
 
     Args:
         messages: List of message dictionaries

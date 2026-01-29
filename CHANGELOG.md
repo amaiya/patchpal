@@ -7,7 +7,7 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
-## 0.4.0 (TBD)
+## 0.4.0 (2026-01-29)
 
 ### new:
 - Track cumulative token counts in `/status`
