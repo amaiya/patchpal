@@ -967,3 +967,60 @@ The system ensures you can work for extended periods without hitting context lim
 - Context is automatically managed at 75% capacity through pruning and compaction.
 - **Note:** Token estimation may be slightly inaccurate compared to the model's actual counting. If you see this error despite auto-compaction being enabled, the 75% threshold may need to be lowered further for your workload. You can adjust it with `export PATCHPAL_COMPACT_THRESHOLD=0.70` (or lower).
 - See [Configuration](https://github.com/amaiya/patchpal?tab=readme-ov-file#configuration) for context management settings.
+
+**Reducing API Costs via Token Optimization**
+
+When using cloud LLM providers (Anthropic, OpenAI, etc.), token usage directly impacts costs. PatchPal includes several features to help minimize token consumption:
+
+**1. Use Pruning to Manage Long Sessions**
+- **Automatic pruning** removes old tool outputs while preserving conversation context
+- Configure pruning thresholds to be more aggressive:
+  ```bash
+  export PATCHPAL_PRUNE_PROTECT=20000    # Reduce from 40k to 20k tokens
+  export PATCHPAL_PRUNE_MINIMUM=10000    # Reduce minimum saved from 20k to 10k
+  ```
+- Pruning happens transparently before compaction and is much faster (no LLM call needed)
+
+**2. Manual Compaction for Cost Control**
+- Use `/status` regularly to monitor token usage
+- Run `/compact` proactively when context grows large (before hitting auto-compact threshold)
+- Manual compaction gives you control over when the summarization LLM call happens
+
+**3. Adjust Auto-Compaction Threshold**
+- Lower threshold = more frequent compaction = smaller context = lower per-request costs
+- Higher threshold = fewer compaction calls = larger context = higher per-request costs
+  ```bash
+  # More aggressive compaction (compact at 60% instead of 75%)
+  export PATCHPAL_COMPACT_THRESHOLD=0.60
+  ```
+- Find the sweet spot for your workload (balance between compaction frequency and context size)
+
+**4. Use Local Models for Zero API Costs**
+- **Best option:** Run vLLM locally to eliminate API costs entirely
+  ```bash
+  export HOSTED_VLLM_API_BASE=http://localhost:8000
+  export HOSTED_VLLM_API_KEY=token-abc123
+  patchpal --model hosted_vllm/openai/gpt-oss-20b
+  ```
+- **Alternative:** Use Ollama (requires `OLLAMA_CONTEXT_LENGTH=32768`)
+- See [Using Local Models](https://github.com/amaiya/patchpal?tab=readme-ov-file#using-local-models-vllm--ollama) for setup
+
+**5. Start Fresh When Appropriate**
+- Use `/clear` command to reset conversation history without restarting PatchPal
+- Exit and restart PatchPal between unrelated tasks to clear context completely
+- Each fresh start begins with minimal tokens (just the system prompt)
+- Better than carrying large conversation history across different tasks
+
+**6. Use Smaller Models for Simple Tasks**
+- Use less expensive models for routine tasks:
+  ```bash
+  patchpal --model anthropic/claude-3-7-sonnet-latest  # Cheaper than claude-sonnet-4-5
+  patchpal --model openai/gpt-4o-mini                  # Cheaper than gpt-4o
+  ```
+- Reserve premium models for complex reasoning tasks
+
+**Cost Monitoring Tips:**
+- Check `/status` before large operations to see current token usage
+- Most cloud providers offer usage dashboards to track spending
+- Set up billing alerts with your provider to avoid surprises
+- Consider local models (vLLM recommended) for high-volume usage
