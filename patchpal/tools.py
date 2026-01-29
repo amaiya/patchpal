@@ -665,7 +665,7 @@ def _check_path(path: str, must_exist: bool = True) -> Path:
     Validate and resolve a path.
 
     Args:
-        path: Path to validate (relative or absolute)
+        path: Path to validate (relative, absolute, or with ~ for home directory)
         must_exist: Whether the file must exist
 
     Returns:
@@ -678,12 +678,15 @@ def _check_path(path: str, must_exist: bool = True) -> Path:
         Can access files anywhere on the system (repository or outside).
         Sensitive files (.env, credentials) are always blocked for safety.
     """
+    # Expand ~ for home directory first
+    expanded_path = os.path.expanduser(path)
+
     # Resolve path (handle both absolute and relative paths)
-    path_obj = Path(path)
+    path_obj = Path(expanded_path)
     if path_obj.is_absolute():
         p = path_obj.resolve()
     else:
-        p = (REPO_ROOT / path).resolve()
+        p = (REPO_ROOT / expanded_path).resolve()
 
     # Check if file exists when required
     if must_exist and not p.is_file():
@@ -1074,12 +1077,13 @@ def tree(path: str = ".", max_depth: int = 3, show_hidden: bool = False) -> str:
     # Limit max_depth
     max_depth = min(max_depth, 10)
 
-    # Resolve path (handle both absolute and relative paths)
-    path_obj = Path(path)
+    # Expand ~ for home directory and resolve path (handle both absolute and relative paths)
+    expanded_path = os.path.expanduser(path)
+    path_obj = Path(expanded_path)
     if path_obj.is_absolute():
         start_path = path_obj.resolve()
     else:
-        start_path = (REPO_ROOT / path).resolve()
+        start_path = (REPO_ROOT / expanded_path).resolve()
 
     # Check if path exists and is a directory
     if not start_path.exists():

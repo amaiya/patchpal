@@ -7,6 +7,18 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
+## 0.4.2 (2026-01-29)
+
+### new:
+- N/A
+
+### changed
+- N/A
+
+### fixed:
+- Fixed tilde (~) expansion in file paths - tools like `read_file` and `tree` now properly handle paths like `~/path/to/file`
+
+
 ## 0.4.1 (2026-01-29)
 
 ### new:
@@ -16,7 +28,7 @@ Most recent releases are shown at the top. Each release shows:
 - N/A
 
 ### fixed:
-- Fixed prompt caching field name from `cacheControl` (camelCase) to `cache_control` (snake case). This bug caused Anthropic API to ignore all cache markers. (#31)
+- **CRITICAL**: Fixed prompt caching field name from `cacheControl` (camelCase) to `cache_control` (snake_case). This bug caused Anthropic API to ignore all cache markers, resulting in ~10x higher costs than expected. Users should see ~90% cost reduction after this fix. (#31)
 
 
 ## 0.4.0 (2026-01-29)
