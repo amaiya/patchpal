@@ -742,8 +742,8 @@ def _apply_prompt_caching(messages: List[Dict[str, Any]], model_id: str) -> List
         # Bedrock uses cachePoint
         cache_marker = {"cachePoint": {"type": "ephemeral"}}
     else:
-        # Direct Anthropic API uses cacheControl
-        cache_marker = {"cacheControl": {"type": "ephemeral"}}
+        # Direct Anthropic API uses cache_control
+        cache_marker = {"cache_control": {"type": "ephemeral"}}
 
     # Find system messages (usually at the start)
     system_messages = [i for i, msg in enumerate(messages) if msg.get("role") == "system"]

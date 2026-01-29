@@ -7,6 +7,18 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
+## 0.4.1 (2026-01-29)
+
+### new:
+- N/A
+
+### changed
+- N/A
+
+### fixed:
+- Fixed prompt caching field name from `cacheControl` (camelCase) to `cache_control` (snake case). This bug caused Anthropic API to ignore all cache markers. (#31)
+
+
 ## 0.4.0 (2026-01-29)
 
 ### new:

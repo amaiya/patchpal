@@ -441,13 +441,13 @@ def test_prompt_caching_application_anthropic():
     # Test with direct Anthropic API
     cached_messages = _apply_prompt_caching(messages.copy(), "anthropic/claude-sonnet-4-5")
 
-    # System message should have cacheControl
-    assert "cacheControl" in cached_messages[0]
-    assert cached_messages[0]["cacheControl"] == {"type": "ephemeral"}
+    # System message should have cache_control
+    assert "cache_control" in cached_messages[0]
+    assert cached_messages[0]["cache_control"] == {"type": "ephemeral"}
 
-    # Last 2 messages should have cacheControl
-    assert "cacheControl" in cached_messages[-1]  # Last user message
-    assert "cacheControl" in cached_messages[-2]  # Last assistant message
+    # Last 2 messages should have cache_control
+    assert "cache_control" in cached_messages[-1]  # Last user message
+    assert "cache_control" in cached_messages[-2]  # Last assistant message
 
 
 def test_prompt_caching_application_bedrock():
@@ -488,7 +488,7 @@ def test_prompt_caching_no_modification_for_unsupported():
     cached_messages = _apply_prompt_caching(messages.copy(), "openai/gpt-4o")
 
     # Messages should be unchanged
-    assert "cacheControl" not in cached_messages[0]
+    assert "cache_control" not in cached_messages[0]
     assert "cachePoint" not in cached_messages[0]
     assert cached_messages == messages
 
