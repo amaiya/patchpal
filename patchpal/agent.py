@@ -714,8 +714,8 @@ def _supports_prompt_caching(model_id: str) -> bool:
     # Anthropic models support caching (direct API or via Bedrock)
     if "anthropic" in model_id.lower() or "claude" in model_id.lower():
         return True
-    # Bedrock with Anthropic models
-    if model_id.startswith("bedrock/") and "anthropic" in model_id.lower():
+    # Bedrock Nova models support caching
+    if model_id.startswith("bedrock/") and "amazon.nova" in model_id.lower():
         return True
     return False
 
@@ -738,11 +738,13 @@ def _apply_prompt_caching(messages: List[Dict[str, Any]], model_id: str) -> List
         return messages
 
     # Determine cache marker format based on provider
-    if model_id.startswith("bedrock/"):
-        # Bedrock uses cachePoint
-        cache_marker = {"cachePoint": {"type": "ephemeral"}}
+    # Anthropic models (direct or via Bedrock) use cache_control
+    # Other Bedrock models (Nova, etc.) use cachePoint
+    if model_id.startswith("bedrock/") and "anthropic" not in model_id.lower():
+        # Non-Anthropic Bedrock models (Nova, etc.) use cachePoint
+        cache_marker = {"cachePoint": {"type": "default"}}
     else:
-        # Direct Anthropic API uses cache_control
+        # Anthropic models (direct or via Bedrock) use cache_control
         cache_marker = {"cache_control": {"type": "ephemeral"}}
 
     # Find system messages (usually at the start)

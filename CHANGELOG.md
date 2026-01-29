@@ -7,6 +7,19 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
+## 0.4.4 (2026-01-29)
+
+### new:
+- N/A
+
+### changed
+- N/A
+
+### fixed:
+- Fixed Bedrock prompt caching to use correct marker format: Anthropic models on Bedrock now use `cache_control` (same as direct Anthropic API), while non-Anthropic Bedrock models (Nova, etc.) use `cachePoint`. Previous implementation incorrectly used `cachePoint` for all Bedrock models.
+- Added support for Amazon Nova models prompt caching on Bedrock
+
+
 ## 0.4.3 (2026-01-29)
 
 ### new:

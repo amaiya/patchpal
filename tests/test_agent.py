@@ -422,7 +422,11 @@ def test_prompt_caching_detection():
     assert _supports_prompt_caching("bedrock/anthropic.claude-sonnet-4-5-v1:0")
     assert _supports_prompt_caching("bedrock/anthropic.claude-v2")
 
-    # Non-Anthropic models should not support caching
+    # Bedrock Nova models should support caching
+    assert _supports_prompt_caching("bedrock/amazon.nova-pro-v1:0")
+    assert _supports_prompt_caching("bedrock/amazon.nova-lite-v1:0")
+
+    # Non-Anthropic/Nova models should not support caching
     assert not _supports_prompt_caching("openai/gpt-4o")
     assert not _supports_prompt_caching("ollama_chat/llama3.1")
 
@@ -454,8 +458,8 @@ def test_prompt_caching_application_anthropic():
     assert "cache_control" in cached_messages[-2]["content"][0]
 
 
-def test_prompt_caching_application_bedrock():
-    """Test that prompt caching markers use correct format for Bedrock."""
+def test_prompt_caching_application_bedrock_anthropic():
+    """Test that prompt caching markers use cache_control for Bedrock Anthropic models."""
     from patchpal.agent import _apply_prompt_caching
 
     messages = [
@@ -465,16 +469,43 @@ def test_prompt_caching_application_bedrock():
         {"role": "user", "content": "How are you?"},
     ]
 
-    # Test with Bedrock
+    # Test with Bedrock Anthropic model - should use cache_control (same as direct Anthropic)
     cached_messages = _apply_prompt_caching(
         messages.copy(), "bedrock/anthropic.claude-sonnet-4-5-v1:0"
     )
 
-    # System message should have cachePoint inside content block (Bedrock format)
+    # System message should have cache_control inside content block (NOT cachePoint)
+    assert isinstance(cached_messages[0]["content"], list)
+    assert cached_messages[0]["content"][0]["type"] == "text"
+    assert "cache_control" in cached_messages[0]["content"][0]
+    assert cached_messages[0]["content"][0]["cache_control"] == {"type": "ephemeral"}
+
+    # Last 2 messages should have cache_control inside content blocks
+    assert isinstance(cached_messages[-1]["content"], list)
+    assert "cache_control" in cached_messages[-1]["content"][0]
+    assert isinstance(cached_messages[-2]["content"], list)
+    assert "cache_control" in cached_messages[-2]["content"][0]
+
+
+def test_prompt_caching_application_bedrock_nova():
+    """Test that prompt caching markers use cachePoint for Bedrock Nova models."""
+    from patchpal.agent import _apply_prompt_caching
+
+    messages = [
+        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "user", "content": "Hello"},
+        {"role": "assistant", "content": "Hi there!"},
+        {"role": "user", "content": "How are you?"},
+    ]
+
+    # Test with Bedrock Nova model - should use cachePoint
+    cached_messages = _apply_prompt_caching(messages.copy(), "bedrock/amazon.nova-pro-v1:0")
+
+    # System message should have cachePoint inside content block
     assert isinstance(cached_messages[0]["content"], list)
     assert cached_messages[0]["content"][0]["type"] == "text"
     assert "cachePoint" in cached_messages[0]["content"][0]
-    assert cached_messages[0]["content"][0]["cachePoint"] == {"type": "ephemeral"}
+    assert cached_messages[0]["content"][0]["cachePoint"] == {"type": "default"}
 
     # Last 2 messages should have cachePoint inside content blocks
     assert isinstance(cached_messages[-1]["content"], list)
