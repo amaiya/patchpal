@@ -7,7 +7,7 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
-## 0.5.0 (TBD)
+## 0.5.0 (2026-01-30)
 
 ### new:
 - Added **custom tools support** for Python API: Users can now pass Python functions to `create_agent(custom_tools=[...])` with automatic schema generation from type hints and docstrings (#35)
