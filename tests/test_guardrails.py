@@ -403,15 +403,14 @@ class TestConfigurability:
 # Summary test to demonstrate all guardrails
 def test_comprehensive_security_demo(temp_repo, monkeypatch):
     """Comprehensive test showing all security features (reload-free)."""
-    import os
     import sys
     from pathlib import Path
 
     import pytest
 
-    # If this test is flaky in CI, skip explicitly
-    if os.getenv("CI"):
-        pytest.skip("Known module-global state issues in CI")
+    ## If this test is flaky in CI, skip explicitly
+    # if os.getenv("CI"):
+    # pytest.skip("Known module-global state issues in CI")
 
     # ----------------------------
     # Mock permission request
