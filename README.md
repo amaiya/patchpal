@@ -14,6 +14,13 @@ $ls ./patchpal
 __init__.py agent.py  cli.py context.py permissions.py  skills.py system_prompt.md tool_schema.py tools.py
 ```
 
+## Quick Start
+
+```bash
+$ pip install patchpal  # install
+$ patchpal              # start
+```
+
 ## Table of Contents
 
 - [Installation](https://github.com/amaiya/patchpal?tab=readme-ov-file#installation)
