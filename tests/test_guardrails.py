@@ -277,34 +277,35 @@ class TestPathTraversal:
 
     def test_blocks_writing_outside_repository(self, temp_repo, monkeypatch):
         """Test that write operations outside repository are blocked/require permission."""
-        # Enable permission system for this test
-        monkeypatch.setenv("PATCHPAL_REQUIRE_PERMISSION", "true")
-        monkeypatch.setenv("PATCHPAL_READ_ONLY", "false")
+        from pathlib import Path
 
-        # Reload module to pick up new env vars
-        import importlib
-
+        # Import modules
         import patchpal.permissions
         import patchpal.tools
 
-        importlib.reload(patchpal.permissions)
-        importlib.reload(patchpal.tools)
+        # Patch module-level constants directly (since they're read at import time)
+        monkeypatch.setattr(patchpal.tools, "READ_ONLY_MODE", False)
 
-        # Re-monkeypatch REPO_ROOT after reload
-        monkeypatch.setattr("patchpal.tools.REPO_ROOT", temp_repo)
+        # Reset cached permission managers
+        patchpal.permissions._permission_manager = None
+        patchpal.tools._permission_manager = None
+
+        # Patch REPO_ROOT
+        repo_root = Path(temp_repo).resolve()
+        monkeypatch.setattr(patchpal.tools, "REPO_ROOT", repo_root)
 
         # Mock permission request to deny access
         def mock_request_permission(self, tool_name, description, pattern=None, context=None):
             return False  # Deny permission
 
         monkeypatch.setattr(
-            "patchpal.permissions.PermissionManager.request_permission", mock_request_permission
+            patchpal.permissions.PermissionManager, "request_permission", mock_request_permission
         )
 
         from patchpal.tools import apply_patch
 
         # Try to write to parent directory
-        outside_path = temp_repo.parent / "test_write.txt"
+        outside_path = repo_root.parent / "test_write.txt"
 
         # Should be blocked - permission denied returns a cancellation message
         result = apply_patch(str(outside_path), "malicious content")
@@ -312,34 +313,35 @@ class TestPathTraversal:
 
     def test_blocks_editing_outside_repository(self, temp_repo, monkeypatch):
         """Test that edit operations outside repository are blocked/require permission."""
-        # Enable permission system for this test
-        monkeypatch.setenv("PATCHPAL_REQUIRE_PERMISSION", "true")
-        monkeypatch.setenv("PATCHPAL_READ_ONLY", "false")
+        from pathlib import Path
 
-        # Reload module to pick up new env vars
-        import importlib
-
+        # Import modules
         import patchpal.permissions
         import patchpal.tools
 
-        importlib.reload(patchpal.permissions)
-        importlib.reload(patchpal.tools)
+        # Patch module-level constants directly (since they're read at import time)
+        monkeypatch.setattr(patchpal.tools, "READ_ONLY_MODE", False)
 
-        # Re-monkeypatch REPO_ROOT after reload
-        monkeypatch.setattr("patchpal.tools.REPO_ROOT", temp_repo)
+        # Reset cached permission managers
+        patchpal.permissions._permission_manager = None
+        patchpal.tools._permission_manager = None
+
+        # Patch REPO_ROOT
+        repo_root = Path(temp_repo).resolve()
+        monkeypatch.setattr(patchpal.tools, "REPO_ROOT", repo_root)
 
         # Mock permission request to deny access
         def mock_request_permission(self, tool_name, description, pattern=None, context=None):
             return False  # Deny permission
 
         monkeypatch.setattr(
-            "patchpal.permissions.PermissionManager.request_permission", mock_request_permission
+            patchpal.permissions.PermissionManager, "request_permission", mock_request_permission
         )
 
         from patchpal.tools import edit_file
 
         # Create a file outside repo to try editing
-        outside_file = temp_repo.parent / "test_edit.txt"
+        outside_file = repo_root.parent / "test_edit.txt"
         outside_file.write_text("original content")
 
         try:
