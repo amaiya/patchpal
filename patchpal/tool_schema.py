@@ -1,7 +1,14 @@
-"""Utility to automatically convert Python functions to LiteLLM tool schemas."""
+"""Utility to automatically convert Python functions to LiteLLM tool schemas.
+
+Also provides custom tools discovery system for loading user-defined tools
+from ~/.patchpal/tools/
+"""
 
 import inspect
-from typing import Any, Callable, Dict, Union, get_args, get_origin, get_type_hints
+import sys
+from importlib import util
+from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional, Union, get_args, get_origin, get_type_hints
 
 
 def python_type_to_json_schema(py_type: Any) -> Dict[str, Any]:
@@ -152,3 +159,130 @@ def function_to_tool_schema(func: Callable) -> Dict[str, Any]:
             },
         },
     }
+
+
+def _is_valid_tool_function(func: Callable) -> bool:
+    """Check if a function is valid for use as a tool.
+
+    Args:
+        func: Function to validate
+
+    Returns:
+        True if function can be used as a tool
+    """
+    # Must have a docstring
+    if not func.__doc__:
+        return False
+
+    # Must have type hints
+    try:
+        sig = inspect.signature(func)
+        for param_name, param in sig.parameters.items():
+            # Skip *args, **kwargs
+            if param.kind in (inspect.Parameter.VAR_POSITIONAL, inspect.Parameter.VAR_KEYWORD):
+                continue
+            # Check if parameter has annotation
+            if param.annotation is inspect.Parameter.empty:
+                return False
+    except Exception:
+        return False
+
+    return True
+
+
+def discover_tools(tools_dir: Optional[Path] = None) -> List[Callable]:
+    """Discover custom tool functions from Python files.
+
+    Loads all .py files from the tools directory and extracts functions
+    that have proper type hints and docstrings.
+
+    Tool functions must:
+    - Have type hints for all parameters
+    - Have a docstring with description and Args section
+    - Be defined at module level (not nested)
+    - Not start with underscore (private functions ignored)
+
+    Args:
+        tools_dir: Directory to search for tool files (default: ~/.patchpal/tools/)
+
+    Returns:
+        List of callable tool functions
+    """
+    if tools_dir is None:
+        tools_dir = Path.home() / ".patchpal" / "tools"
+
+    if not tools_dir.exists():
+        return []
+
+    tools = []
+    loaded_modules = []
+
+    # Discover all .py files
+    for tool_file in sorted(tools_dir.glob("*.py")):
+        try:
+            # Create a unique module name to avoid conflicts
+            module_name = f"patchpal_custom_tools.{tool_file.stem}"
+
+            # Load the module
+            spec = util.spec_from_file_location(module_name, tool_file)
+            if spec and spec.loader:
+                module = util.module_from_spec(spec)
+
+                # Store reference to prevent garbage collection
+                sys.modules[module_name] = module
+                loaded_modules.append(module)
+
+                # Execute the module
+                spec.loader.exec_module(module)
+
+                # Extract valid tool functions
+                for name, obj in inspect.getmembers(module, inspect.isfunction):
+                    # Skip private functions
+                    if name.startswith("_"):
+                        continue
+
+                    # Skip functions from imports (only module-level definitions)
+                    if obj.__module__ != module_name:
+                        continue
+
+                    # Validate tool function
+                    if _is_valid_tool_function(obj):
+                        tools.append(obj)
+
+        except Exception as e:
+            # Print warning but continue with other tools
+            print(
+                f"\033[1;33m⚠️  Warning: Failed to load custom tool from {tool_file.name}: {e}\033[0m"
+            )
+            continue
+
+    return tools
+
+
+def list_custom_tools(tools_dir: Optional[Path] = None) -> List[tuple[str, str, Path]]:
+    """List all custom tools with their descriptions.
+
+    Args:
+        tools_dir: Directory to search for tool files (default: ~/.patchpal/tools/)
+
+    Returns:
+        List of (tool_name, description, file_path) tuples
+    """
+    tools = discover_tools(tools_dir)
+
+    result = []
+    for tool in tools:
+        # Extract description from docstring (first line)
+        description = ""
+        if tool.__doc__:
+            description = tool.__doc__.split("\n")[0].strip()
+
+        # Get source file
+        try:
+            source_file = Path(inspect.getfile(tool))
+        except Exception:
+            source_file = Path("unknown")
+
+        result.append((tool.__name__, description, source_file))
+
+    return result

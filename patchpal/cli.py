@@ -211,9 +211,26 @@ Supported models: Any LiteLLM-supported model
     # Determine model to use (priority: CLI arg > env var > default)
     model_id = args.model or os.getenv("PATCHPAL_MODEL") or "anthropic/claude-sonnet-4-5"
 
-    # Create the agent with the specified model
+    # Discover custom tools from ~/.patchpal/tools/
+    from patchpal.tool_schema import discover_tools, list_custom_tools
+
+    custom_tools = discover_tools()
+
+    # Show custom tools info if any were loaded
+    custom_tool_info = list_custom_tools()
+    if custom_tool_info:
+        tool_names = [name for name, _, _ in custom_tool_info]
+        tools_str = ", ".join(tool_names)
+        # Store for later display (after model info)
+        custom_tools_message = (
+            f"\033[1;36m🔧 Loaded {len(custom_tool_info)} custom tool(s): {tools_str}\033[0m"
+        )
+    else:
+        custom_tools_message = None
+
+    # Create the agent with the specified model and custom tools
     # LiteLLM will handle API key validation and provide appropriate error messages
-    agent = create_agent(model_id=model_id)
+    agent = create_agent(model_id=model_id, custom_tools=custom_tools)
 
     # Get max iterations from environment variable or use default
     max_iterations = int(os.getenv("PATCHPAL_MAX_ITERATIONS", "100"))
@@ -237,6 +254,10 @@ Supported models: Any LiteLLM-supported model
     print("PatchPal - Claude Code–inspired coding and automation assistant")
     print("=" * 80)
     print(f"\nUsing model: {model_id}")
+
+    # Show custom tools info if any were loaded
+    if custom_tools_message:
+        print(custom_tools_message)
 
     # Show require-permission-for-all indicator if active
     if args.require_permission_for_all:

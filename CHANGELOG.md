@@ -7,6 +7,18 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
+## 0.6.0 (2026-01-31)
+
+### new:
+- Added **custom tools support for CLI**: Tools are now auto-discovered from `~/.patchpal/tools/*.py` at startup, extending the existing Python API support to CLI users. Custom tools appear alongside built-in tools with automatic schema generation from type hints and docstrings. (#37)
+
+### changed
+- N/A
+
+### fixed:
+- N/A
+
+
 ## 0.5.1 (2026-01-30)
 
 ### new:
