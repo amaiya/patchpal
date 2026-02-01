@@ -92,7 +92,7 @@ export HOSTED_VLLM_API_KEY=token-abc123           # optional depending on your v
 patchpal
 
 # Use a specific model via command-line argument
-patchpal --model openai/gpt-4o  # or openai/gpt-5, anthropic/claude-opus-4-5 etc.
+patchpal --model openai/gpt-5.2  # or openai/gpt-5-mini, anthropic/claude-opus-4-5 etc.
 
 # Use vLLM (local)
 # Note: vLLM server must be started with --tool-call-parser and --enable-auto-tool-choice
@@ -106,7 +106,7 @@ export OLLAMA_CONTEXT_LENGTH=32768
 patchpal --model ollama_chat/qwen3:32b
 
 # Or set the model via environment variable
-export PATCHPAL_MODEL=openai/gpt-5
+export PATCHPAL_MODEL=openai/gpt-5.2
 patchpal
 ```
 
@@ -477,14 +477,14 @@ PatchPal supports any LiteLLM-compatible model. You can configure the model in t
 
 ### 1. Command-line Argument
 ```bash
-patchpal --model openai/gpt-5
+patchpal --model openai/gpt-5.2
 patchpal --model anthropic/claude-sonnet-4-5
 patchpal --model hosted_vllm/openai/gpt-oss-20b # local model - no API charges
 ```
 
 ### 2. Environment Variable
 ```bash
-export PATCHPAL_MODEL=openai/gpt-5
+export PATCHPAL_MODEL=openai/gpt-5.2
 patchpal
 ```
 
@@ -496,7 +496,7 @@ If no model is specified, PatchPal uses `anthropic/claude-sonnet-4-5` (Claude So
 PatchPal works with any model supported by LiteLLM, including:
 
 - **Anthropic** (Recommended): `anthropic/claude-sonnet-4-5`, `anthropic/claude-opus-4-5`, `anthropic/claude-3-7-sonnet-latest`
-- **OpenAI**: `openai/gpt-5`, `openai/gpt-4o`
+- **OpenAI**: `openai/gpt-5.2`, `openai/gpt-5-mini`
 - **AWS Bedrock**: `bedrock/anthropic.claude-sonnet-4-5-v1:0`
 - **vLLM (Local)** (Recommended for local): See vLLM section below for setup
 - **Ollama (Local)**:  See Ollama section below for setup
@@ -996,7 +996,7 @@ PatchPal can be configured through `PATCHPAL_*` environment variables to customi
 ### Model Selection
 
 ```bash
-export PATCHPAL_MODEL=openai/gpt-4o          # Override default model
+export PATCHPAL_MODEL=openai/gpt-5.2          # Override default model
 # Priority: CLI arg > PATCHPAL_MODEL env var > default (anthropic/claude-sonnet-4-5)
 ```
 
@@ -1416,7 +1416,7 @@ When using cloud LLM providers (Anthropic, OpenAI, etc.), token usage directly i
 - Use less expensive models for routine tasks:
   ```bash
   patchpal --model anthropic/claude-3-7-sonnet-latest  # Cheaper than claude-sonnet-4-5
-  patchpal --model openai/gpt-4o-mini                  # Cheaper than gpt-4o
+  patchpal --model openai/gpt-5-mini                   # Cheaper than gpt-5.2
   ```
 - Reserve premium models for complex reasoning tasks
 
