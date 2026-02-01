@@ -331,18 +331,28 @@ Custom tools are Python functions with specific requirements:
 ```python
 # ~/.patchpal/tools/my_tools.py
 
-def add(x: int, y: int) -> str:
-    """Add two numbers together.
+def calculator(x: int, y: int, operation: str = "add") -> str:
+    """Perform basic arithmetic operations.
 
     Args:
         x: First number
         y: Second number
+        operation: Operation to perform (add, subtract, multiply, divide)
 
     Returns:
-        The sum as a string
+        Result as a string
     """
-    result = x + y
-    return f"{x} + {y} = {result}"
+    if operation == "add":
+        return f"{x} + {y} = {x + y}"
+    elif operation == "subtract":
+        return f"{x} - {y} = {x - y}"
+    elif operation == "multiply":
+        return f"{x} * {y} = {x * y}"
+    elif operation == "divide":
+        if y == 0:
+            return "Error: Cannot divide by zero"
+        return f"{x} / {y} = {x / y}"
+    return "Unknown operation"
 
 
 def convert_currency(amount: float, from_currency: str, to_currency: str) -> str:
@@ -370,11 +380,15 @@ Once loaded, the agent calls your custom tools automatically:
 
 ```bash
 You: What's 15 + 27?
-Agent: [Calls the add tool]
+Agent: [Calls calculator(15, 27, "add")]
         15 + 27 = 42
 
+You: What's 100 divided by 4?
+Agent: [Calls calculator(100, 4, "divide")]
+        100 / 4 = 25
+
 You: Convert 100 USD to EUR
-Agent: [Calls convert_currency tool]
+Agent: [Calls convert_currency(100, "USD", "EUR")]
         100 USD = 85.00 EUR
 ```
 
