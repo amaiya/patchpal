@@ -867,6 +867,10 @@ class PatchPalAgent:
         self.cumulative_input_tokens = 0
         self.cumulative_output_tokens = 0
 
+        # Track cache-related tokens (for Anthropic/Bedrock models with prompt caching)
+        self.cumulative_cache_creation_tokens = 0
+        self.cumulative_cache_read_tokens = 0
+
         # LiteLLM settings for models that need parameter dropping
         self.litellm_kwargs = {}
         if self.model_id.startswith("bedrock/"):
@@ -958,6 +962,19 @@ class PatchPalAgent:
                         self.cumulative_input_tokens += response.usage.prompt_tokens
                     if hasattr(response.usage, "completion_tokens"):
                         self.cumulative_output_tokens += response.usage.completion_tokens
+                    # Track cache statistics (Anthropic/Bedrock prompt caching)
+                    if (
+                        hasattr(response.usage, "cache_creation_input_tokens")
+                        and response.usage.cache_creation_input_tokens
+                    ):
+                        self.cumulative_cache_creation_tokens += (
+                            response.usage.cache_creation_input_tokens
+                        )
+                    if (
+                        hasattr(response.usage, "cache_read_input_tokens")
+                        and response.usage.cache_read_input_tokens
+                    ):
+                        self.cumulative_cache_read_tokens += response.usage.cache_read_input_tokens
 
                 return response
 
@@ -1131,6 +1148,19 @@ class PatchPalAgent:
                         self.cumulative_input_tokens += response.usage.prompt_tokens
                     if hasattr(response.usage, "completion_tokens"):
                         self.cumulative_output_tokens += response.usage.completion_tokens
+                    # Track cache statistics (Anthropic/Bedrock prompt caching)
+                    if (
+                        hasattr(response.usage, "cache_creation_input_tokens")
+                        and response.usage.cache_creation_input_tokens
+                    ):
+                        self.cumulative_cache_creation_tokens += (
+                            response.usage.cache_creation_input_tokens
+                        )
+                    if (
+                        hasattr(response.usage, "cache_read_input_tokens")
+                        and response.usage.cache_read_input_tokens
+                    ):
+                        self.cumulative_cache_read_tokens += response.usage.cache_read_input_tokens
 
             except Exception as e:
                 return f"Error calling model: {e}"

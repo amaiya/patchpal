@@ -7,6 +7,18 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
+## 0.7.0 (2026-02-01)
+
+### new:
+- Added **prompt caching statistics tracking**: `/status` command now displays cache write tokens, cache read tokens, cache hit rate, and cost-adjusted input tokens for Anthropic/Bedrock models, providing visibility into caching effectiveness and actual costs. (#38)
+
+### changed
+- N/A
+
+### fixed:
+- N/A
+
+
 ## 0.6.0 (2026-01-31)
 
 ### new:

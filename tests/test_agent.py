@@ -758,3 +758,64 @@ def test_agent_keyboard_interrupt_after_successful_retry(monkeypatch):
 
     finally:
         TOOL_FUNCTIONS["list_files"] = original_list_files
+
+
+def test_cache_token_tracking():
+    """Test that cache token statistics are tracked correctly."""
+    from patchpal.agent import create_agent
+
+    agent = create_agent()
+
+    # Verify cache token counters are initialized
+    assert hasattr(agent, "cumulative_cache_creation_tokens")
+    assert hasattr(agent, "cumulative_cache_read_tokens")
+    assert agent.cumulative_cache_creation_tokens == 0
+    assert agent.cumulative_cache_read_tokens == 0
+
+    # Mock response with cache statistics
+    mock_response = MagicMock()
+    mock_response.usage.prompt_tokens = 1000
+    mock_response.usage.completion_tokens = 100
+    mock_response.usage.cache_creation_input_tokens = 500
+    mock_response.usage.cache_read_input_tokens = 400
+    mock_response.choices = [MagicMock()]
+    mock_response.choices[0].message.content = "Test response"
+    mock_response.choices[0].message.tool_calls = None
+
+    # Mock the completion call
+    with patch("patchpal.agent.litellm.completion", return_value=mock_response):
+        agent.run("test")
+
+        # Verify cache tokens were tracked
+        assert agent.cumulative_cache_creation_tokens == 500
+        assert agent.cumulative_cache_read_tokens == 400
+        assert agent.cumulative_input_tokens == 1000
+        assert agent.cumulative_output_tokens == 100
+
+
+def test_cache_token_tracking_without_cache():
+    """Test that agent handles responses without cache statistics gracefully."""
+    from patchpal.agent import create_agent
+
+    agent = create_agent()
+
+    # Mock response without cache statistics
+    mock_response = MagicMock()
+    mock_response.usage.prompt_tokens = 1000
+    mock_response.usage.completion_tokens = 100
+    # No cache_creation_input_tokens or cache_read_input_tokens attributes
+    delattr(mock_response.usage, "cache_creation_input_tokens")
+    delattr(mock_response.usage, "cache_read_input_tokens")
+    mock_response.choices = [MagicMock()]
+    mock_response.choices[0].message.content = "Test response"
+    mock_response.choices[0].message.tool_calls = None
+
+    # Mock the completion call
+    with patch("patchpal.agent.litellm.completion", return_value=mock_response):
+        agent.run("test")
+
+        # Verify regular tokens were tracked but cache tokens remain at 0
+        assert agent.cumulative_cache_creation_tokens == 0
+        assert agent.cumulative_cache_read_tokens == 0
+        assert agent.cumulative_input_tokens == 1000
+        assert agent.cumulative_output_tokens == 100

@@ -401,6 +401,55 @@ Supported models: Any LiteLLM-supported model
                     total_tokens = agent.cumulative_input_tokens + agent.cumulative_output_tokens
                     print(f"  Total tokens: {total_tokens:,}")
 
+                    # Show cache statistics if available (Anthropic/Bedrock prompt caching)
+                    has_cache_stats = (
+                        agent.cumulative_cache_creation_tokens > 0
+                        or agent.cumulative_cache_read_tokens > 0
+                    )
+                    if has_cache_stats:
+                        print("\n  \033[1;36mPrompt Caching Statistics\033[0m")
+                        print(f"  Cache write tokens: {agent.cumulative_cache_creation_tokens:,}")
+                        print(f"  Cache read tokens: {agent.cumulative_cache_read_tokens:,}")
+
+                        # Calculate cache hit rate
+                        if agent.cumulative_input_tokens > 0:
+                            cache_hit_rate = (
+                                agent.cumulative_cache_read_tokens / agent.cumulative_input_tokens
+                            ) * 100
+                            print(f"  Cache hit rate: {cache_hit_rate:.1f}%")
+
+                        # Show cost-adjusted input tokens (cache reads cost less)
+                        # Note: This is an approximation - actual pricing varies by model
+                        # For Anthropic: cache writes = 1.25x, cache reads = 0.1x, regular = 1x
+                        if "anthropic" in model_id.lower() or "claude" in model_id.lower():
+                            # Break down: cumulative_input = non_cached + cache_read + cache_write
+                            non_cached_tokens = (
+                                agent.cumulative_input_tokens
+                                - agent.cumulative_cache_read_tokens
+                                - agent.cumulative_cache_creation_tokens
+                            )
+                            # Approximate cost-equivalent tokens (cache reads cost 10%, cache writes cost 125%)
+                            cost_adjusted = (
+                                non_cached_tokens
+                                + (agent.cumulative_cache_read_tokens * 0.1)
+                                + (agent.cumulative_cache_creation_tokens * 1.25)
+                            )
+                            savings_pct = (
+                                (
+                                    (agent.cumulative_input_tokens - cost_adjusted)
+                                    / agent.cumulative_input_tokens
+                                    * 100
+                                )
+                                if agent.cumulative_input_tokens > 0
+                                else 0
+                            )
+                            print(
+                                f"  Cost-adjusted input tokens: {cost_adjusted:,.0f} (~{savings_pct:.0f}% savings)"
+                            )
+                            print(
+                                "  \033[2m(Cache reads cost 10% of base price, writes cost 125% of base price)\033[0m"
+                            )
+
                 print("=" * 70 + "\n")
                 continue
 
