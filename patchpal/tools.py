@@ -80,7 +80,10 @@ CRITICAL_FILES = {
 }
 
 # Configuration
-MAX_FILE_SIZE = int(os.getenv("PATCHPAL_MAX_FILE_SIZE", 10 * 1024 * 1024))  # 10MB default
+# Reduced from 10MB to 500KB to prevent context window explosions
+# A 3.46MB file = ~1.15M tokens which exceeds most model context limits (128K-200K)
+# 500KB ≈ 166K tokens which is safe for most models
+MAX_FILE_SIZE = int(os.getenv("PATCHPAL_MAX_FILE_SIZE", 500 * 1024))  # 500KB default
 READ_ONLY_MODE = os.getenv("PATCHPAL_READ_ONLY", "false").lower() == "true"
 ALLOW_SENSITIVE = os.getenv("PATCHPAL_ALLOW_SENSITIVE", "false").lower() == "true"
 ENABLE_AUDIT_LOG = os.getenv("PATCHPAL_AUDIT_LOG", "true").lower() == "true"

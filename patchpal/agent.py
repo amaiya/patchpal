@@ -890,10 +890,39 @@ class PatchPalAgent:
         """
         # Don't compact if we have very few messages - compaction summary
         # could be longer than the messages being removed
-        if len(self.messages) < 5:
+        # Instead, use aggressive pruning since high capacity with few messages
+        # indicates large tool outputs rather than conversation depth
+        if len(self.messages) < 10:
             print(
-                f"\033[2m   Skipping compaction - only {len(self.messages)} messages (need at least 5 for effective compaction)\033[0m"
+                f"\033[2m   Only {len(self.messages)} messages - using aggressive pruning instead of summarization\033[0m"
             )
+
+            # Aggressively truncate all large tool outputs
+            pruned_chars = 0
+            for msg in self.messages:
+                if msg.get("role") == "tool" and msg.get("content"):
+                    content_size = len(str(msg["content"]))
+                    if content_size > 5_000:  # Truncate anything over 5K chars
+                        original_size = content_size
+                        msg["content"] = (
+                            str(msg["content"])[:5_000]
+                            + "\n\n[... content truncated during compaction. Use read_lines or grep_code for targeted access ...]"
+                        )
+                        pruned_chars += original_size - len(msg["content"])
+
+            stats_after = self.context_manager.get_usage_stats(self.messages)
+            if pruned_chars > 0:
+                print(
+                    f"\033[1;32m✓ Context reduced to {stats_after['usage_percent']}% through aggressive pruning (removed ~{pruned_chars:,} chars)\033[0m\n"
+                )
+            else:
+                print(
+                    f"\033[1;33m⚠️  No large tool outputs to prune. Context at {stats_after['usage_percent']}%.\033[0m"
+                )
+                print("\033[1;33m   Consider using '/clear' to start fresh.\033[0m\n")
+
+            # Update tracker to prevent immediate re-compaction
+            self._last_compaction_message_count = len(self.messages)
             return
 
         # Prevent compaction loops - don't compact again if we just did
@@ -940,6 +969,50 @@ class PatchPalAgent:
                 return
 
         # Phase 2: Full compaction needed
+        # EMERGENCY: If context is at or over capacity (≥100%), do aggressive pruning first
+        # Otherwise the summarization request itself will exceed context limits
+        stats_after_prune = self.context_manager.get_usage_stats(self.messages)
+        if stats_after_prune["usage_ratio"] >= 1.0:
+            print(
+                f"\033[1;31m   ⚠️  Context at or over capacity ({stats_after_prune['usage_percent']}%)!\033[0m"
+            )
+            print(
+                "\033[2m   Emergency: Aggressively pruning recent large tool outputs...\033[0m",
+                flush=True,
+            )
+
+            # Find and truncate large tool outputs (keep only first 10K chars)
+            emergency_pruned = 0
+            for msg in reversed(self.messages):
+                if msg.get("role") == "tool" and msg.get("content"):
+                    content_size = len(str(msg["content"]))
+                    if content_size > 10_000:
+                        original_size = content_size
+                        msg["content"] = (
+                            str(msg["content"])[:10_000]
+                            + "\n\n[... content truncated due to context window limits ...]"
+                        )
+                        emergency_pruned += original_size - len(msg["content"])
+
+            if emergency_pruned > 0:
+                print(
+                    f"\033[2m   Emergency pruned ~{emergency_pruned:,} chars from large tool outputs\033[0m",
+                    flush=True,
+                )
+                stats_after_emergency = self.context_manager.get_usage_stats(self.messages)
+                print(
+                    f"\033[2m   Context now at {stats_after_emergency['usage_percent']}% capacity\033[0m",
+                    flush=True,
+                )
+
+                # If still over 150%, give up and recommend /clear
+                if stats_after_emergency["usage_ratio"] > 1.5:
+                    print(
+                        f"\033[1;31m✗ Context still too large for compaction ({stats_after_emergency['usage_percent']}%)\033[0m"
+                    )
+                    print("\033[1;33m   Please use '/clear' to start a fresh session.\033[0m\n")
+                    return
+
         print("\033[2m   Generating conversation summary...\033[0m", flush=True)
 
         try:
@@ -1367,12 +1440,40 @@ class PatchPalAgent:
                                 print(f"\033[1;31m✗ {tool_name}: {e}\033[0m")
 
                     # Add tool result to messages
+                    # Check if result is extremely large and might blow context
+                    result_str = str(tool_result)
+                    result_size = len(result_str)
+
+                    # Warn if result is > 100K chars (~33K tokens)
+                    if result_size > 100_000:
+                        print(
+                            f"\033[1;33m⚠️  Large tool output: {result_size:,} chars (~{result_size // 3:,} tokens)\033[0m"
+                        )
+
+                        # If result would push us WAY over capacity, truncate it
+                        current_stats = self.context_manager.get_usage_stats(self.messages)
+                        # Estimate tokens in this result
+                        result_tokens = self.context_manager.estimator.estimate_tokens(result_str)
+                        projected_ratio = (
+                            current_stats["total_tokens"] + result_tokens
+                        ) / current_stats["context_limit"]
+
+                        if projected_ratio > 1.5:  # Would exceed 150% capacity
+                            print(
+                                "\033[1;31m⚠️  Tool output would exceed context capacity! Truncating...\033[0m"
+                            )
+                            # Keep first 50K chars
+                            result_str = (
+                                result_str[:50_000]
+                                + "\n\n[... Output truncated to prevent context window overflow. Use read_lines or grep_code for targeted access ...]"
+                            )
+
                     self.messages.append(
                         {
                             "role": "tool",
                             "tool_call_id": tool_call.id,
                             "name": tool_name,
-                            "content": str(tool_result),
+                            "content": result_str,
                         }
                     )
 

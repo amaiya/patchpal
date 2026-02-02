@@ -118,6 +118,8 @@ The agent has the following tools:
 
 ### File Operations
 - **read_file**: Read contents of files in the repository
+  - Limited to 500KB by default (configurable with `PATCHPAL_MAX_FILE_SIZE`)
+  - For larger files, use `read_lines` or `grep_code` for targeted access
 - **read_lines**: Read specific line ranges from a file without loading the entire file
   - Example: `read_lines("app.py", 100, 150)` - read lines 100-150
   - More efficient than read_file when you only need a few lines
@@ -1022,11 +1024,12 @@ export PATCHPAL_REQUIRE_PERMISSION=true      # Prompt before executing commands/
                                               # ⚠️  WARNING: Setting to false disables prompts - only use in trusted environments
 
 # File Safety
-export PATCHPAL_MAX_FILE_SIZE=10485760       # Maximum file size in bytes for read/write (default: 10MB)
+export PATCHPAL_MAX_FILE_SIZE=512000         # Maximum file size in bytes for read/write (default: 500KB)
+                                             # Reduced from 10MB to prevent context window explosions
 export PATCHPAL_READ_ONLY=true               # Prevent ALL file modifications (default: false)
-                                              # Useful for: code review, exploration, security audits
+                                             # Useful for: code review, exploration, security audits
 export PATCHPAL_ALLOW_SENSITIVE=true         # Allow access to .env, credentials (default: false - blocked)
-                                              # Only enable with test/dummy credentials
+                                             # Only enable with test/dummy credentials
 
 # Command Safety
 export PATCHPAL_ALLOW_SUDO=true              # Allow sudo/privilege escalation (default: false - blocked)
@@ -1168,7 +1171,7 @@ PatchPal includes comprehensive security protections enabled by default:
 **Critical Security:**
 - **Permission prompts**: Agent asks for permission before executing commands or modifying files (like Claude Code)
 - **Sensitive file protection**: Blocks access to `.env`, credentials, API keys
-- **File size limits**: Prevents OOM with configurable size limits (10MB default)
+- **File size limits**: Prevents OOM and context explosions with configurable size limits (500KB default)
 - **Binary file detection**: Blocks reading non-text files
 - **Critical file warnings**: Warns when modifying infrastructure files (package.json, Dockerfile, etc.)
 - **Read-only mode**: Optional mode that prevents all modifications
