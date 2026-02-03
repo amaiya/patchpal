@@ -7,6 +7,18 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
+## 0.8.0 (2026-02-02)
+
+### new:
+- Added consistent cost statistics display across CLI with new `_print_cost_statistics()` helper function, providing unified cost reporting in session summary footer (shown on exit), and `/status` command (#40)
+
+### changed
+- Refactored cost display logic to eliminate code duplication between session summary and `/status` command (#40)
+
+### fixed:
+- N/A
+
+
 ## 0.7.1 (2026-02-02)
 
 ### new:
