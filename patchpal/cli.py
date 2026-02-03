@@ -417,6 +417,43 @@ Supported models: Any LiteLLM-supported model
                 # Show session statistics before exiting
                 _print_session_summary(agent, show_detailed=False)
 
+                # Log session statistics to audit log
+                # Guard against missing/invalid attributes (e.g., in tests with mock agents)
+                if (
+                    hasattr(agent, "total_llm_calls")
+                    and isinstance(agent.total_llm_calls, int)
+                    and agent.total_llm_calls > 0
+                ):
+                    log_parts = [f"SESSION_END: {agent.total_llm_calls} LLM calls"]
+
+                    if hasattr(agent, "cumulative_input_tokens") and hasattr(
+                        agent, "cumulative_output_tokens"
+                    ):
+                        log_parts.append(
+                            f"{agent.cumulative_input_tokens} input tokens, "
+                            f"{agent.cumulative_output_tokens} output tokens"
+                        )
+
+                    if (
+                        hasattr(agent, "cumulative_cache_read_tokens")
+                        and agent.cumulative_cache_read_tokens > 0
+                    ):
+                        cache_hit_rate = (
+                            (
+                                agent.cumulative_cache_read_tokens
+                                / agent.cumulative_input_tokens
+                                * 100
+                            )
+                            if agent.cumulative_input_tokens > 0
+                            else 0
+                        )
+                        log_parts.append(f"cache hit rate: {cache_hit_rate:.1f}%")
+
+                    if hasattr(agent, "cumulative_cost") and agent.cumulative_cost > 0:
+                        log_parts.append(f"cost: ${agent.cumulative_cost:.4f}")
+
+                    audit_logger.info(", ".join(log_parts))
+
                 print("\nGoodbye!")
                 break
 

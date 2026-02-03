@@ -11,6 +11,7 @@ Most recent releases are shown at the top. Each release shows:
 
 ### new:
 - Support for PDF web fetches.
+- Added session statistics logging to audit log upon exit (#42)
 
 ### changed
 - N/A
