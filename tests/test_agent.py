@@ -910,6 +910,9 @@ def test_commercial_bedrock_no_pricing_adjustment(monkeypatch):
     """Test that commercial Bedrock does not get GovCloud pricing adjustment."""
     from patchpal.agent import create_agent
 
+    # Clear any existing region settings
+    monkeypatch.delenv("AWS_REGION_NAME", raising=False)
+
     # Set up commercial region
     monkeypatch.setenv("AWS_BEDROCK_REGION", "us-east-1")
 
