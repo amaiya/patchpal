@@ -381,7 +381,7 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "web_fetch",
-            "description": "Fetch and read content from a URL. Supports text extraction from HTML and PDF files. Requires permission to prevent information leakage about your codebase.",
+            "description": "Fetch and read content from a URL. Supports text extraction from HTML, PDF, DOCX (Word), PPTX (PowerPoint), and plain text files. Requires permission to prevent information leakage about your codebase.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -391,7 +391,7 @@ TOOLS = [
                     },
                     "extract_text": {
                         "type": "boolean",
-                        "description": "If true, extract readable text from HTML/PDF (default: true)",
+                        "description": "If true, extract readable text from HTML/PDF/DOCX/PPTX (default: true)",
                     },
                 },
                 "required": ["url"],
@@ -646,11 +646,11 @@ WEB_USAGE_DESC = ""
 WEB_TOOLS_SCOPE = ""
 if WEB_TOOLS_ENABLED:
     WEB_TOOLS_DESC = """- **web_search**: Search the web for information (error messages, documentation, best practices)
-- **web_fetch**: Fetch and read content from a URL (documentation, examples, references)
+- **web_fetch**: Fetch and read content from URLs. Supports HTML, PDF, DOCX, PPTX, plain text, JSON, XML
 """
     WEB_USAGE_DESC = """
 - Use web_search when you encounter unfamiliar errors, need documentation, or want to research solutions
-- Use web_fetch to read specific documentation pages or references you find"""
+- Use web_fetch to read documentation pages, download examples, or fetch office documents"""
     WEB_TOOLS_SCOPE = """- **Web access**: web_search, web_fetch
 """
 

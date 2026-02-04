@@ -29,6 +29,20 @@ try:
 except ImportError:
     PYMUPDF_AVAILABLE = False
 
+try:
+    import docx
+
+    PYTHON_DOCX_AVAILABLE = True
+except ImportError:
+    PYTHON_DOCX_AVAILABLE = False
+
+try:
+    import pptx
+
+    PYTHON_PPTX_AVAILABLE = True
+except ImportError:
+    PYTHON_PPTX_AVAILABLE = False
+
 # Import version for user agent
 try:
     from patchpal import __version__
@@ -105,7 +119,13 @@ MAX_WEB_CONTENT_SIZE = int(
 MAX_WEB_CONTENT_CHARS = int(
     os.getenv("PATCHPAL_MAX_WEB_CHARS", 100_000)
 )  # 100k chars (~25k tokens) - reduced to prevent context overflow
-WEB_USER_AGENT = f"PatchPal/{__version__} (AI Code Assistant)"
+# Use browser-like User-Agent to avoid bot blocking (e.g., GitHub redirects work with browser UA)
+WEB_USER_AGENT = f"Mozilla/5.0 (compatible; PatchPal/{__version__}; +AI Code Assistant)"
+WEB_HEADERS = {
+    "User-Agent": WEB_USER_AGENT,
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,application/pdf,text/plain,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9",
+}
 
 # Shell command configuration
 SHELL_TIMEOUT = int(os.getenv("PATCHPAL_SHELL_TIMEOUT", 30))  # 30 seconds default
@@ -2438,12 +2458,13 @@ def web_fetch(url: str, extract_text: bool = True) -> str:
         raise ValueError("URL must start with http:// or https://")
 
     try:
-        # Make request with timeout
+        # Make request with timeout and browser-like headers
         response = requests.get(
             url,
             timeout=WEB_REQUEST_TIMEOUT,
-            headers={"User-Agent": WEB_USER_AGENT},
+            headers=WEB_HEADERS,
             stream=True,  # Stream to check size first
+            allow_redirects=True,  # Follow redirects (including moved repos)
         )
         response.raise_for_status()
 
@@ -2484,6 +2505,47 @@ def web_fetch(url: str, extract_text: bool = True) -> str:
                         f"PDF URL: {url}\n"
                         f"To read this PDF, download it locally or try a different source."
                     )
+            elif (
+                "wordprocessingml" in content_type or "msword" in content_type
+            ) and PYTHON_DOCX_AVAILABLE:
+                # Extract text from DOCX (or DOC if saved as docx)
+                try:
+                    import io
+
+                    doc = docx.Document(io.BytesIO(content))
+                    text_parts = []
+                    for paragraph in doc.paragraphs:
+                        text_parts.append(paragraph.text)
+                    text_content = "\n".join(text_parts)
+                except Exception as docx_error:
+                    text_content = (
+                        f"[DOCX extraction failed: {docx_error}]\n\n"
+                        f"Content-Type: {content_type}\n"
+                        f"URL: {url}\n"
+                        f"To read this document, download it locally or try a different source."
+                    )
+            elif (
+                "presentationml" in content_type or "ms-powerpoint" in content_type
+            ) and PYTHON_PPTX_AVAILABLE:
+                # Extract text from PPTX (or PPT if saved as pptx)
+                try:
+                    import io
+
+                    prs = pptx.Presentation(io.BytesIO(content))
+                    text_parts = []
+                    for slide_num, slide in enumerate(prs.slides, 1):
+                        text_parts.append(f"\n--- Slide {slide_num} ---")
+                        for shape in slide.shapes:
+                            if hasattr(shape, "text"):
+                                text_parts.append(shape.text)
+                    text_content = "\n".join(text_parts)
+                except Exception as pptx_error:
+                    text_content = (
+                        f"[PPTX extraction failed: {pptx_error}]\n\n"
+                        f"Content-Type: {content_type}\n"
+                        f"URL: {url}\n"
+                        f"To read this presentation, download it locally or try a different source."
+                    )
             elif "html" in content_type:
                 # Extract text from HTML
                 text_content = content.decode(response.encoding or "utf-8", errors="replace")
@@ -2501,8 +2563,33 @@ def web_fetch(url: str, extract_text: bool = True) -> str:
                 chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
                 text_content = "\n".join(chunk for chunk in chunks if chunk)
             else:
-                # For other content types, try to decode as text
-                text_content = content.decode(response.encoding or "utf-8", errors="replace")
+                # For other content types, check if it's a known binary format
+                binary_formats = [
+                    "image/",
+                    "video/",
+                    "audio/",
+                    "application/zip",
+                    "application/x-zip",
+                    "application/x-rar",
+                    "application/x-tar",
+                    "spreadsheetml",  # Excel files (xlsx) - not yet supported
+                    "ms-excel",  # Legacy Excel files (xls) - not yet supported
+                    "application/octet-stream",
+                ]
+                is_binary = any(fmt in content_type for fmt in binary_formats)
+
+                if is_binary:
+                    text_content = (
+                        f"[WARNING: Unsupported binary format]\n\n"
+                        f"Content-Type: {content_type}\n"
+                        f"URL: {url}\n\n"
+                        f"This appears to be a binary file format that cannot be extracted as text.\n"
+                        f"Supported formats: HTML, PDF, DOCX, PPTX, plain text, JSON, XML.\n"
+                        f"To access this content, download it locally or use a format-specific tool."
+                    )
+                else:
+                    # Assume it's text-based (JSON, XML, CSV, etc.)
+                    text_content = content.decode(response.encoding or "utf-8", errors="replace")
         else:
             # No text extraction - just decode
             text_content = content.decode(response.encoding or "utf-8", errors="replace")

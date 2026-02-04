@@ -10,12 +10,16 @@ Most recent releases are shown at the top. Each release shows:
 ## 0.9.0 (TBD)
 
 ### new:
+- **Enhanced `web_fetch` with Office document support**: Added text extraction for DOCX (Word) and PPTX (PowerPoint) files using `python-docx` and `python-pptx` libraries. The tool now supports HTML, PDF, DOCX, PPTX, plain text, JSON, and XML formats. (#43)
+- **Browser-like headers for `web_fetch`**: Fixed GitHub repository redirects by using browser-like User-Agent and Accept headers. URLs to moved repositories (e.g., `github.com/old-org/repo` → `github.com/new-org/repo`) now work correctly. (#43)
+- **Binary format detection**: `web_fetch` now detects unsupported binary formats (images, videos, archives, Excel files) and returns helpful warning messages instead of garbled UTF-8 decoded content, preventing token waste. (#43)
 - Support for PDF web fetches.
 - Added session statistics logging to audit log upon exit (#42)
 - **AWS GovCloud Bedrock pricing support**: Automatically detects GovCloud usage (via ARN or `AWS_BEDROCK_REGION` environment variable) and applies ~1.2x pricing multiplier for cost estimation. Note: GovCloud pricing differences are not publicly documented by AWS; multiplier is based on observed Anthropic Claude Sonnet pricing and may not be accurate for all models. Cost statistics show "(Using AWS GovCloud pricing)" indicator when GovCloud is detected.
 
 ### changed
-- N/A
+- Added `python-docx>=1.0.0` and `python-pptx>=0.6.0` as required dependencies (#43)
+- Updated `web_fetch` tool description and documentation to reflect new format support (#43)
 
 ### fixed:
 - N/A

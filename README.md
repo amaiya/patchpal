@@ -183,9 +183,10 @@ The agent has the following tools:
   - Research library versions and compatibility
   - Requires permission to prevent information leakage about your codebase
 - **web_fetch**: Fetch and read content from URLs
-  - Read documentation pages
-  - Access API references
-  - Extract readable text from HTML pages and PDF documents
+  - Read documentation pages and API references
+  - Extract text from HTML, PDF, DOCX (Word), and PPTX (PowerPoint) files
+  - Support for plain text, JSON, XML, and other text formats
+  - Warns about unsupported binary formats (images, videos, archives)
   - Requires permission to prevent information leakage about your codebase
 
 ### Skills System
