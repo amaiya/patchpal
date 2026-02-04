@@ -105,7 +105,7 @@ def _print_session_summary(agent, show_detailed: bool = False):
         total_tokens = agent.cumulative_input_tokens + agent.cumulative_output_tokens
         print(f"  Total tokens: {total_tokens:,}")
 
-        # Show cache hit rate if caching was used
+        # Show cache hit rate if caching was used (Anthropic/Bedrock)
         if (
             hasattr(agent, "cumulative_cache_read_tokens")
             and hasattr(agent, "cumulative_input_tokens")
@@ -114,7 +114,18 @@ def _print_session_summary(agent, show_detailed: bool = False):
             cache_hit_rate = (
                 agent.cumulative_cache_read_tokens / agent.cumulative_input_tokens
             ) * 100
-            print(f"  Cache hit rate: {cache_hit_rate:.1f}%")
+            print(f"  Cache hit rate (Anthropic): {cache_hit_rate:.1f}%")
+
+        # Show OpenAI cache hit rate if caching was used
+        if (
+            hasattr(agent, "cumulative_openai_cached_tokens")
+            and hasattr(agent, "cumulative_input_tokens")
+            and agent.cumulative_openai_cached_tokens > 0
+        ):
+            cache_hit_rate = (
+                agent.cumulative_openai_cached_tokens / agent.cumulative_input_tokens
+            ) * 100
+            print(f"  Cache hit rate (OpenAI): {cache_hit_rate:.1f}%")
 
     # Show cost statistics
     if has_usage_info:
@@ -557,13 +568,15 @@ Supported models: Any LiteLLM-supported model
                     total_tokens = agent.cumulative_input_tokens + agent.cumulative_output_tokens
                     print(f"  Total tokens: {total_tokens:,}")
 
-                    # Show cache statistics if available (Anthropic/Bedrock prompt caching)
-                    has_cache_stats = (
+                    # Show cache statistics if available (Anthropic/Bedrock/OpenAI prompt caching)
+                    has_anthropic_cache = (
                         agent.cumulative_cache_creation_tokens > 0
                         or agent.cumulative_cache_read_tokens > 0
                     )
-                    if has_cache_stats:
-                        print("\n  \033[1;36mPrompt Caching Statistics\033[0m")
+                    has_openai_cache = agent.cumulative_openai_cached_tokens > 0
+
+                    if has_anthropic_cache:
+                        print("\n  \033[1;36mPrompt Caching Statistics (Anthropic/Bedrock)\033[0m")
                         print(f"  Cache write tokens: {agent.cumulative_cache_creation_tokens:,}")
                         print(f"  Cache read tokens: {agent.cumulative_cache_read_tokens:,}")
 
@@ -575,7 +588,6 @@ Supported models: Any LiteLLM-supported model
                             print(f"  Cache hit rate: {cache_hit_rate:.1f}%")
 
                         # Show cost-adjusted input tokens (cache reads cost less)
-                        # Note: This is an approximation - actual pricing varies by model
                         # For Anthropic: cache writes = 1.25x, cache reads = 0.1x, regular = 1x
                         if "anthropic" in model_id.lower() or "claude" in model_id.lower():
                             # Break down: cumulative_input = non_cached + cache_read + cache_write
@@ -604,6 +616,70 @@ Supported models: Any LiteLLM-supported model
                             )
                             print(
                                 "  \033[2m(Cache reads cost 10% of base price, writes cost 125% of base price)\033[0m"
+                            )
+
+                    if has_openai_cache:
+                        print("\n  \033[1;36mPrompt Caching Statistics (OpenAI)\033[0m")
+                        print(f"  Cached tokens: {agent.cumulative_openai_cached_tokens:,}")
+
+                        # Calculate cache hit rate
+                        if agent.cumulative_input_tokens > 0:
+                            cache_hit_rate = (
+                                agent.cumulative_openai_cached_tokens
+                                / agent.cumulative_input_tokens
+                            ) * 100
+                            print(f"  Cache hit rate: {cache_hit_rate:.1f}%")
+
+                        # Show cost-adjusted input tokens
+                        # For OpenAI: cached tokens have model-specific discounts (from LiteLLM database)
+                        if (
+                            "openai" in model_id.lower()
+                            or "gpt" in model_id.lower()
+                            or model_id.startswith("openai/")
+                        ):
+                            non_cached_tokens = (
+                                agent.cumulative_input_tokens
+                                - agent.cumulative_openai_cached_tokens
+                            )
+                            # Calculate actual discount based on model pricing
+                            # We use the same pricing data that _compute_cost_from_tokens uses
+                            try:
+                                import litellm
+
+                                model_info = litellm.get_model_info(agent.model_id)
+                                input_cost = model_info.get("input_cost_per_token", 0)
+                                cached_cost = model_info.get("cache_read_input_token_cost", 0)
+
+                                if cached_cost > 0 and input_cost > 0:
+                                    # Use actual pricing ratio
+                                    cache_multiplier = cached_cost / input_cost
+                                    discount_pct = (1 - cache_multiplier) * 100
+                                else:
+                                    # Fallback to 0.5x if no pricing data
+                                    cache_multiplier = 0.5
+                                    discount_pct = 50
+                            except Exception:
+                                # Fallback on error
+                                cache_multiplier = 0.5
+                                discount_pct = 50
+
+                            cost_adjusted = non_cached_tokens + (
+                                agent.cumulative_openai_cached_tokens * cache_multiplier
+                            )
+                            savings_pct = (
+                                (
+                                    (agent.cumulative_input_tokens - cost_adjusted)
+                                    / agent.cumulative_input_tokens
+                                    * 100
+                                )
+                                if agent.cumulative_input_tokens > 0
+                                else 0
+                            )
+                            print(
+                                f"  Cost-adjusted input tokens: {cost_adjusted:,.0f} (~{savings_pct:.0f}% savings)"
+                            )
+                            print(
+                                f"  \033[2m(Cached tokens cost {cache_multiplier * 100:.0f}% of base input price = {discount_pct:.0f}% discount)\033[0m"
                             )
 
                     # Show cost statistics if available

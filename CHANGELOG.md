@@ -7,22 +7,26 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
-## 0.9.0 (TBD)
+## 0.9.0 (2026-02-04)
 
 ### new:
+- **OpenAI prompt caching support**: Added tracking and display of OpenAI cached tokens (`prompt_tokens_details.cached_tokens`) in `/status` command and session summary. Shows cache hit rate, cost-adjusted token counts, and savings percentage. Properly calculates costs using LiteLLM's `cache_read_input_token_cost` field with fallback to 0.5x multiplier for models without explicit pricing data. (#44)
 - **Enhanced `web_fetch` with Office document support**: Added text extraction for DOCX (Word) and PPTX (PowerPoint) files using `python-docx` and `python-pptx` libraries. The tool now supports HTML, PDF, DOCX, PPTX, plain text, JSON, and XML formats. (#43)
 - **Browser-like headers for `web_fetch`**: Fixed GitHub repository redirects by using browser-like User-Agent and Accept headers. URLs to moved repositories (e.g., `github.com/old-org/repo` → `github.com/new-org/repo`) now work correctly. (#43)
 - **Binary format detection**: `web_fetch` now detects unsupported binary formats (images, videos, archives, Excel files) and returns helpful warning messages instead of garbled UTF-8 decoded content, preventing token waste. (#43)
 - Support for PDF web fetches.
 - Added session statistics logging to audit log upon exit (#42)
 - **AWS GovCloud Bedrock pricing support**: Automatically detects GovCloud usage (via ARN or `AWS_BEDROCK_REGION` environment variable) and applies ~1.2x pricing multiplier for cost estimation. Note: GovCloud pricing differences are not publicly documented by AWS; multiplier is based on observed Anthropic Claude Sonnet pricing and may not be accurate for all models. Cost statistics show "(Using AWS GovCloud pricing)" indicator when GovCloud is detected.
+- **LLM API timeout configuration**: Added `PATCHPAL_LLM_TIMEOUT` environment variable (default: 300 seconds) to prevent indefinite stalls when LLM API is unresponsive. All `litellm.completion()` calls now have a configurable timeout, providing better error handling and user experience when network issues or slow API responses occur.
 
 ### changed
 - Added `python-docx>=1.0.0` and `python-pptx>=0.6.0` as required dependencies (#43)
 - Updated `web_fetch` tool description and documentation to reflect new format support (#43)
+- All LLM API calls now include timeout parameter (default: 5 minutes, configurable via `PATCHPAL_LLM_TIMEOUT`)
 
 ### fixed:
-- N/A
+- **Fixed OpenAI cost overestimation**: OpenAI cached tokens were previously not tracked, causing costs to be overestimated by 15-50%. Now properly accounted for with model-specific discounts. (#44)
+- Fixed occasional stalling at "Thinking..." phase caused by `litellm.completion()` calls with no timeout. The agent would hang indefinitely when the LLM API was slow or unresponsive, requiring manual interruption (Ctrl-C). Now properly times out after configurable duration.
 
 
 ## 0.8.0 (2026-02-02)

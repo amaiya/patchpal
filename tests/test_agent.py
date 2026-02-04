@@ -985,3 +985,71 @@ def test_govcloud_pricing_with_cache_tokens(monkeypatch):
             + (100 * 1.5e-05 * 1.2)  # Output
         )
         assert abs(cost - expected_cost) < 1e-9
+
+
+def test_llm_timeout_default_value():
+    """Test that LLM_TIMEOUT has the correct default value."""
+    import sys
+
+    # Remove module from cache to get fresh import
+    if "patchpal.agent" in sys.modules:
+        del sys.modules["patchpal.agent"]
+
+    # Import without environment variable set
+    from patchpal.agent import LLM_TIMEOUT
+
+    # Verify default is 300 seconds (5 minutes)
+    assert LLM_TIMEOUT == 300
+
+
+def test_llm_timeout_environment_override(monkeypatch):
+    """Test that LLM_TIMEOUT can be overridden via environment variable."""
+    import sys
+
+    # Set custom timeout
+    monkeypatch.setenv("PATCHPAL_LLM_TIMEOUT", "60")
+
+    # Remove module from cache to force reload
+    if "patchpal.agent" in sys.modules:
+        del sys.modules["patchpal.agent"]
+
+    # Import with environment variable set
+    from patchpal.agent import LLM_TIMEOUT
+
+    # Verify timeout was overridden
+    assert LLM_TIMEOUT == 60
+
+    # Clean up
+    del sys.modules["patchpal.agent"]
+
+
+def test_llm_timeout_passed_to_completion(monkeypatch):
+    """Test that timeout parameter is passed to litellm.completion."""
+    from patchpal.agent import create_agent
+
+    # Disable permissions for this test
+    monkeypatch.setenv("PATCHPAL_REQUIRE_PERMISSION", "false")
+
+    # Track completion call arguments
+    completion_kwargs = []
+
+    def mock_completion(*args, **kwargs):
+        completion_kwargs.append(kwargs)
+
+        # Return simple response
+        mock_response = MagicMock()
+        mock_response.choices = [MagicMock()]
+        mock_response.choices[0].message = MagicMock()
+        mock_response.choices[0].message.content = "Test response"
+        mock_response.choices[0].message.tool_calls = None
+
+        return mock_response
+
+    with patch("patchpal.agent.litellm.completion", side_effect=mock_completion):
+        agent = create_agent()
+        agent.run("test")
+
+        # Verify timeout was passed to completion call
+        assert len(completion_kwargs) > 0
+        assert "timeout" in completion_kwargs[0]
+        assert completion_kwargs[0]["timeout"] == 300  # Default value

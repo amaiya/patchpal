@@ -1049,6 +1049,8 @@ export PATCHPAL_ENABLE_BACKUPS=true          # Auto-backup files before modifica
 export PATCHPAL_MAX_OPERATIONS=10000         # Max operations per session (default: 10000)
 export PATCHPAL_MAX_ITERATIONS=150           # Max agent iterations per task (default: 100)
                                               # Increase for complex multi-file tasks
+export PATCHPAL_LLM_TIMEOUT=300              # LLM API timeout in seconds (default: 300 = 5 minutes)
+                                              # Prevents indefinite stalls when API is unresponsive
 ```
 
 ### Context Window Management

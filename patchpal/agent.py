@@ -39,6 +39,10 @@ from patchpal.tools import (
     web_search,
 )
 
+# LLM API timeout in seconds (default: 300 seconds = 5 minutes)
+# Can be overridden with PATCHPAL_LLM_TIMEOUT environment variable
+LLM_TIMEOUT = int(os.getenv("PATCHPAL_LLM_TIMEOUT", "300"))
+
 
 def _is_bedrock_arn(model_id: str) -> bool:
     """Check if a model ID is a Bedrock ARN."""
@@ -897,6 +901,9 @@ class PatchPalAgent:
         self.cumulative_cache_creation_tokens = 0
         self.cumulative_cache_read_tokens = 0
 
+        # Track OpenAI cache tokens (prompt_tokens_details.cached_tokens)
+        self.cumulative_openai_cached_tokens = 0
+
         # Track cumulative costs across all LLM calls
         self.cumulative_cost = 0.0
         self.last_message_cost = 0.0
@@ -1061,6 +1068,7 @@ class PatchPalAgent:
                 response = litellm.completion(
                     model=self.model_id,
                     messages=messages,
+                    timeout=LLM_TIMEOUT,
                     **self.litellm_kwargs,
                 )
 
@@ -1084,6 +1092,15 @@ class PatchPalAgent:
                         and response.usage.cache_read_input_tokens
                     ):
                         self.cumulative_cache_read_tokens += response.usage.cache_read_input_tokens
+
+                    # Track OpenAI cache tokens (prompt_tokens_details.cached_tokens)
+                    if hasattr(response.usage, "prompt_tokens_details"):
+                        prompt_details = response.usage.prompt_tokens_details
+                        if (
+                            hasattr(prompt_details, "cached_tokens")
+                            and prompt_details.cached_tokens
+                        ):
+                            self.cumulative_openai_cached_tokens += prompt_details.cached_tokens
 
                 # Track cost from compaction call
                 self._calculate_cost(response)
@@ -1159,16 +1176,23 @@ class PatchPalAgent:
             input_cost_per_token = model_info.get("input_cost_per_token", 0)
             output_cost_per_token = model_info.get("output_cost_per_token", 0)
 
+            # Get cached input cost (OpenAI models have cache_read_input_token_cost in LiteLLM)
+            cached_input_cost_per_token = model_info.get("cached_input_cost_per_token", 0)
+            if not cached_input_cost_per_token:
+                # Try LiteLLM's actual field name for OpenAI cached tokens
+                cached_input_cost_per_token = model_info.get("cache_read_input_token_cost", 0)
+
             # Apply GovCloud pricing adjustment (20% higher than commercial regions)
             # GovCloud Bedrock pricing is approximately 1.2x commercial pricing
             if self.model_id.startswith("bedrock/") and _is_govcloud_bedrock(self.model_id):
                 govcloud_multiplier = 1.2
                 input_cost_per_token *= govcloud_multiplier
                 output_cost_per_token *= govcloud_multiplier
+                cached_input_cost_per_token *= govcloud_multiplier
 
             cost = 0.0
 
-            # Handle cache pricing for models that support it (e.g., Anthropic)
+            # Handle Anthropic/Bedrock cache pricing
             # Cache writes cost 1.25x, cache reads cost 0.1x of base price
             cache_creation_tokens = 0
             cache_read_tokens = 0
@@ -1181,8 +1205,28 @@ class PatchPalAgent:
                 cache_read_tokens = usage.cache_read_input_tokens
                 cost += cache_read_tokens * input_cost_per_token * 0.1
 
-            # Regular input tokens (excluding cache tokens)
-            regular_input = usage.prompt_tokens - cache_creation_tokens - cache_read_tokens
+            # Handle OpenAI cache pricing (prompt_tokens_details.cached_tokens)
+            openai_cached_tokens = 0
+            if hasattr(usage, "prompt_tokens_details") and usage.prompt_tokens_details is not None:
+                prompt_details = usage.prompt_tokens_details
+                if hasattr(prompt_details, "cached_tokens") and prompt_details.cached_tokens:
+                    # Ensure cached_tokens is a number, not a mock or None
+                    if isinstance(prompt_details.cached_tokens, (int, float)):
+                        openai_cached_tokens = prompt_details.cached_tokens
+                        # Use cached_input_cost_per_token if available, otherwise fallback to 0.5x multiplier
+                        if cached_input_cost_per_token > 0:
+                            cost += openai_cached_tokens * cached_input_cost_per_token
+                        else:
+                            # Fallback: OpenAI cached tokens typically cost 50% of regular input
+                            cost += openai_cached_tokens * input_cost_per_token * 0.5
+
+            # Regular input tokens (excluding all cache tokens)
+            regular_input = (
+                usage.prompt_tokens
+                - cache_creation_tokens
+                - cache_read_tokens
+                - openai_cached_tokens
+            )
             cost += regular_input * input_cost_per_token
 
             # Output tokens
@@ -1323,6 +1367,7 @@ class PatchPalAgent:
                     messages=messages,
                     tools=tools,
                     tool_choice="auto",
+                    timeout=LLM_TIMEOUT,
                     **self.litellm_kwargs,
                 )
 
@@ -1346,6 +1391,15 @@ class PatchPalAgent:
                         and response.usage.cache_read_input_tokens
                     ):
                         self.cumulative_cache_read_tokens += response.usage.cache_read_input_tokens
+
+                    # Track OpenAI cache tokens (prompt_tokens_details.cached_tokens)
+                    if hasattr(response.usage, "prompt_tokens_details"):
+                        prompt_details = response.usage.prompt_tokens_details
+                        if (
+                            hasattr(prompt_details, "cached_tokens")
+                            and prompt_details.cached_tokens
+                        ):
+                            self.cumulative_openai_cached_tokens += prompt_details.cached_tokens
 
                 # Track cost from this LLM call
                 self._calculate_cost(response)
