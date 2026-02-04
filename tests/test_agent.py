@@ -819,3 +819,166 @@ def test_cache_token_tracking_without_cache():
         assert agent.cumulative_cache_read_tokens == 0
         assert agent.cumulative_input_tokens == 1000
         assert agent.cumulative_output_tokens == 100
+
+
+def test_govcloud_detection_from_arn(monkeypatch):
+    """Test that GovCloud is detected from model ARN."""
+    from patchpal.agent import _is_govcloud_bedrock
+
+    # Clear environment variables
+    monkeypatch.delenv("AWS_BEDROCK_REGION", raising=False)
+    monkeypatch.delenv("AWS_REGION_NAME", raising=False)
+
+    # Test GovCloud ARN
+    govcloud_arn = "bedrock/arn:aws-us-gov:bedrock:us-gov-east-1:123456789012:inference-profile/us-gov.anthropic.claude-sonnet-4-5-20250929-v1:0"
+    assert _is_govcloud_bedrock(govcloud_arn) is True
+
+    # Test commercial ARN
+    commercial_arn = "bedrock/arn:aws:bedrock:us-east-1:123456789012:inference-profile/anthropic.claude-sonnet-4-5-v1:0"
+    assert _is_govcloud_bedrock(commercial_arn) is False
+
+
+def test_govcloud_detection_from_env_bedrock_region(monkeypatch):
+    """Test that GovCloud is detected from AWS_BEDROCK_REGION environment variable."""
+    from patchpal.agent import _is_govcloud_bedrock
+
+    # Clear AWS_REGION_NAME
+    monkeypatch.delenv("AWS_REGION_NAME", raising=False)
+
+    # Test with GovCloud region
+    monkeypatch.setenv("AWS_BEDROCK_REGION", "us-gov-east-1")
+    assert _is_govcloud_bedrock("bedrock/anthropic.claude-sonnet-4-5-v1:0") is True
+
+    # Test with commercial region
+    monkeypatch.setenv("AWS_BEDROCK_REGION", "us-east-1")
+    assert _is_govcloud_bedrock("bedrock/anthropic.claude-sonnet-4-5-v1:0") is False
+
+
+def test_govcloud_detection_from_env_region_name(monkeypatch):
+    """Test that GovCloud is detected from AWS_REGION_NAME environment variable."""
+    from patchpal.agent import _is_govcloud_bedrock
+
+    # Clear AWS_BEDROCK_REGION
+    monkeypatch.delenv("AWS_BEDROCK_REGION", raising=False)
+
+    # Test with GovCloud region
+    monkeypatch.setenv("AWS_REGION_NAME", "us-gov-west-1")
+    assert _is_govcloud_bedrock("bedrock/anthropic.claude-sonnet-4-5-v1:0") is True
+
+    # Test with commercial region
+    monkeypatch.setenv("AWS_REGION_NAME", "us-west-2")
+    assert _is_govcloud_bedrock("bedrock/anthropic.claude-sonnet-4-5-v1:0") is False
+
+
+def test_govcloud_pricing_adjustment(monkeypatch):
+    """Test that GovCloud pricing is adjusted by 1.2x multiplier."""
+    from patchpal.agent import create_agent
+
+    # Set up GovCloud environment
+    monkeypatch.setenv("AWS_BEDROCK_REGION", "us-gov-east-1")
+
+    # Create agent with GovCloud Bedrock model
+    govcloud_arn = "arn:aws-us-gov:bedrock:us-gov-east-1:123456789012:inference-profile/us-gov.anthropic.claude-sonnet-4-5-20250929-v1:0"
+    agent = create_agent(model_id=govcloud_arn)
+
+    # Mock usage data
+    mock_usage = MagicMock()
+    mock_usage.prompt_tokens = 1000
+    mock_usage.completion_tokens = 100
+    mock_usage.cache_creation_input_tokens = 0
+    mock_usage.cache_read_input_tokens = 0
+
+    # Mock litellm.get_model_info to return known pricing
+    with patch("litellm.get_model_info") as mock_get_info:
+        mock_get_info.return_value = {
+            "input_cost_per_token": 3e-06,  # $3.00 per million tokens
+            "output_cost_per_token": 1.5e-05,  # $15.00 per million tokens
+        }
+
+        # Calculate cost
+        cost = agent._compute_cost_from_tokens(mock_usage)
+
+        # Expected cost with GovCloud multiplier (1.2x):
+        # Input: 1000 tokens * 3e-06 * 1.2 = 0.0036
+        # Output: 100 tokens * 1.5e-05 * 1.2 = 0.0018
+        # Total: 0.0054
+        expected_cost = (1000 * 3e-06 * 1.2) + (100 * 1.5e-05 * 1.2)
+        assert abs(cost - expected_cost) < 1e-9
+
+
+def test_commercial_bedrock_no_pricing_adjustment(monkeypatch):
+    """Test that commercial Bedrock does not get GovCloud pricing adjustment."""
+    from patchpal.agent import create_agent
+
+    # Set up commercial region
+    monkeypatch.setenv("AWS_BEDROCK_REGION", "us-east-1")
+
+    # Create agent with commercial Bedrock model
+    agent = create_agent(model_id="bedrock/anthropic.claude-sonnet-4-5-v1:0")
+
+    # Mock usage data
+    mock_usage = MagicMock()
+    mock_usage.prompt_tokens = 1000
+    mock_usage.completion_tokens = 100
+    mock_usage.cache_creation_input_tokens = 0
+    mock_usage.cache_read_input_tokens = 0
+
+    # Mock litellm.get_model_info to return known pricing
+    with patch("litellm.get_model_info") as mock_get_info:
+        mock_get_info.return_value = {
+            "input_cost_per_token": 3e-06,  # $3.00 per million tokens
+            "output_cost_per_token": 1.5e-05,  # $15.00 per million tokens
+        }
+
+        # Calculate cost
+        cost = agent._compute_cost_from_tokens(mock_usage)
+
+        # Expected cost WITHOUT GovCloud multiplier:
+        # Input: 1000 tokens * 3e-06 = 0.003
+        # Output: 100 tokens * 1.5e-05 = 0.0015
+        # Total: 0.0045
+        expected_cost = (1000 * 3e-06) + (100 * 1.5e-05)
+        assert abs(cost - expected_cost) < 1e-9
+
+
+def test_govcloud_pricing_with_cache_tokens(monkeypatch):
+    """Test that GovCloud pricing adjustment applies to cache tokens correctly."""
+    from patchpal.agent import create_agent
+
+    # Set up GovCloud environment
+    monkeypatch.setenv("AWS_BEDROCK_REGION", "us-gov-east-1")
+
+    # Create agent with GovCloud Bedrock model
+    agent = create_agent(model_id="bedrock/anthropic.claude-sonnet-4-5-v1:0")
+
+    # Mock usage data with cache tokens
+    mock_usage = MagicMock()
+    mock_usage.prompt_tokens = 1000
+    mock_usage.completion_tokens = 100
+    mock_usage.cache_creation_input_tokens = 400  # Cache writes
+    mock_usage.cache_read_input_tokens = 500  # Cache reads
+
+    # Mock litellm.get_model_info to return known pricing
+    with patch("litellm.get_model_info") as mock_get_info:
+        mock_get_info.return_value = {
+            "input_cost_per_token": 3e-06,  # $3.00 per million tokens (commercial)
+            "output_cost_per_token": 1.5e-05,  # $15.00 per million tokens (commercial)
+        }
+
+        # Calculate cost
+        cost = agent._compute_cost_from_tokens(mock_usage)
+
+        # Expected cost with GovCloud multiplier (1.2x):
+        # Regular input: (1000 - 400 - 500) = 100 tokens * 3e-06 * 1.2 = 0.00036
+        # Cache writes: 400 tokens * 3e-06 * 1.2 * 1.25 = 0.0018
+        # Cache reads: 500 tokens * 3e-06 * 1.2 * 0.1 = 0.00018
+        # Output: 100 tokens * 1.5e-05 * 1.2 = 0.0018
+        # Total: 0.00414
+        base_input_cost = 3e-06 * 1.2
+        expected_cost = (
+            (100 * base_input_cost)  # Regular input
+            + (400 * base_input_cost * 1.25)  # Cache writes
+            + (500 * base_input_cost * 0.1)  # Cache reads
+            + (100 * 1.5e-05 * 1.2)  # Output
+        )
+        assert abs(cost - expected_cost) < 1e-9

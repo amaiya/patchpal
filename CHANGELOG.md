@@ -12,6 +12,7 @@ Most recent releases are shown at the top. Each release shows:
 ### new:
 - Support for PDF web fetches.
 - Added session statistics logging to audit log upon exit (#42)
+- **AWS GovCloud Bedrock pricing support**: Automatically detects GovCloud usage (via ARN or `AWS_BEDROCK_REGION` environment variable) and applies ~1.2x pricing multiplier for cost estimation. Note: GovCloud pricing differences are not publicly documented by AWS; multiplier is based on observed Anthropic Claude Sonnet pricing and may not be accurate for all models. Cost statistics show "(Using AWS GovCloud pricing)" indicator when GovCloud is detected.
 
 ### changed
 - N/A

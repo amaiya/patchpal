@@ -1440,6 +1440,7 @@ When using cloud LLM providers (Anthropic, OpenAI, etc.), token usage directly i
 **Cost Monitoring Tips:**
 - Check `/status` before large operations to see current token usage
 - **Anthropic models**: Prompt caching reduces costs (system prompt + last 2 messages cached)
+<!--- **AWS GovCloud Bedrock**: PatchPal automatically detects GovCloud usage and applies ~1.2x pricing multiplier (based on observed Claude Sonnet pricing; may not be accurate for all models)-->
 - Most cloud providers offer usage dashboards showing cache hits and actual charges
 - Set up billing alerts with your provider to avoid surprises
 - Consider local models (vLLM recommended) for high-volume usage or zero API costs

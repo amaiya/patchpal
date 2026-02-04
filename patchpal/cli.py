@@ -53,6 +53,12 @@ def _print_cost_statistics(
             print("\n  \033[1;36mCost Statistics\033[0m")
         print(f"  Session cost: ${_format_cost(agent.cumulative_cost)} (estimated)")
 
+        # Check if using GovCloud pricing
+        from patchpal.agent import _is_govcloud_bedrock
+
+        if agent.model_id.startswith("bedrock/") and _is_govcloud_bedrock(agent.model_id):
+            print("  \033[2m(Using AWS GovCloud pricing: ~1.2x commercial rates)\033[0m")
+
         if show_disclaimer:
             print(
                 "  \033[2m(Calculated from token counts - check provider bill for exact cost)\033[0m"

@@ -93,6 +93,32 @@ def _setup_bedrock_env():
         os.environ["AWS_BEDROCK_RUNTIME_ENDPOINT"] = bedrock_endpoint
 
 
+def _is_govcloud_bedrock(model_id: str) -> bool:
+    """Check if the model is using AWS GovCloud Bedrock.
+
+    Args:
+        model_id: Model identifier
+
+    Returns:
+        True if using GovCloud Bedrock
+    """
+    # Check if model ID contains us-gov region
+    if "us-gov" in model_id.lower():
+        return True
+
+    # Check if AWS_BEDROCK_REGION environment variable indicates GovCloud
+    bedrock_region = os.getenv("AWS_BEDROCK_REGION", "")
+    if bedrock_region.startswith("us-gov"):
+        return True
+
+    # Check AWS_REGION_NAME as fallback (set by _setup_bedrock_env)
+    region_name = os.getenv("AWS_REGION_NAME", "")
+    if region_name.startswith("us-gov"):
+        return True
+
+    return False
+
+
 # Define tools in LiteLLM format
 TOOLS = [
     {
@@ -1132,6 +1158,13 @@ class PatchPalAgent:
             model_info = litellm.get_model_info(self.model_id)
             input_cost_per_token = model_info.get("input_cost_per_token", 0)
             output_cost_per_token = model_info.get("output_cost_per_token", 0)
+
+            # Apply GovCloud pricing adjustment (20% higher than commercial regions)
+            # GovCloud Bedrock pricing is approximately 1.2x commercial pricing
+            if self.model_id.startswith("bedrock/") and _is_govcloud_bedrock(self.model_id):
+                govcloud_multiplier = 1.2
+                input_cost_per_token *= govcloud_multiplier
+                output_cost_per_token *= govcloud_multiplier
 
             cost = 0.0
 
