@@ -974,6 +974,21 @@ class PatchPalAgent:
                                     f"\033[2m🔍 Analyzing structure: {tool_args.get('path', '')}\033[0m",
                                     flush=True,
                                 )
+                            elif tool_name == "get_repo_map":
+                                max_files = tool_args.get("max_files", 100)
+                                patterns = ""
+                                if tool_args.get("include_patterns"):
+                                    patterns = (
+                                        f" (include: {', '.join(tool_args['include_patterns'])})"
+                                    )
+                                elif tool_args.get("exclude_patterns"):
+                                    patterns = (
+                                        f" (exclude: {', '.join(tool_args['exclude_patterns'])})"
+                                    )
+                                print(
+                                    f"\033[2m🗺️  Generating repository map (max {max_files} files{patterns})...\033[0m",
+                                    flush=True,
+                                )
                             elif tool_name == "list_files":
                                 print("\033[2m📁 Listing files...\033[0m", flush=True)
                             elif tool_name == "get_file_info":

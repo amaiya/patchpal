@@ -130,6 +130,12 @@ The agent has the following tools:
   - Supports 40+ languages (Python, JavaScript, TypeScript, Go, Rust, Java, C/C++, Ruby, PHP, and more)
   - Shows function signatures and line numbers for easy navigation
   - Use with read_lines: analyze structure first, then read specific sections
+- **get_repo_map**: Get an overview of the entire codebase in one call
+  - Example: `get_repo_map(max_files=100)` - see structure of up to 100 files at once
+  - Shows function/class signatures from ALL files in a consolidated view
+  - Supports filtering: `get_repo_map(include_patterns=["*.py"], exclude_patterns=["*test*"])`
+  - Ideal for understanding codebase structure and finding relevant files
+  - See [docs/repository-map.md](docs/repository-map.md) for details
 - **list_files**: List all files in the repository
 - **get_file_info**: Get detailed metadata for file(s) - size, modification time, type
   - Supports single files: `get_file_info("file.txt")`

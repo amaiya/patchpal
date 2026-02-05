@@ -10,6 +10,7 @@ Most recent releases are shown at the top. Each release shows:
 ## 0.9.0 (2026-02-05)
 
 ### new:
+- **Repository map tool (`get_repo_map`)**: Added consolidated codebase overview tool that shows function/class signatures from all files in one call. Provides 38-70% token savings vs calling `code_structure` on each file individually by combining results and removing redundant formatting. Supports 20+ languages, filtering with include/exclude patterns, and intelligent caching. Ideal for understanding codebase structure and finding relevant files efficiently. (fixes #47)
 - **OpenAI prompt caching support**: Added tracking and display of OpenAI cached tokens (`prompt_tokens_details.cached_tokens`) in `/status` command and session summary. Shows cache hit rate, cost-adjusted token counts, and savings percentage. Properly calculates costs using LiteLLM's `cache_read_input_token_cost` field with fallback to 0.5x multiplier for models without explicit pricing data. (#44)
 - **Enhanced `web_fetch` with Office document support**: Added text extraction for DOCX (Word) and PPTX (PowerPoint) files using `python-docx` and `python-pptx` libraries. The tool now supports HTML, PDF, DOCX, PPTX, plain text, JSON, and XML formats. (#43)
 - **Browser-like headers for `web_fetch`**: Fixed GitHub repository redirects by using browser-like User-Agent and Accept headers. URLs to moved repositories (e.g., `github.com/old-org/repo` → `github.com/new-org/repo`) now work correctly. (#43)

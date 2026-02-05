@@ -394,7 +394,52 @@ Be comprehensive but concise. The goal is to continue work seamlessly without lo
             else:
                 pruned_messages.append(msg)
 
-        return pruned_messages, tokens_saved
+        # Sanitize all assistant messages to remove tool calls with invalid names
+        # Bedrock validates tool names against pattern: [a-zA-Z0-9_-]+
+        # This prevents validation errors when sending pruned messages to the API
+        # Also removes corresponding orphaned tool response messages to maintain valid conversation structure
+        import re
+
+        valid_pattern = re.compile(r"^[a-zA-Z0-9_-]+$")
+        sanitized_messages = []
+        invalid_tool_call_ids = set()  # Track IDs of removed tool calls
+
+        # First pass: identify invalid tool calls and remove them
+        for msg in pruned_messages:
+            if msg.get("role") == "assistant" and msg.get("tool_calls"):
+                tool_calls = msg["tool_calls"]
+
+                # Filter out tool calls with invalid names
+                valid_tool_calls = []
+                for tc in tool_calls:
+                    if hasattr(tc, "function") and hasattr(tc.function, "name"):
+                        if valid_pattern.match(tc.function.name):
+                            valid_tool_calls.append(tc)
+                        else:
+                            # Track this invalid tool call ID so we can remove its response
+                            invalid_tool_call_ids.add(tc.id)
+
+                # If we filtered out any invalid calls, create a cleaned message
+                if len(valid_tool_calls) < len(tool_calls):
+                    cleaned_msg = msg.copy()
+                    cleaned_msg["tool_calls"] = valid_tool_calls if valid_tool_calls else None
+                    sanitized_messages.append(cleaned_msg)
+                else:
+                    sanitized_messages.append(msg)
+            else:
+                sanitized_messages.append(msg)
+
+        # Second pass: remove orphaned tool response messages
+        if invalid_tool_call_ids:
+            final_messages = []
+            for msg in sanitized_messages:
+                # Skip tool responses for invalid tool calls
+                if msg.get("role") == "tool" and msg.get("tool_call_id") in invalid_tool_call_ids:
+                    continue
+                final_messages.append(msg)
+            return final_messages, tokens_saved
+
+        return sanitized_messages, tokens_saved
 
     def create_compaction(
         self, messages: List[Dict[str, Any]], completion_func: Callable

@@ -54,6 +54,11 @@ from patchpal.tools.git_tools import (
     git_status,
     grep_code,
 )
+from patchpal.tools.repo_map import (
+    clear_repo_map_cache,
+    get_repo_map,
+    get_repo_map_stats,
+)
 from patchpal.tools.shell_tools import (
     run_shell,
 )
@@ -86,6 +91,10 @@ __all__ = [
     "tree",
     # Code analysis
     "code_structure",
+    # Repository map
+    "get_repo_map",
+    "get_repo_map_stats",
+    "clear_repo_map_cache",
     # File editing
     "apply_patch",
     "edit_file",

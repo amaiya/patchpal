@@ -11,6 +11,7 @@ from patchpal.tools import (
     edit_file,
     find_files,
     get_file_info,
+    get_repo_map,
     git_diff,
     git_log,
     git_status,
@@ -94,6 +95,54 @@ TOOLS = [
                     },
                 },
                 "required": ["path"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_repo_map",
+            "description": """Generate a repository map showing code structure across the entire codebase.
+
+This provides a consolidated view of ALL files in the repository, showing function and class
+signatures without implementations. More efficient than calling code_structure on each file individually.
+
+Use this when you need to:
+- Understand the overall codebase structure
+- Find relevant files without analyzing them all
+- Discover related code across the project
+- Get oriented in an unfamiliar codebase
+
+Supports 20+ languages: Python, JavaScript, TypeScript, Go, Rust, Java, C/C++, C#, Ruby,
+PHP, Swift, Kotlin, Scala, Elm, Elixir, and more. Language detection is automatic.
+
+Token efficiency: 38-70% reduction compared to calling code_structure on each file
+(e.g., 20 files: 4,916 tokens vs 1,459 tokens = 70% savings; 37 files: 8,052 tokens vs 4,988 tokens = 38% savings)
+Combines multiple file structures into one compact output with reduced redundant formatting.""",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "max_files": {
+                        "type": "integer",
+                        "description": "Maximum number of files to include in the map (default: 100)",
+                    },
+                    "include_patterns": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Glob patterns to include (e.g., ['*.py', 'src/**/*.js']). If specified, only matching files are included.",
+                    },
+                    "exclude_patterns": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Glob patterns to exclude (e.g., ['*test*', '*_pb2.py', 'vendor/**']). Useful for filtering out generated code, tests, or dependencies.",
+                    },
+                    "focus_files": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Files to prioritize in the output (e.g., files mentioned in conversation). These appear first in the map.",
+                    },
+                },
+                "required": [],
             },
         },
     },
@@ -518,6 +567,7 @@ TOOL_FUNCTIONS = {
     "read_file": read_file,
     "read_lines": read_lines,
     "code_structure": code_structure,
+    "get_repo_map": get_repo_map,
     "list_files": list_files,
     "get_file_info": get_file_info,
     "find_files": find_files,

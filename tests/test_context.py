@@ -509,3 +509,84 @@ class TestAutoCompaction:
         assert len(pruned) == len(messages)
         assert all("role" in msg for msg in pruned)
         assert all("content" in msg for msg in pruned)
+
+    def test_prune_tool_outputs_sanitizes_invalid_tool_names(self, monkeypatch):
+        """Test that pruning removes tool calls with invalid names and their corresponding tool responses."""
+        # Disable tiktoken to avoid slow encoding
+        monkeypatch.setattr("patchpal.context.TIKTOKEN_AVAILABLE", False)
+
+        manager = ContextManager("test-model", "test-system-prompt")
+
+        # Mock tool call objects with invalid names
+        class MockToolCall:
+            def __init__(self, tc_id, name, args):
+                self.id = tc_id
+                self.function = MockFunction(name, args)
+
+        class MockFunction:
+            def __init__(self, name, arguments):
+                self.name = name
+                self.arguments = arguments
+
+        # Create messages with both valid and invalid tool calls
+        valid_call = MockToolCall("call_1", "read_file", '{"path": "test.py"}')
+        invalid_call = MockToolCall("call_2", "$TOOL_NAME", "{}")
+        another_invalid = MockToolCall("call_3", "tool-with space", "{}")
+
+        # Create enough large tool outputs to trigger pruning
+        # PRUNE_PROTECT=40K tokens, PRUNE_MINIMUM=20K tokens
+        # With fallback estimator: chars / 3 = tokens
+        # So we need: last 2 messages > 120K chars (40K tokens), first message > 60K chars (20K tokens)
+        large_content = "x" * 65_000  # ~21.7K tokens
+        messages = [
+            {"role": "user", "content": "Do something"},
+            {
+                "role": "assistant",
+                "content": "Calling tools...",
+                "tool_calls": [valid_call, invalid_call, another_invalid],
+            },
+            # Three large tool outputs (total ~65K tokens)
+            # Last two (~43K tokens) protected, first one (~22K tokens) prunable
+            {
+                "role": "tool",
+                "tool_call_id": "call_1",
+                "name": "read_file",
+                "content": large_content,
+            },
+            {
+                "role": "tool",
+                "tool_call_id": "call_2",
+                "name": "$TOOL_NAME",
+                "content": large_content,
+            },
+            {
+                "role": "tool",
+                "tool_call_id": "call_3",
+                "name": "tool-with space",
+                "content": large_content,
+            },
+        ]
+
+        # Prune should sanitize tool calls AND remove orphaned tool responses
+        pruned, tokens_saved = manager.prune_tool_outputs(messages)
+
+        # Verify pruning actually happened
+        assert tokens_saved > 0, f"Pruning should have saved tokens (got {tokens_saved})"
+
+        # Find the assistant message in pruned results
+        assistant_msg = next(msg for msg in pruned if msg.get("role") == "assistant")
+
+        # Should only have the valid tool call
+        assert assistant_msg["tool_calls"] is not None
+        assert len(assistant_msg["tool_calls"]) == 1, (
+            f"Expected 1 valid tool call, got {len(assistant_msg['tool_calls'])}"
+        )
+        assert assistant_msg["tool_calls"][0].function.name == "read_file"
+
+        # Should only have the valid tool response (orphaned responses removed)
+        tool_messages = [msg for msg in pruned if msg.get("role") == "tool"]
+        assert len(tool_messages) == 1, (
+            f"Expected 1 tool response message, got {len(tool_messages)}"
+        )
+        assert tool_messages[0]["tool_call_id"] == "call_1"
+        assert tool_messages[0].get("name") == "read_file"
