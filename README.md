@@ -11,7 +11,7 @@ A key goal of this project is to approximate Claude Code's core functionality wh
 
 ```bash
 $ls ./patchpal
-__init__.py agent.py  cli.py context.py permissions.py  skills.py system_prompt.md tool_schema.py tools.py
+__init__.py agent.py  cli.py context.py permissions.py  skills.py system_prompt.md tool_schema.py tools
 ```
 
 ## Quick Start
@@ -1322,7 +1322,7 @@ patchpal
 # Generate context with tool calls (tool outputs consume tokens)
 You: list all python files
 You: read patchpal/agent.py
-You: read patchpal/tools.py
+You: read patchpal/cli.py
 
 # Check status - should show compaction happening
 You: /status
