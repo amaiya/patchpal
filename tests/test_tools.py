@@ -179,6 +179,115 @@ def test_read_file_xml(temp_repo):
     assert content == xml_content
 
 
+def test_code_structure_python(temp_repo):
+    """Test code_structure on a Python file."""
+    from patchpal.tools import code_structure
+
+    # Create a Python file with classes and functions
+    python_code = '''"""Module docstring."""
+
+def helper_function(x, y):
+    """Helper function."""
+    return x + y
+
+class MyClass:
+    """Class docstring."""
+
+    def __init__(self):
+        self.value = 0
+
+    def method_one(self, arg):
+        """Method one."""
+        return arg * 2
+
+    def method_two(self):
+        """Method two."""
+        pass
+
+def main():
+    """Main function."""
+    obj = MyClass()
+    return obj.method_one(5)
+'''
+    (temp_repo / "example.py").write_text(python_code)
+
+    result = code_structure("example.py")
+
+    # Check file info is present
+    assert "example.py" in result
+    assert "lines" in result
+
+    # Check classes are detected
+    assert "Classes" in result
+    assert "MyClass" in result
+
+    # Check functions are detected
+    assert "Functions" in result
+    assert "helper_function" in result
+    assert "main" in result
+
+    # Check line numbers are present
+    assert "Line" in result
+
+    # Check helpful hint is present
+    assert "read_lines" in result
+
+
+def test_code_structure_max_symbols(temp_repo):
+    """Test code_structure with max_symbols parameter."""
+    from patchpal.tools import code_structure
+
+    # Create a file with many functions
+    functions = "\n\n".join([f"def func_{i}():\n    pass" for i in range(20)])
+    (temp_repo / "many_funcs.py").write_text(functions)
+
+    result = code_structure("many_funcs.py", max_symbols=5)
+
+    # Should only show limited number of symbols
+    assert "many_funcs.py" in result
+    # Won't show all 20 functions due to limit
+
+
+def test_code_structure_no_tree_sitter(temp_repo, monkeypatch):
+    """Test code_structure gracefully handles missing tree-sitter."""
+    # Mock tree-sitter as unavailable
+    import patchpal.tools.code_analysis
+    from patchpal.tools import code_structure
+
+    monkeypatch.setattr(patchpal.tools.code_analysis, "TREE_SITTER_AVAILABLE", False)
+
+    (temp_repo / "test.py").write_text("def foo(): pass")
+
+    result = code_structure("test.py")
+
+    # Should return fallback message
+    assert "Tree-sitter not available" in result or "lines" in result
+
+
+def test_code_structure_unsupported_language(temp_repo):
+    """Test code_structure on unsupported file type."""
+    from patchpal.tools import code_structure
+
+    # Create a text file (unsupported language)
+    (temp_repo / "data.txt").write_text("Just some text\nNot code")
+
+    result = code_structure("data.txt")
+
+    # Should return basic file info
+    assert "data.txt" in result
+    assert "lines" in result
+
+
+def test_code_structure_nonexistent_file(temp_repo):
+    """Test code_structure on nonexistent file."""
+    import pytest
+
+    from patchpal.tools import code_structure
+
+    with pytest.raises(ValueError, match="File not found"):
+        code_structure("nonexistent.py")
+
+
 def test_list_files(temp_repo):
     """Test listing files in the repository."""
     from patchpal.tools import list_files

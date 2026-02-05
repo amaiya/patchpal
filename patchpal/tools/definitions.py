@@ -7,6 +7,7 @@ from tool names to their implementation functions.
 from patchpal.tools import (
     apply_patch,
     ask_user,
+    code_structure,
     edit_file,
     find_files,
     get_file_info,
@@ -72,6 +73,27 @@ TOOLS = [
                     },
                 },
                 "required": ["path", "start_line"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "code_structure",
+            "description": "Analyze code structure using tree-sitter AST parsing without reading the full file. Returns a compact overview showing functions, classes, methods with their line numbers and signatures. Much more efficient than read_file for understanding large code files. Supports 40+ languages including Python, JavaScript, TypeScript, Go, Rust, Java, C/C++. Use this BEFORE read_file when exploring unfamiliar code.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "Path to the code file to analyze - can be relative to repository root or absolute path",
+                    },
+                    "max_symbols": {
+                        "type": "integer",
+                        "description": "Maximum number of symbols (functions/classes) to show (default: 50)",
+                    },
+                },
+                "required": ["path"],
             },
         },
     },
@@ -495,6 +517,7 @@ TOOLS = [
 TOOL_FUNCTIONS = {
     "read_file": read_file,
     "read_lines": read_lines,
+    "code_structure": code_structure,
     "list_files": list_files,
     "get_file_info": get_file_info,
     "find_files": find_files,

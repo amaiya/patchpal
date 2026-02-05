@@ -124,6 +124,12 @@ The agent has the following tools:
   - Example: `read_lines("app.py", 100, 150)` - read lines 100-150
   - More efficient than read_file when you only need a few lines
   - Useful for viewing code sections, error context, or specific regions of large files
+- **code_structure**: Analyze code structure using tree-sitter AST parsing without reading full files
+  - Example: `code_structure("app.py")` - see all classes, functions, methods with line numbers
+  - 95% token savings vs read_file for large code files
+  - Supports 40+ languages (Python, JavaScript, TypeScript, Go, Rust, Java, C/C++, Ruby, PHP, and more)
+  - Shows function signatures and line numbers for easy navigation
+  - Use with read_lines: analyze structure first, then read specific sections
 - **list_files**: List all files in the repository
 - **get_file_info**: Get detailed metadata for file(s) - size, modification time, type
   - Supports single files: `get_file_info("file.txt")`

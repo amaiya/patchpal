@@ -38,14 +38,15 @@ def test_agent_has_correct_tools():
     """Test that the agent has the correct tools defined."""
     from patchpal.agent import TOOL_FUNCTIONS, TOOLS
 
-    # Verify we have 24 tools (original 17 + 6 TODO tools + 1 ask_user)
-    assert len(TOOLS) == 24
-    assert len(TOOL_FUNCTIONS) == 24
+    # Verify we have 25 tools (original 17 + 6 TODO tools + 1 ask_user + 1 code_structure)
+    assert len(TOOLS) == 25
+    assert len(TOOL_FUNCTIONS) == 25
 
     # Verify tool names
     tool_names = [tool["function"]["name"] for tool in TOOLS]
     assert "read_file" in tool_names
     assert "read_lines" in tool_names
+    assert "code_structure" in tool_names
     assert "list_files" in tool_names
     assert "get_file_info" in tool_names
     assert "find_files" in tool_names

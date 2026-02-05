@@ -956,6 +956,11 @@ class PatchPalAgent:
                                     f"\033[2m📖 Reading lines {start}-{end}: {tool_args.get('path', '')}\033[0m",
                                     flush=True,
                                 )
+                            elif tool_name == "code_structure":
+                                print(
+                                    f"\033[2m🔍 Analyzing structure: {tool_args.get('path', '')}\033[0m",
+                                    flush=True,
+                                )
                             elif tool_name == "list_files":
                                 print("\033[2m📁 Listing files...\033[0m", flush=True)
                             elif tool_name == "get_file_info":

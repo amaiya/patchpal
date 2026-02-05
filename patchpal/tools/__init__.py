@@ -5,6 +5,9 @@ compatibility with the old `from patchpal.tools import func` imports.
 """
 
 # Re-export all tools from their respective modules
+from patchpal.tools.code_analysis import (
+    code_structure,
+)
 from patchpal.tools.common import (
     ALLOW_SENSITIVE,
     AUDIT_LOG_FILE,
@@ -81,6 +84,8 @@ __all__ = [
     "get_file_info",
     "find_files",
     "tree",
+    # Code analysis
+    "code_structure",
     # File editing
     "apply_patch",
     "edit_file",
