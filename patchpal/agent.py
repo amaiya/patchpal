@@ -1140,6 +1140,9 @@ class PatchPalAgent:
                     from patchpal.tools import MAX_TOOL_OUTPUT_CHARS, MAX_TOOL_OUTPUT_LINES
 
                     if total_lines > MAX_TOOL_OUTPUT_LINES or result_size > MAX_TOOL_OUTPUT_CHARS:
+                        truncated_by_lines = total_lines > MAX_TOOL_OUTPUT_LINES
+                        truncated_by_chars = result_size > MAX_TOOL_OUTPUT_CHARS
+
                         # Truncate to limits
                         truncated_lines = lines[:MAX_TOOL_OUTPUT_LINES]
                         truncated_str = "\n".join(truncated_lines)
@@ -1150,9 +1153,14 @@ class PatchPalAgent:
 
                         removed_lines = total_lines - len(truncated_str.split("\n"))
 
+                        if truncated_by_lines:
+                            truncation_note = f"\n\n... {removed_lines:,} lines truncated ({total_lines:,} total lines) ...\n\n"
+                        else:
+                            truncation_note = f"\n\n... output truncated to {MAX_TOOL_OUTPUT_CHARS:,} characters (was {result_size:,}) ...\n\n"
+
                         # Add helpful hint message
                         hint = (
-                            f"\n\n... {removed_lines:,} lines truncated ({total_lines:,} total lines) ...\n\n"
+                            f"{truncation_note}"
                             f"Output exceeded limits ({MAX_TOOL_OUTPUT_LINES:,} lines or {MAX_TOOL_OUTPUT_CHARS:,} characters).\n"
                             f"Consider:\n"
                             f"- Using grep_code() to search files directly\n"
@@ -1161,9 +1169,14 @@ class PatchPalAgent:
                         )
 
                         result_str = truncated_str + hint
-                        print(
-                            f"\033[1;33m⚠️  Tool output truncated: {total_lines:,} lines → {MAX_TOOL_OUTPUT_LINES:,} lines\033[0m"
-                        )
+                        if truncated_by_lines:
+                            print(
+                                f"\033[1;33m⚠️  Tool output truncated: {total_lines:,} lines → {MAX_TOOL_OUTPUT_LINES:,} lines\033[0m"
+                            )
+                        elif truncated_by_chars:
+                            print(
+                                f"\033[1;33m⚠️  Tool output truncated: {result_size:,} chars → {MAX_TOOL_OUTPUT_CHARS:,} chars\033[0m"
+                            )
 
                     self.messages.append(
                         {

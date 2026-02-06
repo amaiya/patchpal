@@ -7,7 +7,7 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
-## 0.10.0 (TBD)
+## 0.10.0 (2026-02-06)
 
 ### new:
 - **`/prune` command**: Added manual context management command that prunes all tool outputs older than the last 2 conversational turns. Bypasses automatic pruning thresholds (PRUNE_PROTECT and PRUNE_MINIMUM) to give users full control over context cleanup. Uses intelligent summarization and shows detailed before/after statistics including token savings and context reduction. Useful for reclaiming context space from large tool outputs (grep, file reads) without triggering full compaction. (fixes #52)
