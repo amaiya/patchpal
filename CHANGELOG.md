@@ -16,6 +16,7 @@ Most recent releases are shown at the top. Each release shows:
 
 ### changed:
 - **Simplified web fetch truncation**: Removed `MAX_WEB_CONTENT_CHARS` limit from `web_fetch()` in favor of universal `MAX_TOOL_OUTPUT_CHARS` limit applied to all tools. This eliminates redundant truncation logic and ensures consistent behavior across all tools. Web content is now truncated at the same 100K character limit as other tools. (#49)
+- Maintain 8000 entries (instead of 1000) in history.txt
 
 ### fixed:
 - N/A

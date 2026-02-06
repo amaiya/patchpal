@@ -246,7 +246,7 @@ def _get_patchpal_dir() -> Path:
     return repo_dir
 
 
-def _save_to_history_file(command: str, history_file: Path, max_entries: int = 1000):
+def _save_to_history_file(command: str, history_file: Path, max_entries: int = 8000):
     """Append a command to the persistent history file.
 
     This allows users to manually review their command history,
