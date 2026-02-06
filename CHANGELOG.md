@@ -7,13 +7,15 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
-## 0.9.1 (TBD)
+## 0.10.0 (TBD)
 
 ### new:
 - **Proactive pruning with intelligent summarization**: Added automatic pruning of tool outputs after each tool call when accumulated outputs exceed `PRUNE_PROTECT` (40K tokens). Uses tool-specific intelligent summarization strategies to preserve key information while reducing token usage by 20-60% in typical sessions. Configurable via `PATCHPAL_PROACTIVE_PRUNING` (default: true). (fixes #48)
+- **Universal tool output limits**: Added predictable per-tool-call limits (2000 lines or 100K characters) to prevent any single tool from dominating context. Inspired by OpenCode's approach but with more generous limits. Replaces the reactive 150% emergency truncation with proactive limits applied to all tools uniformly. Character-based truncation (not bytes) avoids breaking Unicode. Configurable via `PATCHPAL_MAX_TOOL_OUTPUT_LINES` and `PATCHPAL_MAX_TOOL_OUTPUT_CHARS`. Truncated outputs include helpful hints suggesting alternatives like `grep_code()` or `read_lines()`. (#49)
+- **`count_lines()` tool**: Added efficient line counting tool that uses buffered reading (1MB chunks) to count lines in large files without loading them into memory. Returns formatted output like "file.log: 99,497 lines (7.4MB)". Essential for working with large log files - use `count_lines()` first, then `read_lines()` to read specific sections (e.g., last 100 lines). Works with system-wide files, respects permission system, and checks for binary files. (#49)
 
 ### changed:
-- N/A
+- **Simplified web fetch truncation**: Removed `MAX_WEB_CONTENT_CHARS` limit from `web_fetch()` in favor of universal `MAX_TOOL_OUTPUT_CHARS` limit applied to all tools. This eliminates redundant truncation logic and ensures consistent behavior across all tools. Web content is now truncated at the same 100K character limit as other tools. (#49)
 
 ### fixed:
 - N/A

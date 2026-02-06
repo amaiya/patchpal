@@ -108,14 +108,20 @@ ENABLE_AUDIT_LOG = os.getenv("PATCHPAL_AUDIT_LOG", "true").lower() == "true"
 ENABLE_BACKUPS = os.getenv("PATCHPAL_ENABLE_BACKUPS", "false").lower() == "true"
 MAX_OPERATIONS = int(os.getenv("PATCHPAL_MAX_OPERATIONS", 10000))
 
+# Universal tool output limits (applied after tool execution to prevent context explosions)
+# Similar to OpenCode's approach but with more generous limits
+MAX_TOOL_OUTPUT_LINES = int(os.getenv("PATCHPAL_MAX_TOOL_OUTPUT_LINES", "2000"))  # 2000 lines
+MAX_TOOL_OUTPUT_CHARS = int(
+    os.getenv("PATCHPAL_MAX_TOOL_OUTPUT_CHARS", "100000")
+)  # 100K characters
+# Note: Character-based (not bytes) to avoid breaking Unicode during truncation
+
 # Web request configuration
 WEB_REQUEST_TIMEOUT = int(os.getenv("PATCHPAL_WEB_TIMEOUT", 30))  # 30 seconds
 MAX_WEB_CONTENT_SIZE = int(
     os.getenv("PATCHPAL_MAX_WEB_SIZE", 5 * 1024 * 1024)
-)  # 5MB download limit
-MAX_WEB_CONTENT_CHARS = int(
-    os.getenv("PATCHPAL_MAX_WEB_CHARS", 100_000)
-)  # 100k chars (~25k tokens) - reduced to prevent context overflow
+)  # 5MB download limit (prevents downloading huge files)
+# Note: Web fetch output is handled by universal MAX_TOOL_OUTPUT_CHARS limit
 # Use browser-like User-Agent to avoid bot blocking (e.g., GitHub redirects work with browser UA)
 WEB_USER_AGENT = f"Mozilla/5.0 (compatible; PatchPal/{__version__}; +AI Code Assistant)"
 WEB_HEADERS = {

@@ -18,7 +18,8 @@ from patchpal.tools.common import (
     MAX_FILE_SIZE,
     MAX_OPERATIONS,
     MAX_OUTPUT_LINES,
-    MAX_WEB_CONTENT_CHARS,
+    MAX_TOOL_OUTPUT_CHARS,
+    MAX_TOOL_OUTPUT_LINES,
     MAX_WEB_CONTENT_SIZE,
     # Directories
     PATCHPAL_DIR,
@@ -41,6 +42,7 @@ from patchpal.tools.file_editing import (
     edit_file,
 )
 from patchpal.tools.file_operations import (
+    count_lines,
     find_files,
     get_file_info,
     list_files,
@@ -85,6 +87,7 @@ __all__ = [
     # File operations
     "read_file",
     "read_lines",
+    "count_lines",
     "list_files",
     "get_file_info",
     "find_files",
@@ -123,6 +126,8 @@ __all__ = [
     # Configuration
     "REPO_ROOT",
     "MAX_FILE_SIZE",
+    "MAX_TOOL_OUTPUT_LINES",
+    "MAX_TOOL_OUTPUT_CHARS",
     "READ_ONLY_MODE",
     "ALLOW_SENSITIVE",
     "ENABLE_AUDIT_LOG",
@@ -130,7 +135,6 @@ __all__ = [
     "MAX_OPERATIONS",
     "WEB_REQUEST_TIMEOUT",
     "MAX_WEB_CONTENT_SIZE",
-    "MAX_WEB_CONTENT_CHARS",
     "SHELL_TIMEOUT",
     "ENABLE_OUTPUT_FILTERING",
     "MAX_OUTPUT_LINES",

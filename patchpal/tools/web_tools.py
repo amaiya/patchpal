@@ -32,7 +32,6 @@ except ImportError:
     PYTHON_PPTX_AVAILABLE = False
 
 from patchpal.tools.common import (
-    MAX_WEB_CONTENT_CHARS,
     MAX_WEB_CONTENT_SIZE,
     WEB_HEADERS,
     WEB_REQUEST_TIMEOUT,
@@ -205,19 +204,7 @@ def web_fetch(url: str, extract_text: bool = True) -> str:
             # No text extraction - just decode
             text_content = content.decode(response.encoding or "utf-8", errors="replace")
 
-        # Truncate content if it exceeds character limit to prevent context window overflow
-        if len(text_content) > MAX_WEB_CONTENT_CHARS:
-            truncated_content = text_content[:MAX_WEB_CONTENT_CHARS]
-            warning_msg = (
-                f"\n\n[WARNING: Content truncated from {len(text_content):,} to "
-                f"{MAX_WEB_CONTENT_CHARS:,} characters to prevent context window overflow. "
-                f"Set PATCHPAL_MAX_WEB_CHARS environment variable to adjust limit.]"
-            )
-            audit_logger.info(
-                f"WEB_FETCH: {url} ({len(text_content)} chars, truncated to {MAX_WEB_CONTENT_CHARS})"
-            )
-            return truncated_content + warning_msg
-
+        # Note: Output truncation is handled by universal MAX_TOOL_OUTPUT_CHARS limit in agent.py
         audit_logger.info(f"WEB_FETCH: {url} ({len(text_content)} chars)")
         return text_content
 

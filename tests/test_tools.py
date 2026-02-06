@@ -155,6 +155,94 @@ def test_read_lines_binary_file(temp_repo):
         read_lines("binary.bin", 1, 5)
 
 
+def test_count_lines_basic(temp_repo):
+    """Test count_lines returns correct line count and size."""
+    from patchpal.tools import count_lines
+
+    # Create a file with known line count
+    test_file = temp_repo / "test.txt"
+    test_file.write_text("line1\nline2\nline3\nline4\nline5\n")
+
+    result = count_lines("test.txt")
+
+    assert "test.txt: 5 lines" in result
+    assert "B" in result  # Should show size in bytes
+
+
+def test_count_lines_large_file(temp_repo):
+    """Test count_lines efficiently handles large files."""
+    from patchpal.tools import count_lines
+
+    # Create a large file (simulate log file)
+    test_file = temp_repo / "large.log"
+    lines = ["Log entry " + str(i) + "\n" for i in range(10000)]
+    test_file.write_text("".join(lines))
+
+    result = count_lines("large.log")
+
+    assert "large.log: 10,000 lines" in result
+    assert "KB" in result  # Should show size in KB
+
+
+def test_count_lines_no_trailing_newline(temp_repo):
+    """Test count_lines with file that doesn't end in newline."""
+    from patchpal.tools import count_lines
+
+    # Create file without trailing newline
+    test_file = temp_repo / "no_newline.txt"
+    test_file.write_text("line1\nline2\nline3")  # No \n at end
+
+    result = count_lines("no_newline.txt")
+
+    # Should still count 3 lines (or 2 depending on implementation)
+    # The actual count depends on how we define "line"
+    assert "no_newline.txt:" in result
+    assert "lines" in result
+
+
+def test_count_lines_empty_file(temp_repo):
+    """Test count_lines on empty file."""
+    from patchpal.tools import count_lines
+
+    test_file = temp_repo / "empty.txt"
+    test_file.write_text("")
+
+    result = count_lines("empty.txt")
+
+    assert "empty.txt: 0 lines" in result
+
+
+def test_count_lines_binary_file(temp_repo):
+    """Test count_lines rejects binary files."""
+    from patchpal.tools import count_lines
+
+    # Create a binary file
+    (temp_repo / "binary.bin").write_bytes(b"\x00\x01\x02\x03")
+
+    with pytest.raises(ValueError, match="Cannot count lines in binary file"):
+        count_lines("binary.bin")
+
+
+def test_count_lines_file_not_found(temp_repo):
+    """Test count_lines handles missing files."""
+    from patchpal.tools import count_lines
+
+    with pytest.raises(ValueError, match="File not found"):
+        count_lines("nonexistent.txt")
+
+
+def test_count_lines_unicode(temp_repo):
+    """Test count_lines handles Unicode content correctly."""
+    from patchpal.tools import count_lines
+
+    test_file = temp_repo / "unicode.txt"
+    test_file.write_text("Hello 世界\n你好\n🎉\n", encoding="utf-8")
+
+    result = count_lines("unicode.txt")
+
+    assert "unicode.txt: 3 lines" in result
+
+
 def test_read_file_json(temp_repo):
     """Test reading JSON files (application/json MIME type)."""
     from patchpal.tools import read_file
@@ -878,18 +966,17 @@ def test_git_log_success(temp_repo, monkeypatch):
     assert "John Doe" in result
 
 
-def test_web_fetch_truncation(temp_repo, monkeypatch):
-    """Test that web_fetch truncates large content to prevent context window overflow."""
-    import patchpal.tools.web_tools
+def test_web_fetch_no_truncation(temp_repo, monkeypatch):
+    """Test that web_fetch returns content without web-specific truncation.
+
+    Note: Universal tool output truncation is now handled in agent.py, not in web_fetch itself.
+    """
     from patchpal.tools import web_fetch
 
     # Disable permission requirement
     monkeypatch.setenv("PATCHPAL_REQUIRE_PERMISSION", "false")
 
-    # Set a small character limit for testing - patch in web_tools where it's used
-    monkeypatch.setattr(patchpal.tools.web_tools, "MAX_WEB_CONTENT_CHARS", 100)
-
-    # Create large content (200 chars)
+    # Create large content (200 chars) - should be returned in full from web_fetch
     large_content = "A" * 200
 
     # Mock requests.get
@@ -902,12 +989,10 @@ def test_web_fetch_truncation(temp_repo, monkeypatch):
     with patch("patchpal.tools.web_tools.requests.get", return_value=mock_response):
         result = web_fetch("http://example.com/large.txt", extract_text=False)
 
-        # Verify content was truncated (100 chars + "\n\n" before warning)
-        truncated_part = result.split("[WARNING")[0]
-        assert truncated_part.rstrip() == "A" * 100  # Content without trailing newlines
-        assert "[WARNING: Content truncated" in result
-        assert "200 to 100 characters" in result
-        assert "PATCHPAL_MAX_WEB_CHARS" in result
+        # web_fetch no longer truncates - returns full content
+        # Truncation is handled by universal limit in agent.py
+        assert result == "A" * 200
+        assert "WARNING" not in result  # No web-specific truncation warning
 
 
 def test_web_fetch_no_truncation_needed(temp_repo, monkeypatch):

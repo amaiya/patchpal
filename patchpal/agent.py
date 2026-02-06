@@ -971,6 +971,11 @@ class PatchPalAgent:
                                     f"\033[2m📖 Reading lines {start}-{end}: {tool_args.get('path', '')}\033[0m",
                                     flush=True,
                                 )
+                            elif tool_name == "count_lines":
+                                print(
+                                    f"\033[2m🔢 Counting lines: {tool_args.get('path', '')}\033[0m",
+                                    flush=True,
+                                )
                             elif tool_name == "code_structure":
                                 print(
                                     f"\033[2m🔍 Analyzing structure: {tool_args.get('path', '')}\033[0m",
@@ -1125,33 +1130,40 @@ class PatchPalAgent:
                                 print(f"\033[1;31m✗ {tool_name}: {e}\033[0m")
 
                     # Add tool result to messages
-                    # Check if result is extremely large and might blow context
+                    # Apply universal output limits to prevent context explosions
                     result_str = str(tool_result)
                     result_size = len(result_str)
+                    lines = result_str.split("\n")
+                    total_lines = len(lines)
 
-                    # Warn if result is > 100K chars (~33K tokens)
-                    if result_size > 100_000:
-                        print(
-                            f"\033[1;33m⚠️  Large tool output: {result_size:,} chars (~{result_size // 3:,} tokens)\033[0m"
+                    # Check if output exceeds universal limits
+                    from patchpal.tools import MAX_TOOL_OUTPUT_CHARS, MAX_TOOL_OUTPUT_LINES
+
+                    if total_lines > MAX_TOOL_OUTPUT_LINES or result_size > MAX_TOOL_OUTPUT_CHARS:
+                        # Truncate to limits
+                        truncated_lines = lines[:MAX_TOOL_OUTPUT_LINES]
+                        truncated_str = "\n".join(truncated_lines)
+
+                        # Also enforce character limit
+                        if len(truncated_str) > MAX_TOOL_OUTPUT_CHARS:
+                            truncated_str = truncated_str[:MAX_TOOL_OUTPUT_CHARS]
+
+                        removed_lines = total_lines - len(truncated_str.split("\n"))
+
+                        # Add helpful hint message
+                        hint = (
+                            f"\n\n... {removed_lines:,} lines truncated ({total_lines:,} total lines) ...\n\n"
+                            f"Output exceeded limits ({MAX_TOOL_OUTPUT_LINES:,} lines or {MAX_TOOL_OUTPUT_CHARS:,} characters).\n"
+                            f"Consider:\n"
+                            f"- Using grep_code() to search files directly\n"
+                            f"- Using read_lines() to read files in chunks\n"
+                            f"- Refining the command to filter output (e.g., | grep, | head)"
                         )
 
-                        # If result would push us WAY over capacity, truncate it
-                        current_stats = self.context_manager.get_usage_stats(self.messages)
-                        # Estimate tokens in this result
-                        result_tokens = self.context_manager.estimator.estimate_tokens(result_str)
-                        projected_ratio = (
-                            current_stats["total_tokens"] + result_tokens
-                        ) / current_stats["context_limit"]
-
-                        if projected_ratio > 1.5:  # Would exceed 150% capacity
-                            print(
-                                "\033[1;31m⚠️  Tool output would exceed context capacity! Truncating...\033[0m"
-                            )
-                            # Keep first 50K chars
-                            result_str = (
-                                result_str[:50_000]
-                                + "\n\n[... Output truncated to prevent context window overflow. Use read_lines or grep_code for targeted access ...]"
-                            )
+                        result_str = truncated_str + hint
+                        print(
+                            f"\033[1;33m⚠️  Tool output truncated: {total_lines:,} lines → {MAX_TOOL_OUTPUT_LINES:,} lines\033[0m"
+                        )
 
                     self.messages.append(
                         {

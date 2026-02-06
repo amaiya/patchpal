@@ -81,6 +81,9 @@ def read_lines(path: str, start_line: int, end_line: Optional[int] = None) -> st
     Examples:
         read_lines("src/auth.py", 45, 60)  # Read lines 45-60
         read_lines("src/auth.py", 45)       # Read only line 45
+
+    Tip:
+        Use count_lines(path) first to find total line count for reading from end
     """
     _operation_limiter.check_limit(f"read_lines({path}, {start_line}-{end_line or start_line})")
 
@@ -138,6 +141,73 @@ def read_lines(path: str, start_line: int, end_line: Optional[int] = None) -> st
         f"READ_LINES: {path} lines {start_line}-{actual_end_line} ({len(requested_lines)} lines)"
     )
     return output
+
+
+@require_permission_for_read(
+    "count_lines",
+    get_description=lambda path: f"   Count lines: {path}",
+    get_pattern=lambda path: path,
+)
+def count_lines(path: str) -> str:
+    """
+    Count the number of lines in a file efficiently.
+
+    Args:
+        path: Path to the file (relative to repository root or absolute)
+
+    Returns:
+        String containing line count and file info
+
+    Raises:
+        ValueError: If file not found, binary, or sensitive
+
+    Examples:
+        count_lines("logs/app.log")  # Returns: "logs/app.log: 15,234 lines (2.3MB)"
+
+    Use case:
+        Get total line count before using read_lines() to read last N lines:
+        total = count_lines("big.log")  # "50000 lines"
+        read_lines("big.log", 49900, 50000)  # Read last 100 lines
+    """
+    _operation_limiter.check_limit(f"count_lines({path})")
+
+    p = _check_path(path)
+
+    # Check if binary
+    if _is_binary_file(p):
+        raise ValueError(
+            f"Cannot count lines in binary file: {path}\nType: {mimetypes.guess_type(str(p))[0] or 'unknown'}"
+        )
+
+    # Efficiently count lines without loading entire file into memory
+    # Uses buffered reading for large files
+    size = p.stat().st_size
+    line_count = 0
+
+    try:
+        with open(p, "rb") as f:
+            # Read in chunks for efficiency
+            buf_size = 1024 * 1024  # 1MB buffer
+            read_f = f.raw.read if hasattr(f, "raw") else f.read
+
+            buf = read_f(buf_size)
+            while buf:
+                line_count += buf.count(b"\n")
+                buf = read_f(buf_size)
+
+        # Format size
+        if size < 1024:
+            size_str = f"{size}B"
+        elif size < 1024 * 1024:
+            size_str = f"{size / 1024:.1f}KB"
+        else:
+            size_str = f"{size / (1024 * 1024):.1f}MB"
+
+        audit_logger.info(f"COUNT_LINES: {path} - {line_count:,} lines")
+        return f"{path}: {line_count:,} lines ({size_str})"
+
+    except Exception as e:
+        raise ValueError(f"Error counting lines in {path}: {e}")
 
 
 @require_permission_for_read(

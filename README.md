@@ -1039,6 +1039,11 @@ export PATCHPAL_REQUIRE_PERMISSION=true      # Prompt before executing commands/
 # File Safety
 export PATCHPAL_MAX_FILE_SIZE=512000         # Maximum file size in bytes for read/write (default: 500KB)
                                              # Reduced from 10MB to prevent context window explosions
+export PATCHPAL_MAX_TOOL_OUTPUT_LINES=2000   # Maximum lines per tool output (default: 2000)
+                                             # Prevents any single tool from dominating context
+export PATCHPAL_MAX_TOOL_OUTPUT_CHARS=100000 # Maximum characters per tool output (default: 100K)
+                                             # Applied after tool execution to all tool results
+                                             # Character-based (not bytes) to avoid breaking Unicode
 export PATCHPAL_READ_ONLY=true               # Prevent ALL file modifications (default: false)
                                              # Useful for: code review, exploration, security audits
 export PATCHPAL_ALLOW_SENSITIVE=true         # Allow access to .env, credentials (default: false - blocked)
