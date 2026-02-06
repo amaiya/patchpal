@@ -346,11 +346,13 @@ class TestContextManager:
             {"role": "user", "content": "Hello!"},
             {"role": "assistant", "content": "Hi!"},
             {"role": "tool", "content": "Tool output", "tool_call_id": "1"},
+            {"role": "user", "content": "Continue"},
+            {"role": "user", "content": "More work"},
         ]
 
         pruned_messages, tokens_saved = manager.prune_tool_outputs(messages)
 
-        # Should not prune (too few messages, within protected range)
+        # Should not prune (too few messages, within protected range, and within last 2 turns)
         assert tokens_saved == 0
         assert len(pruned_messages) == len(messages)
 
@@ -371,8 +373,10 @@ class TestContextManager:
                 }
             )
 
-        # Add recent messages
+        # Add recent user messages to create turns (need at least 2 user messages after the tools)
         messages.append({"role": "user", "content": "Continue"})
+        messages.append({"role": "assistant", "content": "Working on it"})
+        messages.append({"role": "user", "content": "Keep going"})
 
         pruned_messages, tokens_saved = manager.prune_tool_outputs(messages)
 
@@ -390,27 +394,39 @@ class TestContextManager:
         assert pruned_count >= 0  # May be 0 if total doesn't exceed PRUNE_MINIMUM
 
     def test_prune_tool_outputs_preserves_recent(self):
-        """Test that pruning preserves recent tool outputs."""
+        """Test that pruning preserves recent tool outputs within last 2 turns."""
         manager = ContextManager("gpt-4", "test")
 
         # Create messages with tool outputs
         messages = []
 
-        # Old tool outputs (should be pruned)
+        # Start with first user turn
+        messages.append({"role": "user", "content": "Start work"})
+
+        # Old tool outputs (should be pruned - before turn 2)
         for i in range(30):
             messages.append({"role": "tool", "content": "x" * 2000, "tool_call_id": f"old_{i}"})
 
-        # Recent tool outputs (should be preserved)
-        recent_messages = []
+        # Second user turn
+        messages.append({"role": "user", "content": "Continue"})
+
+        # More old tool outputs
+        for i in range(10):
+            messages.append({"role": "tool", "content": "x" * 2000, "tool_call_id": f"mid_{i}"})
+
+        # Third user turn - this starts the "last 2 turns" protection
+        messages.append({"role": "user", "content": "Keep going"})
+
+        # Recent tool outputs (should be preserved - within last 2 turns)
+        recent_start_idx = len(messages)
         for i in range(5):
             msg = {"role": "tool", "content": f"recent output {i}", "tool_call_id": f"recent_{i}"}
             messages.append(msg)
-            recent_messages.append(msg)
 
         pruned_messages, tokens_saved = manager.prune_tool_outputs(messages)
 
-        # Check that recent messages are not pruned
-        for i in range(-5, 0):
+        # Check that recent messages (after 3rd user turn) are not pruned
+        for i in range(recent_start_idx, len(messages)):
             assert "[Tool output pruned" not in str(pruned_messages[i].get("content", ""))
 
     def test_prune_tool_outputs_intelligent_list_files(self):
@@ -423,6 +439,9 @@ class TestContextManager:
         # Put test message FIRST so it's old
         file_list = "\n".join([f"file{i}.py" for i in range(100)])
         messages = []
+
+        # First user turn
+        messages.append({"role": "user", "content": "List files"})
 
         # Add the list_files we want to test at the BEGINNING (will be old)
         messages.append(
@@ -439,6 +458,10 @@ class TestContextManager:
                     "tool_call_id": f"recent_{i}",
                 }
             )
+
+        # Add user turns to make the old tools eligible for pruning
+        messages.append({"role": "user", "content": "Continue"})
+        messages.append({"role": "user", "content": "Keep going"})
 
         pruned_messages, tokens_saved = manager.prune_tool_outputs(messages, intelligent=True)
 
@@ -459,6 +482,9 @@ class TestContextManager:
         file_content = "\n".join([f"Line {i}: code here" for i in range(1, 101)])
         messages = []
 
+        # First user turn
+        messages.append({"role": "user", "content": "Read file"})
+
         # Add test message at the BEGINNING
         messages.append(
             {"role": "tool", "content": file_content, "name": "read_file", "tool_call_id": "test"}
@@ -474,6 +500,10 @@ class TestContextManager:
                     "tool_call_id": f"recent_{i}",
                 }
             )
+
+        # Add user turns to make the old tools eligible for pruning
+        messages.append({"role": "user", "content": "Continue"})
+        messages.append({"role": "user", "content": "Keep going"})
 
         pruned_messages, tokens_saved = manager.prune_tool_outputs(messages, intelligent=True)
 
@@ -497,6 +527,9 @@ class TestContextManager:
         grep_output = "\n".join([f"file{i}.py:10:match here" for i in range(20)])
         messages = []
 
+        # First user turn
+        messages.append({"role": "user", "content": "Search code"})
+
         # Add test message at the BEGINNING
         messages.append(
             {"role": "tool", "content": grep_output, "name": "grep_code", "tool_call_id": "test"}
@@ -512,6 +545,10 @@ class TestContextManager:
                     "tool_call_id": f"recent_{i}",
                 }
             )
+
+        # Add user turns to make the old tools eligible for pruning
+        messages.append({"role": "user", "content": "Continue"})
+        messages.append({"role": "user", "content": "Keep going"})
 
         pruned_messages, tokens_saved = manager.prune_tool_outputs(messages, intelligent=True)
 
@@ -533,6 +570,9 @@ class TestContextManager:
         file_list = "\n".join([f"file{i}.py" for i in range(50)])
         messages = []
 
+        # First user turn
+        messages.append({"role": "user", "content": "List files"})
+
         # Add test message at the BEGINNING
         messages.append(
             {"role": "tool", "content": file_list, "name": "list_files", "tool_call_id": "test"}
@@ -549,6 +589,10 @@ class TestContextManager:
                 }
             )
 
+        # Add user turns to make the old tools eligible for pruning
+        messages.append({"role": "user", "content": "Continue"})
+        messages.append({"role": "user", "content": "Keep going"})
+
         # Simple pruning
         simple_pruned, _ = manager.prune_tool_outputs(messages, intelligent=False)
         simple_msg = [m for m in simple_pruned if m.get("tool_call_id") == "test"][0]
@@ -563,6 +607,80 @@ class TestContextManager:
         assert simple_content != smart_content
         assert "[Tool output pruned - was" in simple_content  # Simple marker
         assert "[Pruned list_files:" in smart_content  # Intelligent summary
+
+    def test_prune_tool_outputs_protects_last_two_turns(self):
+        """Test that pruning protects tool outputs from the last 2 conversational turns.
+
+        This follows OpenCode's approach: only prune tool outputs older than the
+        last 2 user turns to preserve recent context.
+        """
+        manager = ContextManager("gpt-4", "test")
+        # Lower thresholds for easier testing
+        manager.PRUNE_PROTECT = 1000  # Protect last 1K tokens
+        manager.PRUNE_MINIMUM = 100  # Need to prune at least 100 tokens
+
+        messages = []
+
+        # Turn 1: Many old tool outputs (eligible for pruning after protected threshold)
+        messages.append({"role": "user", "content": "First request"})
+        messages.append({"role": "assistant", "content": "Working..."})
+        for i in range(20):  # 20 * ~333 tokens = ~6,660 tokens
+            messages.append(
+                {
+                    "role": "tool",
+                    "content": "x" * 1000,
+                    "name": f"old_tool_{i}",
+                    "tool_call_id": f"old_{i}",
+                }
+            )
+
+        # Turn 2: Tool outputs (should be protected - within last 2 turns)
+        messages.append({"role": "user", "content": "Second request"})
+        messages.append({"role": "assistant", "content": "Working..."})
+        for i in range(3):  # ~999 tokens total
+            messages.append(
+                {
+                    "role": "tool",
+                    "content": "x" * 1000,
+                    "name": f"turn2_tool_{i}",
+                    "tool_call_id": f"turn2_{i}",
+                }
+            )
+
+        # Turn 3: Tool outputs (should be protected - within last 2 turns)
+        messages.append({"role": "user", "content": "Third request"})
+        messages.append({"role": "assistant", "content": "Working..."})
+        for i in range(2):  # ~666 tokens total
+            messages.append(
+                {
+                    "role": "tool",
+                    "content": "x" * 1000,
+                    "name": f"turn3_tool_{i}",
+                    "tool_call_id": f"turn3_{i}",
+                }
+            )
+
+        pruned_messages, tokens_saved = manager.prune_tool_outputs(messages)
+
+        # Count pruned messages in each turn
+        old_tools = [m for m in pruned_messages if m.get("name", "").startswith("old_tool_")]
+        old_pruned = sum(1 for m in old_tools if "[Tool output pruned" in str(m.get("content", "")))
+
+        turn2_tools = [m for m in pruned_messages if m.get("name", "").startswith("turn2_tool_")]
+        turn2_pruned = sum(
+            1 for m in turn2_tools if "[Tool output pruned" in str(m.get("content", ""))
+        )
+
+        turn3_tools = [m for m in pruned_messages if m.get("name", "").startswith("turn3_tool_")]
+        turn3_pruned = sum(
+            1 for m in turn3_tools if "[Tool output pruned" in str(m.get("content", ""))
+        )
+
+        # Verify behavior
+        assert old_pruned > 0, "Old tool outputs (turn 1) should be pruned"
+        assert turn2_pruned == 0, "Turn 2 tools should be protected (within last 2 turns)"
+        assert turn3_pruned == 0, "Turn 3 tools should be protected (within last 2 turns)"
+        assert tokens_saved > 0, "Should save tokens by pruning old outputs"
 
 
 class TestContextManagerIntegration:
@@ -716,6 +834,9 @@ class TestAutoCompaction:
                 "name": "tool-with space",
                 "content": large_content,
             },
+            # Add user turns to make the old tools eligible for pruning
+            {"role": "user", "content": "Continue"},
+            {"role": "user", "content": "Keep going"},
         ]
 
         # Prune should sanitize tool calls AND remove orphaned tool responses

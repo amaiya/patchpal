@@ -479,6 +479,9 @@ Be comprehensive but concise. The goal is to continue work seamlessly without lo
         Walks backward through messages and prunes tool outputs beyond
         the PRUNE_PROTECT threshold (keeps last 40k tokens of tool outputs).
 
+        Only prunes tool outputs older than the last 2 conversational turns
+        (following OpenCode's approach to preserve recent context).
+
         Args:
             messages: Current message history
             intelligent: If True, use smart summarization; if False, simple deletion markers
@@ -489,10 +492,19 @@ Be comprehensive but concise. The goal is to continue work seamlessly without lo
         # Calculate tokens to protect (recent tool outputs)
         recent_tokens = 0
         prune_candidates = []
+        turns = 0
 
         # Walk backward through messages
         for i in range(len(messages) - 1, -1, -1):
             msg = messages[i]
+
+            # Count user turns to skip the last 2 conversational turns
+            if msg.get("role") == "user":
+                turns += 1
+
+            # Skip pruning for the most recent 2 user turns and their responses
+            if turns < 2:
+                continue
 
             # Only consider tool result messages
             if msg.get("role") != "tool":

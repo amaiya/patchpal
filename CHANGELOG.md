@@ -20,7 +20,7 @@ Most recent releases are shown at the top. Each release shows:
 - Maintain 8000 entries (instead of 1000) in history.txt
 
 ### fixed:
-- N/A
+- **2-turn protection for tool output pruning**: Implemented OpenCode-style 2-turn protection that prevents pruning of tool outputs from the last 2 conversational turns. Previously, `PRUNE_PROTECT` threshold was applied to all tool outputs regardless of recency. Now, only tool outputs older than the last 2 user turns are eligible for pruning, ensuring recent context is always preserved even when managing token usage. (fixes #51)
 
 
 ## 0.9.0 (2026-02-05)
