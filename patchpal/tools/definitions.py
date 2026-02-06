@@ -8,6 +8,7 @@ from patchpal.tools import (
     apply_patch,
     ask_user,
     code_structure,
+    count_lines,
     edit_file,
     find_files,
     get_file_info,
@@ -74,6 +75,23 @@ TOOLS = [
                     },
                 },
                 "required": ["path", "start_line"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "count_lines",
+            "description": "Count the number of lines in a file efficiently (useful before read_lines to find total line count)",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "Path to the file - can be relative to repository root or an absolute path",
+                    }
+                },
+                "required": ["path"],
             },
         },
     },
@@ -566,6 +584,7 @@ Combines multiple file structures into one compact output with reduced redundant
 TOOL_FUNCTIONS = {
     "read_file": read_file,
     "read_lines": read_lines,
+    "count_lines": count_lines,
     "code_structure": code_structure,
     "get_repo_map": get_repo_map,
     "list_files": list_files,
