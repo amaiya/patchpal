@@ -377,9 +377,9 @@ Supported models: Any LiteLLM-supported model
     # Get history file path for manual logging
     history_file = _get_patchpal_dir() / "history.txt"
 
-    print("=" * 80)
-    print("PatchPal - Claude Code–inspired coding and automation assistant")
-    print("=" * 80)
+    print(" ╔═══════════════════════════════════════════════════════════╗")
+    print(" ║  PatchPal - AI Coding and Automation Assistant  🤖        ║")
+    print(" ╚═══════════════════════════════════════════════════════════╝")
     print(f"\nUsing model: {model_id}")
 
     # Show custom tools info if any were loaded
@@ -395,12 +395,9 @@ Supported models: Any LiteLLM-supported model
     if custom_prompt_path:
         print(f"\033[1;36m🔧 Using custom system prompt: {custom_prompt_path}\033[0m")
 
-    print("\nType 'exit' to quit.")
     print(
-        "Use '/status' to check context window usage, '/compact' to manually compact, '/clear' to start fresh."
+        "\nType \033[1;33m'exit'\033[0m to quit or \033[1;33m'/help'\033[0m to see available commands.\n"
     )
-    print("Use 'list skills' to see available skills or /skillname to invoke skills.")
-    print("Press Ctrl-C during agent execution to interrupt the agent.\n")
 
     while True:
         try:
@@ -473,6 +470,36 @@ Supported models: Any LiteLLM-supported model
 
                 print("\nGoodbye!")
                 break
+
+            # Handle /help command - show available commands
+            if user_input.lower() in ["help", "/help"]:
+                print("\n" + "=" * 70)
+                print("\033[1;36mAvailable Commands\033[0m")
+                print("=" * 70)
+                print()
+                print("  \033[1;33mBasic Commands:\033[0m")
+                print("    exit, quit, q        Exit the session")
+                print("    /help                Show this help message")
+                print()
+                print("  \033[1;33mContext Management:\033[0m")
+                print("    /status              Show context window usage and token statistics")
+                print("    /context             View all messages in conversation history")
+                print("    /context <number>    View specific message by number (full details)")
+                print("    /clear               Clear conversation history (start fresh)")
+                print("    /compact             Manually trigger context compaction")
+                print()
+                print("  \033[1;33mSkills:\033[0m")
+                print("    /skillname [args]    Invoke a skill (e.g., /commit)")
+                print("    list skills          Ask agent to list available skills")
+                print()
+                print("  \033[1;33mTips:\033[0m")
+                print("    • Use UP/DOWN arrows to navigate command history")
+                print("    • Press TAB for path and skill name completion")
+                print("    • Type your questions or requests naturally to the AI agent")
+                print("    • Use Ctrl+C to cancel current input (not the entire session)")
+                print()
+                print("=" * 70 + "\n")
+                continue
 
             # Handle /status command - show context window usage
             if user_input.lower() in ["status", "/status"]:
@@ -733,6 +760,175 @@ Supported models: Any LiteLLM-supported model
                 print("\n\033[1;32m✓ Context cleared successfully!\033[0m")
                 print("  Starting fresh with empty conversation history.")
                 print("  All previous context has been removed - ready for a new task.")
+                print("=" * 70 + "\n")
+                continue
+
+            # Handle /context command - view current context
+            if (
+                user_input.lower() == "context"
+                or user_input.lower().startswith("context ")
+                or user_input.lower().startswith("/context")
+            ):
+                # Parse optional message number
+                parts = user_input.split()
+                specific_msg_num = None
+                if len(parts) > 1:
+                    try:
+                        specific_msg_num = int(parts[1])
+                    except ValueError:
+                        print(f"\033[1;31m  Error: Invalid message number '{parts[1]}'\033[0m")
+                        print("  Usage: /context [message_number]")
+                        print("=" * 70 + "\n")
+                        continue
+
+                print("\n" + "=" * 70)
+                print("\033[1;36mCurrent Context\033[0m")
+                print("=" * 70)
+
+                if not agent.messages:
+                    print("\033[1;33m  Context is empty - no messages yet.\033[0m")
+                    print("=" * 70 + "\n")
+                    continue
+
+                # If specific message requested, show only that message
+                if specific_msg_num is not None:
+                    if specific_msg_num < 1 or specific_msg_num > len(agent.messages):
+                        print(
+                            f"\033[1;31m  Error: Message {specific_msg_num} not found. Valid range: 1-{len(agent.messages)}\033[0m"
+                        )
+                        print("=" * 70 + "\n")
+                        continue
+
+                    msg = agent.messages[specific_msg_num - 1]
+                    role = msg.get("role", "unknown")
+                    content = msg.get("content", "")
+
+                    # Format role with color
+                    if role == "user":
+                        role_display = "\033[1;36mUser\033[0m"
+                    elif role == "assistant":
+                        role_display = "\033[1;32mAssistant\033[0m"
+                    elif role == "tool":
+                        # Show tool name if available
+                        tool_name = msg.get("name", "unknown")
+                        role_display = f"\033[1;33mTool ({tool_name})\033[0m"
+                    else:
+                        role_display = f"\033[1;33m{role.capitalize()}\033[0m"
+
+                    # Calculate token count for this message
+                    msg_tokens = agent.context_manager.estimator.estimate_messages_tokens([msg])
+
+                    print(f"  Message [{specific_msg_num}] {role_display} ({msg_tokens:,} tokens):")
+                    print()
+
+                    # Handle different content types - show full content
+                    if isinstance(content, str):
+                        print(f"  {content}")
+                    elif isinstance(content, list):
+                        for block in content:
+                            if isinstance(block, dict):
+                                block_type = block.get("type", "unknown")
+                                if block_type == "text":
+                                    text = block.get("text", "")
+                                    print("  [text]")
+                                    print(f"  {text}")
+                                    print()
+                                elif block_type == "tool_use":
+                                    tool_name = block.get("name", "unknown")
+                                    tool_id = block.get("id", "")
+                                    tool_input = block.get("input", {})
+                                    print(f"  [tool_use] {tool_name}")
+                                    print(f"    id: {tool_id}")
+                                    print(f"    input: {tool_input}")
+                                    print()
+                                elif block_type == "tool_result":
+                                    tool_id = block.get("tool_use_id", "")
+                                    is_error = block.get("is_error", False)
+                                    result_content = block.get("content", "")
+                                    status = "error" if is_error else "success"
+                                    print(f"  [tool_result] ({status})")
+                                    print(f"    tool_use_id: {tool_id}")
+                                    print(f"    content: {result_content}")
+                                    print()
+                                else:
+                                    print(f"  [{block_type}]")
+                                    print(f"  {block}")
+                                    print()
+                            else:
+                                print(f"  {block}")
+                                print()
+                    else:
+                        print(f"  {content}")
+
+                    print("=" * 70 + "\n")
+                    continue
+
+                # Show all messages with summary view
+                stats = agent.context_manager.get_usage_stats(agent.messages)
+                print(f"  Messages: {len(agent.messages)}")
+                print(
+                    f"  Token usage: {stats['total_tokens']:,} / {stats['context_limit']:,} ({stats['usage_percent']}%)"
+                )
+                print()
+
+                # Display each message
+                for i, msg in enumerate(agent.messages, 1):
+                    role = msg.get("role", "unknown")
+                    content = msg.get("content", "")
+
+                    # Calculate token count for this message
+                    msg_tokens = agent.context_manager.estimator.estimate_messages_tokens([msg])
+
+                    # Format role with color
+                    if role == "user":
+                        role_display = "\033[1;36mUser\033[0m"
+                    elif role == "assistant":
+                        role_display = "\033[1;32mAssistant\033[0m"
+                    elif role == "tool":
+                        # Show tool name if available
+                        tool_name = msg.get("name", "unknown")
+                        role_display = f"\033[1;33mTool ({tool_name})\033[0m"
+                    else:
+                        role_display = f"\033[1;33m{role.capitalize()}\033[0m"
+
+                    print(f"  [{i}] {role_display} ({msg_tokens:,} tokens):")
+
+                    # Handle different content types
+                    if isinstance(content, str):
+                        # Simple text content
+                        preview = content[:200]
+                        if len(content) > 200:
+                            preview += "..."
+                        print(f"      {preview}")
+                    elif isinstance(content, list):
+                        # Complex content (e.g., with tool use blocks)
+                        for block in content:
+                            if isinstance(block, dict):
+                                block_type = block.get("type", "unknown")
+                                if block_type == "text":
+                                    text = block.get("text", "")
+                                    preview = text[:200]
+                                    if len(text) > 200:
+                                        preview += "..."
+                                    print(f"      [text] {preview}")
+                                elif block_type == "tool_use":
+                                    tool_name = block.get("name", "unknown")
+                                    tool_id = block.get("id", "")[:8]
+                                    print(f"      [tool_use] {tool_name} (id: {tool_id}...)")
+                                elif block_type == "tool_result":
+                                    tool_id = block.get("tool_use_id", "")[:8]
+                                    is_error = block.get("is_error", False)
+                                    status = "error" if is_error else "success"
+                                    print(f"      [tool_result] id: {tool_id}... ({status})")
+                                else:
+                                    print(f"      [{block_type}]")
+                            else:
+                                print(f"      {str(block)[:100]}")
+                    else:
+                        print(f"      {str(content)[:200]}")
+
+                    print()
+
                 print("=" * 70 + "\n")
                 continue
 

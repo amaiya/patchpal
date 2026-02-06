@@ -327,7 +327,7 @@ cp examples/tools/calculator.py ~/.patchpal/tools/
 ```bash
 $ patchpal
 ================================================================================
-PatchPal - Claude Code–inspired coding and automation assistant
+PatchPal - AI coding and automation assistant
 ================================================================================
 
 Using model: anthropic/claude-sonnet-4-5
@@ -794,7 +794,7 @@ This provides fine-grained control over what the agent can access during the ses
 ```bash
 $ patchpal --require-permission-for-all
 ================================================================================
-PatchPal - Claude Code–inspired coding and automation assistant
+PatchPal - AI coding and automation assistant
 ================================================================================
 
 Using model: anthropic/claude-sonnet-4-5
@@ -843,7 +843,7 @@ Simply run the `patchpal` command and type your requests interactively:
 ```bash
 $ patchpal
 ================================================================================
-PatchPal - Claude Code Clone
+PatchPal - AI coding and automation assistant
 ================================================================================
 
 Using model: anthropic/claude-sonnet-4-5
