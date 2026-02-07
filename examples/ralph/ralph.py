@@ -81,6 +81,16 @@ def ralph_loop(prompt: str, completion_promise: str, max_iterations: int = 100, 
         print(response)
         print(f"{'=' * 80}\n")
 
+        # Show cumulative cost tracking after each iteration
+        print(f"💰 Cumulative Cost (after iteration {iteration + 1}):")
+        print(f"   Total LLM calls: {agent.total_llm_calls}")
+        print(
+            f"   Total tokens: {agent.cumulative_input_tokens + agent.cumulative_output_tokens:,}"
+        )
+        if agent.cumulative_cost > 0:
+            print(f"   Total cost: ${agent.cumulative_cost:.4f}")
+        print()
+
         # Check for completion promise
         if completion_promise in response:
             print(f"\n{'=' * 80}")

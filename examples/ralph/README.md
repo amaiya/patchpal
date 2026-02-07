@@ -85,22 +85,22 @@ python ralph.py \
 For complex projects, break them into phases:
 
 ```bash
-# Builds a complete Todo API in 3 phases
-python multi_phase_ralph.py
+# Example: Builds a complete Todo API in 3 sequential phases
+python multi_phase_todo_api_example.py
 ```
 
 ## Files in This Example
 
 ```
 examples/ralph/
-├── README.md                    # This file
-├── PODMAN_GUIDE.md              # Step-by-step Podman/Docker setup (RECOMMENDED)
-├── ralph.py                     # Main Ralph loop implementation
-├── multi_phase_ralph.py         # Multi-phase example
-└── prompts/                     # Example prompt templates
-    ├── todo_api.md              # Build a REST API
-    ├── fix_tests.md             # Fix failing tests
-    └── refactor.md              # Refactor code
+├── README.md                           # This file
+├── PODMAN_GUIDE.md                     # Step-by-step Podman/Docker setup (RECOMMENDED)
+├── ralph.py                            # Main Ralph loop implementation (general tool)
+├── multi_phase_todo_api_example.py     # Multi-phase example (specific demonstration)
+└── prompts/                            # Example prompt templates
+    ├── todo_api.md                     # Build a REST API
+    ├── fix_tests.md                    # Fix failing tests
+    └── refactor.md                     # Refactor code
 ```
 
 ## Writing Effective Ralph Prompts
