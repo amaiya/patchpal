@@ -1022,7 +1022,7 @@ The Python API uses the same agent implementation as the CLI, so you get the com
 
 ## Autopilot Mode
 
-**Autopilot mode** enables autonomous iterative development where the agent repeatedly works on a task until completion. Based on the "Ralph Wiggum technique" pioneered by Geoffrey Huntley, it embodies persistent iteration over perfection.
+**Autopilot mode** enables autonomous iterative development where the agent repeatedly works on a task until completion. Based on the ["Ralph Wiggum technique"](https://ghuntley.com/ralph/) pioneered by Geoffrey Huntley, it embodies persistent iteration over perfection.
 
 ⚠️ **CRITICAL SAFETY WARNING**: Autopilot disables PatchPal's permission system. **ONLY use in isolated environments** (Docker containers, VMs, throwaway projects). See `examples/ralph/README.md` for comprehensive safety guidelines.
 

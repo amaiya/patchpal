@@ -2,7 +2,7 @@
 
 > "I'm learnding!" - Ralph Wiggum
 
-The **Ralph Wiggum technique** is an iterative AI development methodology where an agent repeatedly works on a task until completion. Named after The Simpsons character, it embodies the philosophy of persistent iteration despite setbacks.
+The **Ralph Wiggum technique** is an iterative AI development methodology where an agent repeatedly works on a task until completion. Pioneered by [Geoffrey Huntley](https://ghuntley.com/ralph/), it's named after The Simpsons character and embodies the philosophy of persistent iteration despite setbacks.
 
 ---
 
