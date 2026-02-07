@@ -461,10 +461,10 @@ docker run -d --name ralph-overnight \
 
 The Ralph technique has been used successfully for:
 
-- **6 repos at Y Combinator hackathon** - Successfully generated 6 repositories overnight
-- **$50k contract for $297 in API costs** - One contract worth $50k USD was completed, tested, and reviewed for just $297 in API costs
-- **CURSED programming language** - Created an entire programming language over 3 months using this approach
-- **Test-driven development** - Excellent for TDD workflows where tests guide development
+- **6 repos at Y Combinator hackathon** - Successfully generated 6 repositories overnight [[source](https://github.com/repomirrorhq/repomirror/blob/main/repomirror.md)]
+- **$50k contract for $297 in API costs** - One contract worth $50k USD was completed, tested, and reviewed for just $297 in API costs [[source](https://ghuntley.com/ralph/)]
+- **CURSED programming language** - Created an entire programming language over 3 months using this approach [[source](https://cursed-lang.org/)]
+- **Test-driven development** - Excellent for TDD workflows where tests guide development [[source](https://mcpmarket.com/tools/skills/ralph-wiggum-autonomous-tdd-loop)]
 
 ## Advanced Patterns
 
