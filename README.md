@@ -1,7 +1,7 @@
 # PatchPal — A Claude Code–Style Agent in Python
 
 <!--![PatchPal Screenshot](patchpal_screenshot.png)-->
-<img src="https://raw.githubusercontent.com/amaiya/patchpal/refs/heads/main/patchpal_screenshot.png" alt="PatchPal Screenshot" width="650"/>
+<img src="https://raw.githubusercontent.com/wiseprobe/patchpal/refs/heads/main/patchpal_screenshot.png" alt="PatchPal Screenshot" width="650"/>
 
 > An agentic coding and automation assistant, supporting both local and cloud LLMs.
 
@@ -23,30 +23,30 @@ $ patchpal              # start
 
 ## Table of Contents
 
-- [Installation](https://github.com/amaiya/patchpal?tab=readme-ov-file#installation)
-- [Setup](https://github.com/amaiya/patchpal?tab=readme-ov-file#setup)
-- [Features](https://github.com/amaiya/patchpal?tab=readme-ov-file#features)
-  - [Tools](https://github.com/amaiya/patchpal?tab=readme-ov-file#tools)
-    - [File Operations](https://github.com/amaiya/patchpal?tab=readme-ov-file#file-operations)
-    - [Task Planning (TODO System)](https://github.com/amaiya/patchpal?tab=readme-ov-file#task-planning-todo-system)
-    - [User Interaction](https://github.com/amaiya/patchpal?tab=readme-ov-file#user-interaction)
-    - [Git Operations](https://github.com/amaiya/patchpal?tab=readme-ov-file#git-operations-no-permission-required)
-    - [Web Capabilities](https://github.com/amaiya/patchpal?tab=readme-ov-file#web-capabilities-requires-permission)
-  - [Skills System](https://github.com/amaiya/patchpal?tab=readme-ov-file#skills-system)
-  - [Custom Tools](https://github.com/amaiya/patchpal?tab=readme-ov-file#custom-tools)
-- [Model Configuration](https://github.com/amaiya/patchpal?tab=readme-ov-file#model-configuration)
-  - [Supported Models](https://github.com/amaiya/patchpal?tab=readme-ov-file#supported-models)
-  - [Using Local Models (vLLM & Ollama)](https://github.com/amaiya/patchpal?tab=readme-ov-file#using-local-models-vllm--ollama)
-  - [Air-Gapped and Offline Environments](https://github.com/amaiya/patchpal?tab=readme-ov-file#air-gapped-and-offline-environments)
-  - [Maximum Security Mode](https://github.com/amaiya/patchpal?tab=readme-ov-file#maximum-security-mode)
-- [Usage](https://github.com/amaiya/patchpal?tab=readme-ov-file#usage)
-- [Python API](https://github.com/amaiya/patchpal?tab=readme-ov-file#python-api)
-- [Autopilot Mode](https://github.com/amaiya/patchpal?tab=readme-ov-file#autopilot-mode)
-- [Configuration](https://github.com/amaiya/patchpal?tab=readme-ov-file#configuration)
-- [Example Tasks](https://github.com/amaiya/patchpal?tab=readme-ov-file#example-tasks)
-- [Safety](https://github.com/amaiya/patchpal?tab=readme-ov-file#safety)
-- [Context Management](https://github.com/amaiya/patchpal?tab=readme-ov-file#context-management)
-- [Troubleshooting](https://github.com/amaiya/patchpal?tab=readme-ov-file#troubleshooting)
+- [Installation](https://github.com/wiseprobe/patchpal?tab=readme-ov-file#installation)
+- [Setup](https://github.com/wiseprobe/patchpal?tab=readme-ov-file#setup)
+- [Features](https://github.com/wiseprobe/patchpal?tab=readme-ov-file#features)
+  - [Tools](https://github.com/wiseprobe/patchpal?tab=readme-ov-file#tools)
+    - [File Operations](https://github.com/wiseprobe/patchpal?tab=readme-ov-file#file-operations)
+    - [Task Planning (TODO System)](https://github.com/wiseprobe/patchpal?tab=readme-ov-file#task-planning-todo-system)
+    - [User Interaction](https://github.com/wiseprobe/patchpal?tab=readme-ov-file#user-interaction)
+    - [Git Operations](https://github.com/wiseprobe/patchpal?tab=readme-ov-file#git-operations-no-permission-required)
+    - [Web Capabilities](https://github.com/wiseprobe/patchpal?tab=readme-ov-file#web-capabilities-requires-permission)
+  - [Skills System](https://github.com/wiseprobe/patchpal?tab=readme-ov-file#skills-system)
+  - [Custom Tools](https://github.com/wiseprobe/patchpal?tab=readme-ov-file#custom-tools)
+- [Model Configuration](https://github.com/wiseprobe/patchpal?tab=readme-ov-file#model-configuration)
+  - [Supported Models](https://github.com/wiseprobe/patchpal?tab=readme-ov-file#supported-models)
+  - [Using Local Models (vLLM & Ollama)](https://github.com/wiseprobe/patchpal?tab=readme-ov-file#using-local-models-vllm--ollama)
+  - [Air-Gapped and Offline Environments](https://github.com/wiseprobe/patchpal?tab=readme-ov-file#air-gapped-and-offline-environments)
+  - [Maximum Security Mode](https://github.com/wiseprobe/patchpal?tab=readme-ov-file#maximum-security-mode)
+- [Usage](https://github.com/wiseprobe/patchpal?tab=readme-ov-file#usage)
+- [Python API](https://github.com/wiseprobe/patchpal?tab=readme-ov-file#python-api)
+- [Autopilot Mode](https://github.com/wiseprobe/patchpal?tab=readme-ov-file#autopilot-mode)
+- [Configuration](https://github.com/wiseprobe/patchpal?tab=readme-ov-file#configuration)
+- [Example Tasks](https://github.com/wiseprobe/patchpal?tab=readme-ov-file#example-tasks)
+- [Safety](https://github.com/wiseprobe/patchpal?tab=readme-ov-file#safety)
+- [Context Management](https://github.com/wiseprobe/patchpal?tab=readme-ov-file#context-management)
+- [Troubleshooting](https://github.com/wiseprobe/patchpal?tab=readme-ov-file#troubleshooting)
 
 
 
@@ -244,7 +244,7 @@ description: One-line description
 
 **Example Skills:**
 
-The PatchPal repository includes [example skills](https://github.com/amaiya/patchpal/tree/main/examples) you can use as templates:
+The PatchPal repository includes [example skills](https://github.com/wiseprobe/patchpal/tree/main/examples) you can use as templates:
 - **commit**: Best practices for creating git commits
 - **review**: Comprehensive code review checklist
 - **add-tests**: Add comprehensive pytest tests (includes code block templates)
@@ -255,10 +255,10 @@ The PatchPal repository includes [example skills](https://github.com/amaiya/patc
 
 ```bash
 # Quick way: Download examples directly from GitHub
-curl -L https://github.com/amaiya/patchpal/archive/main.tar.gz | tar xz --strip=1 patchpal-main/examples
+curl -L https://github.com/wiseprobe/patchpal/archive/main.tar.gz | tar xz --strip=1 patchpal-main/examples
 
 # Or clone the repository
-git clone https://github.com/amaiya/patchpal.git
+git clone https://github.com/wiseprobe/patchpal.git
 cd patchpal
 
 # Copy examples to your personal skills directory
@@ -268,7 +268,7 @@ cp -r examples/skills/skill-creator ~/.patchpal/skills/
 ```
 
 **View examples online:**
-Browse the [examples/skills/](https://github.com/amaiya/patchpal/tree/main/examples/skills) directory on GitHub to see the skill format and create your own.
+Browse the [examples/skills/](https://github.com/wiseprobe/patchpal/tree/main/examples/skills) directory on GitHub to see the skill format and create your own.
 
 You can also try out the example skills at [anthropic/skills](https://github.com/anthropics/skills).
 
@@ -318,7 +318,7 @@ mkdir -p ~/.patchpal/tools
 2. **Copy the example tools (or create your own):**
 ```bash
 # After pip install patchpal, get the example tools
-curl -L https://github.com/amaiya/patchpal/archive/main.tar.gz | tar xz --strip=1 patchpal-main/examples
+curl -L https://github.com/wiseprobe/patchpal/archive/main.tar.gz | tar xz --strip=1 patchpal-main/examples
 
 # Copy to your tools directory
 cp examples/tools/calculator.py ~/.patchpal/tools/
@@ -427,13 +427,13 @@ PatchPal discovers tools from `~/.patchpal/tools/*.py` at startup. All `.py` fil
 
 **Example Tools:**
 
-The repository includes [example tools](https://github.com/amaiya/patchpal/tree/main/examples/tools):
+The repository includes [example tools](https://github.com/wiseprobe/patchpal/tree/main/examples/tools):
 - **calculator.py**: Basic arithmetic (add, subtract, multiply, divide), temperature conversion, percentage calculations
   - Demonstrates different numeric types (int, float)
   - Shows proper formatting of results for LLM consumption
   - Examples: `add`, `subtract`, `multiply`, `divide`, `calculate_percentage`, `fahrenheit_to_celsius`
 
-View the [examples/tools/](https://github.com/amaiya/patchpal/tree/main/examples/tools) directory for complete examples and a detailed README.
+View the [examples/tools/](https://github.com/wiseprobe/patchpal/tree/main/examples/tools) directory for complete examples and a detailed README.
 
 **Security Note:**
 
@@ -494,7 +494,7 @@ agent = create_agent(custom_tools=[calculator])
 response = agent.run("What's 5 + 3?")
 ```
 
-See the [Python API](https://github.com/amaiya/patchpal?tab=readme-ov-file#python-api) section for more details.
+See the [Python API](https://github.com/wiseprobe/patchpal?tab=readme-ov-file#python-api) section for more details.
 
 **Troubleshooting:**
 
@@ -1228,7 +1228,7 @@ The Ralph Wiggum technique has been successfully used for:
 - **CURSED programming language** - Built over 3 months
 - **Test-driven development** - Excellent for TDD workflows
 
-See [examples/ralph/README.md](https://github.com/amaiya/patchpal/blob/main/examples/ralph/README.md) for comprehensive documentation, safety guidelines, and more examples.
+See [examples/ralph/README.md](https://github.com/wiseprobe/patchpal/blob/main/examples/ralph/README.md) for comprehensive documentation, safety guidelines, and more examples.
 
 ### Learn More
 
@@ -1431,7 +1431,7 @@ PatchPal includes comprehensive security protections enabled by default:
 - **Resource limits**: Configurable operation counter prevents infinite loops (10000 operations default)
 - **Git state awareness**: Warns when modifying files with uncommitted changes
 
-See the [Configuration](https://github.com/amaiya/patchpal?tab=readme-ov-file#configuration) section for all available `PATCHPAL_*` environment variables to customize security, permissions, logging, and more.
+See the [Configuration](https://github.com/wiseprobe/patchpal?tab=readme-ov-file#configuration) section for all available `PATCHPAL_*` environment variables to customize security, permissions, logging, and more.
 
 **Permission System:**
 
@@ -1539,7 +1539,7 @@ The `/status` command shows cumulative token usage:
 
 **Configuration:**
 
-See the [Configuration](https://github.com/amaiya/patchpal?tab=readme-ov-file#configuration) section for context management settings including:
+See the [Configuration](https://github.com/wiseprobe/patchpal?tab=readme-ov-file#configuration) section for context management settings including:
 - `PATCHPAL_DISABLE_AUTOCOMPACT` - Disable auto-compaction
 - `PATCHPAL_COMPACT_THRESHOLD` - Adjust compaction threshold
 - `PATCHPAL_CONTEXT_LIMIT` - Override context limit for testing
@@ -1616,7 +1616,7 @@ The system ensures you can work for extended periods without hitting context lim
 
 **Error: "maximum iterations reached"**
 - The default number of iterations is 100.
-- Increase with `export PATCHPAL_MAX_ITERATIONS=200` (see [Configuration](https://github.com/amaiya/patchpal?tab=readme-ov-file#configuration))
+- Increase with `export PATCHPAL_MAX_ITERATIONS=200` (see [Configuration](https://github.com/wiseprobe/patchpal?tab=readme-ov-file#configuration))
 
 **Error: "Context Window Error - Input is too long"**
 - PatchPal includes automatic context management (compaction) to prevent this error.
@@ -1625,7 +1625,7 @@ The system ensures you can work for extended periods without hitting context lim
 - If auto-compaction is disabled, re-enable it: `unset PATCHPAL_DISABLE_AUTOCOMPACT`
 - Context is automatically managed at 75% capacity through pruning and compaction.
 - **Note:** Token estimation may be slightly inaccurate compared to the model's actual counting. If you see this error despite auto-compaction being enabled, the 75% threshold may need to be lowered further for your workload. You can adjust it with `export PATCHPAL_COMPACT_THRESHOLD=0.70` (or lower).
-- See [Configuration](https://github.com/amaiya/patchpal?tab=readme-ov-file#configuration) for context management settings.
+- See [Configuration](https://github.com/wiseprobe/patchpal?tab=readme-ov-file#configuration) for context management settings.
 
 **Reducing API Costs via Token Optimization**
 
@@ -1674,7 +1674,7 @@ When using cloud LLM providers (Anthropic, OpenAI, etc.), token usage directly i
   patchpal --model hosted_vllm/openai/gpt-oss-20b
   ```
 - **Alternative:** Use Ollama (requires `OLLAMA_CONTEXT_LENGTH=32768`)
-- See [Using Local Models](https://github.com/amaiya/patchpal?tab=readme-ov-file#using-local-models-vllm--ollama) for setup
+- See [Using Local Models](https://github.com/wiseprobe/patchpal?tab=readme-ov-file#using-local-models-vllm--ollama) for setup
 
 **6. Start Fresh When Appropriate**
 - Use `/clear` command to reset conversation history without restarting PatchPal
