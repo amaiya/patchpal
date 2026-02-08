@@ -51,6 +51,11 @@ def load_mcp_tools(config_path: Optional[Path] = None) -> Tuple[List[Dict], Dict
         Returns empty lists if MCP is not available or no servers configured.
     """
     if not MCP_AVAILABLE:
+        # Check if user has MCP configured
+        config = _load_mcp_config(config_path)
+        if config.get("mcp"):
+            print("Warning: MCP servers configured but MCP SDK not installed.")
+            print("Install it with: pip install patchpal[mcp]")
         return [], {}
 
     try:

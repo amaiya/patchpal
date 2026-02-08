@@ -8,10 +8,10 @@ The [Model Context Protocol](https://modelcontextprotocol.io/) is an open standa
 
 ## Quick Start
 
-### 1. Install MCP Python SDK
+### 1. Install PatchPal with MCP Support
 
 ```bash
-pip install mcp
+pip install patchpal[mcp]
 ```
 
 ### 2. Create Configuration File
@@ -209,9 +209,14 @@ These limitations will be addressed in future updates.
 
 ### MCP tools not loading
 
-1. Check that the MCP Python SDK is installed:
+1. Check that PatchPal was installed with MCP support:
    ```bash
    python -c "import mcp; print('MCP available')"
+   ```
+   
+   If not installed, run:
+   ```bash
+   pip install patchpal[mcp]
    ```
 
 2. Verify your configuration file exists and is valid JSON:

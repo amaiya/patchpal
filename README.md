@@ -214,8 +214,8 @@ PatchPal supports the [Model Context Protocol](https://modelcontextprotocol.io/)
 **Quick Start:**
 
 ```bash
-# 1. Install MCP Python SDK
-pip install mcp
+# 1. Install PatchPal with MCP support
+pip install patchpal[mcp]
 
 # 2. Configure MCP servers in ~/.patchpal/config.json
 {
