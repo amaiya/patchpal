@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "description": "PatchPal MCP Server Configuration Example",
+  "mcp": {
+    "example_server": {
+      "type": "local",
+      "command": ["python", "examples/mcp/simple_server.py"],
+      "enabled": true,
+      "environment": {},
+      "description": "Example MCP server included with PatchPal"
+    },
+    "filesystem": {
+      "type": "local",
+      "command": ["npx", "-y", "@modelcontextprotocol/server-filesystem", "/path/to/allowed/directory"],
+      "enabled": false,
+      "environment": {},
+      "description": "File system access (official reference server)"
+    },
+    "memory": {
+      "type": "local",
+      "command": ["npx", "-y", "@modelcontextprotocol/server-memory"],
+      "enabled": false,
+      "environment": {},
+      "description": "Knowledge graph-based persistent memory (official reference server)"
+    },
+    "fetch": {
+      "type": "local",
+      "command": ["npx", "-y", "@modelcontextprotocol/server-fetch"],
+      "enabled": false,
+      "environment": {},
+      "description": "Web content fetching and conversion (official reference server)"
+    }
+  }
+}

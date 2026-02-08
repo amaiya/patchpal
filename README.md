@@ -32,6 +32,7 @@ $ patchpal              # start
     - [User Interaction](https://github.com/amaiya/patchpal?tab=readme-ov-file#user-interaction)
     - [Git Operations](https://github.com/amaiya/patchpal?tab=readme-ov-file#git-operations-no-permission-required)
     - [Web Capabilities](https://github.com/amaiya/patchpal?tab=readme-ov-file#web-capabilities-requires-permission)
+  - [MCP (Model Context Protocol) Support](https://github.com/amaiya/patchpal?tab=readme-ov-file#mcp-model-context-protocol-support)
   - [Skills System](https://github.com/amaiya/patchpal?tab=readme-ov-file#skills-system)
   - [Custom Tools](https://github.com/amaiya/patchpal?tab=readme-ov-file#custom-tools)
 - [Model Configuration](https://github.com/amaiya/patchpal?tab=readme-ov-file#model-configuration)
@@ -205,6 +206,62 @@ The agent has the following tools:
   - Support for plain text, JSON, XML, and other text formats
   - Warns about unsupported binary formats (images, videos, archives)
   - Requires permission to prevent information leakage about your codebase
+
+### MCP (Model Context Protocol) Support
+
+PatchPal supports the [Model Context Protocol](https://modelcontextprotocol.io/), allowing you to extend the agent with external tools from MCP servers. MCP is an open standard that enables secure connections to data sources and functionality.
+
+**Quick Start:**
+
+```bash
+# 1. Install MCP Python SDK
+pip install mcp
+
+# 2. Configure MCP servers in ~/.patchpal/config.json
+{
+  "mcp": {
+    "memory": {
+      "type": "local",
+      "command": ["npx", "-y", "@modelcontextprotocol/server-memory"],
+      "enabled": true
+    }
+  }
+}
+
+# 3. Run PatchPal - MCP tools load automatically
+patchpal
+```
+
+**What You Can Do:**
+
+- **Database Access**: Query PostgreSQL, SQLite, or other databases via MCP servers
+- **File System Access**: Extend file operations beyond the repository
+- **Custom Integrations**: Connect to any service with an MCP server
+- **Reusable Tools**: Share tool configurations across projects
+
+**Examples:**
+
+See [examples/mcp/](https://github.com/amaiya/patchpal/tree/main/examples/mcp) for:
+- Complete setup guide and configuration examples
+- Simple example MCP server you can use as a template
+- Integration with popular MCP servers (PostgreSQL, SQLite, Git, Filesystem)
+- Creating custom MCP servers
+
+**Features:**
+
+- Automatic tool discovery from configured MCP servers
+- Tools appear alongside built-in PatchPal tools
+- Configuration via `~/.patchpal/config.json` or `.patchpal/config.json`
+- Support for local MCP servers (stdio transport)
+- Graceful degradation if MCP SDK not installed
+
+**Current Limitations:**
+
+- Local servers only (stdio transport) - remote servers (HTTP/SSE) coming soon
+- No OAuth support yet
+- Connection created per tool call (optimization planned)
+
+For complete documentation, see [examples/mcp/README.md](https://github.com/amaiya/patchpal/tree/main/examples/mcp).
 
 ### Skills System
 

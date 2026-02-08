@@ -33,6 +33,7 @@ from patchpal.tools import (
     web_fetch,
     web_search,
 )
+from patchpal.tools.mcp import load_mcp_tools
 
 # Define tools in LiteLLM format
 TOOLS = [
@@ -625,15 +626,25 @@ def get_tools(web_tools_enabled: bool = True):
     Returns:
         Tuple of (tools_list, tool_functions_dict)
     """
-    if web_tools_enabled:
-        return TOOLS, TOOL_FUNCTIONS
+    # Start with built-in tools
+    tools = TOOLS.copy()
+    functions = TOOL_FUNCTIONS.copy()
 
-    # Filter out web tools
-    filtered_tools = [
-        tool for tool in TOOLS if tool["function"]["name"] not in ("web_search", "web_fetch")
-    ]
-    filtered_functions = {
-        k: v for k, v in TOOL_FUNCTIONS.items() if k not in ("web_search", "web_fetch")
-    }
+    # Filter out web tools if disabled
+    if not web_tools_enabled:
+        tools = [
+            tool for tool in tools if tool["function"]["name"] not in ("web_search", "web_fetch")
+        ]
+        functions = {k: v for k, v in functions.items() if k not in ("web_search", "web_fetch")}
 
-    return filtered_tools, filtered_functions
+    # Load MCP tools dynamically
+    try:
+        mcp_tools, mcp_functions = load_mcp_tools()
+        if mcp_tools:
+            tools.extend(mcp_tools)
+            functions.update(mcp_functions)
+    except Exception as e:
+        # Graceful degradation - MCP tools are optional
+        print(f"Warning: Failed to load MCP tools: {e}")
+
+    return tools, functions
