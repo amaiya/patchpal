@@ -449,7 +449,7 @@ class PatchPalAgent:
             # Aggressively truncate all large tool outputs (5K chars)
             pruned_chars = self._prune_tool_outputs_inline(
                 max_chars=5_000,
-                truncation_message="\n\n[... content truncated during compaction. Use read_lines or grep_code for targeted access ...]",
+                truncation_message="\n\n[... content truncated during compaction. Use read_lines or grep for targeted access ...]",
             )
 
             stats_after = self.context_manager.get_usage_stats(self.messages)
@@ -1022,7 +1022,7 @@ class PatchPalAgent:
                                 )
                             elif tool_name == "git_log":
                                 print("\033[2m🔀 Git log...\033[0m", flush=True)
-                            elif tool_name == "grep_code":
+                            elif tool_name == "grep":
                                 print(
                                     f"\033[2m🔍 Searching: {tool_args.get('pattern', '')}\033[0m",
                                     flush=True,
@@ -1163,7 +1163,7 @@ class PatchPalAgent:
                             f"{truncation_note}"
                             f"Output exceeded limits ({MAX_TOOL_OUTPUT_LINES:,} lines or {MAX_TOOL_OUTPUT_CHARS:,} characters).\n"
                             f"Consider:\n"
-                            f"- Using grep_code() to search files directly\n"
+                            f"- Using grep() to search files directly\n"
                             f"- Using read_lines() to read files in chunks\n"
                             f"- Refining the command to filter output (e.g., | grep, | head)"
                         )

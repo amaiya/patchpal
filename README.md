@@ -120,7 +120,7 @@ The agent has the following tools:
 ### File Operations
 - **read_file**: Read contents of files in the repository
   - Limited to 500KB by default (configurable with `PATCHPAL_MAX_FILE_SIZE`)
-  - For larger files, use `read_lines` or `grep_code` for targeted access
+  - For larger files, use `read_lines` or `grep` for targeted access
 - **read_lines**: Read specific line ranges from a file without loading the entire file
   - Example: `read_lines("app.py", 100, 150)` - read lines 100-150
   - More efficient than read_file when you only need a few lines
@@ -155,7 +155,7 @@ The agent has the following tools:
   - Example: `tree(".")` - show tree from current directory
   - Configurable max depth (default: 3, max: 10)
   - Option to show/hide hidden files
-- **grep_code**: Search for patterns in code files (regex support, file filtering)
+- **grep**: Search for patterns in code files (regex support, file filtering)
 - **edit_file**: Edit a file by replacing an exact string (efficient for small changes)
   - Example: `edit_file("config.py", "port = 3000", "port = 8080")`
   - More efficient than apply_patch for targeted changes
@@ -772,7 +772,7 @@ patchpal --require-permission-for-all
 ```
 
 When enabled, the agent will prompt for permission before:
-- **Read operations**: `read_file`, `list_files`, `get_file_info`, `find_files`, `tree`, `grep_code`, `git_status`, `git_diff`, `git_log`
+- **Read operations**: `read_file`, `list_files`, `get_file_info`, `find_files`, `tree`, `grep`, `git_status`, `git_diff`, `git_log`
 - **Write operations**: `edit_file`, `apply_patch` (always require permission)
 - **Shell commands**: `run_shell` (always requires permission)
 - **Web operations**: `web_search`, `web_fetch` (always require permission)

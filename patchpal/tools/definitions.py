@@ -16,7 +16,7 @@ from patchpal.tools import (
     git_diff,
     git_log,
     git_status,
-    grep_code,
+    grep,
     list_files,
     list_skills,
     read_file,
@@ -334,7 +334,7 @@ Combines multiple file structures into one compact output with reduced redundant
     {
         "type": "function",
         "function": {
-            "name": "grep_code",
+            "name": "grep",
             "description": "Search for a pattern in files. Much faster than run_shell with grep. Returns results in 'file:line:content' format.",
             "parameters": {
                 "type": "object",
@@ -600,7 +600,7 @@ TOOL_FUNCTIONS = {
     "git_status": git_status,
     "git_diff": git_diff,
     "git_log": git_log,
-    "grep_code": grep_code,
+    "grep": grep,
     "web_search": web_search,
     "web_fetch": web_fetch,
     "list_skills": list_skills,

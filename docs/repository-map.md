@@ -245,7 +245,7 @@ You: Where is the authentication logic?
 1. **Start broad, narrow down**: Begin with a full repo map, then focus on specific areas
 2. **Exclude noise**: Use `exclude_patterns` to filter out tests, generated code, and dependencies
 3. **Use focus_files**: Prioritize files you're already discussing
-4. **Combine with grep**: Use `get_repo_map` to find files, then `grep_code` to search content
+4. **Combine with grep**: Use `get_repo_map` to find files, then `grep` to search content
 5. **Check the cache**: If files change externally, clear the cache to force a refresh
 
 ## API Reference
