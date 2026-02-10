@@ -2,6 +2,17 @@
 
 from unittest.mock import MagicMock, patch
 
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def mock_memory_file(tmp_path, monkeypatch):
+    """Mock MEMORY_FILE to prevent loading user's actual MEMORY.md in tests."""
+    # Create a non-existent path so MEMORY.md loading returns early
+    fake_memory = tmp_path / "nonexistent" / "MEMORY.md"
+    monkeypatch.setattr("patchpal.tools.common.MEMORY_FILE", fake_memory)
+    return fake_memory
+
 
 def test_create_agent_default_model():
     """Test creating an agent with default model."""

@@ -400,6 +400,58 @@ class PatchPalAgent:
             # Custom OpenAI-compatible servers (vLLM, etc.) often don't support all parameters
             self.litellm_kwargs["drop_params"] = True
 
+        # Load MEMORY.md if it exists and has non-template content
+        self._load_project_memory()
+
+    def _load_project_memory(self):
+        """Load MEMORY.md file at session start if it has non-template content."""
+        try:
+            from patchpal.tools.common import MEMORY_FILE
+
+            # Always tell the agent where MEMORY.md is located
+            if not MEMORY_FILE.exists():
+                return
+
+            memory_content = MEMORY_FILE.read_text(encoding="utf-8")
+
+            # Check if user has added content after the "---" separator
+            has_user_content = False
+            if "---" in memory_content:
+                parts = memory_content.split("---", 1)
+                if len(parts) > 1:
+                    user_content = parts[1].strip()
+                    if user_content and len(user_content) > 10:
+                        has_user_content = True
+
+            # Build the message - include full content if user added info, otherwise just location
+            if has_user_content:
+                memory_msg = f"""# Project Memory (from MEMORY.md)
+
+{memory_content}
+
+The information above is from {MEMORY_FILE} and persists across sessions.
+To update it, use edit_file("{MEMORY_FILE}", ...) or apply_patch("{MEMORY_FILE}", ...)."""
+            else:
+                # Empty template - just inform agent
+                memory_msg = f"""# Project Memory (MEMORY.md)
+
+Your project memory file is located at: {MEMORY_FILE}
+
+It's currently empty (just the template). The file is automatically loaded at session start."""
+
+            # Add as a system message at the start
+            self.messages.insert(
+                0,
+                {
+                    "role": "system",
+                    "content": memory_msg,
+                    "metadata": {"is_memory": True},
+                },
+            )
+        except Exception:
+            # If loading fails, silently continue (don't break agent initialization)
+            pass
+
     def _prune_tool_outputs_inline(self, max_chars: int, truncation_message: str) -> int:
         """Unified pruning function for tool outputs.
 

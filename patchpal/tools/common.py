@@ -163,6 +163,24 @@ def get_require_permission_for_all() -> bool:
     return _REQUIRE_PERMISSION_FOR_ALL
 
 
+# Template for MEMORY.md file
+MEMORY_TEMPLATE = """# Project Memory
+
+This file persists across PatchPal sessions. Use it to store:
+
+- **Project context**: What this project is and what it does
+- **Important decisions**: Technical choices and why they were made
+- **Key facts**: Deployment info, database details, API endpoints
+- **Known issues**: Bugs to fix, technical debt, TODOs
+- **Team conventions**: Code style preferences, workflow guidelines
+
+The agent reads this file at session start to understand your project context.
+
+---
+
+"""
+
+
 # Create patchpal directory structure in home directory
 # Format: ~/.patchpal/<repo-name>/
 def _get_patchpal_dir() -> Path:
@@ -181,9 +199,28 @@ def _get_patchpal_dir() -> Path:
     return repo_dir
 
 
+def _ensure_memory_file() -> Path:
+    """Ensure MEMORY.md file exists, creating it from template if needed.
+
+    Returns:
+        Path to the MEMORY.md file
+    """
+    memory_path = PATCHPAL_DIR / "MEMORY.md"
+
+    if not memory_path.exists():
+        try:
+            memory_path.write_text(MEMORY_TEMPLATE, encoding="utf-8")
+        except Exception as e:
+            # If we can't create the file, log but don't fail
+            audit_logger.warning(f"Failed to create MEMORY.md: {e}")
+
+    return memory_path
+
+
 PATCHPAL_DIR = _get_patchpal_dir()
 BACKUP_DIR = PATCHPAL_DIR / "backups"
 AUDIT_LOG_FILE = PATCHPAL_DIR / "audit.log"
+MEMORY_FILE = _ensure_memory_file()
 
 # Permission manager
 _permission_manager = None
