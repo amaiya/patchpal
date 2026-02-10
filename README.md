@@ -78,6 +78,7 @@ patchpal
 - [Built-In](https://ai.wiseprobe.io/patchpal/features/tools/) and [Custom Tools](https://ai.wiseprobe.io/patchpal/features/custom-tools/)
 - [Skills System](https://ai.wiseprobe.io/patchpal/features/skills/)
 - [Autopilot Mode](https://ai.wiseprobe.io/patchpal/usage/autopilot/) using [Ralph Wiggum loops](https://ghuntley.com/ralph/)
+- [Project Memory](https://ai.wiseprobe.io/patchpal/features/memory/) automatically loads project context from `~/.patchpal/<repo-name>/MEMORY.md` at startup.
 
 ## Documentation
 

@@ -58,8 +58,9 @@ nav:
   - Getting Started: getting-started/index.md
   - Features:
       - Built-In Tools: features/tools.md
-      - Skills System: features/skills.md
       - Custom Tools: features/custom-tools.md
+      - Skills System: features/skills.md
+      - Project Memory: features/memory.md
   - Model Configuration:
       - Overview: models/overview.md
       - Local Models: models/local-models.md
