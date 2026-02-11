@@ -995,3 +995,102 @@ def _check_path(path: str, must_exist: bool = True) -> Path:
         raise ValueError(f"File not found: {path}")
 
     return p
+
+
+# Document text extraction functions (shared by web_fetch and read_file)
+
+
+def extract_text_from_pdf(content: bytes, source: str = "document") -> str:
+    """Extract text from PDF content.
+
+    Args:
+        content: PDF file content as bytes
+        source: Source description (for error messages)
+
+    Returns:
+        Extracted text content
+
+    Raises:
+        ValueError: If pymupdf is not available
+    """
+    if not PYMUPDF_AVAILABLE:
+        raise ValueError(
+            "PDF extraction not available - pymupdf not installed\n"
+            "Install with: pip install pymupdf"
+        )
+
+    try:
+        pdf_document = pymupdf.open(stream=content, filetype="pdf")
+        text_parts = []
+        for page_num in range(pdf_document.page_count):
+            page = pdf_document[page_num]
+            text_parts.append(page.get_text())
+        pdf_document.close()
+        return "\n".join(text_parts)
+    except Exception as e:
+        raise ValueError(f"PDF extraction failed: {e}\nSource: {source}")
+
+
+def extract_text_from_docx(content: bytes, source: str = "document") -> str:
+    """Extract text from DOCX content.
+
+    Args:
+        content: DOCX file content as bytes
+        source: Source description (for error messages)
+
+    Returns:
+        Extracted text content
+
+    Raises:
+        ValueError: If python-docx is not available
+    """
+    if not PYTHON_DOCX_AVAILABLE:
+        raise ValueError(
+            "DOCX extraction not available - python-docx not installed\n"
+            "Install with: pip install python-docx"
+        )
+
+    try:
+        import io
+
+        doc = docx.Document(io.BytesIO(content))
+        text_parts = []
+        for paragraph in doc.paragraphs:
+            text_parts.append(paragraph.text)
+        return "\n".join(text_parts)
+    except Exception as e:
+        raise ValueError(f"DOCX extraction failed: {e}\nSource: {source}")
+
+
+def extract_text_from_pptx(content: bytes, source: str = "document") -> str:
+    """Extract text from PPTX content.
+
+    Args:
+        content: PPTX file content as bytes
+        source: Source description (for error messages)
+
+    Returns:
+        Extracted text content with slide numbers
+
+    Raises:
+        ValueError: If python-pptx is not available
+    """
+    if not PYTHON_PPTX_AVAILABLE:
+        raise ValueError(
+            "PPTX extraction not available - python-pptx not installed\n"
+            "Install with: pip install python-pptx"
+        )
+
+    try:
+        import io
+
+        prs = pptx.Presentation(io.BytesIO(content))
+        text_parts = []
+        for slide_num, slide in enumerate(prs.slides, 1):
+            text_parts.append(f"\n--- Slide {slide_num} ---")
+            for shape in slide.shapes:
+                if hasattr(shape, "text"):
+                    text_parts.append(shape.text)
+        return "\n".join(text_parts)
+    except Exception as e:
+        raise ValueError(f"PPTX extraction failed: {e}\nSource: {source}")

@@ -7,6 +7,18 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
+## 0.12.2 (2026-2-11)
+
+### new:
+- N/A
+
+### changed:
+- `read_file` accepts PDF/PPTX/DOCX, like `web_fetch`
+
+### fixed:
+- N/A
+
+
 ## 0.12.1 (2026-2-10)
 
 ### new:
