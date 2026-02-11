@@ -136,6 +136,8 @@ Note: After `pip install patchpal`, autopilot is available as:
 - `patchpal-autopilot` (direct command)
 - `from patchpal.autopilot import autopilot_loop` (Python library)
 
+**Custom Tools**: Autopilot automatically loads custom tools from `~/.patchpal/tools/` (same as the interactive CLI). This allows you to extend autopilot with project-specific capabilities.
+
 ## Writing Effective Ralph Prompts
 
 Good prompts are critical to Ralph's success. Here's what works:

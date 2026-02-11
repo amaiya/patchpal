@@ -54,9 +54,15 @@ def autopilot_loop(
     # Disable permissions for autonomous operation
     os.environ["PATCHPAL_REQUIRE_PERMISSION"] = "false"
 
+    # Discover custom tools from ~/.patchpal/tools/
+    from patchpal.tool_schema import discover_tools, list_custom_tools
+
+    custom_tools = discover_tools()
+
     # Create agent
     agent = create_agent(
-        model_id=model or os.getenv("PATCHPAL_MODEL", "anthropic/claude-sonnet-4-5")
+        model_id=model or os.getenv("PATCHPAL_MODEL", "anthropic/claude-sonnet-4-5"),
+        custom_tools=custom_tools,
     )
 
     print("=" * 80)
@@ -66,6 +72,14 @@ def autopilot_loop(
     print(f"Completion promise: '{completion_promise}'")
     print(f"Max iterations: {max_iterations}")
     print(f"Model: {agent.model_id}")
+
+    # Show custom tools info if any were loaded
+    custom_tool_info = list_custom_tools()
+    if custom_tool_info:
+        tool_names = [name for name, _, _ in custom_tool_info]
+        tools_str = ", ".join(tool_names)
+        print(f"🔧 Custom tools: {tools_str}")
+
     print("=" * 80)
     print()
 

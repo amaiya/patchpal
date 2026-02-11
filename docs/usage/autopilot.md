@@ -33,6 +33,8 @@ autopilot_loop(
 "
 ```
 
+**Custom Tools**: Autopilot automatically loads custom tools from `~/.patchpal/tools/` (same as the interactive CLI). See [Custom Tools](../features/custom-tools.md) for details.
+
 ### How It Works
 
 The key insight: The agent sees its previous work in conversation history and can adjust its approach, notice failures, and try different solutions automatically.

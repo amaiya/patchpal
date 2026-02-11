@@ -7,6 +7,18 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
+## 0.12.3 (2026-2-11)
+
+### new:
+- N/A
+
+### changed:
+- N/A
+
+### fixed:
+- Ensure Autopilot mode loads custom tools (#56)
+
+
 ## 0.12.2 (2026-2-11)
 
 ### new:
