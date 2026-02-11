@@ -12,7 +12,7 @@
 
 # Option 1: Use python -m (recommended)
 python -m patchpal autopilot \
-  --prompt "Build a REST API with tests" \
+  --prompt "Build a REST API with tests. When complete, output: <promise>COMPLETE</promise>" \
   --completion-promise "COMPLETE" \
   --max-iterations 30
 
@@ -26,7 +26,7 @@ patchpal-autopilot \
 python -c "
 from patchpal.autopilot import autopilot_loop
 autopilot_loop(
-    prompt='Build a calculator with tests',
+    prompt='Build a calculator with tests. When complete, output: <promise>COMPLETE</promise>',
     completion_promise='COMPLETE',
     max_iterations=20
 )
