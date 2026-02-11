@@ -1,11 +1,11 @@
-# PatchPal — A Claude Code–Style Agent in Python
+# PatchPal — An Agentic Coding and Automation Assistant
 
 <!--![PatchPal Screenshot](assets/patchpal_screenshot.png)-->
 <img src="https://raw.githubusercontent.com/wiseprobe/patchpal/refs/heads/main/assets/patchpal_screenshot.png" alt="PatchPal Screenshot" width="650"/>
 
-> An agentic coding and automation assistant, supporting both local and cloud LLMs.
+> Supporting both local and cloud LLMs, with autopilot mode and extensible tools.
 
-**PatchPal** is an AI coding agent that helps you build software, debug issues, and automate tasks.  Like Claude Code, it supports agent skills, tool use, and executable Python generation, enabling interactive workflows for tasks such as data analysis, visualization, web scraping, API interactions, and research with synthesized findings.
+**PatchPal** is an AI coding agent that helps you build software, debug issues, and automate tasks. It supports agent skills, tool use, and executable Python generation, enabling interactive workflows for tasks such as data analysis, visualization, web scraping, API interactions, and research with synthesized findings.
 
 **Key Features**
 - [Terminal Interface](https://ai.wiseprobe.io/patchpal/usage/interactive/) similar to Claude Code
