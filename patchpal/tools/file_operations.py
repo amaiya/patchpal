@@ -45,34 +45,41 @@ def read_file(path: str) -> str:
     # Get file size and MIME type
     size = p.stat().st_size
     mime_type, _ = mimetypes.guess_type(str(p))
+    ext = p.suffix.lower()
 
     # For document formats (PDF/DOCX/PPTX), extract text first, then check extracted size
     # This allows large binary documents as long as the extracted text fits in context
-    if mime_type:
-        if "pdf" in mime_type:
-            # Extract text from PDF (no size check on binary - check extracted text instead)
-            content_bytes = p.read_bytes()
-            text_content = extract_text_from_pdf(content_bytes, source=str(path))
-            audit_logger.info(
-                f"READ: {path} ({size} bytes binary, {len(text_content)} chars text, PDF)"
-            )
-            return text_content
-        elif "wordprocessingml" in mime_type or "msword" in mime_type:
-            # Extract text from DOCX/DOC
-            content_bytes = p.read_bytes()
-            text_content = extract_text_from_docx(content_bytes, source=str(path))
-            audit_logger.info(
-                f"READ: {path} ({size} bytes binary, {len(text_content)} chars text, DOCX)"
-            )
-            return text_content
-        elif "presentationml" in mime_type or "ms-powerpoint" in mime_type:
-            # Extract text from PPTX/PPT
-            content_bytes = p.read_bytes()
-            text_content = extract_text_from_pptx(content_bytes, source=str(path))
-            audit_logger.info(
-                f"READ: {path} ({size} bytes binary, {len(text_content)} chars text, PPTX)"
-            )
-            return text_content
+    # Check both MIME type and extension (Windows doesn't always recognize Office formats)
+    if (mime_type and "pdf" in mime_type) or ext == ".pdf":
+        # Extract text from PDF (no size check on binary - check extracted text instead)
+        content_bytes = p.read_bytes()
+        text_content = extract_text_from_pdf(content_bytes, source=str(path))
+        audit_logger.info(
+            f"READ: {path} ({size} bytes binary, {len(text_content)} chars text, PDF)"
+        )
+        return text_content
+    elif (mime_type and ("wordprocessingml" in mime_type or "msword" in mime_type)) or ext in (
+        ".docx",
+        ".doc",
+    ):
+        # Extract text from DOCX/DOC
+        content_bytes = p.read_bytes()
+        text_content = extract_text_from_docx(content_bytes, source=str(path))
+        audit_logger.info(
+            f"READ: {path} ({size} bytes binary, {len(text_content)} chars text, DOCX)"
+        )
+        return text_content
+    elif (mime_type and ("presentationml" in mime_type or "ms-powerpoint" in mime_type)) or ext in (
+        ".pptx",
+        ".ppt",
+    ):
+        # Extract text from PPTX/PPT
+        content_bytes = p.read_bytes()
+        text_content = extract_text_from_pptx(content_bytes, source=str(path))
+        audit_logger.info(
+            f"READ: {path} ({size} bytes binary, {len(text_content)} chars text, PPTX)"
+        )
+        return text_content
 
     # For non-document files, check size before reading
     if size > MAX_FILE_SIZE:
