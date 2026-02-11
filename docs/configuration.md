@@ -7,6 +7,11 @@ PatchPal can be configured through `PATCHPAL_*` environment variables to customi
 ```bash
 export PATCHPAL_MODEL=openai/gpt-5.2          # Override default model
 # Priority: CLI arg > PATCHPAL_MODEL env var > default (anthropic/claude-sonnet-4-5)
+
+# Extra LiteLLM parameters (JSON format)
+export PATCHPAL_LITELLM_KWARGS='{"reasoning_effort": "high", "temperature": 0.7}'
+# Use for: reasoning models (gpt-oss, deepseek-reasoner), temperature, max_tokens, etc.
+# See: https://docs.litellm.ai/docs/completion/input
 ```
 
 ### Security & Permissions
@@ -104,6 +109,13 @@ export PATCHPAL_SYSTEM_PROMPT=~/.patchpal/my_prompt.md  # Use custom system prom
 ```bash
 export PATCHPAL_ENABLE_WEB=false
 patchpal --model hosted_vllm/openai/gpt-oss-20b
+```
+
+**Reasoning Model with High Effort:**
+```bash
+export PATCHPAL_MODEL=ollama_chat/gpt-oss:20b
+export PATCHPAL_LITELLM_KWARGS='{"reasoning_effort": "high"}'
+patchpal
 ```
 
 **Maximum Security (Read-Only Analysis):**

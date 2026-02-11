@@ -7,10 +7,10 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
-## 0.12.3 (2026-2-11)
+## 0.13.0 (2026-2-11)
 
 ### new:
-- N/A
+- Support extra LiteLLM kwargs (#57)
 
 ### changed:
 - N/A

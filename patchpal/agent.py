@@ -322,12 +322,16 @@ def _apply_prompt_caching(messages: List[Dict[str, Any]], model_id: str) -> List
 class PatchPalAgent:
     """Simple agent that uses LiteLLM for tool calling."""
 
-    def __init__(self, model_id: str = "anthropic/claude-sonnet-4-5", custom_tools=None):
+    def __init__(
+        self, model_id: str = "anthropic/claude-sonnet-4-5", custom_tools=None, litellm_kwargs=None
+    ):
         """Initialize the agent.
 
         Args:
             model_id: LiteLLM model identifier
             custom_tools: Optional list of Python functions to add as tools
+            litellm_kwargs: Optional dict of extra parameters to pass to litellm.completion()
+                          (e.g., {"reasoning_effort": "high"} for reasoning models)
         """
         # Store custom tools
         self.custom_tools = custom_tools or []
@@ -399,6 +403,10 @@ class PatchPalAgent:
         elif self.model_id.startswith("openai/") and os.getenv("OPENAI_API_BASE"):
             # Custom OpenAI-compatible servers (vLLM, etc.) often don't support all parameters
             self.litellm_kwargs["drop_params"] = True
+
+        # Merge in any user-provided litellm_kwargs
+        if litellm_kwargs:
+            self.litellm_kwargs.update(litellm_kwargs)
 
         # Load MEMORY.md if it exists and has non-template content
         self._load_project_memory()
@@ -1297,13 +1305,17 @@ It's currently empty (just the template). The file is automatically loaded at se
         )
 
 
-def create_agent(model_id: str = "anthropic/claude-sonnet-4-5", custom_tools=None) -> PatchPalAgent:
+def create_agent(
+    model_id: str = "anthropic/claude-sonnet-4-5", custom_tools=None, litellm_kwargs=None
+) -> PatchPalAgent:
     """Create and return a PatchPal agent.
 
     Args:
         model_id: LiteLLM model identifier (default: anthropic/claude-sonnet-4-5)
         custom_tools: Optional list of Python functions to use as custom tools.
                      Each function should have type hints and a docstring.
+        litellm_kwargs: Optional dict of extra parameters to pass to litellm.completion()
+                       (e.g., {"reasoning_effort": "high"} for reasoning models)
 
     Returns:
         A configured PatchPalAgent instance
@@ -1320,10 +1332,18 @@ def create_agent(model_id: str = "anthropic/claude-sonnet-4-5", custom_tools=Non
 
         agent = create_agent(custom_tools=[calculator])
         response = agent.run("What's 5 + 3?")
+
+        # With reasoning model
+        agent = create_agent(
+            model_id="ollama_chat/gpt-oss:20b",
+            litellm_kwargs={"reasoning_effort": "high"}
+        )
     """
     # Reset session todos for new session
     from patchpal.tools import reset_session_todos
 
     reset_session_todos()
 
-    return PatchPalAgent(model_id=model_id, custom_tools=custom_tools)
+    return PatchPalAgent(
+        model_id=model_id, custom_tools=custom_tools, litellm_kwargs=litellm_kwargs
+    )
