@@ -8,7 +8,7 @@
 **PatchPal** is an AI coding agent that helps you build software, debug issues, and automate tasks. It supports agent skills, tool use, and executable Python generation, enabling interactive workflows for tasks such as data analysis, visualization, web scraping, API interactions, and research with synthesized findings.
 
 **Key Features**
-- [Terminal Interface](https://ai.wiseprobe.io/patchpal/usage/interactive/) similar to Claude Code
+- [Terminal Interface](https://ai.wiseprobe.io/patchpal/usage/interactive/) for interactive development
 - [Python API](https://ai.wiseprobe.io/patchpal/usage/python-api/) for flexibility and extensibility
 - [Built-In](https://ai.wiseprobe.io/patchpal/features/tools/) and [Custom Tools](https://ai.wiseprobe.io/patchpal/features/custom-tools/)
 - [Skills System](https://ai.wiseprobe.io/patchpal/features/skills/)
