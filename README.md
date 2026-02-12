@@ -55,6 +55,8 @@ export HOSTED_VLLM_API_KEY=token-abc123           # optional depending on your v
 # For other providers, check LiteLLM docs
 ```
 
+**Note:** As of this writing, cloud models are much better suited for agentic workflows than local models.
+
 3. **Run PatchPal**:
 ```bash
 # Use default model (anthropic/claude-sonnet-4-5)
