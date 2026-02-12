@@ -5,6 +5,10 @@ repo_url: https://github.com/wiseprobe/patchpal
 repo_name: wiseprobe/patchpal
 edit_uri: edit/main/docs/
 
+# Exclude the docs README (meta-documentation about building docs)
+exclude_docs: |
+  README.md
+
 theme:
   name: material
   palette:
@@ -39,6 +43,20 @@ theme:
 
 plugins:
   - search
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            docstring_style: google
+            show_source: true
+            show_root_heading: true
+            show_symbol_type_heading: true
+            show_symbol_type_toc: true
+            members_order: source
+            group_by_category: true
+            show_if_no_docstring: false
+            inherited_members: false
+            merge_init_into_class: true
 
 markdown_extensions:
   - admonition
@@ -74,3 +92,9 @@ nav:
   - Safety: safety.md
   - Context Management: context-management.md
   - Troubleshooting: troubleshooting.md
+  - API Reference:
+      - Agent: reference/agent.md
+      - Tools: reference/tools.md
+      - Context Management: reference/context.md
+      - Skills: reference/skills.md
+      - Custom Tools: reference/custom-tools.md

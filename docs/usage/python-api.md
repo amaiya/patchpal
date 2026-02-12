@@ -2,6 +2,9 @@
 
 PatchPal can be used programmatically from Python scripts or a REPL, giving you full agent capabilities with a simple API. **Unlike fully autonomous agent frameworks, PatchPal is designed for human-in-the-loop workflows** where users maintain control through interactive permission prompts, making it ideal for code assistance, debugging, and automation tasks that benefit from human oversight.
 
+!!! info "Complete API Reference"
+    For detailed API documentation with all parameters, return types, and method signatures, see the **[API Reference](../reference/agent.md)** section.
+
 ## Basic Usage
 
 ```python

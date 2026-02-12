@@ -5,7 +5,7 @@ import json
 import os
 import platform
 from datetime import datetime
-from typing import Any, Dict, List
+from typing import Any, Callable, Dict, List, Optional
 
 import litellm
 from rich.console import Console
@@ -323,7 +323,10 @@ class PatchPalAgent:
     """Simple agent that uses LiteLLM for tool calling."""
 
     def __init__(
-        self, model_id: str = "anthropic/claude-sonnet-4-5", custom_tools=None, litellm_kwargs=None
+        self,
+        model_id: str = "anthropic/claude-sonnet-4-5",
+        custom_tools: Optional[List[Callable]] = None,
+        litellm_kwargs: Optional[Dict[str, Any]] = None,
     ):
         """Initialize the agent.
 
@@ -1306,7 +1309,9 @@ It's currently empty (just the template). The file is automatically loaded at se
 
 
 def create_agent(
-    model_id: str = "anthropic/claude-sonnet-4-5", custom_tools=None, litellm_kwargs=None
+    model_id: str = "anthropic/claude-sonnet-4-5",
+    custom_tools: Optional[List[Callable]] = None,
+    litellm_kwargs: Optional[Dict[str, Any]] = None,
 ) -> PatchPalAgent:
     """Create and return a PatchPal agent.
 
