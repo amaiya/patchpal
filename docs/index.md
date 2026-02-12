@@ -15,7 +15,7 @@
 - [Autopilot Mode](usage/autopilot.md) using [Ralph Wiggum loops](https://ghuntley.com/ralph/)
 - [Project Memory](features/memory.md) automatically loads project context from `~/.patchpal/<repo-name>/MEMORY.md` at startup.
 
-PatchPal prioritizes customizability: custom tools, custom skills, a flexible Python API, and support for any LLM.
+PatchPal prioritizes customizability: custom tools, custom skills, a flexible Python API, and support for any tool-calling LLM.
 
 ## Quick Start
 

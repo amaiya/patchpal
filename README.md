@@ -15,7 +15,7 @@
 - [Autopilot Mode](https://ai.wiseprobe.io/patchpal/usage/autopilot/) using [Ralph Wiggum loops](https://ghuntley.com/ralph/)
 - [Project Memory](https://ai.wiseprobe.io/patchpal/features/memory/) automatically loads project context from `~/.patchpal/<repo-name>/MEMORY.md` at startup.
 
-PatchPal prioritizes customizability: custom tools, custom skills, a flexible Python API, and support for any LLM.
+PatchPal prioritizes customizability: custom tools, custom skills, a flexible Python API, and support for any tool-calling LLM.
 
 Full documentation is [here](https://ai.wiseprobe.io/patchpal).
 
