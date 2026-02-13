@@ -82,6 +82,23 @@ patchpal
 
 **Note:** As of this writing, cloud models are much better suited for agentic workflows than local models.
 
+### Working with Smaller Local Models
+
+For local models that struggle with structured tool calling, use **`patchpal-simple`** instead of `patchpal`:
+
+```bash
+# Install (included with patchpal)
+pip install patchpal
+
+# Start with default model (qwen2.5-coder:7b)
+patchpal-simple
+
+# Or specify a model
+patchpal-simple --model qwen2.5-coder:14b
+```
+
+`patchpal-simple` uses text-based tool calling optimized for models that weren't extensively trained on structured function calling formats. Works well with Qwen2.5-coder (3B-14B), CodeLlama, and similar models. See [docs](https://ai.wiseprobe.io/patchpal/models/patchpal-simple/) for details.
+
 
 ## Beyond Coding: General Problem-Solving
 

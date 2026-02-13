@@ -62,6 +62,7 @@ Issues = "https://github.com/wiseprobe/patchpal/issues"
 [project.scripts]
 patchpal = "patchpal.cli:main"
 patchpal-autopilot = "patchpal.autopilot:main"
+patchpal-simple = "patchpal.simple:main"
 
 [tool.setuptools.packages.find]
 include = ["patchpal*"]
