@@ -16,7 +16,7 @@ Most recent releases are shown at the top. Each release shows:
 - Added `PATCHPAL_USE_SIMPLE_PROMPT` option
 
 ### fixed:
-- N/A
+- Ensure /context view displays system prompt (#60)
 
 
 ## 0.13.1 (2026-2-11)
