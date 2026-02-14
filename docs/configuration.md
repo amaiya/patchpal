@@ -99,8 +99,12 @@ export PATCHPAL_MAX_WEB_SIZE=10485760        # Max web content size in bytes (de
 
 ```bash
 export PATCHPAL_SYSTEM_PROMPT=~/.patchpal/my_prompt.md  # Use custom system prompt
-                                                         # File can use template variables: {current_date}, {platform_info}
+                                                         # File can use template variables: {current_date}, {platform_info}, {web_tools}
                                                          # Useful for: custom behavior, team standards, domain-specific instructions
+
+# Alternative: Simplified prompt for local models
+export PATCHPAL_USE_SIMPLE_PROMPT=true  # Use built-in simplified prompt (~400 tokens vs ~6000)
+                                        # May help with models that struggle with complex instructions
 ```
 
 ### Configuration Examples

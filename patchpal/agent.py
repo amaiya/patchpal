@@ -143,8 +143,8 @@ if WEB_TOOLS_ENABLED:
 def _load_system_prompt() -> str:
     """Load system prompt from markdown file and substitute dynamic values.
 
-    Checks PATCHPAL_SYSTEM_PROMPT environment variable for a custom prompt file path.
-    If not set, uses the default system_prompt.md in the patchpal package directory.
+    Checks PATCHPAL_USE_SIMPLE_PROMPT and PATCHPAL_SYSTEM_PROMPT environment variables.
+    Priority: PATCHPAL_SYSTEM_PROMPT > PATCHPAL_USE_SIMPLE_PROMPT > default
 
     Returns:
         The formatted system prompt string
@@ -161,10 +161,13 @@ def _load_system_prompt() -> str:
             )
             print("\033[1;33m   Falling back to default system prompt.\033[0m\n")
             # Fall back to default
-            prompt_path = os.path.join(os.path.dirname(__file__), "system_prompt.md")
+            prompt_path = os.path.join(os.path.dirname(__file__), "prompts", "system_prompt.md")
+    elif os.getenv("PATCHPAL_USE_SIMPLE_PROMPT", "").lower() in ("true", "1", "yes"):
+        # Use simplified prompt
+        prompt_path = os.path.join(os.path.dirname(__file__), "prompts", "system_prompt_simple.md")
     else:
         # Use default prompt from package directory
-        prompt_path = os.path.join(os.path.dirname(__file__), "system_prompt.md")
+        prompt_path = os.path.join(os.path.dirname(__file__), "prompts", "system_prompt.md")
 
     # Read the prompt template
     with open(prompt_path, "r", encoding="utf-8") as f:
