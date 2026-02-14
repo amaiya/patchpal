@@ -10,19 +10,13 @@
 ```bash
 # After pip install patchpal, autopilot is available immediately
 
-# Option 1: Use python -m (recommended)
-python -m patchpal autopilot \
-  --prompt "Build a REST API with tests. When complete, output: <promise>COMPLETE</promise>" \
-  --completion-promise "COMPLETE" \
-  --max-iterations 30
-
-# Option 2: Direct command (if preferred)
+# Option 1: Direct command
 patchpal-autopilot \
   --prompt-file task.md \
   --completion-promise "DONE" \
   --max-iterations 50
 
-# Option 3: Use as a Python library
+# Option 2: Use as a Python library
 python -c "
 from patchpal.autopilot import autopilot_loop
 autopilot_loop(
@@ -164,7 +158,7 @@ docker run -it --rm \
 
 # Inside container
 pip install patchpal
-python -m patchpal autopilot --prompt-file task.md --completion-promise "DONE"
+patchpal-autopilot --prompt-file task.md --completion-promise "DONE"
 ```
 
 **Option 2: Dedicated VM/Server** (Best)
@@ -172,18 +166,7 @@ python -m patchpal autopilot --prompt-file task.md --completion-promise "DONE"
 # Use a separate machine/VM with no access to production
 ssh autopilot-sandbox
 cd /workspace/throwaway-project
-python -m patchpal autopilot --prompt-file task.md --completion-promise "DONE"
-```
-
-**Option 3: Git Worktree** (Minimal)
-```bash
-# Isolate in a separate branch
-git worktree add ../autopilot-sandbox -b autopilot-experiment
-cd ../autopilot-sandbox
-python -m patchpal autopilot --prompt-file task.md --completion-promise "DONE"
-
-# Review and merge, or discard
-git worktree remove --force ../autopilot-sandbox
+patchpal-autopilot --prompt-file task.md --completion-promise "DONE"
 ```
 
 ### Best Practices

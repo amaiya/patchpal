@@ -84,26 +84,20 @@ The agent's `messages` list preserves all previous work, so each iteration build
 After `pip install patchpal`, autopilot is available immediately:
 
 ```bash
-# Simple autopilot loop (recommended: use python -m)
-python -m patchpal autopilot \
-  --prompt "Build a REST API with tests. When complete, output: <promise>COMPLETE</promise>" \
-  --completion-promise "COMPLETE" \
-  --max-iterations 30
-
-# Alternative: Direct command
+# Direct command  (recommended)
 patchpal-autopilot \
   --prompt "Build a REST API with tests. When complete, output: <promise>COMPLETE</promise>" \
   --completion-promise "COMPLETE" \
   --max-iterations 30
 
 # Using a prompt file
-python -m patchpal autopilot \
+patchpal-autopilot \
   --prompt-file prompts/todo_api.md \
   --completion-promise "COMPLETE" \
   --max-iterations 50
 
-# With local model (zero API cost)
-python -m patchpal autopilot \
+# Specifiying a particular model
+patchpal-autopilot \
   --model hosted_vllm/openai/gpt-oss-20b \
   --prompt-file prompts/fix_tests.md \
   --completion-promise "DONE"
