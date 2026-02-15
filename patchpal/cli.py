@@ -515,6 +515,12 @@ Supported models: Any LiteLLM-supported model
                 print("    /compact             Manually trigger context compaction")
                 print("    /prune               Prune old tool outputs (keeps last 2 turns)")
                 print()
+                print("  \033[1;33mMCP (Model Context Protocol):\033[0m")
+                print("    /mcp servers         List configured MCP servers")
+                print("    /mcp resources       List available MCP resources")
+                print("    /mcp prompts         List available MCP prompts")
+                print("    /mcp help            Show MCP command help")
+                print()
                 print("  \033[1;33mSkills:\033[0m")
                 print("    /skillname [args]    Invoke a skill (e.g., /commit)")
                 print("    list skills          Ask agent to list available skills")
@@ -1122,6 +1128,149 @@ Supported models: Any LiteLLM-supported model
 
                 print("=" * 70 + "\n")
                 continue
+
+            # Handle /mcp commands - manage MCP servers interactively
+            if user_input.lower().startswith("/mcp"):
+                parts = user_input.split(maxsplit=1)
+                subcommand = parts[1].lower() if len(parts) > 1 else ""
+
+                # Import MCP functions
+                from patchpal.tools.mcp import (
+                    is_mcp_available,
+                    list_mcp_prompts,
+                    list_mcp_resources,
+                )
+
+                if not is_mcp_available():
+                    print("\n\033[1;31m❌ MCP SDK not installed\033[0m")
+                    print("Install it with: pip install patchpal[mcp]\n")
+                    continue
+
+                # /mcp servers - List configured MCP servers
+                if subcommand == "servers":
+                    print("\n" + "=" * 70)
+                    print("\033[1;36mConfigured MCP Servers\033[0m")
+                    print("=" * 70)
+
+                    # Load config to see servers
+                    import json
+                    from pathlib import Path
+
+                    config_paths = [
+                        Path.home() / ".patchpal" / "config.json",
+                        Path(".patchpal") / "config.json",
+                    ]
+
+                    servers_found = False
+                    for config_path in config_paths:
+                        if config_path.exists():
+                            try:
+                                with open(config_path) as f:
+                                    config = json.load(f)
+                                    mcp_servers = config.get("mcp", {})
+
+                                    if mcp_servers:
+                                        print(f"\nFrom: {config_path}")
+                                        for name, server_config in mcp_servers.items():
+                                            enabled = (
+                                                "✓" if server_config.get("enabled", True) else "✗"
+                                            )
+                                            server_type = server_config.get("type", "local")
+                                            print(f"  {enabled} {name} ({server_type})")
+                                            servers_found = True
+                            except (json.JSONDecodeError, IOError) as e:
+                                print(f"Error reading {config_path}: {e}")
+
+                    if not servers_found:
+                        print("\nNo MCP servers configured.")
+                        print("Use 'patchpal-mcp add' to add servers.\n")
+
+                    print("=" * 70 + "\n")
+                    continue
+
+                # /mcp resources - List available MCP resources
+                elif subcommand == "resources":
+                    print("\n" + "=" * 70)
+                    print("\033[1;36mAvailable MCP Resources\033[0m")
+                    print("=" * 70)
+
+                    resources = list_mcp_resources()
+
+                    if resources:
+                        print(f"\nFound {len(resources)} resource(s):\n")
+                        for resource in resources:
+                            print(f"  \033[1;33m{resource['server']}\033[0m: {resource['uri']}")
+                            if resource.get("name"):
+                                print(f"    Name: {resource['name']}")
+                            if resource.get("description"):
+                                desc = resource["description"]
+                                if len(desc) > 80:
+                                    desc = desc[:77] + "..."
+                                print(f"    {desc}")
+                            if resource.get("mimeType"):
+                                print(f"    Type: {resource['mimeType']}")
+                            print()
+                    else:
+                        print("\nNo resources available from configured MCP servers.")
+                        print("Resources are data/documents exposed by MCP servers.\n")
+
+                    print("=" * 70 + "\n")
+                    continue
+
+                # /mcp prompts - List available MCP prompts
+                elif subcommand == "prompts":
+                    print("\n" + "=" * 70)
+                    print("\033[1;36mAvailable MCP Prompts\033[0m")
+                    print("=" * 70)
+
+                    prompts = list_mcp_prompts()
+
+                    if prompts:
+                        print(f"\nFound {len(prompts)} prompt(s):\n")
+                        for prompt in prompts:
+                            print(f"  \033[1;33m{prompt['server']}/{prompt['name']}\033[0m")
+                            if prompt.get("description"):
+                                desc = prompt["description"]
+                                if len(desc) > 80:
+                                    desc = desc[:77] + "..."
+                                print(f"    {desc}")
+
+                            if prompt.get("arguments"):
+                                print("    Arguments:")
+                                for arg in prompt["arguments"]:
+                                    required = (
+                                        " (required)" if arg.get("required") else " (optional)"
+                                    )
+                                    print(f"      - {arg['name']}{required}")
+                                    if arg.get("description"):
+                                        print(f"        {arg['description']}")
+                            print()
+                    else:
+                        print("\nNo prompts available from configured MCP servers.")
+                        print("Prompts are pre-defined templates exposed by MCP servers.\n")
+
+                    print("=" * 70 + "\n")
+                    continue
+
+                # /mcp help or /mcp without subcommand
+                elif not subcommand or subcommand == "help":
+                    print("\n" + "=" * 70)
+                    print("\033[1;36mMCP Commands\033[0m")
+                    print("=" * 70)
+                    print()
+                    print("  \033[1;33m/mcp servers\033[0m      List configured MCP servers")
+                    print("  \033[1;33m/mcp resources\033[0m    List available MCP resources")
+                    print("  \033[1;33m/mcp prompts\033[0m      List available MCP prompts")
+                    print("  \033[1;33m/mcp help\033[0m         Show this help")
+                    print()
+                    print("  \033[2mTo manage servers, use: patchpal-mcp add/remove/list\033[0m")
+                    print("=" * 70 + "\n")
+                    continue
+
+                else:
+                    print(f"\n\033[1;31mUnknown MCP command: {subcommand}\033[0m")
+                    print("Use '/mcp help' to see available commands.\n")
+                    continue
 
             # Skip empty input
             if not user_input:

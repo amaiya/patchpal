@@ -54,6 +54,19 @@ patchpal
 
 MCP tools will be automatically loaded and prefixed with the server name (e.g., `congress_search_bills`).
 
+### 4. Explore MCP Features in Session
+
+Once in a PatchPal session, use `/mcp` commands:
+
+```
+> /mcp servers    # List configured servers
+> /mcp resources  # List available resources
+> /mcp prompts    # List available prompts
+> /mcp help       # Show MCP command help
+```
+
+These commands let you discover what's available from your MCP servers without leaving the interactive session.
+
 ## Configuration
 
 PatchPal supports two types of MCP servers:
