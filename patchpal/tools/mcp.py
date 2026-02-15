@@ -7,6 +7,9 @@ tools to the PatchPal agent. It handles:
 - Establishing connections to remote MCP servers (SSE/HTTP transport)
 - Converting MCP tool definitions to LiteLLM format
 - Executing MCP tools and formatting results
+- Environment variable expansion in configuration files
+- Listing and accessing MCP resources
+- Listing and executing MCP prompts
 
 Configuration is loaded from:
 1. ~/.patchpal/config.json (personal config)
@@ -19,28 +22,36 @@ Example config.json for local servers:
       "type": "local",
       "command": ["python", "-m", "mcp_server_filesystem", "/allowed/path"],
       "enabled": true,
-      "environment": {}
-    }
-  }
-}
-
-Example config.json for remote servers:
-{
-  "mcp": {
-    "congress": {
-      "type": "remote",
-      "url": "https://congress-mcp-an.fastmcp.app/mcp",
-      "enabled": true,
-      "headers": {
-        "Authorization": "Bearer YOUR_TOKEN"
+      "environment": {
+        "API_KEY": "${MY_API_KEY}"
       }
     }
   }
 }
+
+Example config.json for remote servers with environment variables:
+{
+  "mcp": {
+    "congress": {
+      "type": "remote",
+      "url": "${CONGRESS_API_URL:-https://congress-mcp-an.fastmcp.app/mcp}",
+      "enabled": true,
+      "headers": {
+        "Authorization": "Bearer ${CONGRESS_API_KEY}"
+      }
+    }
+  }
+}
+
+Environment variable syntax:
+- ${VAR} - Expands to the value of environment variable VAR
+- ${VAR:-default} - Expands to VAR if set, otherwise uses "default"
 """
 
 import asyncio
 import json
+import os
+import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import urlparse
@@ -55,6 +66,87 @@ try:
     MCP_AVAILABLE = True
 except ImportError:
     MCP_AVAILABLE = False
+
+
+# Module-level cache for MCP server connection parameters
+_server_configs: Dict[str, Dict[str, Any]] = {}
+
+
+def _expand_env_var(value: str) -> str:
+    """Expand environment variables in a string.
+
+    Supports:
+    - ${VAR} - Expands to the value of environment variable VAR
+    - ${VAR:-default} - Expands to VAR if set, otherwise uses "default"
+
+    Args:
+        value: String that may contain environment variable references
+
+    Returns:
+        String with environment variables expanded
+
+    Raises:
+        ValueError: If a required environment variable is not set and has no default
+    """
+    # Pattern matches ${VAR} or ${VAR:-default}
+    pattern = r"\$\{([^}:]+)(?::-([^}]*))?\}"
+
+    def replace_var(match):
+        var_name = match.group(1)
+        default_value = match.group(2)  # Will be None if no default specified
+
+        # Try to get the environment variable
+        env_value = os.environ.get(var_name)
+
+        if env_value is not None:
+            return env_value
+        elif default_value is not None:
+            return default_value
+        else:
+            raise ValueError(
+                f"Environment variable '{var_name}' is not set and has no default value. "
+                f"Set the variable or use ${{VAR:-default}} syntax."
+            )
+
+    return re.sub(pattern, replace_var, value)
+
+
+def _expand_env_vars_in_value(value: Any) -> Any:
+    """Recursively expand environment variables in config values.
+
+    Args:
+        value: Config value (can be string, list, dict, or other type)
+
+    Returns:
+        Value with environment variables expanded
+    """
+    if isinstance(value, str):
+        return _expand_env_var(value)
+    elif isinstance(value, list):
+        return [_expand_env_vars_in_value(item) for item in value]
+    elif isinstance(value, dict):
+        return {key: _expand_env_vars_in_value(val) for key, val in value.items()}
+    else:
+        # For other types (int, bool, None, etc.), return as-is
+        return value
+
+
+def _expand_env_vars_in_config(config: Dict[str, Any]) -> Dict[str, Any]:
+    """Expand environment variables in MCP server configuration.
+
+    Expands variables in:
+    - command and args (for local servers)
+    - url (for remote servers)
+    - headers (for authentication)
+    - environment variables
+
+    Args:
+        config: MCP server configuration dict
+
+    Returns:
+        Configuration with environment variables expanded
+    """
+    return _expand_env_vars_in_value(config)
 
 
 def load_mcp_tools(config_path: Optional[Path] = None) -> Tuple[List[Dict], Dict]:
@@ -93,6 +185,10 @@ async def _load_mcp_tools_async(config_path: Optional[Path] = None) -> Tuple[Lis
     tools = []
     functions = {}
 
+    # Clear and rebuild server configs cache
+    global _server_configs
+    _server_configs = {}
+
     for server_name, server_config in mcp_servers.items():
         if not isinstance(server_config, dict):
             continue
@@ -100,10 +196,22 @@ async def _load_mcp_tools_async(config_path: Optional[Path] = None) -> Tuple[Lis
         if not server_config.get("enabled", True):
             continue
 
+        # Expand environment variables in the server config
+        try:
+            server_config = _expand_env_vars_in_config(server_config)
+        except ValueError as e:
+            print(
+                f"Warning: Failed to expand environment variables for MCP server '{server_name}': {e}"
+            )
+            continue
+
         server_type = server_config.get("type", "local")
         if server_type not in ("local", "remote"):
             print(f"Warning: Unknown MCP server type '{server_type}' for server '{server_name}'")
             continue
+
+        # Cache the expanded config for later use (resources, prompts)
+        _server_configs[server_name] = server_config
 
         try:
             if server_type == "local":
@@ -131,7 +239,7 @@ async def _load_local_server_tools(
 
     Args:
         server_name: Name of the MCP server
-        server_config: Server configuration dict
+        server_config: Server configuration dict (with env vars already expanded)
 
     Returns:
         Tuple of (tool_schemas, tool_functions)
@@ -177,7 +285,7 @@ async def _load_remote_server_tools(
 
     Args:
         server_name: Name of the MCP server
-        server_config: Server configuration dict
+        server_config: Server configuration dict (with env vars already expanded)
 
     Returns:
         Tuple of (tool_schemas, tool_functions)
@@ -354,6 +462,278 @@ def _format_tool_result(result) -> str:
             output_parts.append(str(content))
 
     return "\n".join(output_parts) if output_parts else "Tool executed successfully."
+
+
+def list_mcp_resources() -> List[Dict[str, Any]]:
+    """List all available resources from connected MCP servers.
+
+    Returns:
+        List of resource dictionaries with keys:
+        - server: Server name
+        - uri: Resource URI
+        - name: Resource name (if provided)
+        - description: Resource description (if provided)
+        - mimeType: Resource MIME type (if provided)
+    """
+    if not MCP_AVAILABLE:
+        return []
+
+    try:
+        return asyncio.run(_list_mcp_resources_async())
+    except Exception as e:
+        print(f"Warning: Failed to list MCP resources: {e}")
+        return []
+
+
+async def _list_mcp_resources_async() -> List[Dict[str, Any]]:
+    """Async implementation of resource listing."""
+    resources = []
+
+    for server_name, server_config in _server_configs.items():
+        try:
+            server_type = server_config.get("type", "local")
+
+            if server_type == "local":
+                server_resources = await _list_local_server_resources(server_name, server_config)
+            else:
+                server_resources = await _list_remote_server_resources(server_name, server_config)
+
+            resources.extend(server_resources)
+        except Exception as e:
+            print(f"Warning: Failed to list resources from MCP server '{server_name}': {e}")
+            continue
+
+    return resources
+
+
+async def _list_local_server_resources(
+    server_name: str, server_config: Dict[str, Any]
+) -> List[Dict[str, Any]]:
+    """List resources from a local MCP server."""
+    command_parts = server_config.get("command", [])
+    server_params = StdioServerParameters(
+        command=command_parts[0],
+        args=command_parts[1:] if len(command_parts) > 1 else [],
+        env=server_config.get("environment", {}),
+    )
+
+    resources = []
+    async with stdio_client(server_params) as (read, write):
+        async with ClientSession(read, write) as session:
+            await session.initialize()
+            resources_response = await session.list_resources()
+
+            for resource in resources_response.resources:
+                resources.append(
+                    {
+                        "server": server_name,
+                        "uri": resource.uri,
+                        "name": getattr(resource, "name", None),
+                        "description": getattr(resource, "description", None),
+                        "mimeType": getattr(resource, "mimeType", None),
+                    }
+                )
+
+    return resources
+
+
+async def _list_remote_server_resources(
+    server_name: str, server_config: Dict[str, Any]
+) -> List[Dict[str, Any]]:
+    """List resources from a remote MCP server."""
+    server_url = server_config.get("url", "")
+    headers = server_config.get("headers", {})
+
+    resources = []
+    async with sse_client(server_url, headers=headers) as streams:
+        async with ClientSession(streams[0], streams[1]) as session:
+            await session.initialize()
+            resources_response = await session.list_resources()
+
+            for resource in resources_response.resources:
+                resources.append(
+                    {
+                        "server": server_name,
+                        "uri": resource.uri,
+                        "name": getattr(resource, "name", None),
+                        "description": getattr(resource, "description", None),
+                        "mimeType": getattr(resource, "mimeType", None),
+                    }
+                )
+
+    return resources
+
+
+def read_mcp_resource(server_name: str, uri: str) -> str:
+    """Read content from an MCP resource.
+
+    Args:
+        server_name: Name of the MCP server
+        uri: Resource URI
+
+    Returns:
+        Resource content as string
+    """
+    if not MCP_AVAILABLE:
+        raise ValueError("MCP SDK not available")
+
+    if server_name not in _server_configs:
+        raise ValueError(f"MCP server '{server_name}' not found")
+
+    try:
+        return asyncio.run(_read_mcp_resource_async(server_name, uri))
+    except Exception as e:
+        raise ValueError(f"Failed to read resource: {e}")
+
+
+async def _read_mcp_resource_async(server_name: str, uri: str) -> str:
+    """Async implementation of resource reading."""
+    server_config = _server_configs[server_name]
+    server_type = server_config.get("type", "local")
+
+    if server_type == "local":
+        return await _read_local_server_resource(server_config, uri)
+    else:
+        return await _read_remote_server_resource(server_config, uri)
+
+
+async def _read_local_server_resource(server_config: Dict[str, Any], uri: str) -> str:
+    """Read resource from a local MCP server."""
+    command_parts = server_config.get("command", [])
+    server_params = StdioServerParameters(
+        command=command_parts[0],
+        args=command_parts[1:] if len(command_parts) > 1 else [],
+        env=server_config.get("environment", {}),
+    )
+
+    async with stdio_client(server_params) as (read, write):
+        async with ClientSession(read, write) as session:
+            await session.initialize()
+            result = await session.read_resource(uri)
+            return _format_tool_result(result)
+
+
+async def _read_remote_server_resource(server_config: Dict[str, Any], uri: str) -> str:
+    """Read resource from a remote MCP server."""
+    server_url = server_config.get("url", "")
+    headers = server_config.get("headers", {})
+
+    async with sse_client(server_url, headers=headers) as streams:
+        async with ClientSession(streams[0], streams[1]) as session:
+            await session.initialize()
+            result = await session.read_resource(uri)
+            return _format_tool_result(result)
+
+
+def list_mcp_prompts() -> List[Dict[str, Any]]:
+    """List all available prompts from connected MCP servers.
+
+    Returns:
+        List of prompt dictionaries with keys:
+        - server: Server name
+        - name: Prompt name
+        - description: Prompt description (if provided)
+        - arguments: List of argument definitions
+    """
+    if not MCP_AVAILABLE:
+        return []
+
+    try:
+        return asyncio.run(_list_mcp_prompts_async())
+    except Exception as e:
+        print(f"Warning: Failed to list MCP prompts: {e}")
+        return []
+
+
+async def _list_mcp_prompts_async() -> List[Dict[str, Any]]:
+    """Async implementation of prompt listing."""
+    prompts = []
+
+    for server_name, server_config in _server_configs.items():
+        try:
+            server_type = server_config.get("type", "local")
+
+            if server_type == "local":
+                server_prompts = await _list_local_server_prompts(server_name, server_config)
+            else:
+                server_prompts = await _list_remote_server_prompts(server_name, server_config)
+
+            prompts.extend(server_prompts)
+        except Exception as e:
+            print(f"Warning: Failed to list prompts from MCP server '{server_name}': {e}")
+            continue
+
+    return prompts
+
+
+async def _list_local_server_prompts(
+    server_name: str, server_config: Dict[str, Any]
+) -> List[Dict[str, Any]]:
+    """List prompts from a local MCP server."""
+    command_parts = server_config.get("command", [])
+    server_params = StdioServerParameters(
+        command=command_parts[0],
+        args=command_parts[1:] if len(command_parts) > 1 else [],
+        env=server_config.get("environment", {}),
+    )
+
+    prompts = []
+    async with stdio_client(server_params) as (read, write):
+        async with ClientSession(read, write) as session:
+            await session.initialize()
+            prompts_response = await session.list_prompts()
+
+            for prompt in prompts_response.prompts:
+                prompts.append(
+                    {
+                        "server": server_name,
+                        "name": prompt.name,
+                        "description": getattr(prompt, "description", None),
+                        "arguments": [
+                            {
+                                "name": arg.name,
+                                "description": getattr(arg, "description", None),
+                                "required": getattr(arg, "required", False),
+                            }
+                            for arg in getattr(prompt, "arguments", [])
+                        ],
+                    }
+                )
+
+    return prompts
+
+
+async def _list_remote_server_prompts(
+    server_name: str, server_config: Dict[str, Any]
+) -> List[Dict[str, Any]]:
+    """List prompts from a remote MCP server."""
+    server_url = server_config.get("url", "")
+    headers = server_config.get("headers", {})
+
+    prompts = []
+    async with sse_client(server_url, headers=headers) as streams:
+        async with ClientSession(streams[0], streams[1]) as session:
+            await session.initialize()
+            prompts_response = await session.list_prompts()
+
+            for prompt in prompts_response.prompts:
+                prompts.append(
+                    {
+                        "server": server_name,
+                        "name": prompt.name,
+                        "description": getattr(prompt, "description", None),
+                        "arguments": [
+                            {
+                                "name": arg.name,
+                                "description": getattr(arg, "description", None),
+                                "required": getattr(arg, "required", False),
+                            }
+                            for arg in getattr(prompt, "arguments", [])
+                        ],
+                    }
+                )
+
+    return prompts
 
 
 def _load_mcp_config(config_path: Optional[Path] = None) -> Dict[str, Any]:

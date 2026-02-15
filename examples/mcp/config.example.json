@@ -11,10 +11,12 @@
     },
     "congress": {
       "type": "remote",
-      "url": "https://congress-mcp-an.fastmcp.app/mcp",
+      "url": "${CONGRESS_API_URL:-https://congress-mcp-an.fastmcp.app/mcp}",
       "enabled": false,
-      "headers": {},
-      "description": "Congress.gov MCP server (remote, hosted by FastMCP)"
+      "headers": {
+        "Authorization": "Bearer ${CONGRESS_API_KEY}"
+      },
+      "description": "Congress.gov MCP server (remote, hosted by FastMCP). Set CONGRESS_API_KEY env var if authentication is required."
     },
     "filesystem": {
       "type": "local",
@@ -37,14 +39,28 @@
       "environment": {},
       "description": "Web content fetching and conversion (official reference server)"
     },
+    "database_with_env_vars": {
+      "type": "local",
+      "command": ["npx", "-y", "@bytebase/dbhub"],
+      "enabled": false,
+      "environment": {
+        "DB_HOST": "${DATABASE_HOST:-localhost}",
+        "DB_PORT": "${DATABASE_PORT:-5432}",
+        "DB_NAME": "${DATABASE_NAME}",
+        "DB_USER": "${DATABASE_USER}",
+        "DB_PASSWORD": "${DATABASE_PASSWORD}"
+      },
+      "description": "Example: Database server with environment variable expansion"
+    },
     "custom_remote_with_auth": {
       "type": "remote",
-      "url": "https://your-custom-mcp-server.example.com/mcp",
+      "url": "${CUSTOM_MCP_URL:-https://api.example.com/mcp}",
       "enabled": false,
       "headers": {
-        "Authorization": "Bearer YOUR_API_TOKEN_HERE"
+        "Authorization": "Bearer ${CUSTOM_API_TOKEN}",
+        "X-API-Key": "${CUSTOM_API_KEY}"
       },
-      "description": "Example of remote MCP server with authentication"
+      "description": "Example: Remote MCP server with environment variable authentication"
     }
   }
 }

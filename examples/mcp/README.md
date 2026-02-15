@@ -69,6 +69,49 @@ Connect to hosted MCP services:
 }
 ```
 
+### Environment Variable Expansion
+
+Keep sensitive credentials out of config files using environment variables:
+
+```json
+{
+  "mcp": {
+    "api_server": {
+      "type": "remote",
+      "url": "${API_BASE_URL:-https://api.example.com/mcp}",
+      "enabled": true,
+      "headers": {
+        "Authorization": "Bearer ${API_TOKEN}",
+        "X-API-Key": "${API_KEY}"
+      }
+    },
+    "database": {
+      "type": "local",
+      "command": ["npx", "-y", "@bytebase/dbhub"],
+      "enabled": true,
+      "environment": {
+        "DB_HOST": "${DATABASE_HOST:-localhost}",
+        "DB_PASSWORD": "${DATABASE_PASSWORD}"
+      }
+    }
+  }
+}
+```
+
+**Syntax:**
+- `${VAR}` - Expands to the value of environment variable `VAR` (fails if not set)
+- `${VAR:-default}` - Uses `VAR` if set, otherwise uses `default` value
+
+**Example:**
+```bash
+# Set environment variables
+export API_TOKEN="your-secret-token"
+export DATABASE_PASSWORD="db-password"
+
+# Start PatchPal - variables will be expanded automatically
+patchpal
+```
+
 ## Popular MCP Servers
 
 ### Congress.gov (Remote)
@@ -82,6 +125,20 @@ Access U.S. legislative data - bills, members, committees, hearings, and votes.
     "type": "remote",
     "url": "https://congress-mcp-an.fastmcp.app/mcp",
     "enabled": true
+  }
+}
+```
+
+**With optional authentication (if required in the future):**
+```json
+{
+  "congress": {
+    "type": "remote",
+    "url": "${CONGRESS_API_URL:-https://congress-mcp-an.fastmcp.app/mcp}",
+    "enabled": true,
+    "headers": {
+      "Authorization": "Bearer ${CONGRESS_API_KEY}"
+    }
   }
 }
 ```
@@ -133,6 +190,51 @@ The MCP project maintains reference implementations:
 - [MCP Server Registry](https://mcp.so) - Searchable directory
 - [GitHub Official Servers](https://github.com/modelcontextprotocol/servers) - Reference implementations
 - [FastMCP Cloud](https://fastmcp.wiki/) - Host your own servers
+
+## MCP Resources and Prompts
+
+In addition to tools, MCP servers can expose **resources** (data/documents) and **prompts** (pre-defined prompt templates).
+
+### Listing Resources
+
+```python
+from patchpal.tools.mcp import load_mcp_tools, list_mcp_resources, read_mcp_resource
+
+# Load tools first (initializes servers)
+load_mcp_tools()
+
+# List all available resources
+resources = list_mcp_resources()
+for resource in resources:
+    print(f"{resource['server']}: {resource['uri']}")
+
+# Read a specific resource
+content = read_mcp_resource(server_name="github", uri="repo://issues/123")
+```
+
+### Listing Prompts
+
+```python
+from patchpal.tools.mcp import load_mcp_tools, list_mcp_prompts
+
+# Load tools first (initializes servers)
+load_mcp_tools()
+
+# List all available prompts
+prompts = list_mcp_prompts()
+for prompt in prompts:
+    print(f"{prompt['server']}/{prompt['name']}: {prompt['description']}")
+    for arg in prompt.get('arguments', []):
+        print(f"  - {arg['name']} ({'required' if arg['required'] else 'optional'})")
+```
+
+### Demo Script
+
+Run the demo to see resources and prompts from your configured servers:
+
+```bash
+python examples/mcp/demo_resources_prompts.py
+```
 
 ## Testing Your Setup
 
@@ -216,6 +318,23 @@ cat ~/.patchpal/config.json | python -m json.tool
 
 **Check PatchPal logs** for MCP-related warnings when starting.
 
+### Environment Variable Not Found
+
+If you see an error like `Environment variable 'API_TOKEN' is not set`, either:
+
+1. **Set the environment variable:**
+   ```bash
+   export API_TOKEN="your-token"
+   patchpal
+   ```
+
+2. **Use a default value in config:**
+   ```json
+   "url": "${API_URL:-https://default.example.com}"
+   ```
+
+3. **Remove the variable reference** and use the actual value (less secure for tokens)
+
 ### Local Server Won't Start
 
 **Test the server command directly:**
@@ -269,17 +388,17 @@ PatchPal Agent
 
 ## Authentication
 
-Remote servers support custom HTTP headers:
+Remote servers support custom HTTP headers with environment variable expansion:
 
 ```json
 {
   "authenticated_service": {
     "type": "remote",
-    "url": "https://api.example.com/mcp",
+    "url": "${API_URL:-https://api.example.com/mcp}",
     "enabled": true,
     "headers": {
-      "Authorization": "Bearer YOUR_API_TOKEN",
-      "X-API-Key": "your-key",
+      "Authorization": "Bearer ${API_TOKEN}",
+      "X-API-Key": "${API_KEY}",
       "X-Custom-Header": "custom-value"
     }
   }
