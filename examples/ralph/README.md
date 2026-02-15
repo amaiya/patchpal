@@ -126,8 +126,8 @@ examples/ralph/
 ```
 
 Note: After `pip install patchpal`, autopilot is available as:
-- `python -m patchpal autopilot` (recommended)
-- `patchpal-autopilot` (direct command)
+- `patchpal-autopilot` (recommended)
+- `python -m patchpal autopilot` (as subcommand)
 - `from patchpal.autopilot import autopilot_loop` (Python library)
 
 **Custom Tools**: Autopilot automatically loads custom tools from `~/.patchpal/tools/` (same as the interactive CLI). This allows you to extend autopilot with project-specific capabilities.
@@ -276,23 +276,6 @@ docker run -it --rm \
   --cpus="2" \
   autopilot-env \
   python -m patchpal autopilot --prompt-file task.md --completion-promise "DONE"
-```
-
-**Option 3: Git Worktree Isolation (MINIMAL)**
-```bash
-# Creates isolated branch for autopilot experiments
-git worktree add ../autopilot-sandbox -b autopilot-experiment
-cd ../autopilot-sandbox
-
-# Run autopilot in isolated branch
-python -m patchpal autopilot --prompt-file task.md --completion-promise "DONE"
-
-# Review changes
-git diff main
-
-# Merge if good, or delete if bad
-cd ..
-git worktree remove autopilot-sandbox --force
 ```
 
 ### Safety Best Practices
