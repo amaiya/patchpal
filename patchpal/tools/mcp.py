@@ -61,6 +61,7 @@ try:
     from mcp import ClientSession, StdioServerParameters
     from mcp.client.sse import sse_client
     from mcp.client.stdio import stdio_client
+    from mcp.client.streamable_http import streamablehttp_client
     from mcp.types import TextContent
 
     MCP_AVAILABLE = True
@@ -281,7 +282,9 @@ async def _load_local_server_tools(
 async def _load_remote_server_tools(
     server_name: str, server_config: Dict[str, Any]
 ) -> Tuple[List[Dict], Dict]:
-    """Load tools from a remote MCP server (SSE/HTTP transport).
+    """Load tools from a remote MCP server (StreamableHTTP or SSE transport).
+
+    Tries StreamableHTTP first, then falls back to SSE transport.
 
     Args:
         server_name: Name of the MCP server
@@ -289,6 +292,9 @@ async def _load_remote_server_tools(
 
     Returns:
         Tuple of (tool_schemas, tool_functions)
+
+    Raises:
+        ValueError: If both transports fail to connect
     """
     server_url = server_config.get("url", "")
     if not server_url:
@@ -304,26 +310,63 @@ async def _load_remote_server_tools(
 
     tools = []
     functions = {}
+    last_error = None
 
-    # Create a temporary connection to discover tools
-    async with sse_client(server_url, headers=headers) as streams:
-        async with ClientSession(streams[0], streams[1]) as session:
-            await session.initialize()
+    # Try StreamableHTTP transport first (preferred)
+    try:
+        async with streamablehttp_client(server_url, headers=headers) as streams:
+            read_stream, write_stream, _ = streams
+            async with ClientSession(read_stream, write_stream) as session:
+                await session.initialize()
 
-            # List available tools from the MCP server
-            tools_response = await session.list_tools()
+                # List available tools from the MCP server
+                tools_response = await session.list_tools()
 
-            for mcp_tool in tools_response.tools:
-                # Convert MCP tool to LiteLLM format
-                tool_name = f"{server_name}_{mcp_tool.name}"
-                tool_schema = _mcp_to_litellm_schema(tool_name, mcp_tool)
-                tools.append(tool_schema)
+                for mcp_tool in tools_response.tools:
+                    # Convert MCP tool to LiteLLM format
+                    tool_name = f"{server_name}_{mcp_tool.name}"
+                    tool_schema = _mcp_to_litellm_schema(tool_name, mcp_tool)
+                    tools.append(tool_schema)
 
-                # Create executor function
-                executor = _make_remote_mcp_executor(server_url, headers, mcp_tool.name)
-                functions[tool_name] = executor
+                    # Create executor function (StreamableHTTP)
+                    executor = _make_remote_mcp_executor(
+                        server_url, headers, mcp_tool.name, use_streamable_http=True
+                    )
+                    functions[tool_name] = executor
 
-    return tools, functions
+        return tools, functions
+    except Exception as e:
+        last_error = e
+        print(
+            f"StreamableHTTP transport failed for '{server_name}' ({server_url}): {e}. Trying SSE..."
+        )
+
+    # Fallback to SSE transport
+    try:
+        async with sse_client(server_url, headers=headers) as streams:
+            async with ClientSession(streams[0], streams[1]) as session:
+                await session.initialize()
+
+                # List available tools from the MCP server
+                tools_response = await session.list_tools()
+
+                for mcp_tool in tools_response.tools:
+                    # Convert MCP tool to LiteLLM format
+                    tool_name = f"{server_name}_{mcp_tool.name}"
+                    tool_schema = _mcp_to_litellm_schema(tool_name, mcp_tool)
+                    tools.append(tool_schema)
+
+                    # Create executor function (SSE)
+                    executor = _make_remote_mcp_executor(
+                        server_url, headers, mcp_tool.name, use_streamable_http=False
+                    )
+                    functions[tool_name] = executor
+
+        return tools, functions
+    except Exception as e:
+        raise ValueError(
+            f"Both transports failed for '{server_name}': StreamableHTTP: {last_error}, SSE: {e}"
+        )
 
 
 def _mcp_to_litellm_schema(tool_name: str, mcp_tool) -> Dict[str, Any]:
@@ -368,13 +411,16 @@ def _make_local_mcp_executor(server_params: StdioServerParameters, tool_name: st
     return executor
 
 
-def _make_remote_mcp_executor(server_url: str, headers: Dict[str, str], tool_name: str):
+def _make_remote_mcp_executor(
+    server_url: str, headers: Dict[str, str], tool_name: str, use_streamable_http: bool = True
+):
     """Create an executor function for a remote MCP tool.
 
     Args:
         server_url: URL of the remote MCP server
         headers: Optional HTTP headers for authentication
         tool_name: Name of the tool on the MCP server
+        use_streamable_http: If True, use StreamableHTTP transport; else use SSE
 
     Returns:
         Callable that executes the tool and returns formatted result
@@ -386,7 +432,9 @@ def _make_remote_mcp_executor(server_url: str, headers: Dict[str, str], tool_nam
         This function creates a new connection each time it's called.
         For production use, consider maintaining persistent connections.
         """
-        return asyncio.run(_call_remote_mcp_tool(server_url, headers, tool_name, kwargs))
+        return asyncio.run(
+            _call_remote_mcp_tool(server_url, headers, tool_name, kwargs, use_streamable_http)
+        )
 
     return executor
 
@@ -416,7 +464,11 @@ async def _call_local_mcp_tool(
 
 
 async def _call_remote_mcp_tool(
-    server_url: str, headers: Dict[str, str], tool_name: str, arguments: Dict[str, Any]
+    server_url: str,
+    headers: Dict[str, str],
+    tool_name: str,
+    arguments: Dict[str, Any],
+    use_streamable_http: bool = True,
 ) -> str:
     """Call a remote MCP tool and return formatted result.
 
@@ -425,19 +477,32 @@ async def _call_remote_mcp_tool(
         headers: Optional HTTP headers for authentication
         tool_name: Name of the tool to call
         arguments: Tool arguments
+        use_streamable_http: If True, use StreamableHTTP transport; else use SSE
 
     Returns:
         Formatted tool output as string
     """
-    async with sse_client(server_url, headers=headers) as streams:
-        async with ClientSession(streams[0], streams[1]) as session:
-            await session.initialize()
+    if use_streamable_http:
+        async with streamablehttp_client(server_url, headers=headers) as streams:
+            read_stream, write_stream, _ = streams
+            async with ClientSession(read_stream, write_stream) as session:
+                await session.initialize()
 
-            # Call the tool
-            result = await session.call_tool(tool_name, arguments=arguments)
+                # Call the tool
+                result = await session.call_tool(tool_name, arguments=arguments)
 
-            # Format result for LLM consumption
-            return _format_tool_result(result)
+                # Format result for LLM consumption
+                return _format_tool_result(result)
+    else:
+        async with sse_client(server_url, headers=headers) as streams:
+            async with ClientSession(streams[0], streams[1]) as session:
+                await session.initialize()
+
+                # Call the tool
+                result = await session.call_tool(tool_name, arguments=arguments)
+
+                # Format result for LLM consumption
+                return _format_tool_result(result)
 
 
 def _format_tool_result(result) -> str:
@@ -545,23 +610,46 @@ async def _list_remote_server_resources(
     headers = server_config.get("headers", {})
 
     resources = []
-    async with sse_client(server_url, headers=headers) as streams:
-        async with ClientSession(streams[0], streams[1]) as session:
-            await session.initialize()
-            resources_response = await session.list_resources()
 
-            for resource in resources_response.resources:
-                resources.append(
-                    {
-                        "server": server_name,
-                        "uri": resource.uri,
-                        "name": getattr(resource, "name", None),
-                        "description": getattr(resource, "description", None),
-                        "mimeType": getattr(resource, "mimeType", None),
-                    }
-                )
+    # Try StreamableHTTP first
+    try:
+        async with streamablehttp_client(server_url, headers=headers) as streams:
+            read_stream, write_stream, _ = streams
+            async with ClientSession(read_stream, write_stream) as session:
+                await session.initialize()
+                resources_response = await session.list_resources()
 
-    return resources
+                for resource in resources_response.resources:
+                    resources.append(
+                        {
+                            "server": server_name,
+                            "uri": resource.uri,
+                            "name": getattr(resource, "name", None),
+                            "description": getattr(resource, "description", None),
+                            "mimeType": getattr(resource, "mimeType", None),
+                        }
+                    )
+
+        return resources
+    except Exception:
+        # Fallback to SSE
+        async with sse_client(server_url, headers=headers) as streams:
+            async with ClientSession(streams[0], streams[1]) as session:
+                await session.initialize()
+                resources_response = await session.list_resources()
+
+                for resource in resources_response.resources:
+                    resources.append(
+                        {
+                            "server": server_name,
+                            "uri": resource.uri,
+                            "name": getattr(resource, "name", None),
+                            "description": getattr(resource, "description", None),
+                            "mimeType": getattr(resource, "mimeType", None),
+                        }
+                    )
+
+        return resources
 
 
 def read_mcp_resource(server_name: str, uri: str) -> str:
@@ -618,11 +706,21 @@ async def _read_remote_server_resource(server_config: Dict[str, Any], uri: str) 
     server_url = server_config.get("url", "")
     headers = server_config.get("headers", {})
 
-    async with sse_client(server_url, headers=headers) as streams:
-        async with ClientSession(streams[0], streams[1]) as session:
-            await session.initialize()
-            result = await session.read_resource(uri)
-            return _format_tool_result(result)
+    # Try StreamableHTTP first
+    try:
+        async with streamablehttp_client(server_url, headers=headers) as streams:
+            read_stream, write_stream, _ = streams
+            async with ClientSession(read_stream, write_stream) as session:
+                await session.initialize()
+                result = await session.read_resource(uri)
+                return _format_tool_result(result)
+    except Exception:
+        # Fallback to SSE
+        async with sse_client(server_url, headers=headers) as streams:
+            async with ClientSession(streams[0], streams[1]) as session:
+                await session.initialize()
+                result = await session.read_resource(uri)
+                return _format_tool_result(result)
 
 
 def list_mcp_prompts() -> List[Dict[str, Any]]:
@@ -711,29 +809,58 @@ async def _list_remote_server_prompts(
     headers = server_config.get("headers", {})
 
     prompts = []
-    async with sse_client(server_url, headers=headers) as streams:
-        async with ClientSession(streams[0], streams[1]) as session:
-            await session.initialize()
-            prompts_response = await session.list_prompts()
 
-            for prompt in prompts_response.prompts:
-                prompts.append(
-                    {
-                        "server": server_name,
-                        "name": prompt.name,
-                        "description": getattr(prompt, "description", None),
-                        "arguments": [
-                            {
-                                "name": arg.name,
-                                "description": getattr(arg, "description", None),
-                                "required": getattr(arg, "required", False),
-                            }
-                            for arg in getattr(prompt, "arguments", [])
-                        ],
-                    }
-                )
+    # Try StreamableHTTP first
+    try:
+        async with streamablehttp_client(server_url, headers=headers) as streams:
+            read_stream, write_stream, _ = streams
+            async with ClientSession(read_stream, write_stream) as session:
+                await session.initialize()
+                prompts_response = await session.list_prompts()
 
-    return prompts
+                for prompt in prompts_response.prompts:
+                    prompts.append(
+                        {
+                            "server": server_name,
+                            "name": prompt.name,
+                            "description": getattr(prompt, "description", None),
+                            "arguments": [
+                                {
+                                    "name": arg.name,
+                                    "description": getattr(arg, "description", None),
+                                    "required": getattr(arg, "required", False),
+                                }
+                                for arg in getattr(prompt, "arguments", [])
+                            ],
+                        }
+                    )
+
+        return prompts
+    except Exception:
+        # Fallback to SSE
+        async with sse_client(server_url, headers=headers) as streams:
+            async with ClientSession(streams[0], streams[1]) as session:
+                await session.initialize()
+                prompts_response = await session.list_prompts()
+
+                for prompt in prompts_response.prompts:
+                    prompts.append(
+                        {
+                            "server": server_name,
+                            "name": prompt.name,
+                            "description": getattr(prompt, "description", None),
+                            "arguments": [
+                                {
+                                    "name": arg.name,
+                                    "description": getattr(arg, "description", None),
+                                    "required": getattr(arg, "required", False),
+                                }
+                                for arg in getattr(prompt, "arguments", [])
+                            ],
+                        }
+                    )
+
+        return prompts
 
 
 def _load_mcp_config(config_path: Optional[Path] = None) -> Dict[str, Any]:

@@ -152,6 +152,59 @@ patchpal
 
 ## Popular MCP Servers
 
+### Hugging Face (Remote) ⭐ Recommended
+
+Access the Hugging Face Hub - search models, datasets, Spaces, papers, and documentation.
+
+**Setup:**
+
+1. Get your API token from https://huggingface.co/settings/tokens
+2. Set environment variable:
+   ```bash
+   export HF_TOKEN="hf_your_token_here"
+   ```
+3. Add to config:
+   ```bash
+   patchpal-mcp add huggingface https://huggingface.co/mcp \
+     --header "Authorization: Bearer ${HF_TOKEN}"
+   ```
+
+**Manual configuration:**
+```json
+{
+  "huggingface": {
+    "type": "remote",
+    "url": "https://huggingface.co/mcp",
+    "enabled": true,
+    "headers": {
+      "Authorization": "Bearer ${HF_TOKEN}"
+    },
+    "description": "Hugging Face Hub MCP server"
+  }
+}
+```
+
+**Available Tools:**
+- `hf_model_search` - Search for ML models
+- `hf_dataset_search` - Find datasets
+- `hf_space_search` - Discover AI apps/demos
+- `hf_paper_search` - Search ML research papers
+- `hf_doc_search` - Search Hugging Face documentation
+- `hf_hub_repo_details` - Get detailed repo information
+- Image generation tools from Spaces
+
+**Example Queries:**
+- "Find quantized versions of Qwen 3"
+- "Search for datasets about weather time-series"
+- "What are the most popular text-to-image models?"
+- "Show me Spaces that can transcribe audio"
+- "How do I use LoRA adapters with PEFT?" (documentation search)
+
+**Testing:**
+```bash
+patchpal-mcp test huggingface
+```
+
 ### Congress.gov (Remote)
 
 Access U.S. legislative data - bills, members, committees, hearings, and votes.

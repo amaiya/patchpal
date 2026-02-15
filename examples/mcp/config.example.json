@@ -1,66 +1,59 @@
 {
   "$schema": "https://json-schema.org/draft-07/schema#",
-  "description": "PatchPal MCP Server Configuration Example",
+  "description": "PatchPal MCP Server Configuration - copy to ~/.patchpal/config.json",
   "mcp": {
-    "example_server": {
+    "demo": {
       "type": "local",
       "command": ["python", "examples/mcp/simple_server.py"],
       "enabled": true,
-      "environment": {},
-      "description": "Example MCP server included with PatchPal"
+      "description": "Example local MCP server with basic tools"
     },
-    "congress": {
+    "huggingface": {
       "type": "remote",
-      "url": "${CONGRESS_API_URL:-https://congress-mcp-an.fastmcp.app/mcp}",
+      "url": "https://huggingface.co/mcp",
       "enabled": false,
       "headers": {
-        "Authorization": "Bearer ${CONGRESS_API_KEY}"
+        "Authorization": "Bearer ${HF_TOKEN}"
       },
-      "description": "Congress.gov MCP server (remote, hosted by FastMCP). Set CONGRESS_API_KEY env var if authentication is required."
+      "description": "Hugging Face Hub - search models, datasets, Spaces, papers. Get token: https://huggingface.co/settings/tokens"
     },
     "filesystem": {
       "type": "local",
       "command": ["npx", "-y", "@modelcontextprotocol/server-filesystem", "/path/to/allowed/directory"],
       "enabled": false,
-      "environment": {},
-      "description": "File system access (official reference server)"
+      "description": "Secure file operations with access controls. Change path to your allowed directory."
     },
     "memory": {
       "type": "local",
       "command": ["npx", "-y", "@modelcontextprotocol/server-memory"],
       "enabled": false,
-      "environment": {},
-      "description": "Knowledge graph-based persistent memory (official reference server)"
+      "description": "Knowledge graph-based persistent memory across sessions"
     },
     "fetch": {
       "type": "local",
       "command": ["npx", "-y", "@modelcontextprotocol/server-fetch"],
       "enabled": false,
-      "environment": {},
-      "description": "Web content fetching and conversion (official reference server)"
+      "description": "Fetch and convert web content to markdown"
     },
-    "database_with_env_vars": {
-      "type": "local",
-      "command": ["npx", "-y", "@bytebase/dbhub"],
-      "enabled": false,
-      "environment": {
-        "DB_HOST": "${DATABASE_HOST:-localhost}",
-        "DB_PORT": "${DATABASE_PORT:-5432}",
-        "DB_NAME": "${DATABASE_NAME}",
-        "DB_USER": "${DATABASE_USER}",
-        "DB_PASSWORD": "${DATABASE_PASSWORD}"
-      },
-      "description": "Example: Database server with environment variable expansion"
-    },
-    "custom_remote_with_auth": {
+    "github": {
       "type": "remote",
-      "url": "${CUSTOM_MCP_URL:-https://api.example.com/mcp}",
+      "url": "https://api.github.com/mcp",
       "enabled": false,
       "headers": {
-        "Authorization": "Bearer ${CUSTOM_API_TOKEN}",
-        "X-API-Key": "${CUSTOM_API_KEY}"
+        "Authorization": "Bearer ${GITHUB_TOKEN}"
       },
-      "description": "Example: Remote MCP server with environment variable authentication"
+      "description": "GitHub API access. Get token: https://github.com/settings/tokens"
+    },
+    "example_with_env_vars": {
+      "type": "local",
+      "command": ["your-mcp-server-command"],
+      "enabled": false,
+      "environment": {
+        "API_KEY": "${YOUR_API_KEY}",
+        "DB_HOST": "${DATABASE_HOST:-localhost}",
+        "DB_PASSWORD": "${DATABASE_PASSWORD}"
+      },
+      "description": "Example showing environment variable expansion: ${VAR} or ${VAR:-default}"
     }
   }
 }
