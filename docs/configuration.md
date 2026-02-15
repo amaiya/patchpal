@@ -73,6 +73,15 @@ export PATCHPAL_PRUNE_PROTECT=40000          # Keep last N tokens of tool output
 export PATCHPAL_PRUNE_MINIMUM=20000          # Minimum tokens to prune (default: 20000)
 ```
 
+### MCP (Model Context Protocol) Integration
+
+```bash
+# Enable/Disable MCP Tools
+export PATCHPAL_ENABLE_MCP=false             # Disable MCP tool loading (default: true - enabled)
+                                              # Useful for: testing, faster startup, minimal environments
+                                              # Note: MCP tools are loaded dynamically from ~/.patchpal/config.json
+```
+
 ### Web Tools
 
 ```bash

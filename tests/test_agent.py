@@ -1,5 +1,10 @@
 """Tests for patchpal.agent module."""
 
+import os
+
+# Disable MCP tools for tests (must be set before importing patchpal modules)
+os.environ["PATCHPAL_ENABLE_MCP"] = "false"
+
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -11,6 +16,14 @@ def mock_memory_file(tmp_path, monkeypatch):
     # Create a non-existent path so MEMORY.md loading returns early
     fake_memory = tmp_path / "nonexistent" / "MEMORY.md"
     monkeypatch.setattr("patchpal.tools.common.MEMORY_FILE", fake_memory)
+
+    # Mock MCP tool loading to return empty lists (prevent loading user's MCP servers)
+    # This makes tests faster and more predictable
+    def mock_load_mcp_tools(config_path=None):
+        return [], {}
+
+    monkeypatch.setattr("patchpal.tools.mcp.load_mcp_tools", mock_load_mcp_tools)
+
     return fake_memory
 
 

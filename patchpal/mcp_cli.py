@@ -4,11 +4,11 @@
 Provides commands to add, remove, list, and manage MCP server configurations.
 
 Usage:
-    patchpal mcp add <name> <url> [options]
-    patchpal mcp list
-    patchpal mcp get <name>
-    patchpal mcp remove <name>
-    patchpal mcp test <name>
+    patchpal-mcp add <name> <url> [options]
+    patchpal-mcp list
+    patchpal-mcp get <name>
+    patchpal-mcp remove <name>
+    patchpal-mcp test <name>
 """
 
 import argparse
@@ -110,7 +110,7 @@ def cmd_add(args):
         # Parse command - everything after the name is the command
         if not args.command_args:
             print("Error: stdio transport requires a command.")
-            print("Usage: patchpal mcp add --transport stdio <name> -- <command> [args...]")
+            print("Usage: patchpal-mcp add --transport stdio <name> -- <command> [args...]")
             sys.exit(1)
 
         server_config["command"] = args.command_args
@@ -182,7 +182,7 @@ def cmd_get(args):
 
     if args.name not in config["mcp"]:
         print(f"Error: Server '{args.name}' not found.")
-        print("Use 'patchpal mcp list' to see all configured servers.")
+        print("Use 'patchpal-mcp list' to see all configured servers.")
         sys.exit(1)
 
     server_config = config["mcp"][args.name]
@@ -274,38 +274,38 @@ def cmd_test(args):
 def main():
     """Main entry point for MCP CLI commands."""
     parser = argparse.ArgumentParser(
-        prog="patchpal mcp",
+        prog="patchpal-mcp",
         description="Manage Model Context Protocol (MCP) servers",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
   # Add a remote HTTP server
-  patchpal mcp add github --transport http https://api.githubcopilot.com/mcp/
+  patchpal-mcp add github --transport http https://api.githubcopilot.com/mcp/
 
   # Add a remote server with authentication
-  patchpal mcp add sentry --transport http https://mcp.sentry.dev/mcp \\
+  patchpal-mcp add sentry --transport http https://mcp.sentry.dev/mcp \\
     --header "Authorization: Bearer \\${SENTRY_TOKEN}"
 
   # Add a local stdio server
-  patchpal mcp add filesystem --transport stdio -- \\
+  patchpal-mcp add filesystem --transport stdio -- \\
     npx -y @modelcontextprotocol/server-filesystem /path/to/dir
 
   # Add with environment variables
-  patchpal mcp add db --transport stdio \\
+  patchpal-mcp add db --transport stdio \\
     --env DB_HOST=localhost --env DB_PASSWORD=\\${DB_PASS} -- \\
     npx -y @bytebase/dbhub
 
   # List all servers
-  patchpal mcp list
+  patchpal-mcp list
 
   # Get server details
-  patchpal mcp get github
+  patchpal-mcp get github
 
   # Test server connection
-  patchpal mcp test github
+  patchpal-mcp test github
 
   # Remove a server
-  patchpal mcp remove github
+  patchpal-mcp remove github
 
 Scope:
   --scope user     : ~/.patchpal/config.json (default, personal config)

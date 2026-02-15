@@ -4,6 +4,8 @@ This module contains the tool schemas (in LiteLLM format) and the mapping
 from tool names to their implementation functions.
 """
 
+import os
+
 from patchpal.tools import (
     apply_patch,
     ask_user,
@@ -639,14 +641,15 @@ def get_tools(web_tools_enabled: bool = True):
         ]
         functions = {k: v for k, v in functions.items() if k not in ("web_search", "web_fetch")}
 
-    # Load MCP tools dynamically
-    try:
-        mcp_tools, mcp_functions = load_mcp_tools()
-        if mcp_tools:
-            tools.extend(mcp_tools)
-            functions.update(mcp_functions)
-    except Exception as e:
-        # Graceful degradation - MCP tools are optional
-        print(f"Warning: Failed to load MCP tools: {e}")
+    # Load MCP tools dynamically (unless disabled via environment variable)
+    if os.getenv("PATCHPAL_ENABLE_MCP", "true").lower() in ("true", "1", "yes"):
+        try:
+            mcp_tools, mcp_functions = load_mcp_tools()
+            if mcp_tools:
+                tools.extend(mcp_tools)
+                functions.update(mcp_functions)
+        except Exception as e:
+            # Graceful degradation - MCP tools are optional
+            print(f"Warning: Failed to load MCP tools: {e}")
 
     return tools, functions
