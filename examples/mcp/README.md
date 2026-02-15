@@ -34,12 +34,36 @@ patchpal-mcp test huggingface
 
 Create `~/.patchpal/config.json`:
 
-```bash
-mkdir -p ~/.patchpal
-cp examples/mcp/config.example.json ~/.patchpal/config.json
+```json
+{
+  "mcp": {
+    "demo": {
+      "type": "local",
+      "command": ["python", "examples/mcp/simple_server.py"],
+      "enabled": false,
+      "description": "Demo local server"
+    },
+    "huggingface": {
+      "type": "remote",
+      "url": "https://huggingface.co/mcp",
+      "enabled": true,
+      "headers": {
+        "Authorization": "Bearer ${HF_TOKEN}"
+      },
+      "description": "Hugging Face Hub MCP server"
+    },
+    "filesystem": {
+      "type": "local",
+      "command": ["npx", "-y", "@modelcontextprotocol/server-filesystem", "/tmp"],
+      "enabled": true,
+      "description": "Filesystem access to /tmp directory"
+    }
+  }
+}
 ```
+... or start with the example one: `examples/mcp/config.example.json`.
 
-Edit the file to enable servers. See [Configuration](#configuration) for details.
+Edit the file to enable/disable servers. See [Configuration](#configuration) for details.
 
 ### 3. Start PatchPal
 
