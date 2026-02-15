@@ -7,6 +7,19 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
+## 0.13.2 (2026-02-15)
+
+### new:
+- N/A
+
+### changed:
+- Added `PATCHPAL_USE_SIMPLE_PROMPT` option
+- Stream-lined prompts (#61)
+
+### fixed:
+- Ensure /context view displays system prompt (#60)
+
+
 ## 0.13.1 (2026-2-11)
 
 ### new:

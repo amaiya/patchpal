@@ -412,8 +412,12 @@ Supported models: Any LiteLLM-supported model
 
     # Show custom prompt indicator if set
     custom_prompt_path = os.getenv("PATCHPAL_SYSTEM_PROMPT")
+    use_simple = os.getenv("PATCHPAL_USE_SIMPLE_PROMPT", "").lower() in ("true", "1", "yes")
+
     if custom_prompt_path:
         print(f"\033[1;36m🔧 Using custom system prompt: {custom_prompt_path}\033[0m")
+    elif use_simple:
+        print("\033[1;36m🔧 Using simplified system prompt\033[0m")
 
     print(
         "\nType \033[1;33m'exit'\033[0m to quit or \033[1;33m'/help'\033[0m to see available commands.\n"
@@ -504,7 +508,9 @@ Supported models: Any LiteLLM-supported model
                 print("  \033[1;33mContext Management:\033[0m")
                 print("    /status              Show context window usage and token statistics")
                 print("    /context             View all messages in conversation history")
-                print("    /context <number>    View specific message by number (full details)")
+                print(
+                    "    /context <number>    View specific message by number (0=base system prompt)"
+                )
                 print("    /clear               Clear conversation history (start fresh)")
                 print("    /compact             Manually trigger context compaction")
                 print("    /prune               Prune old tool outputs (keeps last 2 turns)")
@@ -806,16 +812,29 @@ Supported models: Any LiteLLM-supported model
                 print("\033[1;36mCurrent Context\033[0m")
                 print("=" * 70)
 
-                if not agent.messages:
-                    print("\033[1;33m  Context is empty - no messages yet.\033[0m")
-                    print("=" * 70 + "\n")
-                    continue
+                # Import SYSTEM_PROMPT to prepend as message 0
+                from patchpal.agent import SYSTEM_PROMPT
 
                 # If specific message requested, show only that message
                 if specific_msg_num is not None:
-                    if specific_msg_num < 1 or specific_msg_num > len(agent.messages):
+                    # Message 0 is the base system prompt
+                    if specific_msg_num == 0:
+                        base_system_msg = {"role": "system", "content": SYSTEM_PROMPT}
+                        msg_tokens = agent.context_manager.estimator.estimate_messages_tokens(
+                            [base_system_msg]
+                        )
+
+                        role_display = "\033[1;33mSystem (Base Prompt)\033[0m"
+                        print(f"  Message [0] {role_display} ({msg_tokens:,} tokens):")
+                        print()
+                        print(f"  {SYSTEM_PROMPT}")
+                        print("=" * 70 + "\n")
+                        continue
+
+                    # Messages 1+ are from agent.messages
+                    if specific_msg_num < 0 or specific_msg_num > len(agent.messages):
                         print(
-                            f"\033[1;31m  Error: Message {specific_msg_num} not found. Valid range: 1-{len(agent.messages)}\033[0m"
+                            f"\033[1;31m  Error: Message {specific_msg_num} not found. Valid range: 0-{len(agent.messages)}\033[0m"
                         )
                         print("=" * 70 + "\n")
                         continue
@@ -886,13 +905,27 @@ Supported models: Any LiteLLM-supported model
 
                 # Show all messages with summary view
                 stats = agent.context_manager.get_usage_stats(agent.messages)
-                print(f"  Messages: {len(agent.messages)}")
+                print(f"  Messages: {len(agent.messages) + 1} (including base system prompt)")
                 print(
                     f"  Token usage: {stats['total_tokens']:,} / {stats['context_limit']:,} ({stats['usage_percent']}%)"
                 )
                 print()
 
-                # Display each message
+                # Display message 0 - base system prompt
+                from patchpal.agent import SYSTEM_PROMPT
+
+                base_system_msg = {"role": "system", "content": SYSTEM_PROMPT}
+                base_tokens = agent.context_manager.estimator.estimate_messages_tokens(
+                    [base_system_msg]
+                )
+                print(f"  [0] \033[1;33mSystem (Base Prompt)\033[0m ({base_tokens:,} tokens):")
+                preview = SYSTEM_PROMPT[:200]
+                if len(SYSTEM_PROMPT) > 200:
+                    preview += "..."
+                print(f"      {preview}")
+                print()
+
+                # Display each message from agent.messages
                 for i, msg in enumerate(agent.messages, 1):
                     role = msg.get("role", "unknown")
                     content = msg.get("content", "")
@@ -1128,7 +1161,7 @@ Supported models: Any LiteLLM-supported model
                     print(f"\n\033[1;31mSkill not found: {skill_name}\033[0m")
                     print("Ask 'list skills' to see available skills.")
                     print(
-                        "See example skills at: https://github.com/wiseprobe/patchpal/tree/main/examples/skills"
+                        "See example skills at: https://github.com/amaiya/patchpal/tree/main/examples/skills"
                     )
 
                 continue
