@@ -27,8 +27,7 @@ def test_load_simplified_prompt(monkeypatch):
 
     # Verify it loaded the simplified version
     assert "software engineer assistant" in prompt.lower()
-    assert "read_file" in prompt
-    assert len(prompt) < 5000  # Simplified prompt should be much shorter than default (~6k tokens)
+    assert len(prompt) < 3000  # Simplified prompt should be shorter than default
 
 
 def test_load_simplified_prompt_with_path(monkeypatch):
@@ -61,12 +60,17 @@ def test_simplified_prompt_has_required_sections():
     with open(simple_prompt_path) as f:
         content = f.read()
 
-    # Check for key sections
-    assert "Available Tools" in content
-    assert "How to Use Tools" in content or "Rules" in content
-    assert "read_file" in content
-    assert "edit_file" in content
-    assert "apply_patch" in content
+    # Check for key sections (tools are provided via API, not listed in prompt)
+    assert "Overview" in content or "Rules" in content
+    assert "Rules" in content
+    
+    # Check that strategic guidance is present
+    assert "read_file" in content.lower() or "read files" in content.lower()
+    assert "edit_file" in content.lower() or "edit files" in content.lower()
+    
+    # Check for key behavioral rules
+    assert "concise" in content.lower() or "brevity" in content.lower()
+    assert "security" in content.lower()
 
 
 def test_simplified_prompt_template_variables():

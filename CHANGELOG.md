@@ -14,6 +14,7 @@ Most recent releases are shown at the top. Each release shows:
 
 ### changed:
 - Added `PATCHPAL_USE_SIMPLE_PROMPT` option
+- Stream-lined prompts (#61)
 
 ### fixed:
 - Ensure /context view displays system prompt (#60)

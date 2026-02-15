@@ -90,28 +90,24 @@ def test_agent_system_prompt():
     """Test that the agent has proper system prompt."""
     from patchpal.agent import SYSTEM_PROMPT
 
-    # Verify system prompt mentions the tools
-    assert "read_file" in SYSTEM_PROMPT
-    assert "list_files" in SYSTEM_PROMPT
-    assert "get_file_info" in SYSTEM_PROMPT
-    assert "edit_file" in SYSTEM_PROMPT
-    assert "apply_patch" in SYSTEM_PROMPT
-    assert "git_status" in SYSTEM_PROMPT
-    assert "git_diff" in SYSTEM_PROMPT
-    assert "git_log" in SYSTEM_PROMPT
-    assert "grep" in SYSTEM_PROMPT
-    assert "web_search" in SYSTEM_PROMPT
-    assert "web_fetch" in SYSTEM_PROMPT
-    assert "run_shell" in SYSTEM_PROMPT
-
-    # Verify system prompt has key principles
+    # Verify system prompt has key principles (tools are provided via API, not in prompt)
     assert "expert software engineer" in SYSTEM_PROMPT.lower()
     assert "avoid over-engineering" in SYSTEM_PROMPT.lower()
     assert "read before modifying" in SYSTEM_PROMPT.lower()
 
+    # Verify system prompt mentions strategic tool guidance
+    assert "get_repo_map" in SYSTEM_PROMPT  # Strategic advice to use it FIRST
+    assert "todo_add" in SYSTEM_PROMPT  # Guidance on breaking down tasks
+    assert "ask_user" in SYSTEM_PROMPT  # Guidance on when to ask for clarification
+
     # Verify system prompt includes current date/time
     assert "Current Date and Time" in SYSTEM_PROMPT
     assert "Today is" in SYSTEM_PROMPT
+
+    # Verify key behavioral sections are present
+    assert "Response Brevity" in SYSTEM_PROMPT
+    assert "Proactiveness Balance" in SYSTEM_PROMPT
+    assert "Security Policy" in SYSTEM_PROMPT
 
 
 def test_create_agent_bedrock_env_setup(monkeypatch):
