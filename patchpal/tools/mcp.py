@@ -276,6 +276,9 @@ async def _load_local_server_tools(
                 executor = _make_local_mcp_executor(server_params, mcp_tool.name)
                 functions[tool_name] = executor
 
+    # Give subprocess time to clean up properly
+    await asyncio.sleep(0.1)
+
     return tools, functions
 
 
