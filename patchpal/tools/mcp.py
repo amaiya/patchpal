@@ -274,6 +274,8 @@ async def _load_local_server_tools(
 
                 # Create executor function
                 executor = _make_local_mcp_executor(server_params, mcp_tool.name)
+                # Mark this as an MCP tool for display purposes
+                executor.__mcp_server__ = server_name
                 functions[tool_name] = executor
 
     # Give subprocess time to clean up properly
@@ -335,6 +337,8 @@ async def _load_remote_server_tools(
                     executor = _make_remote_mcp_executor(
                         server_url, headers, mcp_tool.name, use_streamable_http=True
                     )
+                    # Mark this as an MCP tool for display purposes
+                    executor.__mcp_server__ = server_name
                     functions[tool_name] = executor
 
         return tools, functions
@@ -363,6 +367,8 @@ async def _load_remote_server_tools(
                     executor = _make_remote_mcp_executor(
                         server_url, headers, mcp_tool.name, use_streamable_http=False
                     )
+                    # Mark this as an MCP tool for display purposes
+                    executor.__mcp_server__ = server_name
                     functions[tool_name] = executor
 
         return tools, functions

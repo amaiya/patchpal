@@ -517,6 +517,9 @@ Supported models: Any LiteLLM-supported model
                 print()
                 print("  \033[1;33mMCP (Model Context Protocol):\033[0m")
                 print("    /mcp servers         List configured MCP servers")
+                print(
+                    "    /mcp tools [server]  List loaded MCP tools (optionally filter by server)"
+                )
                 print("    /mcp resources       List available MCP resources")
                 print("    /mcp prompts         List available MCP prompts")
                 print("    /mcp help            Show MCP command help")
@@ -1131,7 +1134,7 @@ Supported models: Any LiteLLM-supported model
 
             # Handle /mcp commands - manage MCP servers interactively
             if user_input.lower().startswith("/mcp"):
-                parts = user_input.split(maxsplit=1)
+                parts = user_input.split()
                 subcommand = parts[1].lower() if len(parts) > 1 else ""
 
                 # Import MCP functions
@@ -1186,6 +1189,84 @@ Supported models: Any LiteLLM-supported model
                         print("Use 'patchpal-mcp add' to add servers.\n")
 
                     print("=" * 70 + "\n")
+                    continue
+
+                # /mcp tools - List loaded MCP tools
+                elif subcommand == "tools":
+                    # Check if a server name filter was provided
+                    filter_server = parts[2] if len(parts) > 2 else None
+
+                    print("\n" + "=" * 70)
+                    if filter_server:
+                        print(f"\033[1;36mMCP Tools from '{filter_server}'\033[0m")
+                    else:
+                        print("\033[1;36mLoaded MCP Tools\033[0m")
+                    print("=" * 70)
+
+                    # Load MCP tools to get current state
+                    from patchpal.tools.mcp import load_mcp_tools
+
+                    try:
+                        mcp_tools, _ = load_mcp_tools()
+                    except Exception as e:
+                        print(f"\nError loading MCP tools: {e}\n")
+                        print("=" * 70 + "\n")
+                        continue
+
+                    if not mcp_tools:
+                        print("\nNo MCP tools loaded.")
+                        print("Enable MCP servers in your config to load tools.\n")
+                        print("=" * 70 + "\n")
+                        continue
+
+                    # Group tools by server
+                    from collections import defaultdict
+
+                    tools_by_server = defaultdict(list)
+                    for tool_schema in mcp_tools:
+                        tool_name = tool_schema["function"]["name"]
+                        # Extract server name (prefix before first underscore)
+                        if "_" in tool_name:
+                            server_name = tool_name.split("_", 1)[0]
+                            tool_short_name = tool_name.split("_", 1)[1]
+                        else:
+                            server_name = "unknown"
+                            tool_short_name = tool_name
+
+                        tools_by_server[server_name].append(
+                            {
+                                "name": tool_short_name,
+                                "full_name": tool_name,
+                                "description": tool_schema["function"].get("description", ""),
+                            }
+                        )
+
+                    # Filter by server if specified
+                    if filter_server:
+                        if filter_server not in tools_by_server:
+                            print(f"\nServer '{filter_server}' not found or has no tools.")
+                            print(
+                                f"\nAvailable servers: {', '.join(sorted(tools_by_server.keys()))}\n"
+                            )
+                            print("=" * 70 + "\n")
+                            continue
+                        # Show only the filtered server
+                        servers_to_show = {filter_server: tools_by_server[filter_server]}
+                    else:
+                        servers_to_show = tools_by_server
+
+                    for server_name, tools in sorted(servers_to_show.items()):
+                        print(f"\n\033[1;33m{server_name}\033[0m ({len(tools)} tools):")
+                        for tool in tools:
+                            print(f"  • {tool['name']}")
+                            if tool["description"]:
+                                # Truncate long descriptions
+                                desc = tool["description"]
+                                if len(desc) > 80:
+                                    desc = desc[:77] + "..."
+                                print(f"    {desc}")
+
+                    print("\n" + "=" * 70 + "\n")
                     continue
 
                 # /mcp resources - List available MCP resources
@@ -1259,6 +1340,10 @@ Supported models: Any LiteLLM-supported model
                     print("=" * 70)
                     print()
                     print("  \033[1;33m/mcp servers\033[0m      List configured MCP servers")
+                    print("  \033[1;33m/mcp tools [server]\033[0m")
+                    print(
+                        "                        List loaded MCP tools (optionally filter by server)"
+                    )
                     print("  \033[1;33m/mcp resources\033[0m    List available MCP resources")
                     print("  \033[1;33m/mcp prompts\033[0m      List available MCP prompts")
                     print("  \033[1;33m/mcp help\033[0m         Show this help")

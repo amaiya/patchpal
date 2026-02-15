@@ -1166,6 +1166,19 @@ It's currently empty (just the template). The file is automatically loaded at se
                                     "\033[2m❓ Asking user a question...\033[0m",
                                     flush=True,
                                 )
+                            else:
+                                # Check if this is an MCP tool by looking for __mcp_server__ attribute
+                                if hasattr(tool_func, "__mcp_server__"):
+                                    server_name = tool_func.__mcp_server__
+                                    short_tool_name = (
+                                        tool_name.split("_", 1)[1]
+                                        if "_" in tool_name
+                                        else tool_name
+                                    )
+                                    print(
+                                        f"\033[2m🔌 MCP [{server_name}]: {short_tool_name}...\033[0m",
+                                        flush=True,
+                                    )
 
                             # Execute the tool (permission checks happen inside the tool)
                             try:
