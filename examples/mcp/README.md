@@ -10,9 +10,34 @@ PatchPal supports the [Model Context Protocol (MCP)](https://modelcontextprotoco
 pip install patchpal[mcp]
 ```
 
-### 2. Create Configuration
+### 2. Add an MCP Server
 
-Create `~/.patchpal/config.json` (or `.patchpal/config.json` for project-specific config):
+You can add MCP servers using the CLI or by editing the config file manually.
+
+**Using the CLI (recommended):**
+
+```bash
+# Add a remote HTTP server (congress.gov)
+patchpal-mcp add congress https://congress-mcp-an.fastmcp.app/mcp
+
+# Add with authentication
+patchpal-mcp add github https://api.githubcopilot.com/mcp/ \
+  --header "Authorization: Bearer ${GITHUB_TOKEN}"
+
+# Add a local stdio server
+patchpal-mcp add filesystem --transport stdio -- \
+  npx -y @modelcontextprotocol/server-filesystem /path/to/dir
+
+# List all configured servers
+patchpal-mcp list
+
+# Test a server connection
+patchpal-mcp test congress
+```
+
+**Manual configuration:**
+
+Create `~/.patchpal/config.json`:
 
 ```bash
 mkdir -p ~/.patchpal
@@ -190,6 +215,97 @@ The MCP project maintains reference implementations:
 - [MCP Server Registry](https://mcp.so) - Searchable directory
 - [GitHub Official Servers](https://github.com/modelcontextprotocol/servers) - Reference implementations
 - [FastMCP Cloud](https://fastmcp.wiki/) - Host your own servers
+
+## Managing MCP Servers with CLI
+
+PatchPal provides a convenient CLI for managing MCP servers.
+
+### Add a Server
+
+```bash
+# Add remote HTTP server
+patchpal-mcp add <name> <url> [options]
+
+# Examples:
+patchpal-mcp add congress https://congress-mcp-an.fastmcp.app/mcp
+patchpal-mcp add github https://api.githubcopilot.com/mcp/
+
+# With authentication headers
+patchpal-mcp add sentry https://mcp.sentry.dev/mcp \
+  --header "Authorization: Bearer ${SENTRY_TOKEN}"
+
+# Add local stdio server
+patchpal-mcp add filesystem --transport stdio -- \
+  npx -y @modelcontextprotocol/server-filesystem /path/to/dir
+
+# With environment variables
+patchpal-mcp add db --transport stdio \
+  --env DB_HOST=localhost \
+  --env DB_PASSWORD=${DB_PASS} -- \
+  npx -y @bytebase/dbhub
+
+# Add to project config (shared via git)
+patchpal-mcp add myserver https://api.example.com/mcp --scope project
+```
+
+### List Servers
+
+```bash
+patchpal-mcp list
+
+# Output:
+# MCP Servers (from /home/user/.patchpal/config.json):
+# ============================================================
+#
+# ✓ congress (remote)
+#   URL: https://congress-mcp-an.fastmcp.app/mcp
+#
+# ✓ filesystem (local)
+#   Command: npx -y @modelcontextprotocol/server-filesystem /path/to/dir
+```
+
+### Get Server Details
+
+```bash
+patchpal-mcp get <name>
+
+# Example:
+patchpal-mcp get congress
+```
+
+### Test Server Connection
+
+```bash
+patchpal-mcp test <name>
+
+# Example:
+patchpal-mcp test congress
+# Testing MCP server 'congress'...
+# ============================================================
+# Loading tools...
+# ✓ Connected successfully!
+#   Found 15 tools
+#
+# Available tools:
+#   • congress_search_bills
+#   • congress_get_bill
+#   ...
+```
+
+### Remove a Server
+
+```bash
+patchpal-mcp remove <name>
+
+# Example:
+patchpal-mcp remove congress
+```
+
+### Configuration Scopes
+
+- `--scope user` (default): `~/.patchpal/config.json` - Personal config
+- `--scope project`: `.patchpal/config.json` - Project-specific, shared via git
+- `--scope local`: Same as `project`
 
 ## MCP Resources and Prompts
 
