@@ -4,6 +4,7 @@ This module provides support for connecting to MCP servers and exposing their
 tools to the PatchPal agent. It handles:
 - Loading MCP server configurations from config files
 - Establishing connections to local MCP servers (stdio transport)
+- Establishing connections to remote MCP servers (SSE/HTTP transport)
 - Converting MCP tool definitions to LiteLLM format
 - Executing MCP tools and formatting results
 
@@ -11,7 +12,7 @@ Configuration is loaded from:
 1. ~/.patchpal/config.json (personal config)
 2. .patchpal/config.json (project config)
 
-Example config.json:
+Example config.json for local servers:
 {
   "mcp": {
     "filesystem": {
@@ -22,16 +23,32 @@ Example config.json:
     }
   }
 }
+
+Example config.json for remote servers:
+{
+  "mcp": {
+    "congress": {
+      "type": "remote",
+      "url": "https://congress-mcp-an.fastmcp.app/mcp",
+      "enabled": true,
+      "headers": {
+        "Authorization": "Bearer YOUR_TOKEN"
+      }
+    }
+  }
+}
 """
 
 import asyncio
 import json
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
+from urllib.parse import urlparse
 
 # MCP SDK imports - these will be optional dependencies
 try:
     from mcp import ClientSession, StdioServerParameters
+    from mcp.client.sse import sse_client
     from mcp.client.stdio import stdio_client
     from mcp.types import TextContent
 
@@ -83,12 +100,21 @@ async def _load_mcp_tools_async(config_path: Optional[Path] = None) -> Tuple[Lis
         if not server_config.get("enabled", True):
             continue
 
-        if server_config.get("type") != "local":
-            # Only local servers supported for now
+        server_type = server_config.get("type", "local")
+        if server_type not in ("local", "remote"):
+            print(f"Warning: Unknown MCP server type '{server_type}' for server '{server_name}'")
             continue
 
         try:
-            server_tools, server_functions = await _load_server_tools(server_name, server_config)
+            if server_type == "local":
+                server_tools, server_functions = await _load_local_server_tools(
+                    server_name, server_config
+                )
+            else:  # remote
+                server_tools, server_functions = await _load_remote_server_tools(
+                    server_name, server_config
+                )
+
             tools.extend(server_tools)
             functions.update(server_functions)
         except Exception as e:
@@ -98,10 +124,10 @@ async def _load_mcp_tools_async(config_path: Optional[Path] = None) -> Tuple[Lis
     return tools, functions
 
 
-async def _load_server_tools(
+async def _load_local_server_tools(
     server_name: str, server_config: Dict[str, Any]
 ) -> Tuple[List[Dict], Dict]:
-    """Load tools from a single MCP server.
+    """Load tools from a local MCP server (stdio transport).
 
     Args:
         server_name: Name of the MCP server
@@ -138,7 +164,55 @@ async def _load_server_tools(
                 tools.append(tool_schema)
 
                 # Create executor function
-                executor = _make_mcp_executor(server_params, mcp_tool.name)
+                executor = _make_local_mcp_executor(server_params, mcp_tool.name)
+                functions[tool_name] = executor
+
+    return tools, functions
+
+
+async def _load_remote_server_tools(
+    server_name: str, server_config: Dict[str, Any]
+) -> Tuple[List[Dict], Dict]:
+    """Load tools from a remote MCP server (SSE/HTTP transport).
+
+    Args:
+        server_name: Name of the MCP server
+        server_config: Server configuration dict
+
+    Returns:
+        Tuple of (tool_schemas, tool_functions)
+    """
+    server_url = server_config.get("url", "")
+    if not server_url:
+        raise ValueError(f"MCP server '{server_name}' missing 'url' field")
+
+    # Validate URL
+    parsed = urlparse(server_url)
+    if parsed.scheme not in ("http", "https"):
+        raise ValueError(f"MCP server '{server_name}' URL must start with http:// or https://")
+
+    # Get optional headers for authentication
+    headers = server_config.get("headers", {})
+
+    tools = []
+    functions = {}
+
+    # Create a temporary connection to discover tools
+    async with sse_client(server_url, headers=headers) as streams:
+        async with ClientSession(streams[0], streams[1]) as session:
+            await session.initialize()
+
+            # List available tools from the MCP server
+            tools_response = await session.list_tools()
+
+            for mcp_tool in tools_response.tools:
+                # Convert MCP tool to LiteLLM format
+                tool_name = f"{server_name}_{mcp_tool.name}"
+                tool_schema = _mcp_to_litellm_schema(tool_name, mcp_tool)
+                tools.append(tool_schema)
+
+                # Create executor function
+                executor = _make_remote_mcp_executor(server_url, headers, mcp_tool.name)
                 functions[tool_name] = executor
 
     return tools, functions
@@ -164,8 +238,8 @@ def _mcp_to_litellm_schema(tool_name: str, mcp_tool) -> Dict[str, Any]:
     }
 
 
-def _make_mcp_executor(server_params: StdioServerParameters, tool_name: str):
-    """Create an executor function for an MCP tool.
+def _make_local_mcp_executor(server_params: StdioServerParameters, tool_name: str):
+    """Create an executor function for a local MCP tool.
 
     Args:
         server_params: Server connection parameters
@@ -181,15 +255,38 @@ def _make_mcp_executor(server_params: StdioServerParameters, tool_name: str):
         This function creates a new connection each time it's called.
         For production use, consider maintaining persistent connections.
         """
-        return asyncio.run(_call_mcp_tool(server_params, tool_name, kwargs))
+        return asyncio.run(_call_local_mcp_tool(server_params, tool_name, kwargs))
 
     return executor
 
 
-async def _call_mcp_tool(
+def _make_remote_mcp_executor(server_url: str, headers: Dict[str, str], tool_name: str):
+    """Create an executor function for a remote MCP tool.
+
+    Args:
+        server_url: URL of the remote MCP server
+        headers: Optional HTTP headers for authentication
+        tool_name: Name of the tool on the MCP server
+
+    Returns:
+        Callable that executes the tool and returns formatted result
+    """
+
+    def executor(**kwargs) -> str:
+        """Execute MCP tool and return result.
+
+        This function creates a new connection each time it's called.
+        For production use, consider maintaining persistent connections.
+        """
+        return asyncio.run(_call_remote_mcp_tool(server_url, headers, tool_name, kwargs))
+
+    return executor
+
+
+async def _call_local_mcp_tool(
     server_params: StdioServerParameters, tool_name: str, arguments: Dict[str, Any]
 ) -> str:
-    """Call an MCP tool and return formatted result.
+    """Call a local MCP tool and return formatted result.
 
     Args:
         server_params: Server connection parameters
@@ -207,19 +304,56 @@ async def _call_mcp_tool(
             result = await session.call_tool(tool_name, arguments=arguments)
 
             # Format result for LLM consumption
-            output_parts = []
+            return _format_tool_result(result)
 
-            # Extract text content from result
-            for content in result.content:
-                if isinstance(content, TextContent):
-                    output_parts.append(content.text)
-                elif hasattr(content, "text"):
-                    output_parts.append(content.text)
-                else:
-                    # Handle other content types if needed
-                    output_parts.append(str(content))
 
-            return "\n".join(output_parts) if output_parts else "Tool executed successfully."
+async def _call_remote_mcp_tool(
+    server_url: str, headers: Dict[str, str], tool_name: str, arguments: Dict[str, Any]
+) -> str:
+    """Call a remote MCP tool and return formatted result.
+
+    Args:
+        server_url: URL of the remote MCP server
+        headers: Optional HTTP headers for authentication
+        tool_name: Name of the tool to call
+        arguments: Tool arguments
+
+    Returns:
+        Formatted tool output as string
+    """
+    async with sse_client(server_url, headers=headers) as streams:
+        async with ClientSession(streams[0], streams[1]) as session:
+            await session.initialize()
+
+            # Call the tool
+            result = await session.call_tool(tool_name, arguments=arguments)
+
+            # Format result for LLM consumption
+            return _format_tool_result(result)
+
+
+def _format_tool_result(result) -> str:
+    """Format MCP tool result for LLM consumption.
+
+    Args:
+        result: MCP tool call result
+
+    Returns:
+        Formatted string output
+    """
+    output_parts = []
+
+    # Extract text content from result
+    for content in result.content:
+        if isinstance(content, TextContent):
+            output_parts.append(content.text)
+        elif hasattr(content, "text"):
+            output_parts.append(content.text)
+        else:
+            # Handle other content types if needed
+            output_parts.append(str(content))
+
+    return "\n".join(output_parts) if output_parts else "Tool executed successfully."
 
 
 def _load_mcp_config(config_path: Optional[Path] = None) -> Dict[str, Any]:

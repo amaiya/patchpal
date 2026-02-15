@@ -1,48 +1,48 @@
-# MCP (Model Context Protocol) Examples for PatchPal
+# MCP (Model Context Protocol) for PatchPal
 
-This directory contains example configurations and documentation for integrating MCP servers with PatchPal.
-
-## What is MCP?
-
-The [Model Context Protocol](https://modelcontextprotocol.io/) is an open standard that enables AI applications to securely connect to external data sources and tools. MCP servers provide tools, resources, and prompts that can be used by AI assistants.
+PatchPal supports the [Model Context Protocol (MCP)](https://modelcontextprotocol.io/), enabling AI assistants to connect to external data sources and tools through both local and remote MCP servers.
 
 ## Quick Start
 
-### 1. Install PatchPal with MCP Support
+### 1. Install MCP Support
 
 ```bash
 pip install patchpal[mcp]
 ```
 
-### 2. Create Configuration File
+### 2. Create Configuration
 
-Create a configuration file in one of these locations:
-- `~/.patchpal/config.json` (personal configuration)
-- `.patchpal/config.json` (project-specific configuration)
-
-Use the example configuration as a template:
+Create `~/.patchpal/config.json` (or `.patchpal/config.json` for project-specific config):
 
 ```bash
 mkdir -p ~/.patchpal
 cp examples/mcp/config.example.json ~/.patchpal/config.json
 ```
 
-### 3. Configure MCP Servers
+Edit the file to enable servers. See [Configuration](#configuration) for details.
 
-Edit the configuration file to enable and configure MCP servers. Each server needs:
-- `type`: Currently only `"local"` is supported (stdio transport)
-- `command`: Array with command and arguments to start the server
-- `enabled`: Set to `true` to enable the server
-- `environment`: Optional environment variables
+### 3. Start PatchPal
 
-Example:
+```bash
+patchpal
+```
+
+MCP tools will be automatically loaded and prefixed with the server name (e.g., `congress_search_bills`).
+
+## Configuration
+
+PatchPal supports two types of MCP servers:
+
+### Local Servers (stdio transport)
+
+Run as processes on your machine:
 
 ```json
 {
   "mcp": {
     "filesystem": {
       "type": "local",
-      "command": ["python", "-m", "mcp_server_filesystem", "/home/user/documents"],
+      "command": ["npx", "-y", "@modelcontextprotocol/server-filesystem", "/allowed/path"],
       "enabled": true,
       "environment": {}
     }
@@ -50,34 +50,52 @@ Example:
 }
 ```
 
-### 4. Run PatchPal
+### Remote Servers (HTTP/SSE transport)
 
-PatchPal will automatically discover and load tools from configured MCP servers:
+Connect to hosted MCP services:
 
-```bash
-patchpal
+```json
+{
+  "mcp": {
+    "congress": {
+      "type": "remote",
+      "url": "https://congress-mcp-an.fastmcp.app/mcp",
+      "enabled": true,
+      "headers": {
+        "Authorization": "Bearer YOUR_TOKEN"
+      }
+    }
+  }
+}
 ```
 
-MCP tools will be available alongside built-in PatchPal tools, prefixed with the server name (e.g., `filesystem_read_file`).
+## Popular MCP Servers
 
-## Available MCP Servers
+### Congress.gov (Remote)
 
-Here are some popular MCP servers you can use with PatchPal:
+Access U.S. legislative data - bills, members, committees, hearings, and votes.
 
-### Official Reference Servers
-
-The Model Context Protocol project provides several reference servers maintained by the steering group:
-
-#### Filesystem Server
-
-Secure file operations with configurable access controls.
-
-```bash
-# Uses npx to run the official server
-npx -y @modelcontextprotocol/server-filesystem
+**Configuration:**
+```json
+{
+  "congress": {
+    "type": "remote",
+    "url": "https://congress-mcp-an.fastmcp.app/mcp",
+    "enabled": true
+  }
+}
 ```
 
-Configuration:
+**Example Queries:**
+- "What bills about AI were introduced in the 119th Congress?"
+- "Show me the latest actions on bill H.R. 3076"
+- "Who are the sponsors of recent healthcare legislation?"
+
+### Official MCP Servers (Local)
+
+The MCP project maintains reference implementations:
+
+**Filesystem** - Secure file operations with access controls
 ```json
 {
   "filesystem": {
@@ -88,15 +106,7 @@ Configuration:
 }
 ```
 
-#### Memory Server
-
-Knowledge graph-based persistent memory system.
-
-```bash
-npx -y @modelcontextprotocol/server-memory
-```
-
-Configuration:
+**Memory** - Knowledge graph-based persistent memory
 ```json
 {
   "memory": {
@@ -107,15 +117,7 @@ Configuration:
 }
 ```
 
-#### Fetch Server
-
-Web content fetching and conversion for efficient LLM usage.
-
-```bash
-npx -y @modelcontextprotocol/server-fetch
-```
-
-Configuration:
+**Fetch** - Web content fetching and conversion
 ```json
 {
   "fetch": {
@@ -126,33 +128,64 @@ Configuration:
 }
 ```
 
-### Community MCP Servers
+### Finding More Servers
 
-Thousands of community-built MCP servers are available. Browse them at:
-- [Official MCP Registry](https://mcp.so)
-- [GitHub modelcontextprotocol/servers](https://github.com/modelcontextprotocol/servers)
+- [MCP Server Registry](https://mcp.so) - Searchable directory
+- [GitHub Official Servers](https://github.com/modelcontextprotocol/servers) - Reference implementations
+- [FastMCP Cloud](https://fastmcp.wiki/) - Host your own servers
 
-Many are available as npm packages using `npx` (no installation required).
+## Testing Your Setup
+
+### Test Remote Server Connection
+
+Verify you can connect to a remote MCP server:
+
+```bash
+python examples/mcp/test_remote_mcp.py
+```
+
+Expected output:
+```
+Connecting to https://congress-mcp-an.fastmcp.app/mcp...
+✓ Connected successfully!
+
+Available tools (X):
+  • search_bills
+  • get_bill_details
+  ...
+
+✓ Test successful!
+```
+
+### Validate Configuration
+
+```bash
+# Check config is valid JSON
+cat ~/.patchpal/config.json | python -m json.tool
+
+# Verify MCP SDK is installed
+python -c "from mcp.client.sse import sse_client; print('MCP available')"
+```
 
 ## Creating Custom MCP Servers
 
-You can create custom MCP servers using the Python MCP SDK. Here's a minimal example:
+Build your own MCP server with the Python SDK:
 
 ```python
 from mcp.server.mcpserver import MCPServer
 
-mcp = MCPServer("My Custom Server")
+mcp = MCPServer("My Server")
 
 @mcp.tool()
-def my_custom_tool(argument: str) -> str:
-    """Description of what this tool does."""
+def my_tool(argument: str) -> str:
+    """What this tool does."""
     return f"Processed: {argument}"
 
 if __name__ == "__main__":
     mcp.run(transport="stdio")
 ```
 
-Save this as `my_server.py` and configure it in PatchPal:
+Save as `my_server.py` and configure:
 
 ```json
 {
@@ -164,89 +197,107 @@ Save this as `my_server.py` and configure it in PatchPal:
 }
 ```
 
-## Architecture
-
-```
-┌─────────────┐
-│  PatchPal   │
-│   Agent     │
-└──────┬──────┘
-       │
-       │ Tool Calls
-       │
-┌──────▼───────────────────────────┐
-│  Tool Registry                   │
-│  ┌────────────┐  ┌────────────┐ │
-│  │  Built-in  │  │    MCP     │ │
-│  │   Tools    │  │   Tools    │ │
-│  └────────────┘  └──────┬─────┘ │
-└────────────────────────┬─────────┘
-                         │
-                         │ stdio/JSON-RPC
-                         │
-              ┌──────────▼──────────┐
-              │   MCP Server(s)     │
-              │  ┌───────────────┐  │
-              │  │  Filesystem   │  │
-              │  │  PostgreSQL   │  │
-              │  │    SQLite     │  │
-              │  │     Git       │  │
-              │  │    Custom     │  │
-              │  └───────────────┘  │
-              └─────────────────────┘
-```
-
-## Current Limitations
-
-- **Local servers only**: Remote MCP servers (HTTP/SSE) are not yet supported
-- **No OAuth**: Authentication for remote servers not implemented
-- **Connection per call**: Each tool call creates a new connection (will be optimized later)
-- **stdio transport only**: Only local process communication supported
-
-These limitations will be addressed in future updates.
+See `simple_server.py` in this directory for a complete example.
 
 ## Troubleshooting
 
-### MCP tools not loading
+### MCP Tools Not Loading
 
-1. Check that PatchPal was installed with MCP support:
-   ```bash
-   python -c "import mcp; print('MCP available')"
-   ```
-   
-   If not installed, run:
-   ```bash
-   pip install patchpal[mcp]
-   ```
+**Check MCP SDK installation:**
+```bash
+pip install patchpal[mcp]
+python -c "import mcp; print('OK')"
+```
 
-2. Verify your configuration file exists and is valid JSON:
-   ```bash
-   cat ~/.patchpal/config.json | python -m json.tool
-   ```
+**Validate configuration:**
+```bash
+cat ~/.patchpal/config.json | python -m json.tool
+```
 
-3. Check PatchPal logs for MCP-related warnings
+**Check PatchPal logs** for MCP-related warnings when starting.
 
-### MCP server fails to start
+### Local Server Won't Start
 
-1. Test the MCP server command manually:
-   ```bash
-   python -m mcp_server_filesystem /tmp
-   ```
+**Test the server command directly:**
+```bash
+npx -y @modelcontextprotocol/server-filesystem /tmp
+```
 
-2. Check environment variables are set correctly
+**Check if the package is installed:**
+```bash
+pip list | grep mcp
+npm list -g | grep mcp
+```
 
-3. Verify the server package is installed:
-   ```bash
-   pip list | grep mcp
-   ```
+**Verify environment variables** are set correctly in your config.
+
+### Remote Server Connection Failed
+
+**Test server accessibility:**
+```bash
+curl -I https://congress-mcp-an.fastmcp.app/mcp
+```
+
+**Common issues:**
+- Network/firewall blocking HTTPS connections
+- Missing or incorrect authentication headers
+- Server is temporarily unavailable
+
+**Check PatchPal output** for specific error messages.
+
+### Tools Exist But Don't Work
+
+- Verify you're using the correct tool parameters
+- Check PatchPal's output for error messages from the MCP server
+- Some tools have required parameters - see tool descriptions
+
+## Architecture
+
+```
+PatchPal Agent
+     │
+     ├─── Built-in Tools (file ops, git, web, etc.)
+     │
+     └─── MCP Tools
+          │
+          ├─── Local Servers (stdio)
+          │    └─── Filesystem, Memory, Custom
+          │
+          └─── Remote Servers (HTTP/SSE)
+               └─── Congress.gov, Hosted Services
+```
+
+## Authentication
+
+Remote servers support custom HTTP headers:
+
+```json
+{
+  "authenticated_service": {
+    "type": "remote",
+    "url": "https://api.example.com/mcp",
+    "enabled": true,
+    "headers": {
+      "Authorization": "Bearer YOUR_API_TOKEN",
+      "X-API-Key": "your-key",
+      "X-Custom-Header": "custom-value"
+    }
+  }
+}
+```
+
+## Limitations
+
+Current limitations (may be addressed in future updates):
+
+- **Connection per call** - Each tool invocation creates a new connection (no connection pooling yet)
+- **Static auth only** - OAuth flows not supported, only static headers
+- **SSE transport only** - WebSocket not supported for remote servers
 
 ## Resources
 
-- [Model Context Protocol Documentation](https://modelcontextprotocol.io/)
+- [Model Context Protocol Specification](https://modelcontextprotocol.io/)
 - [MCP Python SDK](https://github.com/modelcontextprotocol/python-sdk)
-- [Official MCP Servers](https://github.com/modelcontextprotocol/servers)
+- [MCP Server Registry](https://mcp.so)
+- [FastMCP Documentation](https://fastmcp.wiki/)
 - [PatchPal Documentation](../../README.md)
-
-## Examples
-
-See the `config.example.json` file in this directory for a complete configuration example with multiple MCP servers.

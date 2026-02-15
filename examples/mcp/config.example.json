@@ -9,6 +9,13 @@
       "environment": {},
       "description": "Example MCP server included with PatchPal"
     },
+    "congress": {
+      "type": "remote",
+      "url": "https://congress-mcp-an.fastmcp.app/mcp",
+      "enabled": false,
+      "headers": {},
+      "description": "Congress.gov MCP server (remote, hosted by FastMCP)"
+    },
     "filesystem": {
       "type": "local",
       "command": ["npx", "-y", "@modelcontextprotocol/server-filesystem", "/path/to/allowed/directory"],
@@ -29,6 +36,15 @@
       "enabled": false,
       "environment": {},
       "description": "Web content fetching and conversion (official reference server)"
+    },
+    "custom_remote_with_auth": {
+      "type": "remote",
+      "url": "https://your-custom-mcp-server.example.com/mcp",
+      "enabled": false,
+      "headers": {
+        "Authorization": "Bearer YOUR_API_TOKEN_HERE"
+      },
+      "description": "Example of remote MCP server with authentication"
     }
   }
 }
