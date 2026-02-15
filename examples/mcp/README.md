@@ -504,22 +504,86 @@ PatchPal Agent
 
 ## Authentication
 
-Remote servers support custom HTTP headers with environment variable expansion:
+Most MCP servers that require authentication accept **personal access tokens** or **API keys** which you can obtain from the service's settings/developer portal.
+
+### Recommended Workflow
+
+**Step 1: Get a personal access token**
+
+Visit the service's settings page:
+- **GitHub**: Settings → Developer settings → Personal access tokens
+- **Sentry**: Settings → Auth Tokens → Create New Token
+- **Other services**: Look for "API Keys", "Access Tokens", or "Developer Settings"
+
+**Step 2: Store token as environment variable**
+
+```bash
+# Add to your ~/.bashrc, ~/.zshrc, or equivalent
+export GITHUB_TOKEN="ghp_xxxxxxxxxxxxxxxxxxxx"
+export SENTRY_TOKEN="sntrys_xxxxxxxxxxxxxxxxxx"
+
+# Reload your shell or run:
+source ~/.bashrc
+```
+
+**Step 3: Configure PatchPal to use the token**
+
+```bash
+# The ${GITHUB_TOKEN} will be expanded from your environment
+patchpal-mcp add github https://api.githubcopilot.com/mcp/ \
+  --header "Authorization: Bearer ${GITHUB_TOKEN}"
+
+patchpal-mcp add sentry https://mcp.sentry.dev/mcp \
+  --header "Authorization: Bearer ${SENTRY_TOKEN}"
+```
+
+**Step 4: Start using PatchPal**
+
+```bash
+patchpal
+# Tokens are loaded from environment automatically
+```
+
+### Configuration Example
+
+Your config file will contain the variable reference, not the actual token:
 
 ```json
 {
-  "authenticated_service": {
+  "github": {
     "type": "remote",
-    "url": "${API_URL:-https://api.example.com/mcp}",
+    "url": "https://api.githubcopilot.com/mcp/",
     "enabled": true,
     "headers": {
-      "Authorization": "Bearer ${API_TOKEN}",
-      "X-API-Key": "${API_KEY}",
-      "X-Custom-Header": "custom-value"
+      "Authorization": "Bearer ${GITHUB_TOKEN}"
     }
   }
 }
 ```
+
+The actual token value stays secure in your environment variables.
+
+### Benefits of This Approach
+
+- ✅ **Secure** - Tokens never stored in config files or version control
+- ✅ **Simple** - No browser popups or OAuth flows needed
+- ✅ **Portable** - Works in SSH sessions, containers, CI/CD
+- ✅ **Long-lived** - Personal tokens typically don't expire or expire rarely
+- ✅ **Easy rotation** - Just update the environment variable
+
+### Alternative: Inline Headers (Less Secure)
+
+For non-sensitive or temporary testing:
+
+```json
+{
+  "headers": {
+    "Authorization": "Bearer your-actual-token-here"
+  }
+}
+```
+
+⚠️ **Warning**: Don't commit actual tokens to git!
 
 ## Limitations
 
