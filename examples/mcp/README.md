@@ -189,8 +189,34 @@ Access the Hugging Face Hub - search models, datasets, Spaces, papers, and docum
 
 ## Finding More Servers
 
-- [MCP Server Registry](https://mcp.so) - Searchable directory
-- [GitHub Official Servers](https://github.com/modelcontextprotocol/servers) - Reference implementations
+### Official @modelcontextprotocol Servers
+
+The MCP steering group maintains official reference servers available via npm:
+
+- **@modelcontextprotocol/server-filesystem** - Secure file operations with configurable access controls
+- **@modelcontextprotocol/server-git** - Git repository management and operations
+- **@modelcontextprotocol/server-everything** - Reference/test server demonstrating all MCP features
+- **@modelcontextprotocol/server-fetch** - Web content fetching and conversion
+- **@modelcontextprotocol/server-memory** - Knowledge graph-based persistent memory
+- **@modelcontextprotocol/server-sequential-thinking** - Dynamic problem-solving through thought sequences
+- **@modelcontextprotocol/server-time** - Time and timezone conversion capabilities
+
+Browse all official packages: https://www.npmjs.com/org/modelcontextprotocol
+
+**Usage:**
+```bash
+# View available servers
+npm search @modelcontextprotocol
+
+# Add to PatchPal (npx -y auto-installs if needed)
+patchpal-mcp add filesystem --transport stdio -- \
+  npx -y @modelcontextprotocol/server-filesystem /allowed/path
+```
+
+### Community Servers
+
+- [MCP Server Registry](https://mcp.so) - Searchable directory of 500+ servers
+- [GitHub Official Servers](https://github.com/modelcontextprotocol/servers) - Reference implementations & archived servers
 - [FastMCP Cloud](https://fastmcp.wiki/) - Host your own servers
 
 ## Managing MCP Servers with CLI
