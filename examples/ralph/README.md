@@ -39,14 +39,14 @@ The agent never actually "completes" until it outputs the completion promise. Th
 
 ## PatchPal Implementation
 
-PatchPal's Python API enables **true Ralph** with a proper stop hook by leveraging the agent's conversation history.
-
+The Ralph Wiggum method is called **autopilot** in PatchPal.
+You can run an autonomous agent either as a command or in Python.
 After `pip install patchpal`, autopilot is immediately available:
 
 ```bash
-# As a command
+# As a command (either "python -m patchpal autopilot" or "patchpal-autopilot")
 python -m patchpal autopilot \
-  --prompt "Build a REST API with tests" \
+  --prompt "Build a REST API with tests. When complete, output: <promise>COMPLETE</promise>" \
   --completion-promise "COMPLETE" \
   --max-iterations 30
 
@@ -54,7 +54,7 @@ python -m patchpal autopilot \
 from patchpal.autopilot import autopilot_loop
 
 autopilot_loop(
-    prompt="Build a REST API with tests",
+    prompt="Build a REST API with tests. When complete, output: <promise>COMPLETE</promise>",
     completion_promise="COMPLETE",
     max_iterations=30
 )
