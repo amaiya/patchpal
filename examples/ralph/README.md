@@ -84,7 +84,7 @@ The agent's `messages` list preserves all previous work, so each iteration build
 After `pip install patchpal`, autopilot is available immediately:
 
 ```bash
-# Direct command  (recommended)
+# Direct prompt
 patchpal-autopilot \
   --prompt "Build a REST API with tests. When complete, output: <promise>COMPLETE</promise>" \
   --completion-promise "COMPLETE" \
