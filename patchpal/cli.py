@@ -1160,8 +1160,8 @@ Supported models: Any LiteLLM-supported model
                     import json
 
                     config_paths = [
-                        Path.home() / ".patchpal" / "config.json",
-                        Path(".patchpal") / "config.json",
+                        Path.home() / ".patchpal" / "mcp-config.json",
+                        Path(".patchpal") / "mcp-config.json",
                     ]
 
                     servers_found = False

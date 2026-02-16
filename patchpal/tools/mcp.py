@@ -11,11 +11,11 @@ tools to the PatchPal agent. It handles:
 - Listing and accessing MCP resources
 - Listing and executing MCP prompts
 
-Configuration is loaded from:
-1. ~/.patchpal/config.json (personal config)
-2. .patchpal/config.json (project config)
+Configuration is loaded and merged from:
+1. ~/.patchpal/mcp-config.json (global config)
+2. .patchpal/mcp-config.json (project config - overrides global by server name)
 
-Example config.json for local servers:
+Example mcp-config.json for local servers:
 {
   "mcp": {
     "filesystem": {
@@ -29,7 +29,7 @@ Example config.json for local servers:
   }
 }
 
-Example config.json for remote servers with environment variables:
+Example mcp-config.json for remote servers with environment variables:
 {
   "mcp": {
     "congress": {
@@ -873,37 +873,73 @@ async def _list_remote_server_prompts(
 
 
 def _load_mcp_config(config_path: Optional[Path] = None) -> Dict[str, Any]:
-    """Load MCP configuration from file.
+    """Load MCP configuration from file(s).
 
-    Searches for config in standard locations if path not provided:
-    1. ~/.patchpal/config.json (personal config)
-    2. .patchpal/config.json (project config)
+    If config_path is provided, loads only that file.
+
+    Otherwise, merges configurations from both locations:
+    1. ~/.patchpal/mcp-config.json (global config)
+    2. .patchpal/mcp-config.json (project config - overrides global)
+
+    Project-specific servers override global servers with the same name.
+    This allows:
+    - Global servers used across all projects
+    - Project-specific servers or overrides
+    - Disabling global servers per-project by setting "enabled": false
 
     Args:
-        config_path: Optional explicit path to config file
+        config_path: Optional explicit path to config file. If provided,
+                    only that file is loaded (no merging).
 
     Returns:
-        Configuration dict (empty if no config found)
+        Merged configuration dict (empty if no config found)
     """
-    if config_path is None:
-        # Check standard locations
-        candidates = [
-            Path.home() / ".patchpal" / "config.json",
-            Path(".patchpal") / "config.json",
-        ]
-        for path in candidates:
-            if path.exists():
-                config_path = path
-                break
+    if config_path is not None:
+        # Explicit path provided - load only that file
+        if config_path.exists():
+            try:
+                return json.loads(config_path.read_text())
+            except json.JSONDecodeError as e:
+                print(f"Warning: Failed to parse MCP config at {config_path}: {e}")
+                return {}
+        return {}
 
-    if config_path and config_path.exists():
+    # Load and merge from both standard locations
+    global_config_path = Path.home() / ".patchpal" / "mcp-config.json"
+    project_config_path = Path(".patchpal") / "mcp-config.json"
+
+    merged_config: Dict[str, Any] = {}
+
+    # Load global config first
+    if global_config_path.exists():
         try:
-            return json.loads(config_path.read_text())
+            global_config = json.loads(global_config_path.read_text())
+            merged_config = global_config
         except json.JSONDecodeError as e:
-            print(f"Warning: Failed to parse MCP config at {config_path}: {e}")
-            return {}
+            print(f"Warning: Failed to parse global MCP config at {global_config_path}: {e}")
 
-    return {}
+    # Load and merge project config (overrides global)
+    if project_config_path.exists():
+        try:
+            project_config = json.loads(project_config_path.read_text())
+
+            # Merge MCP server configurations
+            if "mcp" in project_config:
+                if "mcp" not in merged_config:
+                    merged_config["mcp"] = {}
+
+                # Project servers override global servers by name
+                merged_config["mcp"].update(project_config["mcp"])
+
+            # Merge other top-level config keys (for future extensibility)
+            for key, value in project_config.items():
+                if key != "mcp":
+                    merged_config[key] = value
+
+        except json.JSONDecodeError as e:
+            print(f"Warning: Failed to parse project MCP config at {project_config_path}: {e}")
+
+    return merged_config
 
 
 def is_mcp_available() -> bool:

@@ -7,7 +7,7 @@ You can use this as a template for building your own MCP servers.
 Usage:
     python simple_server.py
 
-Configuration in ~/.patchpal/config.json:
+Configuration in ~/.patchpal/mcp-config.json:
 {
   "mcp": {
     "demo": {

@@ -21,7 +21,7 @@ patchpal-mcp add demo --transport stdio -- \
 
 You should see:
 ```
-✓ Configuration saved to /home/yourname/.patchpal/config.json
+✓ Configuration saved to /home/yourname/.patchpal/mcp-config.json
 ✓ Added MCP server 'demo' (stdio transport)
 ```
 
@@ -33,7 +33,7 @@ patchpal-mcp list
 
 You should see:
 ```
-MCP Servers (from /home/yourname/.patchpal/config.json):
+MCP Servers (from /home/yourname/.patchpal/mcp-config.json):
 ============================================================
 
 ✓ demo (local)

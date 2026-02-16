@@ -32,7 +32,7 @@ patchpal-mcp test huggingface
 
 **Manual configuration:**
 
-Create `~/.patchpal/config.json`:
+Create `~/.patchpal/mcp-config.json`:
 
 ```json
 {
@@ -61,7 +61,7 @@ Create `~/.patchpal/config.json`:
   }
 }
 ```
-... or start with the example one: `examples/mcp/config.example.json`.
+... or start with the example one: `examples/mcp/mcp-config.example.json`.
 
 Edit the file to enable/disable servers. See [Configuration](#configuration) for details.
 
@@ -88,7 +88,9 @@ Once in a PatchPal session, use `/mcp` commands:
 
 ## Configuration
 
-PatchPal supports two types of MCP servers:
+PatchPal supports two types of MCP servers. Configuration files are merged:
+- **Global**: `~/.patchpal/mcp-config.json` (used across all projects)
+- **Project**: `.patchpal/mcp-config.json` (project-specific, can override global)
 
 ### Local Servers (stdio transport)
 
@@ -353,7 +355,7 @@ pip install patchpal[mcp]
 python -c "import mcp; print('OK')"
 
 # Validate configuration
-cat ~/.patchpal/config.json | python -m json.tool
+cat ~/.patchpal/mcp-config.json | python -m json.tool
 ```
 
 ### Environment Variable Not Found

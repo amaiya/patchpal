@@ -32,18 +32,18 @@ def _get_config_path(scope: str = "user") -> Path:
         scope: Configuration scope - "user", "project", or "local"
 
     Returns:
-        Path to config file
+        Path to mcp-config.json file
     """
     if scope == "user":
         # User-wide config
         config_dir = Path.home() / ".patchpal"
         config_dir.mkdir(exist_ok=True)
-        return config_dir / "config.json"
+        return config_dir / "mcp-config.json"
     elif scope in ("project", "local"):
         # Project-specific config
         config_dir = Path(".patchpal")
         config_dir.mkdir(exist_ok=True)
-        return config_dir / "config.json"
+        return config_dir / "mcp-config.json"
     else:
         raise ValueError(f"Invalid scope: {scope}. Must be 'user', 'project', or 'local'")
 
@@ -308,9 +308,15 @@ Examples:
   patchpal-mcp remove github
 
 Scope:
-  --scope user     : ~/.patchpal/config.json (default, personal config)
-  --scope project  : .patchpal/config.json (project-specific, shared via git)
-  --scope local    : .patchpal/config.json (same as project)
+  --scope user     : ~/.patchpal/mcp-config.json (global config for all projects)
+  --scope project  : .patchpal/mcp-config.json (project-specific, shared via git)
+  --scope local    : .patchpal/mcp-config.json (same as project)
+
+Note: When both global and project configs exist, they are merged with project
+servers overriding global servers by name. This allows you to:
+- Define commonly-used servers globally
+- Override or disable them per-project
+- Add project-specific servers
         """,
     )
 
