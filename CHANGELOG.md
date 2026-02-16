@@ -10,7 +10,7 @@ Most recent releases are shown at the top. Each release shows:
 ## 0.13.4 (TBD)
 
 ### new:
-- N/A
+- **Repository-specific custom tools**: Custom tools can now be defined per-repository in `<repo>/.patchpal/tools/` in addition to global tools in `~/.patchpal/tools/`. Repository-specific tools override global tools with the same name, similar to how skills work. This makes it easy to share project-specific tooling with your team.(#64)
 
 ### changed:
 - **[BREAKING CHANGES]** **Repository-specific file storage structure**: Changed storage location from `~/.patchpal/<repo-name>/` to `~/.patchpal/repos/<repo-name>/` for better organization and clarity. All repository-specific files (audit.log, MEMORY.md, permissions.json, backups/, .history) now reside in the `repos/` subdirectory. This is a breaking change - existing files in the old location won't be automatically migrated. Skills (`~/.patchpal/skills/`) and custom tools (`~/.patchpal/tools/`) remain unchanged. (fixes #63)

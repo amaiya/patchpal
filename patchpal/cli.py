@@ -351,13 +351,14 @@ Supported models: Any LiteLLM-supported model
             print(f"\033[1;31m⚠️  Warning: Invalid PATCHPAL_LITELLM_KWARGS JSON: {e}\033[0m")
             litellm_kwargs = None
 
-    # Discover custom tools from ~/.patchpal/tools/
+    # Discover custom tools from ~/.patchpal/tools/ and <repo>/.patchpal/tools/
     from patchpal.tool_schema import discover_tools, list_custom_tools
 
-    custom_tools = discover_tools()
+    repo_root = Path(".").resolve()
+    custom_tools = discover_tools(repo_root=repo_root)
 
     # Show custom tools info if any were loaded
-    custom_tool_info = list_custom_tools()
+    custom_tool_info = list_custom_tools(repo_root=repo_root)
     if custom_tool_info:
         tool_names = [name for name, _, _ in custom_tool_info]
         tools_str = ", ".join(tool_names)
@@ -1132,8 +1133,6 @@ Supported models: Any LiteLLM-supported model
                 parts = user_input[1:].split(maxsplit=1)
                 skill_name = parts[0]
                 skill_args = parts[1] if len(parts) > 1 else ""
-
-                from pathlib import Path
 
                 from patchpal.skills import get_skill
 

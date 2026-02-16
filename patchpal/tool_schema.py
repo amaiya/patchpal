@@ -190,10 +190,12 @@ def _is_valid_tool_function(func: Callable) -> bool:
     return True
 
 
-def discover_tools(tools_dir: Optional[Path] = None) -> List[Callable]:
+def discover_tools(
+    tools_dir: Optional[Path] = None, repo_root: Optional[Path] = None
+) -> List[Callable]:
     """Discover custom tool functions from Python files.
 
-    Loads all .py files from the tools directory and extracts functions
+    Loads all .py files from the tools directories and extracts functions
     that have proper type hints and docstrings.
 
     Tool functions must:
@@ -202,73 +204,96 @@ def discover_tools(tools_dir: Optional[Path] = None) -> List[Callable]:
     - Be defined at module level (not nested)
     - Not start with underscore (private functions ignored)
 
+    Searches in two locations (in order):
+    1. Global tools: ~/.patchpal/tools/
+    2. Repository-specific tools: <repo>/.patchpal/tools/ (if repo_root provided)
+
+    Repository-specific tools with the same name will override global tools.
+
     Args:
-        tools_dir: Directory to search for tool files (default: ~/.patchpal/tools/)
+        tools_dir: Explicit directory to search (overrides default discovery)
+        repo_root: Repository root path for discovering repo-specific tools
 
     Returns:
         List of callable tool functions
     """
-    if tools_dir is None:
-        tools_dir = Path.home() / ".patchpal" / "tools"
-
-    if not tools_dir.exists():
-        return []
-
-    tools = []
+    tools_by_name = {}  # Track tools by name to allow overrides
     loaded_modules = []
 
-    # Discover all .py files
-    for tool_file in sorted(tools_dir.glob("*.py")):
-        try:
-            # Create a unique module name to avoid conflicts
-            module_name = f"patchpal_custom_tools.{tool_file.stem}"
+    # Helper function to load tools from a directory
+    def _load_from_directory(directory: Path, source_label: str):
+        if not directory.exists():
+            return
 
-            # Load the module
-            spec = util.spec_from_file_location(module_name, tool_file)
-            if spec and spec.loader:
-                module = util.module_from_spec(spec)
+        # Discover all .py files
+        for tool_file in sorted(directory.glob("*.py")):
+            try:
+                # Create a unique module name to avoid conflicts
+                module_name = f"patchpal_custom_tools.{source_label}.{tool_file.stem}"
 
-                # Store reference to prevent garbage collection
-                sys.modules[module_name] = module
-                loaded_modules.append(module)
+                # Load the module
+                spec = util.spec_from_file_location(module_name, tool_file)
+                if spec and spec.loader:
+                    module = util.module_from_spec(spec)
 
-                # Execute the module
-                spec.loader.exec_module(module)
+                    # Store reference to prevent garbage collection
+                    sys.modules[module_name] = module
+                    loaded_modules.append(module)
 
-                # Extract valid tool functions
-                for name, obj in inspect.getmembers(module, inspect.isfunction):
-                    # Skip private functions
-                    if name.startswith("_"):
-                        continue
+                    # Execute the module
+                    spec.loader.exec_module(module)
 
-                    # Skip functions from imports (only module-level definitions)
-                    if obj.__module__ != module_name:
-                        continue
+                    # Extract valid tool functions
+                    for name, obj in inspect.getmembers(module, inspect.isfunction):
+                        # Skip private functions
+                        if name.startswith("_"):
+                            continue
 
-                    # Validate tool function
-                    if _is_valid_tool_function(obj):
-                        tools.append(obj)
+                        # Skip functions from imports (only module-level definitions)
+                        if obj.__module__ != module_name:
+                            continue
 
-        except Exception as e:
-            # Print warning but continue with other tools
-            print(
-                f"\033[1;33m⚠️  Warning: Failed to load custom tool from {tool_file.name}: {e}\033[0m"
-            )
-            continue
+                        # Validate tool function
+                        if _is_valid_tool_function(obj):
+                            # Store by function name (later ones override earlier ones)
+                            tools_by_name[name] = obj
 
-    return tools
+            except Exception as e:
+                # Print warning but continue with other tools
+                print(
+                    f"\033[1;33m⚠️  Warning: Failed to load custom tool from {tool_file.name}: {e}\033[0m"
+                )
+                continue
+
+    # If explicit tools_dir provided, use only that
+    if tools_dir is not None:
+        _load_from_directory(tools_dir, "explicit")
+    else:
+        # Load from global tools directory
+        global_tools_dir = Path.home() / ".patchpal" / "tools"
+        _load_from_directory(global_tools_dir, "global")
+
+        # Load from repository-specific tools directory (overrides global)
+        if repo_root is not None:
+            repo_tools_dir = repo_root / ".patchpal" / "tools"
+            _load_from_directory(repo_tools_dir, "repo")
+
+    return list(tools_by_name.values())
 
 
-def list_custom_tools(tools_dir: Optional[Path] = None) -> List[tuple[str, str, Path]]:
+def list_custom_tools(
+    tools_dir: Optional[Path] = None, repo_root: Optional[Path] = None
+) -> List[tuple[str, str, Path]]:
     """List all custom tools with their descriptions.
 
     Args:
-        tools_dir: Directory to search for tool files (default: ~/.patchpal/tools/)
+        tools_dir: Explicit directory to search (overrides default discovery)
+        repo_root: Repository root path for discovering repo-specific tools
 
     Returns:
         List of (tool_name, description, file_path) tuples
     """
-    tools = discover_tools(tools_dir)
+    tools = discover_tools(tools_dir, repo_root)
 
     result = []
     for tool in tools:

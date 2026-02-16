@@ -8,7 +8,11 @@ Custom tools extend PatchPal's capabilities by adding new Python functions that 
 
 ## Installation
 
-1. **Create the tools directory:**
+Custom tools can be installed globally (available in all projects) or locally (specific to a repository).
+
+### Global Tools
+
+1. **Create the global tools directory:**
 ```bash
 mkdir -p ~/.patchpal/tools
 ```
@@ -22,7 +26,31 @@ curl -L https://github.com/amaiya/patchpal/archive/main.tar.gz | tar xz --strip=
 cp examples/tools/calculator.py ~/.patchpal/tools/
 ```
 
-3. **Start PatchPal - tools are loaded automatically:**
+### Repository-Specific Tools
+
+For project-specific tools that shouldn't be available globally:
+
+1. **Create the repository tools directory:**
+```bash
+mkdir -p .patchpal/tools
+```
+
+2. **Add your custom tools:**
+```bash
+# Example: Create a project-specific tool
+cat > .patchpal/tools/project_tool.py << 'EOF'
+def get_project_info(key: str) -> str:
+    """Get project-specific information.
+
+    Args:
+        key: Information key to retrieve
+    """
+    info = {"name": "MyProject", "version": "1.0.0"}
+    return info.get(key, "Unknown")
+EOF
+```
+
+3. **Tools are loaded automatically:**
 ```bash
 $ patchpal
 ================================================================================
@@ -30,8 +58,10 @@ PatchPal - AI coding and automation assistant
 ================================================================================
 
 Using model: anthropic/claude-sonnet-4-5
-🔧 Loaded 7 custom tool(s): add, subtract, multiply, divide, calculate_percentage, fahrenheit_to_celsius, celsius_to_fahrenheit
+🔧 Loaded 8 custom tool(s): add, subtract, multiply, divide, calculate_percentage, fahrenheit_to_celsius, celsius_to_fahrenheit, get_project_info
 ```
+
+**Note:** Repository-specific tools with the same name will override global tools.
 
 ## Creating Custom Tools
 
@@ -112,7 +142,12 @@ Agent: [Calls convert_currency(100, "USD", "EUR")]
 
 ## Tool Discovery
 
-PatchPal discovers tools from `~/.patchpal/tools/*.py` at startup. All `.py` files are scanned for valid tool functions.
+PatchPal discovers tools from two locations at startup:
+
+1. **Global tools**: `~/.patchpal/tools/*.py` - Available in all projects
+2. **Repository-specific tools**: `<repo>/.patchpal/tools/*.py` - Only available in that repository
+
+All `.py` files in these directories are scanned for valid tool functions. Repository-specific tools with the same name will override global tools.
 
 **What Gets Loaded:**
 - ✅ Functions with type hints and docstrings
@@ -137,9 +172,15 @@ View the [examples/tools/](https://github.com/amaiya/patchpal/tree/main/examples
 
 ⚠️ Custom tools execute arbitrary Python code on your system. Only install tools from sources you trust.
 
-- Tools are only loaded from `~/.patchpal/tools/` (your home directory)
-- Project-local tools (`.patchpal/tools/`) are **not supported** for security
-- This prevents accidental execution of untrusted code from repositories
+**Tool Locations:**
+- **Global tools**: `~/.patchpal/tools/` - Your personal tools directory
+- **Repository-specific tools**: `<repo>/.patchpal/tools/` - Project-specific tools
+
+**Security Considerations:**
+- Tools run with your user permissions
+- Repository-specific tools make it easy to share project-specific functionality
+- Review tools in `.patchpal/tools/` when cloning repositories
+- Repository tools override global tools with the same name
 
 ## Advanced Features
 

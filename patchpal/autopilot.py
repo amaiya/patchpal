@@ -60,10 +60,13 @@ def autopilot_loop(
     # Disable permissions for autonomous operation
     os.environ["PATCHPAL_REQUIRE_PERMISSION"] = "false"
 
-    # Discover custom tools from ~/.patchpal/tools/
+    # Discover custom tools from ~/.patchpal/tools/ and <repo>/.patchpal/tools/
+    from pathlib import Path
+
     from patchpal.tool_schema import discover_tools, list_custom_tools
 
-    custom_tools = discover_tools()
+    repo_root = Path(".").resolve()
+    custom_tools = discover_tools(repo_root=repo_root)
 
     # Create agent
     agent = create_agent(
@@ -81,7 +84,7 @@ def autopilot_loop(
     print(f"Model: {agent.model_id}")
 
     # Show custom tools info if any were loaded
-    custom_tool_info = list_custom_tools()
+    custom_tool_info = list_custom_tools(repo_root=repo_root)
     if custom_tool_info:
         tool_names = [name for name, _, _ in custom_tool_info]
         tools_str = ", ".join(tool_names)

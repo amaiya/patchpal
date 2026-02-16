@@ -284,7 +284,7 @@ Run `python scripts/validate.py` to check results.
 |---------|--------|--------------|
 | **Type** | Markdown instructions | Python functions |
 | **Purpose** | Guide agent through workflow | Execute code |
-| **Location** | `~/.patchpal/skills/` or `.patchpal/skills/` | `~/.patchpal/tools/` only |
+| **Location** | `~/.patchpal/skills/` or `.patchpal/skills/` | `~/.patchpal/tools/` or `.patchpal/tools/` |
 | **Invocation** | `/skillname` or natural language | Automatic (when relevant) |
 | **Execution** | Agent follows instructions | Python code runs |
 | **Best For** | Complex workflows, checklists | Calculations, API calls, data processing |
