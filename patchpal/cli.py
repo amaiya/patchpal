@@ -1158,7 +1158,6 @@ Supported models: Any LiteLLM-supported model
 
                     # Load config to see servers
                     import json
-                    from pathlib import Path
 
                     config_paths = [
                         Path.home() / ".patchpal" / "config.json",
