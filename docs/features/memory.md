@@ -1,6 +1,6 @@
 # Project Memory
 
-PatchPal automatically loads project context from `~/.patchpal/<repo-name>/MEMORY.md` at startup. Use this file to store project-specific information, technical decisions, conventions, and known issues that persist across sessions. The agent can read and update this file to maintain continuity.
+PatchPal automatically loads project context from `~/.patchpal/repos/<repo-name>/MEMORY.md` at startup. Use this file to store project-specific information, technical decisions, conventions, and known issues that persist across sessions. The agent can read and update this file to maintain continuity.
 
 ## What to Store in MEMORY.md
 
@@ -14,7 +14,7 @@ PatchPal automatically loads project context from `~/.patchpal/<repo-name>/MEMOR
 
 When you start PatchPal in a git repository, it automatically:
 1. Detects the repository name
-2. Looks for `~/.patchpal/<repo-name>/MEMORY.md`
+2. Looks for `~/.patchpal/repos/<repo-name>/MEMORY.md`
 3. Loads the content into the agent's context
 4. Makes it available for reference throughout the session
 
@@ -24,12 +24,12 @@ The agent can also read and update MEMORY.md during a session to maintain contin
 
 Memory files are stored per-repository in:
 ```
-~/.patchpal/<repo-name>/MEMORY.md
+~/.patchpal/repos/<repo-name>/MEMORY.md
 ```
 
 For example, if you're working in a repository named `patchpal`, the memory file is at:
 ```
-~/.patchpal/patchpal/MEMORY.md
+~/.patchpal/repos/patchpal/MEMORY.md
 ```
 
 ## Availability

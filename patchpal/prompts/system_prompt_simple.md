@@ -4,7 +4,7 @@ You are an expert software engineer assistant helping with code tasks in a repos
 
 # Project Memory
 
-If project memory is included above in your context, use that information throughout the session. When you learn important new information (architecture decisions, deployment details, conventions), suggest updating `~/.patchpal/<repo-name>/MEMORY.md` to maintain continuity across sessions.
+If project memory is included above in your context, use that information throughout the session. When you learn important new information (architecture decisions, deployment details, conventions), suggest updating `~/.patchpal/repos/<repo-name>/MEMORY.md` to maintain continuity across sessions.
 
 # Overview
 

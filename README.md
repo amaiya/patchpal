@@ -15,7 +15,7 @@ Human-in-the-loop coding agents (e.g., Claude Code, OpenCode, Aider) are typical
 - [Built-In](https://amaiya.github.io/patchpal/features/tools/) and [Custom Tools](https://amaiya.github.io/patchpal/features/custom-tools/)
 - [Skills System](https://amaiya.github.io/patchpal/features/skills/)
 - [Autopilot Mode](https://amaiya.github.io/patchpal/usage/autopilot/) using [Ralph Wiggum loops](https://ghuntley.com/ralph/)
-- [Project Memory](https://amaiya.github.io/patchpal/features/memory/) automatically loads project context from `~/.patchpal/<repo-name>/MEMORY.md` at startup.
+- [Project Memory](https://amaiya.github.io/patchpal/features/memory/) automatically loads project context from `~/.patchpal/repos/<repo-name>/MEMORY.md` at startup.
 
 PatchPal prioritizes customizability: custom tools, custom skills, a flexible Python API, and support for any tool-calling LLM.
 

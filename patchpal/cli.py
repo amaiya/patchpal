@@ -229,12 +229,12 @@ def _get_version() -> str:
 def _get_patchpal_dir() -> Path:
     """Get the patchpal directory for this repository.
 
-    Returns the directory ~/.patchpal/<repo-name>/ where repo-specific
+    Returns the directory ~/.patchpal/repos/<repo-name>/ where repo-specific
     data like history and logs are stored.
     """
     repo_root = Path(".").resolve()
     home = Path.home()
-    patchpal_root = home / ".patchpal"
+    patchpal_root = home / ".patchpal" / "repos"
 
     # Use repo name (last part of path) to create unique directory
     repo_name = repo_root.name

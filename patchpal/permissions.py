@@ -234,7 +234,7 @@ def require_permission(tool_name: str, get_description, get_pattern=None):
                 # Get patchpal directory (same logic as in tools.py and cli.py)
                 repo_root = Path(".").resolve()
                 home = Path.home()
-                patchpal_root = home / ".patchpal"
+                patchpal_root = home / ".patchpal" / "repos"
                 repo_name = repo_root.name
                 repo_dir = patchpal_root / repo_name
                 repo_dir.mkdir(parents=True, exist_ok=True)

@@ -44,7 +44,7 @@ export PATCHPAL_SHELL_TIMEOUT=60             # Shell command timeout in seconds 
 
 ```bash
 # Logging & Auditing
-export PATCHPAL_AUDIT_LOG=false              # Log operations to ~/.patchpal/<repo-name>/audit.log (default: true)
+export PATCHPAL_AUDIT_LOG=false              # Log operations to ~/.patchpal/repos/<repo-name>/audit.log (default: true)
 export PATCHPAL_ENABLE_BACKUPS=true          # Auto-backup files before modification (default: false)
 
 # Resource Limits
