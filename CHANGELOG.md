@@ -7,9 +7,10 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
-## 0.13.4 (TBD)
+## 0.14.0 (2026-02-16)
 
 ### new:
+- **MCP Support**:  Support for local and remote MCP servers (#59)
 - **Repository-specific custom tools**: Custom tools can now be defined per-repository in `<repo>/.patchpal/tools/` in addition to global tools in `~/.patchpal/tools/`. Repository-specific tools override global tools with the same name, similar to how skills work. This makes it easy to share project-specific tooling with your team.(#64)
 
 ### changed:
