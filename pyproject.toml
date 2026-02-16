@@ -63,9 +63,9 @@ Repository = "https://github.com/amaiya/patchpal"
 Issues = "https://github.com/amaiya/patchpal/issues"
 
 [project.scripts]
-patchpal = "patchpal.cli:main"
-patchpal-autopilot = "patchpal.autopilot:main"
-patchpal-mcp = "patchpal.mcp_cli:main"
+patchpal = "patchpal.cli.interactive:main"
+patchpal-autopilot = "patchpal.cli.autopilot:main"
+patchpal-mcp = "patchpal.cli.mcp:main"
 
 [tool.setuptools.packages.find]
 include = ["patchpal*"]

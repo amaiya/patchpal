@@ -10,13 +10,13 @@ def test_main_uses_default_model(monkeypatch):
     monkeypatch.setattr(sys, "argv", ["patchpal"])
 
     with (
-        patch("patchpal.cli.create_agent") as mock_create,
-        patch("patchpal.cli.pt_prompt", side_effect=["exit"]),
+        patch("patchpal.cli.interactive.create_agent") as mock_create,
+        patch("patchpal.cli.interactive.pt_prompt", side_effect=["exit"]),
     ):
         mock_agent = MagicMock()
         mock_create.return_value = mock_agent
 
-        from patchpal.cli import main
+        from patchpal.cli.interactive import main
 
         main()
 
@@ -32,13 +32,13 @@ def test_main_uses_cli_model_arg(monkeypatch):
     monkeypatch.setattr(sys, "argv", ["patchpal", "--model", "openai/gpt-4o"])
 
     with (
-        patch("patchpal.cli.create_agent") as mock_create,
-        patch("patchpal.cli.pt_prompt", side_effect=["exit"]),
+        patch("patchpal.cli.interactive.create_agent") as mock_create,
+        patch("patchpal.cli.interactive.pt_prompt", side_effect=["exit"]),
     ):
         mock_agent = MagicMock()
         mock_create.return_value = mock_agent
 
-        from patchpal.cli import main
+        from patchpal.cli.interactive import main
 
         main()
 
@@ -55,13 +55,13 @@ def test_main_uses_env_var_model(monkeypatch):
     monkeypatch.setattr(sys, "argv", ["patchpal"])
 
     with (
-        patch("patchpal.cli.create_agent") as mock_create,
-        patch("patchpal.cli.pt_prompt", side_effect=["exit"]),
+        patch("patchpal.cli.interactive.create_agent") as mock_create,
+        patch("patchpal.cli.interactive.pt_prompt", side_effect=["exit"]),
     ):
         mock_agent = MagicMock()
         mock_create.return_value = mock_agent
 
-        from patchpal.cli import main
+        from patchpal.cli.interactive import main
 
         main()
 
@@ -78,13 +78,13 @@ def test_main_cli_arg_overrides_env_var(monkeypatch):
     monkeypatch.setattr(sys, "argv", ["patchpal", "--model", "openai/gpt-4o"])
 
     with (
-        patch("patchpal.cli.create_agent") as mock_create,
-        patch("patchpal.cli.pt_prompt", side_effect=["exit"]),
+        patch("patchpal.cli.interactive.create_agent") as mock_create,
+        patch("patchpal.cli.interactive.pt_prompt", side_effect=["exit"]),
     ):
         mock_agent = MagicMock()
         mock_create.return_value = mock_agent
 
-        from patchpal.cli import main
+        from patchpal.cli.interactive import main
 
         main()
 
@@ -100,13 +100,13 @@ def test_main_handles_quit_command(monkeypatch, capsys):
     monkeypatch.setattr(sys, "argv", ["patchpal"])
 
     with (
-        patch("patchpal.cli.create_agent") as mock_create,
-        patch("patchpal.cli.pt_prompt", side_effect=["quit"]),
+        patch("patchpal.cli.interactive.create_agent") as mock_create,
+        patch("patchpal.cli.interactive.pt_prompt", side_effect=["quit"]),
     ):
         mock_agent = MagicMock()
         mock_create.return_value = mock_agent
 
-        from patchpal.cli import main
+        from patchpal.cli.interactive import main
 
         main()
 
@@ -120,13 +120,13 @@ def test_main_handles_exit_command(monkeypatch, capsys):
     monkeypatch.setattr(sys, "argv", ["patchpal"])
 
     with (
-        patch("patchpal.cli.create_agent") as mock_create,
-        patch("patchpal.cli.pt_prompt", side_effect=["exit"]),
+        patch("patchpal.cli.interactive.create_agent") as mock_create,
+        patch("patchpal.cli.interactive.pt_prompt", side_effect=["exit"]),
     ):
         mock_agent = MagicMock()
         mock_create.return_value = mock_agent
 
-        from patchpal.cli import main
+        from patchpal.cli.interactive import main
 
         main()
 
@@ -140,13 +140,13 @@ def test_main_handles_keyboard_interrupt(monkeypatch, capsys):
     monkeypatch.setattr(sys, "argv", ["patchpal"])
 
     with (
-        patch("patchpal.cli.create_agent") as mock_create,
-        patch("patchpal.cli.pt_prompt", side_effect=[KeyboardInterrupt, "exit"]),
+        patch("patchpal.cli.interactive.create_agent") as mock_create,
+        patch("patchpal.cli.interactive.pt_prompt", side_effect=[KeyboardInterrupt, "exit"]),
     ):
         mock_agent = MagicMock()
         mock_create.return_value = mock_agent
 
-        from patchpal.cli import main
+        from patchpal.cli.interactive import main
 
         main()
 
@@ -164,15 +164,15 @@ def test_main_handles_keyboard_interrupt_during_agent_run(monkeypatch, capsys):
     monkeypatch.setattr(sys, "argv", ["patchpal"])
 
     with (
-        patch("patchpal.cli.create_agent") as mock_create,
-        patch("patchpal.cli.pt_prompt", side_effect=["test query", "exit"]),
+        patch("patchpal.cli.interactive.create_agent") as mock_create,
+        patch("patchpal.cli.interactive.pt_prompt", side_effect=["test query", "exit"]),
     ):
         mock_agent = MagicMock()
         # Agent raises KeyboardInterrupt during execution
         mock_agent.run.side_effect = KeyboardInterrupt
         mock_create.return_value = mock_agent
 
-        from patchpal.cli import main
+        from patchpal.cli.interactive import main
 
         main()
 
@@ -188,14 +188,14 @@ def test_main_handles_agent_error(monkeypatch, capsys):
     monkeypatch.setattr(sys, "argv", ["patchpal"])
 
     with (
-        patch("patchpal.cli.create_agent") as mock_create,
-        patch("patchpal.cli.pt_prompt", side_effect=["test query", "exit"]),
+        patch("patchpal.cli.interactive.create_agent") as mock_create,
+        patch("patchpal.cli.interactive.pt_prompt", side_effect=["test query", "exit"]),
     ):
         mock_agent = MagicMock()
         mock_agent.run.side_effect = Exception("Test error")
         mock_create.return_value = mock_agent
 
-        from patchpal.cli import main
+        from patchpal.cli.interactive import main
 
         main()
 
@@ -210,14 +210,14 @@ def test_main_runs_agent_with_user_input(monkeypatch):
     monkeypatch.setattr(sys, "argv", ["patchpal"])
 
     with (
-        patch("patchpal.cli.create_agent") as mock_create,
-        patch("patchpal.cli.pt_prompt", side_effect=["What files are here?", "exit"]),
+        patch("patchpal.cli.interactive.create_agent") as mock_create,
+        patch("patchpal.cli.interactive.pt_prompt", side_effect=["What files are here?", "exit"]),
     ):
         mock_agent = MagicMock()
         mock_agent.run.return_value = "Here are the files..."
         mock_create.return_value = mock_agent
 
-        from patchpal.cli import main
+        from patchpal.cli.interactive import main
 
         main()
 
@@ -231,13 +231,13 @@ def test_main_skips_empty_input(monkeypatch):
     monkeypatch.setattr(sys, "argv", ["patchpal"])
 
     with (
-        patch("patchpal.cli.create_agent") as mock_create,
-        patch("patchpal.cli.pt_prompt", side_effect=["", "   ", "exit"]),
+        patch("patchpal.cli.interactive.create_agent") as mock_create,
+        patch("patchpal.cli.interactive.pt_prompt", side_effect=["", "   ", "exit"]),
     ):
         mock_agent = MagicMock()
         mock_create.return_value = mock_agent
 
-        from patchpal.cli import main
+        from patchpal.cli.interactive import main
 
         main()
 
@@ -252,14 +252,14 @@ def test_main_respects_max_iterations_env_var(monkeypatch):
     monkeypatch.setattr(sys, "argv", ["patchpal"])
 
     with (
-        patch("patchpal.cli.create_agent") as mock_create,
-        patch("patchpal.cli.pt_prompt", side_effect=["Test task", "exit"]),
+        patch("patchpal.cli.interactive.create_agent") as mock_create,
+        patch("patchpal.cli.interactive.pt_prompt", side_effect=["Test task", "exit"]),
     ):
         mock_agent = MagicMock()
         mock_agent.run.return_value = "Done"
         mock_create.return_value = mock_agent
 
-        from patchpal.cli import main
+        from patchpal.cli.interactive import main
 
         main()
 
@@ -273,13 +273,13 @@ def test_main_displays_model_name(monkeypatch, capsys):
     monkeypatch.setattr(sys, "argv", ["patchpal", "--model", "openai/gpt-4o"])
 
     with (
-        patch("patchpal.cli.create_agent") as mock_create,
-        patch("patchpal.cli.pt_prompt", side_effect=["exit"]),
+        patch("patchpal.cli.interactive.create_agent") as mock_create,
+        patch("patchpal.cli.interactive.pt_prompt", side_effect=["exit"]),
     ):
         mock_agent = MagicMock()
         mock_create.return_value = mock_agent
 
-        from patchpal.cli import main
+        from patchpal.cli.interactive import main
 
         main()
 

@@ -3,7 +3,7 @@
 __version__ = "0.14.0"
 
 from patchpal.agent import create_agent
-from patchpal.autopilot import autopilot_loop
+from patchpal.cli.autopilot import autopilot_loop
 from patchpal.tools import (
     apply_patch,
     edit_file,

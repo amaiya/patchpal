@@ -18,7 +18,7 @@ patchpal-autopilot \
 
 # Option 2: Use as a Python library
 python -c "
-from patchpal.autopilot import autopilot_loop
+from patchpal.cli.autopilot import autopilot_loop
 autopilot_loop(
     prompt='Build a calculator with tests. When complete, output: <promise>COMPLETE</promise>',
     completion_promise='COMPLETE',
@@ -105,7 +105,7 @@ See [examples/ralph/](https://github.com/amaiya/patchpal/tree/main/examples/ralp
 ### Using as a Python Library
 
 ```python
-from patchpal.autopilot import autopilot_loop
+from patchpal.cli.autopilot import autopilot_loop
 
 result = autopilot_loop(
     prompt="""

@@ -17,12 +17,7 @@ import sys
 from pathlib import Path
 from typing import Any, Dict
 
-from patchpal.tools.mcp import (
-    is_mcp_available,
-    list_mcp_prompts,
-    list_mcp_resources,
-    load_mcp_tools,
-)
+from patchpal.tools.mcp import is_mcp_available, load_mcp_tools
 
 
 def _get_config_path(scope: str = "user") -> Path:
@@ -251,18 +246,6 @@ def cmd_test(args):
 
             if len(server_tools) > 10:
                 print(f"  ... and {len(server_tools) - 10} more")
-
-        # Try to list resources
-        print("\nListing resources...")
-        resources = list_mcp_resources()
-        server_resources = [r for r in resources if r["server"] == args.name]
-        print(f"  Found {len(server_resources)} resources")
-
-        # Try to list prompts
-        print("\nListing prompts...")
-        prompts = list_mcp_prompts()
-        server_prompts = [p for p in prompts if p["server"] == args.name]
-        print(f"  Found {len(server_prompts)} prompts")
 
         print("\n✓ Test successful!")
 

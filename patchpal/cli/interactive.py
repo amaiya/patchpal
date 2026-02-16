@@ -521,8 +521,6 @@ Supported models: Any LiteLLM-supported model
                 print(
                     "    /mcp tools [server]  List loaded MCP tools (optionally filter by server)"
                 )
-                print("    /mcp resources       List available MCP resources")
-                print("    /mcp prompts         List available MCP prompts")
                 print("    /mcp help            Show MCP command help")
                 print()
                 print("  \033[1;33mSkills:\033[0m")
@@ -1139,11 +1137,7 @@ Supported models: Any LiteLLM-supported model
                 subcommand = parts[1].lower() if len(parts) > 1 else ""
 
                 # Import MCP functions
-                from patchpal.tools.mcp import (
-                    is_mcp_available,
-                    list_mcp_prompts,
-                    list_mcp_resources,
-                )
+                from patchpal.tools.mcp import is_mcp_available
 
                 if not is_mcp_available():
                     print("\n\033[1;31m❌ MCP SDK not installed\033[0m")
@@ -1269,70 +1263,6 @@ Supported models: Any LiteLLM-supported model
                     print("\n" + "=" * 70 + "\n")
                     continue
 
-                # /mcp resources - List available MCP resources
-                elif subcommand == "resources":
-                    print("\n" + "=" * 70)
-                    print("\033[1;36mAvailable MCP Resources\033[0m")
-                    print("=" * 70)
-
-                    resources = list_mcp_resources()
-
-                    if resources:
-                        print(f"\nFound {len(resources)} resource(s):\n")
-                        for resource in resources:
-                            print(f"  \033[1;33m{resource['server']}\033[0m: {resource['uri']}")
-                            if resource.get("name"):
-                                print(f"    Name: {resource['name']}")
-                            if resource.get("description"):
-                                desc = resource["description"]
-                                if len(desc) > 80:
-                                    desc = desc[:77] + "..."
-                                print(f"    {desc}")
-                            if resource.get("mimeType"):
-                                print(f"    Type: {resource['mimeType']}")
-                            print()
-                    else:
-                        print("\nNo resources available from configured MCP servers.")
-                        print("Resources are data/documents exposed by MCP servers.\n")
-
-                    print("=" * 70 + "\n")
-                    continue
-
-                # /mcp prompts - List available MCP prompts
-                elif subcommand == "prompts":
-                    print("\n" + "=" * 70)
-                    print("\033[1;36mAvailable MCP Prompts\033[0m")
-                    print("=" * 70)
-
-                    prompts = list_mcp_prompts()
-
-                    if prompts:
-                        print(f"\nFound {len(prompts)} prompt(s):\n")
-                        for prompt in prompts:
-                            print(f"  \033[1;33m{prompt['server']}/{prompt['name']}\033[0m")
-                            if prompt.get("description"):
-                                desc = prompt["description"]
-                                if len(desc) > 80:
-                                    desc = desc[:77] + "..."
-                                print(f"    {desc}")
-
-                            if prompt.get("arguments"):
-                                print("    Arguments:")
-                                for arg in prompt["arguments"]:
-                                    required = (
-                                        " (required)" if arg.get("required") else " (optional)"
-                                    )
-                                    print(f"      - {arg['name']}{required}")
-                                    if arg.get("description"):
-                                        print(f"        {arg['description']}")
-                            print()
-                    else:
-                        print("\nNo prompts available from configured MCP servers.")
-                        print("Prompts are pre-defined templates exposed by MCP servers.\n")
-
-                    print("=" * 70 + "\n")
-                    continue
-
                 # /mcp help or /mcp without subcommand
                 elif not subcommand or subcommand == "help":
                     print("\n" + "=" * 70)
@@ -1344,8 +1274,6 @@ Supported models: Any LiteLLM-supported model
                     print(
                         "                        List loaded MCP tools (optionally filter by server)"
                     )
-                    print("  \033[1;33m/mcp resources\033[0m    List available MCP resources")
-                    print("  \033[1;33m/mcp prompts\033[0m      List available MCP prompts")
                     print("  \033[1;33m/mcp help\033[0m         Show this help")
                     print()
                     print("  \033[2mTo manage servers, use: patchpal-mcp add/remove/list\033[0m")

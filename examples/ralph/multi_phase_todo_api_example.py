@@ -15,13 +15,13 @@ Usage:
 import sys
 
 try:
-    from patchpal.autopilot import autopilot_loop
+    from patchpal.cli.autopilot import autopilot_loop
 except ImportError:
     # Fallback for running from examples directory before installation
     from pathlib import Path
 
     sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-    from patchpal.autopilot import autopilot_loop
+    from patchpal.cli.autopilot import autopilot_loop
 
 
 def multi_phase_build():
