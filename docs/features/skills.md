@@ -36,12 +36,18 @@ description: One-line description
 
 ## Example Skills
 
-The PatchPal repository includes [example skills](https://github.com/amaiya/patchpal/tree/main/examples) you can use as templates:
-- **commit**: Best practices for creating git commits
-- **review**: Comprehensive code review checklist
-- **add-tests**: Add comprehensive pytest tests (includes code block templates)
-- **slack-gif-creator**: Create animated GIFs for Slack (from [Anthropic's official skills repo](https://github.com/anthropics/skills), demonstrates Claude Code compatibility)
-- **skill-creator**: Guide for creating effective skills with bundled scripts and references (from [Anthropic's official skills repo](https://github.com/anthropics/skills/tree/main/skills/skill-creator), demonstrates full bundled resources support)
+The PatchPal repository includes [example skills](https://github.com/amaiya/patchpal/tree/main/examples/skills) you can use as templates:
+
+### PatchPal-Created Skills
+
+- **commit** - Best practices for creating git commits with proper formatting and conventional commit standards
+- **review** - Comprehensive code review checklist covering security, performance, code quality, and documentation
+- **add-tests** - Add comprehensive pytest tests (includes code block templates and test structure examples)
+
+### From Anthropic's Official Skills Repository
+
+- **slack-gif-creator** - Create animated GIFs optimized for Slack (from [Anthropic's official skills repo](https://github.com/anthropics/skills), demonstrates Claude Code compatibility)
+- **skill-creator** - Guide for creating effective skills with bundled scripts and references (from [Anthropic's official skills repo](https://github.com/anthropics/skills/tree/main/skills/skill-creator), demonstrates full bundled resources support)
 
 **After `pip install patchpal`, get examples:**
 
@@ -56,6 +62,7 @@ cd patchpal
 # Copy examples to your personal skills directory
 cp -r examples/skills/commit ~/.patchpal/skills/
 cp -r examples/skills/review ~/.patchpal/skills/
+cp -r examples/skills/add-tests ~/.patchpal/skills/
 cp -r examples/skills/skill-creator ~/.patchpal/skills/
 ```
 
@@ -91,3 +98,79 @@ You: list skills
 ## Skill Priority
 
 Project skills (`.patchpal/skills/`) override personal skills (`~/.patchpal/skills/`) with the same name.
+
+## Bundled Resources
+
+Skills can include additional files alongside the main `SKILL.md`:
+
+```
+~/.patchpal/skills/my-skill/
+├── SKILL.md              # Main skill file (required)
+├── template.py           # Code template
+├── checklist.md          # Reference document
+└── scripts/              # Helper scripts
+    └── validate.py
+```
+
+Reference bundled files in your skill:
+```markdown
+Use the template in `template.py` as a starting point.
+Run `python scripts/validate.py` to check results.
+```
+
+The `skill-creator` example demonstrates full bundled resources support with scripts and reference documents.
+
+## Real-World Skill Ideas
+
+**Documentation generator:**
+```markdown
+---
+name: document
+description: Generate documentation for code
+---
+# Instructions
+1. Read the source file with `read_file`
+2. Analyze functions and classes
+3. Generate docstrings following project style
+4. Add usage examples
+```
+
+**Refactoring assistant:**
+```markdown
+---
+name: refactor
+description: Refactor code following best practices
+---
+# Instructions
+1. Analyze current code structure
+2. Identify code smells
+3. Suggest improvements
+4. Apply changes with user approval
+```
+
+**Deployment checklist:**
+```markdown
+---
+name: deploy
+description: Pre-deployment checklist
+---
+# Instructions
+1. Check tests pass: `run_shell("pytest")`
+2. Verify git status is clean with `git_status`
+3. Review CHANGELOG.md
+4. Confirm version bump
+5. Check CI/CD pipeline status
+```
+
+## Skills vs. Custom Tools
+
+| Feature | Skills | Custom Tools |
+|---------|--------|--------------|
+| **Type** | Markdown instructions | Python functions |
+| **Purpose** | Guide agent through workflow | Execute code |
+| **Location** | `~/.patchpal/skills/` or `.patchpal/skills/` | `~/.patchpal/tools/` or `.patchpal/tools/` |
+| **Invocation** | `/skillname` or natural language | Automatic (when relevant) |
+| **Execution** | Agent follows instructions | Python code runs |
+| **Best For** | Complex workflows, checklists | Calculations, API calls, data processing |
+
+Choose skills for guiding the agent through processes, choose custom tools for executing specific code operations!

@@ -129,13 +129,35 @@ Disable a global server for specific projects:
 
 ## Finding MCP Servers
 
-- **[MCP Server Registry](https://mcp.so)** - 500+ community servers
-- **[Official Servers](https://www.npmjs.com/org/modelcontextprotocol)** - Reference implementations
-  - `@modelcontextprotocol/server-filesystem` - File operations
-  - `@modelcontextprotocol/server-git` - Git operations
-  - `@modelcontextprotocol/server-memory` - Knowledge graph
-  - And more...
-- **[FastMCP Cloud](https://fastmcp.wiki/)** - Host your own
+### Official @modelcontextprotocol Servers
+
+The MCP steering group maintains official reference servers available via npm:
+
+- **@modelcontextprotocol/server-filesystem** - Secure file operations with configurable access controls
+- **@modelcontextprotocol/server-git** - Git repository management and operations
+- **@modelcontextprotocol/server-everything** - Reference/test server demonstrating all MCP features
+- **@modelcontextprotocol/server-fetch** - Web content fetching and conversion
+- **@modelcontextprotocol/server-memory** - Knowledge graph-based persistent memory
+- **@modelcontextprotocol/server-sequential-thinking** - Dynamic problem-solving through thought sequences
+- **@modelcontextprotocol/server-time** - Time and timezone conversion capabilities
+
+Browse all official packages: https://www.npmjs.com/org/modelcontextprotocol
+
+**Usage:**
+```bash
+# View available servers
+npm search @modelcontextprotocol
+
+# Add to PatchPal (npx -y auto-installs if needed)
+patchpal-mcp add filesystem --transport stdio -- \
+  npx -y @modelcontextprotocol/server-filesystem /allowed/path
+```
+
+### Community Servers
+
+- **[MCP Server Registry](https://mcp.so)** - Searchable directory of 500+ servers
+- **[GitHub Official Servers](https://github.com/modelcontextprotocol/servers)** - Reference implementations & archived servers
+- **[FastMCP Cloud](https://fastmcp.wiki/)** - Host your own servers
 
 ## Managing Servers
 
@@ -177,19 +199,32 @@ Once in a PatchPal session:
 
 ### Hugging Face Hub
 
-Access ML models, datasets, and documentation:
+Access the Hugging Face Hub - search models, datasets, Spaces, papers, and documentation.
 
-```bash
-# Setup
-export HF_TOKEN="hf_your_token"
-patchpal-mcp add huggingface https://huggingface.co/mcp \
-  --header "Authorization: Bearer ${HF_TOKEN}"
+**Setup:**
 
-# Use in session
-patchpal
-> Find quantized versions of Llama 3
-> Search for weather time-series datasets
-```
+1. Get your API token from https://huggingface.co/settings/tokens
+2. Set environment variable:
+   ```bash
+   export HF_TOKEN="hf_your_token_here"
+   ```
+3. Add to config:
+   ```bash
+   patchpal-mcp add huggingface https://huggingface.co/mcp \
+     --header "Authorization: Bearer ${HF_TOKEN}"
+   ```
+
+**Available Tools:**
+- `hf_model_search` - Search for ML models
+- `hf_dataset_search` - Find datasets
+- `hf_space_search` - Discover AI apps/demos
+- `hf_paper_search` - Search ML research papers
+- `hf_doc_search` - Search Hugging Face documentation
+
+**Example Queries:**
+- "Find quantized versions of Qwen 3"
+- "Search for datasets about weather time-series"
+- "What are the most popular text-to-image models?"
 
 ### Filesystem Access
 
@@ -202,7 +237,110 @@ patchpal-mcp add filesystem --transport stdio -- \
 # Agent can now access files in /home/user/projects
 ```
 
-## Creating Custom Servers
+## MCP Resources and Prompts
+
+In addition to tools, MCP servers can expose:
+
+- **Resources** - Data and documents that the agent can access (e.g., files, database records, API responses)
+- **Prompts** - Pre-defined prompt templates that can be used to interact with the server
+
+Use `/mcp resources` and `/mcp prompts` in a PatchPal session to explore what's available from your configured servers.
+
+**Demo:**
+
+See resources and prompts in action:
+
+```bash
+python examples/mcp/demo_resources_prompts.py
+```
+
+## Authentication
+
+Most MCP servers that require authentication accept **personal access tokens** or **API keys**.
+
+### Recommended Workflow
+
+**Step 1: Get a personal access token**
+
+Visit the service's settings page (e.g., "API Keys", "Access Tokens", or "Developer Settings").
+
+**Step 2: Store token as environment variable**
+
+```bash
+# Add to your ~/.bashrc, ~/.zshrc, or equivalent
+export HF_TOKEN="hf_xxxxxxxxxxxxxxxxxxxx"
+
+# Reload your shell
+source ~/.bashrc
+```
+
+**Step 3: Configure PatchPal to use the token**
+
+```bash
+patchpal-mcp add huggingface https://huggingface.co/mcp \
+  --header "Authorization: Bearer ${HF_TOKEN}"
+```
+
+Your config file will contain the variable reference, not the actual token:
+
+```json
+{
+  "huggingface": {
+    "type": "remote",
+    "url": "https://huggingface.co/mcp",
+    "enabled": true,
+    "headers": {
+      "Authorization": "Bearer ${HF_TOKEN}"
+    }
+  }
+}
+```
+
+### Benefits
+
+- ✅ **Secure** - Tokens never stored in config files
+- ✅ **Simple** - No browser popups or OAuth flows needed
+- ✅ **Portable** - Works in SSH sessions, containers, CI/CD
+
+## Troubleshooting
+
+### MCP Tools Not Loading
+
+```bash
+# Check MCP SDK installation
+pip install patchpal[mcp]
+python -c "import mcp; print('OK')"
+
+# Validate configuration
+cat ~/.patchpal/mcp-config.json | python -m json.tool
+```
+
+### Environment Variable Not Found
+
+Set the environment variable or use a default value:
+```json
+"url": "${API_URL:-https://default.example.com}"
+```
+
+### Remote Server Connection Failed
+
+```bash
+# Test server accessibility
+curl -I https://huggingface.co/mcp
+
+# Test with patchpal-mcp
+patchpal-mcp test huggingface
+```
+
+### Local Server Won't Start
+
+```bash
+# Verify command works standalone
+npx -y @modelcontextprotocol/server-filesystem /tmp
+
+# Check logs when starting PatchPal
+patchpal  # Look for error messages about MCP server initialization
+```
 
 Build your own MCP server with Python:
 
