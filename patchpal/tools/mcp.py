@@ -67,6 +67,10 @@ try:
     MCP_AVAILABLE = True
 except ImportError:
     MCP_AVAILABLE = False
+    # Define stub types for type hints when MCP is not available
+    StdioServerParameters = Any  # type: ignore
+    ClientSession = Any  # type: ignore
+    TextContent = Any  # type: ignore
 
 
 # Module-level cache for MCP server connection parameters

@@ -78,6 +78,7 @@ nav:
       - Built-In Tools: features/tools.md
       - Custom Tools: features/custom-tools.md
       - Skills System: features/skills.md
+      - MCP Integration: features/mcp.md
       - Project Memory: features/memory.md
   - Model Configuration:
       - Overview: models/overview.md
