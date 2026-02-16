@@ -1185,9 +1185,22 @@ It's currently empty (just the template). The file is automatically loaded at se
                                 # Filter tool_args to only include parameters the function accepts
                                 sig = inspect.signature(tool_func)
                                 valid_params = set(sig.parameters.keys())
-                                filtered_args = {
-                                    k: v for k, v in tool_args.items() if k in valid_params
-                                }
+
+                                # Skip filtering if function uses **kwargs (like MCP tools)
+                                # Check if any parameter is VAR_KEYWORD (**kwargs)
+                                has_var_keyword = any(
+                                    p.kind == inspect.Parameter.VAR_KEYWORD
+                                    for p in sig.parameters.values()
+                                )
+
+                                if has_var_keyword:
+                                    # Don't filter - pass all args through
+                                    filtered_args = tool_args
+                                else:
+                                    # Filter to only valid parameters
+                                    filtered_args = {
+                                        k: v for k, v in tool_args.items() if k in valid_params
+                                    }
 
                                 # Coerce types for parameters (Ollama sometimes passes strings)
                                 for param_name, param in sig.parameters.items():
@@ -1208,6 +1221,20 @@ It's currently empty (just the template). The file is automatically loaded at se
                                             )
 
                                 # Silently filter out invalid args (models sometimes hallucinate parameters)
+
+                                # Show arguments for MCP tools (for debugging)
+                                if (
+                                    tool_name.startswith("huggingface_")
+                                    or "_mcp_" in tool_name
+                                    or tool_name.startswith("mcp_")
+                                ):
+                                    args_str = ", ".join(
+                                        [f"{k}={repr(v)[:50]}" for k, v in filtered_args.items()]
+                                    )
+                                    if args_str:
+                                        print(f"\033[2m   → Args: {args_str}\033[0m")
+                                    else:
+                                        print("\033[2m   → Args: (none)\033[0m")
 
                                 tool_result = tool_func(**filtered_args)
                             except Exception as e:
@@ -1271,6 +1298,19 @@ It's currently empty (just the template). The file is automatically loaded at se
                             "content": result_str,
                         }
                     )
+
+                    # Show tool result summary (always visible for better debugging)
+                    if (
+                        tool_name.startswith("huggingface_")
+                        or "_mcp_" in tool_name
+                        or tool_name.startswith("mcp_")
+                    ):
+                        result_preview = result_str[:100].replace("\n", " ")
+                        if len(result_str) > 100:
+                            result_preview += "..."
+                        print(
+                            f"\033[2m   → Result: {len(result_str)} chars | {result_preview}\033[0m"
+                        )
 
                     # Check if operation was cancelled by user
                     # Use exact match to avoid false positives from file contents
