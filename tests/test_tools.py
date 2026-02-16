@@ -1695,8 +1695,8 @@ def test_ask_user_simple_question(monkeypatch):
 
     reset_operation_counter()
 
-    # Mock Prompt.ask to return an answer
-    with patch("rich.prompt.Prompt.ask", return_value="Yes"):
+    # Mock prompt_toolkit.prompt to return an answer
+    with patch("prompt_toolkit.prompt", return_value="Yes"):
         result = ask_user("Should we proceed?")
         assert result == "Yes"
 
@@ -1708,7 +1708,7 @@ def test_ask_user_with_options(monkeypatch):
     reset_operation_counter()
 
     # Mock user selecting option 1
-    with patch("rich.prompt.Prompt.ask", return_value="1"):
+    with patch("prompt_toolkit.prompt", return_value="1"):
         result = ask_user("Which database?", options=["PostgreSQL", "MySQL", "SQLite"])
         assert result == "PostgreSQL"
 
@@ -1720,7 +1720,7 @@ def test_ask_user_with_options_by_name(monkeypatch):
     reset_operation_counter()
 
     # Mock user typing the option name
-    with patch("rich.prompt.Prompt.ask", return_value="MySQL"):
+    with patch("prompt_toolkit.prompt", return_value="MySQL"):
         result = ask_user("Which database?", options=["PostgreSQL", "MySQL", "SQLite"])
         assert result == "MySQL"
 
@@ -1732,7 +1732,7 @@ def test_ask_user_with_options_custom_answer(monkeypatch):
     reset_operation_counter()
 
     # Mock user typing a custom answer
-    with patch("rich.prompt.Prompt.ask", return_value="MongoDB"):
+    with patch("prompt_toolkit.prompt", return_value="MongoDB"):
         result = ask_user("Which database?", options=["PostgreSQL", "MySQL", "SQLite"])
         assert result == "MongoDB"
 
@@ -1744,7 +1744,7 @@ def test_ask_user_with_options_out_of_range(monkeypatch):
     reset_operation_counter()
 
     # Mock user entering invalid number
-    with patch("rich.prompt.Prompt.ask", return_value="99"):
+    with patch("prompt_toolkit.prompt", return_value="99"):
         result = ask_user("Which database?", options=["PostgreSQL", "MySQL", "SQLite"])
         # Should treat as custom answer
         assert result == "99"
@@ -1756,7 +1756,7 @@ def test_ask_user_audit_logging(monkeypatch, caplog):
 
     reset_operation_counter()
 
-    with patch("rich.prompt.Prompt.ask", return_value="Test answer"):
+    with patch("prompt_toolkit.prompt", return_value="Test answer"):
         ask_user("Test question?")
 
         # Check audit logger was called (in real usage, would be in audit.log)
@@ -1774,7 +1774,7 @@ def test_ask_user_long_question(monkeypatch):
         * 3
     )
 
-    with patch("rich.prompt.Prompt.ask", return_value="Answer"):
+    with patch("prompt_toolkit.prompt", return_value="Answer"):
         result = ask_user(long_question)
         assert result == "Answer"
 
@@ -1786,7 +1786,7 @@ def test_ask_user_empty_options_list(monkeypatch):
     reset_operation_counter()
 
     # Empty list should be treated as no options
-    with patch("rich.prompt.Prompt.ask", return_value="Free form answer"):
+    with patch("prompt_toolkit.prompt", return_value="Free form answer"):
         result = ask_user("What do you think?", options=[])
         assert result == "Free form answer"
 
