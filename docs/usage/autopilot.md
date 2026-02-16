@@ -27,7 +27,7 @@ autopilot_loop(
 "
 ```
 
-**Custom Tools**: Autopilot automatically loads custom tools from `~/.patchpal/tools/` (same as the interactive CLI). See [Custom Tools](../features/custom-tools.md) for details.
+**Custom Tools**: Autopilot automatically loads custom tools from both `~/.patchpal/tools/` (global) and `.patchpal/tools/` (repository-specific), same as the interactive CLI. See [Custom Tools](../features/custom-tools.md) for details.
 
 ### How It Works
 

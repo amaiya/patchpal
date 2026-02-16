@@ -7,6 +7,18 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
+## 0.13.4 (TBD)
+
+### new:
+- **Repository-specific custom tools**: Custom tools can now be defined per-repository in `<repo>/.patchpal/tools/` in addition to global tools in `~/.patchpal/tools/`. Repository-specific tools override global tools with the same name, similar to how skills work. This makes it easy to share project-specific tooling with your team.(#64)
+
+### changed:
+- **[BREAKING CHANGES]** **Repository-specific file storage structure**: Changed storage location from `~/.patchpal/<repo-name>/` to `~/.patchpal/repos/<repo-name>/` for better organization and clarity. All repository-specific files (audit.log, MEMORY.md, permissions.json, backups/, .history) now reside in the `repos/` subdirectory. This is a breaking change - existing files in the old location won't be automatically migrated. Skills (`~/.patchpal/skills/`) and custom tools (`~/.patchpal/tools/`) remain unchanged. (fixes #63)
+
+### fixed:
+- N/A
+
+
 ## 0.13.3 (2026-02-15)
 
 ### new:
@@ -83,7 +95,7 @@ Most recent releases are shown at the top. Each release shows:
 ## 0.12.0 (2026-2-10)
 
 ### new:
-- **Project Memory system (`MEMORY.md`)**: Added persistent session context that automatically loads at agent initialization from `~/.patchpal/<repo-name>/MEMORY.md`. Stores project context, technical decisions, key facts, known issues, and team conventions that persist across sessions. Agent automatically loads populated memory files and includes full content in context, or shows guidance message for empty files. File is whitelisted for seamless editing without "outside repo" warnings. Includes smart content detection (10-char threshold after `---` separator) to distinguish empty templates from populated memory. Comprehensive test coverage with 11 tests covering file creation, content detection, Unicode support, error handling, and whitelisting. Replaces previous NOTES.md naming with more semantically accurate MEMORY.md. (fixes #55)
+- **Project Memory system (`MEMORY.md`)**: Added persistent session context that automatically loads at agent initialization from `~/.patchpal/repos/<repo-name>/MEMORY.md`. Stores project context, technical decisions, key facts, known issues, and team conventions that persist across sessions. Agent automatically loads populated memory files and includes full content in context, or shows guidance message for empty files. File is whitelisted for seamless editing without "outside repo" warnings. Includes smart content detection (10-char threshold after `---` separator) to distinguish empty templates from populated memory. Comprehensive test coverage with 11 tests covering file creation, content detection, Unicode support, error handling, and whitelisting. Replaces previous NOTES.md naming with more semantically accurate MEMORY.md. (fixes #55)
 
 ### changed:
 - changed `grep_code` tool name to  `grep`

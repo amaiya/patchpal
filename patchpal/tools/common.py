@@ -182,11 +182,11 @@ The agent reads this file at session start to understand your project context.
 
 
 # Create patchpal directory structure in home directory
-# Format: ~/.patchpal/<repo-name>/
+# Format: ~/.patchpal/repos/<repo-name>/
 def _get_patchpal_dir() -> Path:
     """Get the patchpal directory for this repository."""
     home = Path.home()
-    patchpal_root = home / ".patchpal"
+    patchpal_root = home / ".patchpal" / "repos"
 
     # Use repo name (last part of path) to create unique directory
     repo_name = REPO_ROOT.name

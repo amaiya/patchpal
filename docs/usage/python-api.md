@@ -27,12 +27,13 @@ print(response)
 
 ## Adding Custom Tools
 
-Custom tools can be used in two ways:
+Custom tools can be used in three ways:
 
-1. **CLI**: Place `.py` files in `~/.patchpal/tools/` (auto-discovered at startup)
-2. **Python API**: Pass functions directly to `create_agent(custom_tools=[...])`
+1. **Global tools**: Place `.py` files in `~/.patchpal/tools/` (auto-discovered at startup)
+2. **Repository-specific tools**: Place `.py` files in `<repo>/.patchpal/tools/` (auto-discovered at startup)
+3. **Python API**: Pass functions directly to `create_agent(custom_tools=[...])`
 
-Both methods use the same tool schema auto-generation from Python functions with type hints and docstrings:
+All methods use the same tool schema auto-generation from Python functions with type hints and docstrings:
 
 ```python
 from patchpal.agent import create_agent

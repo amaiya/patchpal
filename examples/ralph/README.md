@@ -130,7 +130,7 @@ Note: After `pip install patchpal`, autopilot is available as:
 - `python -m patchpal autopilot` (as subcommand)
 - `from patchpal.autopilot import autopilot_loop` (Python library)
 
-**Custom Tools**: Autopilot automatically loads custom tools from `~/.patchpal/tools/` (same as the interactive CLI). This allows you to extend autopilot with project-specific capabilities.
+**Custom Tools**: Autopilot automatically loads custom tools from both `~/.patchpal/tools/` (global) and `.patchpal/tools/` (repository-specific), same as the interactive CLI. This allows you to extend autopilot with project-specific capabilities.
 
 ## Writing Effective Ralph Prompts
 
@@ -357,10 +357,10 @@ docker run -it --rm \
 **7. Use Audit Logs**
 ```bash
 # PatchPal logs all operations to audit log
-tail -f ~/.patchpal/<repo-name>/audit.log
+tail -f ~/.patchpal/repos/<repo-name>/audit.log
 
 # Review what Ralph did
-cat ~/.patchpal/<repo-name>/audit.log | grep "USER_PROMPT\|TOOL_CALL"
+cat ~/.patchpal/repos/<repo-name>/audit.log | grep "USER_PROMPT\|TOOL_CALL"
 ```
 
 ### What Can Go Wrong Without Sandboxing?

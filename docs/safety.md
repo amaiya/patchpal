@@ -29,12 +29,12 @@ PatchPal includes comprehensive security protections enabled by default:
 - **Write boundary protection**: Requires permission for write operations
 
 **Operational Safety:**
-- **Operation audit logging**: All file operations and commands logged to `~/.patchpal/<repo-name>/audit.log` (enabled by default)
+- **Operation audit logging**: All file operations and commands logged to `~/.patchpal/repos/<repo-name>/audit.log` (enabled by default)
   - Includes user prompts to show what triggered each operation
   - Rotates at 10 MB with 3 backups (40 MB total max)
-- **Command history**: User commands saved to `~/.patchpal/<repo-name>/history.txt` (last 1000 commands)
+- **Command history**: User commands saved to `~/.patchpal/repos/<repo-name>/history.txt` (last 1000 commands)
   - Clean, user-friendly format for reviewing past interactions
-- **Automatic backups**: Optional auto-backup of files to `~/.patchpal/<repo-name>/backups/` before modification
+- **Automatic backups**: Optional auto-backup of files to `~/.patchpal/repos/<repo-name>/backups/` before modification
 - **Resource limits**: Configurable operation counter prevents infinite loops (10000 operations default)
 - **Git state awareness**: Warns when modifying files with uncommitted changes
 
@@ -63,7 +63,7 @@ Choice [1-3]:
 - Option 2: Allow for the rest of this session (like Claude Code - resets when you restart PatchPal)
 - Option 3: Cancel the operation
 
-**Advanced:** You can manually edit `~/.patchpal/<repo-name>/permissions.json` to grant persistent permissions across sessions.
+**Advanced:** You can manually edit `~/.patchpal/repos/<repo-name>/permissions.json` to grant persistent permissions across sessions.
 
 **Example permissions.json:**
 

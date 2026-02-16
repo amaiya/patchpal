@@ -8,6 +8,8 @@ Custom tools are Python functions that the PatchPal agent can call automatically
 
 ## Quick Start
 
+### Global Tools (Available in all projects)
+
 **1. Create the tools directory:**
 ```bash
 mkdir -p ~/.patchpal/tools
@@ -17,6 +19,20 @@ mkdir -p ~/.patchpal/tools
 ```bash
 cp calculator.py ~/.patchpal/tools/
 ```
+
+### Repository-Specific Tools (Project-specific)
+
+**1. Create the repository tools directory:**
+```bash
+mkdir -p .patchpal/tools
+```
+
+**2. Copy or create tools:**
+```bash
+cp calculator.py .patchpal/tools/
+```
+
+### Start PatchPal
 
 **3. Start PatchPal:**
 ```bash
@@ -186,9 +202,15 @@ def sum_list(numbers: List[int]) -> str:
 
 ⚠️ Custom tools execute Python code on your system. Only install tools from trusted sources.
 
-- Tools are loaded from `~/.patchpal/tools/` (your home directory)
-- Project-local tools (`.patchpal/tools/`) are NOT supported for security
-- Review code before copying to your tools directory
+**Tool Locations:**
+- **Global tools**: `~/.patchpal/tools/` - Available in all projects
+- **Repository-specific tools**: `<repo>/.patchpal/tools/` - Project-specific tools
+
+**Security Considerations:**
+- Review code before installing any custom tools
+- Repository-specific tools make it easy to share project functionality
+- Be cautious when cloning repositories - check `.patchpal/tools/` for custom tools
+- Repository tools override global tools with the same name
 
 ## Troubleshooting
 

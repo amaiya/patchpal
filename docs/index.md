@@ -15,7 +15,7 @@ Human-in-the-loop coding agents (e.g., Claude Code, OpenCode, Aider) are typical
 - [Built-In](features/tools.md) and [Custom Tools](features/custom-tools.md)
 - [Skills System](features/skills.md)
 - [Autopilot Mode](usage/autopilot.md) using [Ralph Wiggum loops](https://ghuntley.com/ralph/)
-- [Project Memory](features/memory.md) automatically loads project context from `~/.patchpal/<repo-name>/MEMORY.md` at startup.
+- [Project Memory](features/memory.md) automatically loads project context from `~/.patchpal/repos/<repo-name>/MEMORY.md` at startup.
 
 PatchPal prioritizes customizability: custom tools, custom skills, a flexible Python API, and support for any tool-calling LLM.
 
