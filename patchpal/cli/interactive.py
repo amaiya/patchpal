@@ -404,7 +404,7 @@ Supported models: Any LiteLLM-supported model
 
     # Show litellm_kwargs info if set
     if litellm_kwargs:
-        kwargs_str = ", ".join(f"{k}={v}" for k, v in litellm_kwargs.items())
+        kwargs_str = ", ".join(litellm_kwargs.keys())
         print(f"\033[1;36m⚙️  LiteLLM parameters: {kwargs_str}\033[0m")
 
     # Show require-permission-for-all indicator if active

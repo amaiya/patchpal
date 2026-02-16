@@ -7,6 +7,18 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
+## 0.14.1 (2026-02-16)
+
+### new:
+- N/A
+
+### changed:
+- N/A
+
+### fixed:
+- Suppress display of LiteLLM kwargs values in  header screen of CLI (#65)
+
+
 ## 0.14.0 (2026-02-16)
 
 ### new:
