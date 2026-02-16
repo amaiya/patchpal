@@ -16,7 +16,7 @@ Most recent releases are shown at the top. Each release shows:
 - **[BREAKING CHANGES]** **Repository-specific file storage structure**: Changed storage location from `~/.patchpal/<repo-name>/` to `~/.patchpal/repos/<repo-name>/` for better organization and clarity. All repository-specific files (audit.log, MEMORY.md, permissions.json, backups/, .history) now reside in the `repos/` subdirectory. This is a breaking change - existing files in the old location won't be automatically migrated. Skills (`~/.patchpal/skills/`) and custom tools (`~/.patchpal/tools/`) remain unchanged. (fixes #63)
 
 ### fixed:
-- N/A
+- Allow backspace when answer `ask_user` tool
 
 
 ## 0.13.3 (2026-02-15)

@@ -115,9 +115,10 @@ def ask_user(question: str, options: Optional[list] = None) -> str:
     """
     _operation_limiter.check_limit(f"ask_user({question[:30]}...)")
 
+    from prompt_toolkit import prompt
+    from prompt_toolkit.formatted_text import FormattedText
     from rich.console import Console
     from rich.panel import Panel
-    from rich.prompt import Prompt
 
     console = Console()
 
@@ -141,8 +142,9 @@ def ask_user(question: str, options: Optional[list] = None) -> str:
             "\n[dim]You can select a number, type an option, or provide a custom answer.[/dim]\n"
         )
 
-        # Get user input
-        user_input = Prompt.ask("[bold green]Your answer[/bold green]")
+        # Get user input using prompt_toolkit for proper readline support
+        prompt_text = FormattedText([("ansibrightgreen bold", "Your answer:"), ("", " ")])
+        user_input = prompt(prompt_text).strip()
 
         # Check if user entered a number corresponding to an option
         try:
@@ -157,7 +159,8 @@ def ask_user(question: str, options: Optional[list] = None) -> str:
             answer = user_input
     else:
         # No options, just get free-form answer
-        answer = Prompt.ask("[bold green]Your answer[/bold green]")
+        prompt_text = FormattedText([("ansibrightgreen bold", "Your answer:"), ("", " ")])
+        answer = prompt(prompt_text).strip()
         console.print()
 
     audit_logger.info(f"ASK_USER: Q: {question[:50]}... A: {answer[:50]}")
