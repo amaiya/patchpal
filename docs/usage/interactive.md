@@ -5,7 +5,7 @@ Simply run the `patchpal` command and type your requests interactively:
 ```bash
 $ patchpal
  ╔═══════════════════════════════════════════════════════════╗
- ║  PatchPal - AI Coding and Automation Assistant  🤖        ║
+ ║  PatchPal - AI Coding and Automation Assistant 🤖    ║
  ╚═══════════════════════════════════════════════════════════╝
 
 Using model: anthropic/claude-sonnet-4-5

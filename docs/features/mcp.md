@@ -36,9 +36,11 @@ patchpal-mcp test huggingface
 patchpal
 
 # In session - use MCP commands
-> /mcp servers    # List configured servers
-> /mcp tools      # Show all MCP tools
-> /mcp help       # Show MCP commands
+> /mcp servers        # List configured servers
+> /mcp tools          # Show all MCP tools
+> /mcp resources      # List resources (view only)
+> /mcp prompts        # List prompts (view only)
+> /mcp help           # Show MCP commands
 ```
 
 MCP tools are automatically loaded and available to the agent (e.g., `filesystem_read_file`, `hf_model_search`).
@@ -187,13 +189,17 @@ patchpal-mcp remove <name>
 Once in a PatchPal session:
 
 ```bash
-/mcp servers              # List configured servers
-/mcp tools                # List all loaded MCP tools
-/mcp tools <server>       # List tools from specific server
-/mcp resources            # List available resources
-/mcp prompts              # List available prompts
-/mcp help                 # Show all MCP commands
+/mcp servers                # List configured servers
+/mcp tools                  # List all loaded MCP tools
+/mcp tools [server]         # List tools from specific server
+/mcp resources              # List available resources (view only)
+/mcp resources [server]     # List resources from specific server
+/mcp prompts                # List available prompts (view only)
+/mcp prompts [server]       # List prompts from specific server
+/mcp help                   # Show all MCP commands
 ```
+
+**Note:** Resources and prompts are displayed for reference but are not automatically exposed as agent tools. MCP tools are the primary way for agents to interact with MCP servers.
 
 ## Examples
 
@@ -241,10 +247,14 @@ patchpal-mcp add filesystem --transport stdio -- \
 
 In addition to tools, MCP servers can expose:
 
-- **Resources** - Data and documents that the agent can access (e.g., files, database records, API responses)
-- **Prompts** - Pre-defined prompt templates that can be used to interact with the server
+- **Resources** - Data and documents that servers make available (e.g., configuration files, documentation, database schemas)
+- **Prompts** - Pre-defined prompt templates with arguments for common tasks
 
-Use `/mcp resources` and `/mcp prompts` in a PatchPal session to explore what's available from your configured servers.
+These are available for **viewing and reference** via `/mcp resources` and `/mcp prompts` commands in a PatchPal session, but are not automatically exposed as agent tools. This allows you to discover what a server provides without cluttering the agent's tool list.
+
+**Use Cases:**
+- **Resources**: View what data sources are available before deciding how to access them
+- **Prompts**: See pre-built templates that demonstrate common workflows with the server
 
 **Demo:**
 

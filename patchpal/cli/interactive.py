@@ -503,29 +503,37 @@ Supported models: Any LiteLLM-supported model
                 print("=" * 70)
                 print()
                 print("  \033[1;33mBasic Commands:\033[0m")
-                print("    exit, quit, q        Exit the session")
-                print("    /help                Show this help message")
+                print("    exit, quit, q               Exit the session")
+                print("    /help                       Show this help message")
                 print()
                 print("  \033[1;33mContext Management:\033[0m")
-                print("    /status              Show context window usage and token statistics")
-                print("    /context             View all messages in conversation history")
                 print(
-                    "    /context <number>    View specific message by number (0=base system prompt)"
+                    "    /status                     Show context window usage and token statistics"
                 )
-                print("    /clear               Clear conversation history (start fresh)")
-                print("    /compact             Manually trigger context compaction")
-                print("    /prune               Prune old tool outputs (keeps last 2 turns)")
+                print("    /context                    View all messages in conversation history")
+                print(
+                    "    /context <number>           View specific message by number (0=base system prompt)"
+                )
+                print("    /clear                      Clear conversation history (start fresh)")
+                print("    /compact                    Manually trigger context compaction")
+                print("    /prune                      Prune old tool outputs (keeps last 2 turns)")
                 print()
                 print("  \033[1;33mMCP (Model Context Protocol):\033[0m")
-                print("    /mcp servers         List configured MCP servers")
+                print("    /mcp servers                List configured MCP servers")
                 print(
-                    "    /mcp tools [server]  List loaded MCP tools (optionally filter by server)"
+                    "    /mcp tools [server]         List loaded MCP tools (optionally filter by server)"
                 )
-                print("    /mcp help            Show MCP command help")
+                print(
+                    "    /mcp resources [server]     List available MCP resources (optionally filter by server)"
+                )
+                print(
+                    "    /mcp prompts [server]       List available MCP prompts (optionally filter by server)"
+                )
+                print("    /mcp help                   Show MCP command help")
                 print()
                 print("  \033[1;33mSkills:\033[0m")
-                print("    /skillname [args]    Invoke a skill (e.g., /commit)")
-                print("    list skills          Ask agent to list available skills")
+                print("    /skillname [args]           Invoke a skill (e.g., /commit)")
+                print("    list skills                 Ask agent to list available skills")
                 print()
                 print("  \033[1;33mTips:\033[0m")
                 print("    • Use UP/DOWN arrows to navigate command history")
@@ -1263,18 +1271,125 @@ Supported models: Any LiteLLM-supported model
                     print("\n" + "=" * 70 + "\n")
                     continue
 
+                # /mcp resources - List available MCP resources
+                elif subcommand == "resources":
+                    # Check if a server name filter was provided
+                    filter_server = parts[2] if len(parts) > 2 else None
+
+                    print("\n" + "=" * 70)
+                    if filter_server:
+                        print(f"\033[1;36mMCP Resources from '{filter_server}'\033[0m")
+                    else:
+                        print("\033[1;36mAvailable MCP Resources\033[0m")
+                    print("=" * 70)
+
+                    from patchpal.tools.mcp import list_mcp_resources
+
+                    resources = list_mcp_resources()
+
+                    # Filter by server if specified
+                    if filter_server:
+                        resources = [r for r in resources if r["server"] == filter_server]
+                        if not resources:
+                            print(f"\nServer '{filter_server}' not found or has no resources.")
+                            all_servers = set(r["server"] for r in list_mcp_resources())
+                            if all_servers:
+                                print(f"\nAvailable servers: {', '.join(sorted(all_servers))}\n")
+                            print("=" * 70 + "\n")
+                            continue
+
+                    if resources:
+                        print(f"\nFound {len(resources)} resource(s):\n")
+                        for resource in resources:
+                            print(f"  \033[1;33m{resource['server']}\033[0m: {resource['uri']}")
+                            if resource.get("name"):
+                                print(f"    Name: {resource['name']}")
+                            if resource.get("description"):
+                                desc = resource["description"]
+                                # Don't truncate - show full description
+                                print(f"    {desc}")
+                            if resource.get("mimeType"):
+                                print(f"    Type: {resource['mimeType']}")
+                            print()
+                    else:
+                        print("\nNo resources available from configured MCP servers.")
+                        print("Resources are data/documents exposed by MCP servers.\n")
+
+                    print("=" * 70 + "\n")
+                    continue
+
+                # /mcp prompts - List available MCP prompts
+                elif subcommand == "prompts":
+                    # Check if a server name filter was provided
+                    filter_server = parts[2] if len(parts) > 2 else None
+
+                    print("\n" + "=" * 70)
+                    if filter_server:
+                        print(f"\033[1;36mMCP Prompts from '{filter_server}'\033[0m")
+                    else:
+                        print("\033[1;36mAvailable MCP Prompts\033[0m")
+                    print("=" * 70)
+
+                    from patchpal.tools.mcp import list_mcp_prompts
+
+                    prompts = list_mcp_prompts()
+
+                    # Filter by server if specified
+                    if filter_server:
+                        prompts = [p for p in prompts if p["server"] == filter_server]
+                        if not prompts:
+                            print(f"\nServer '{filter_server}' not found or has no prompts.")
+                            all_servers = set(p["server"] for p in list_mcp_prompts())
+                            if all_servers:
+                                print(f"\nAvailable servers: {', '.join(sorted(all_servers))}\n")
+                            print("=" * 70 + "\n")
+                            continue
+
+                    if prompts:
+                        print(f"\nFound {len(prompts)} prompt(s):\n")
+                        for prompt in prompts:
+                            print(f"  \033[1;33m{prompt['server']}/{prompt['name']}\033[0m")
+                            if prompt.get("description"):
+                                desc = prompt["description"]
+                                # Don't truncate - show full description
+                                print(f"    {desc}")
+
+                            if prompt.get("arguments"):
+                                print("    Arguments:")
+                                for arg in prompt["arguments"]:
+                                    required = (
+                                        " (required)" if arg.get("required") else " (optional)"
+                                    )
+                                    print(f"      - {arg['name']}{required}")
+                                    if arg.get("description"):
+                                        print(f"        {arg['description']}")
+                            print()
+                    else:
+                        print("\nNo prompts available from configured MCP servers.")
+                        print("Prompts are pre-defined templates exposed by MCP servers.\n")
+
+                    print("=" * 70 + "\n")
+                    continue
+
                 # /mcp help or /mcp without subcommand
                 elif not subcommand or subcommand == "help":
                     print("\n" + "=" * 70)
                     print("\033[1;36mMCP Commands\033[0m")
                     print("=" * 70)
                     print()
-                    print("  \033[1;33m/mcp servers\033[0m      List configured MCP servers")
-                    print("  \033[1;33m/mcp tools [server]\033[0m")
                     print(
-                        "                        List loaded MCP tools (optionally filter by server)"
+                        "  \033[1;33m/mcp servers\033[0m               List configured MCP servers"
                     )
-                    print("  \033[1;33m/mcp help\033[0m         Show this help")
+                    print(
+                        "  \033[1;33m/mcp tools [server]\033[0m        List loaded MCP tools (optionally filter by server)"
+                    )
+                    print(
+                        "  \033[1;33m/mcp resources [server]\033[0m    List available MCP resources (optionally filter by server)"
+                    )
+                    print(
+                        "  \033[1;33m/mcp prompts [server]\033[0m      List available MCP prompts (optionally filter by server)"
+                    )
+                    print("  \033[1;33m/mcp help\033[0m                  Show this help")
                     print()
                     print("  \033[2mTo manage servers, use: patchpal-mcp add/remove/list\033[0m")
                     print("=" * 70 + "\n")

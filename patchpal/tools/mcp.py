@@ -876,6 +876,186 @@ async def _list_remote_server_prompts(
         return prompts
 
 
+def get_mcp_prompt(server_name: str, prompt_name: str, arguments: Dict[str, Any] = None) -> str:
+    """Retrieve and execute an MCP prompt.
+
+    Args:
+        server_name: Name of the MCP server
+        prompt_name: Name of the prompt to execute
+        arguments: Dictionary of arguments required by the prompt
+
+    Returns:
+        Formatted prompt content as string
+
+    Raises:
+        ValueError: If server not found or prompt execution fails
+    """
+    if not MCP_AVAILABLE:
+        raise ValueError("MCP SDK not available")
+
+    if server_name not in _server_configs:
+        raise ValueError(f"MCP server '{server_name}' not found")
+
+    try:
+        return asyncio.run(_get_mcp_prompt_async(server_name, prompt_name, arguments or {}))
+    except Exception as e:
+        raise ValueError(f"Failed to get prompt '{prompt_name}' from server '{server_name}': {e}")
+
+
+async def _get_mcp_prompt_async(
+    server_name: str, prompt_name: str, arguments: Dict[str, Any]
+) -> str:
+    """Async implementation of prompt retrieval."""
+    server_config = _server_configs[server_name]
+    server_type = server_config.get("type", "local")
+
+    if server_type == "local":
+        return await _get_local_server_prompt(server_config, prompt_name, arguments)
+    else:
+        return await _get_remote_server_prompt(server_config, prompt_name, arguments)
+
+
+async def _get_local_server_prompt(
+    server_config: Dict[str, Any], prompt_name: str, arguments: Dict[str, Any]
+) -> str:
+    """Get prompt from a local MCP server."""
+    command_parts = server_config.get("command", [])
+    server_params = StdioServerParameters(
+        command=command_parts[0],
+        args=command_parts[1:] if len(command_parts) > 1 else [],
+        env=server_config.get("environment", {}),
+    )
+
+    async with stdio_client(server_params) as (read, write):
+        async with ClientSession(read, write) as session:
+            await session.initialize()
+            result = await session.get_prompt(prompt_name, arguments=arguments)
+
+            # Format the prompt messages into a readable string
+            output_parts = []
+            if hasattr(result, "messages"):
+                for message in result.messages:
+                    role = getattr(message, "role", "unknown")
+                    content = message.content
+
+                    # content is typically a list of content items
+                    if isinstance(content, list):
+                        for item in content:
+                            if isinstance(item, TextContent):
+                                output_parts.append(f"[{role}]: {item.text}")
+                            elif hasattr(item, "text"):
+                                output_parts.append(f"[{role}]: {item.text}")
+                            else:
+                                output_parts.append(f"[{role}]: {str(item)}")
+                    elif isinstance(content, TextContent):
+                        output_parts.append(f"[{role}]: {content.text}")
+                    elif hasattr(content, "text"):
+                        output_parts.append(f"[{role}]: {content.text}")
+                    else:
+                        output_parts.append(f"[{role}]: {str(content)}")
+            else:
+                # Fallback if structure is different
+                output_parts.append(str(result))
+
+    # Give subprocess time to clean up properly
+    await asyncio.sleep(0.1)
+
+    return "\n\n".join(output_parts) if output_parts else "Prompt executed successfully."
+
+
+async def _get_remote_server_prompt(
+    server_config: Dict[str, Any], prompt_name: str, arguments: Dict[str, Any]
+) -> str:
+    """Get prompt from a remote MCP server."""
+    server_url = server_config.get("url", "")
+    headers = server_config.get("headers", {})
+
+    last_error = None
+
+    # Try StreamableHTTP first
+    try:
+        async with streamablehttp_client(server_url, headers=headers) as streams:
+            read_stream, write_stream, _ = streams
+            async with ClientSession(read_stream, write_stream) as session:
+                await session.initialize()
+                result = await session.get_prompt(prompt_name, arguments=arguments)
+
+                # Format the prompt messages into a readable string
+                output_parts = []
+                if hasattr(result, "messages"):
+                    for message in result.messages:
+                        role = getattr(message, "role", "unknown")
+                        content = message.content
+
+                        # content is typically a list of content items
+                        if isinstance(content, list):
+                            for item in content:
+                                if isinstance(item, TextContent):
+                                    output_parts.append(f"[{role}]: {item.text}")
+                                elif hasattr(item, "text"):
+                                    output_parts.append(f"[{role}]: {item.text}")
+                                else:
+                                    output_parts.append(f"[{role}]: {str(item)}")
+                        elif isinstance(content, TextContent):
+                            output_parts.append(f"[{role}]: {content.text}")
+                        elif hasattr(content, "text"):
+                            output_parts.append(f"[{role}]: {content.text}")
+                        else:
+                            output_parts.append(f"[{role}]: {str(content)}")
+                else:
+                    # Fallback if structure is different
+                    output_parts.append(str(result))
+
+                return (
+                    "\n\n".join(output_parts) if output_parts else "Prompt executed successfully."
+                )
+    except Exception as e:
+        last_error = e
+        # Continue to SSE fallback
+
+    # Fallback to SSE
+    try:
+        async with sse_client(server_url, headers=headers) as streams:
+            async with ClientSession(streams[0], streams[1]) as session:
+                await session.initialize()
+                result = await session.get_prompt(prompt_name, arguments=arguments)
+
+                # Format the prompt messages into a readable string
+                output_parts = []
+                if hasattr(result, "messages"):
+                    for message in result.messages:
+                        role = getattr(message, "role", "unknown")
+                        content = message.content
+
+                        # content is typically a list of content items
+                        if isinstance(content, list):
+                            for item in content:
+                                if isinstance(item, TextContent):
+                                    output_parts.append(f"[{role}]: {item.text}")
+                                elif hasattr(item, "text"):
+                                    output_parts.append(f"[{role}]: {item.text}")
+                                else:
+                                    output_parts.append(f"[{role}]: {str(item)}")
+                        elif isinstance(content, TextContent):
+                            output_parts.append(f"[{role}]: {content.text}")
+                        elif hasattr(content, "text"):
+                            output_parts.append(f"[{role}]: {content.text}")
+                        else:
+                            output_parts.append(f"[{role}]: {str(content)}")
+                else:
+                    # Fallback if structure is different
+                    output_parts.append(str(result))
+
+                return (
+                    "\n\n".join(output_parts) if output_parts else "Prompt executed successfully."
+                )
+    except Exception as sse_error:
+        # Both transports failed
+        if last_error:
+            raise last_error
+        raise sse_error
+
+
 def _load_mcp_config(config_path: Optional[Path] = None) -> Dict[str, Any]:
     """Load MCP configuration from file(s).
 
