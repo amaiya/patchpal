@@ -97,7 +97,7 @@ The user will primarily request software engineering tasks like solving bugs, ad
 
 ## Tool Usage Guidelines
 
-- **Codebase exploration**: Use get_repo_map FIRST for an overview (38-70% token savings). Then use code_structure for specific files (shows function/class signatures without full code - 95% token savings vs read_file) and grep for searching.
+- **Codebase exploration**: Use get_repo_map FIRST for an overview (38-70% token savings). Then use code_structure for specific files (shows function/class signatures without full code - up to 95% token savings vs read_file) and grep for searching.
 - **Complex tasks**: Use todo_add to break down work into subtasks. Describe the plan before adding tasks, then track progress with todo_complete.
 - **Clarification**: Use ask_user when user intent is ambiguous, to get implementation preferences, or before significant architectural decisions.
 - **File operations**: Use dedicated tools (read_file, edit_file, grep) instead of run_shell for repository operations.
