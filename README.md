@@ -13,7 +13,7 @@ Human-in-the-loop coding agents (e.g., Claude Code, OpenCode, Aider) are typical
 - [Terminal Interface](https://amaiya.github.io/patchpal/usage/interactive/) for interactive development
 - [Python API](https://amaiya.github.io/patchpal/usage/python-api/) for flexibility and extensibility
 - [Built-In](https://amaiya.github.io/patchpal/features/tools/) and [Custom Tools](https://amaiya.github.io/patchpal/features/custom-tools/)
-- [Skills System](https://amaiya.github.io/patchpal/features/skills/)
+- [Skills System](https://amaiya.github.io/patchpal/features/skills/) and [MCP Integration](https://amaiya.github.io/patchpal/features/mcp/)
 - [Autopilot Mode](https://amaiya.github.io/patchpal/usage/autopilot/) using [Ralph Wiggum loops](https://ghuntley.com/ralph/)
 - [Project Memory](https://amaiya.github.io/patchpal/features/memory/) automatically loads project context from `~/.patchpal/repos/<repo-name>/MEMORY.md` at startup.
 
