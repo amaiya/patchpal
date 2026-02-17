@@ -17,6 +17,7 @@ Most recent releases are shown at the top. Each release shows:
 
 ### fixed:
 - Fix "Cannot load MCP tools from within an async context" in Jupyter notebook
+- Fix broken tests
 
 
 ## 0.14.1 (2026-02-16)
