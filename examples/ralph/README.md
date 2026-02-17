@@ -23,6 +23,7 @@ The documentation covers:
 ```
 examples/ralph/
 ├── README.md                           # This file
+├── ralph.py                            # Standalone, modifiable script for running Ralph Wiggum method
 ├── simple_autopilot_example.py         # Simple example using autopilot as Python library
 ├── multi_phase_todo_api_example.py     # Multi-phase example (sequential phases)
 └── prompts/                            # Example prompt templates
