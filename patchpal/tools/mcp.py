@@ -173,7 +173,23 @@ def load_mcp_tools(config_path: Optional[Path] = None) -> Tuple[List[Dict], Dict
         return [], {}
 
     try:
-        return asyncio.run(_load_mcp_tools_async(config_path))
+        # Check if there's already a running event loop (e.g., in Jupyter)
+        try:
+            asyncio.get_running_loop()
+            # We're in an async context (like Jupyter), create a task instead
+            import nest_asyncio
+
+            nest_asyncio.apply()
+            return asyncio.run(_load_mcp_tools_async(config_path))
+        except ImportError:
+            # nest_asyncio not available, fall back to creating task
+            print(
+                "Warning: Running in async context without nest_asyncio. Install with: pip install nest-asyncio"
+            )
+            return [], {}
+        except RuntimeError:
+            # No running loop, safe to use asyncio.run normally
+            return asyncio.run(_load_mcp_tools_async(config_path))
     except Exception as e:
         print(f"Warning: Failed to load MCP tools: {e}")
         return [], {}
