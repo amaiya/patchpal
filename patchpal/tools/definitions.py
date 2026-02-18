@@ -43,7 +43,7 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "read_file",
-            "description": "Read the contents of a file. Can read files anywhere on the system (repository files, system configs like /etc/fstab, logs, etc.) for automation and debugging. Supports PDF, DOCX, PPTX extraction. Sensitive files (.env, credentials) are blocked for safety.",
+            "description": "Read the contents of a file. Can read files anywhere on the system (repository files, system configs like /etc/fstab, logs, etc.) for automation and debugging. Supports text files, images (PNG, JPG, GIF, etc.), and documents (PDF, DOCX, PPTX) with automatic format detection. Images are returned as base64 data URLs for vision model analysis. Sensitive files (.env, credentials) are blocked for safety.",
             "parameters": {
                 "type": "object",
                 "properties": {

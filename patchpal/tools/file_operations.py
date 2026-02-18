@@ -27,13 +27,13 @@ def read_file(path: str) -> str:
     """
     Read the contents of a file.
 
-    Supports text files and documents (PDF, DOCX, PPTX) with automatic text extraction.
+    Supports text files, images, and documents (PDF, DOCX, PPTX) with automatic processing.
 
     Args:
         path: Path to the file (relative to repository root or absolute)
 
     Returns:
-        The file contents as a string (text extracted from documents)
+        The file contents as a string (text extracted from documents, base64 for images)
 
     Raises:
         ValueError: If file is too large, unsupported binary format, or sensitive
@@ -46,6 +46,74 @@ def read_file(path: str) -> str:
     size = p.stat().st_size
     mime_type, _ = mimetypes.guess_type(str(p))
     ext = p.suffix.lower()
+
+    # Image formats - return as base64 data URL for vision models
+    image_extensions = {".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp", ".svg", ".ico"}
+    if ext in image_extensions or (mime_type and mime_type.startswith("image/")):
+        # For SVG, return as text since it's XML-based
+        if ext == ".svg" or mime_type == "image/svg+xml":
+            # SVG is text, so apply normal size limit
+            if size > MAX_FILE_SIZE:
+                raise ValueError(
+                    f"SVG file too large: {size:,} bytes (max {MAX_FILE_SIZE:,} bytes)\n"
+                    f"Set PATCHPAL_MAX_FILE_SIZE env var to increase"
+                )
+            content = p.read_text(encoding="utf-8", errors="replace")
+            audit_logger.info(f"READ: {path} ({size} bytes, SVG as text)")
+            return content
+
+        # For raster images, allow larger files (up to 10MB) since they're for vision models
+        # Vision APIs have their own limits and will resize as needed
+        max_image_size = int(os.getenv("PATCHPAL_MAX_IMAGE_SIZE", 10 * 1024 * 1024))  # 10MB default
+        if size > max_image_size:
+            raise ValueError(
+                f"Image file too large: {size:,} bytes (max {max_image_size:,} bytes)\n"
+                f"Set PATCHPAL_MAX_IMAGE_SIZE env var to increase\n"
+                f"Note: Most vision APIs resize images automatically, so smaller images are recommended"
+            )
+
+        # Also check estimated base64 size (images grow ~33% when encoded)
+        # This prevents triggering generic tool output truncation
+        estimated_base64_size = int(size * 1.34)  # 33% overhead + small buffer
+        max_tool_output_chars = int(os.getenv("PATCHPAL_MAX_TOOL_OUTPUT_CHARS", 100000))
+        if estimated_base64_size > max_tool_output_chars:
+            raise ValueError(
+                f"Image too large for context window: {size:,} bytes → ~{estimated_base64_size:,} chars when base64 encoded\n"
+                f"Maximum tool output size: {max_tool_output_chars:,} chars (set via PATCHPAL_MAX_TOOL_OUTPUT_CHARS)\n"
+                f"Recommendations:\n"
+                f"  - Use a smaller/compressed image (current: {size / 1024 / 1024:.1f}MB)\n"
+                f"  - Or increase: export PATCHPAL_MAX_TOOL_OUTPUT_CHARS={estimated_base64_size * 2}\n"
+                f"Note: Vision APIs resize large images automatically"
+            )
+
+        # Encode as base64
+        import base64
+
+        content_bytes = p.read_bytes()
+        b64_data = base64.b64encode(content_bytes).decode("utf-8")
+
+        # Determine MIME type
+        if mime_type:
+            image_mime = mime_type
+        elif ext == ".jpg" or ext == ".jpeg":
+            image_mime = "image/jpeg"
+        elif ext == ".png":
+            image_mime = "image/png"
+        elif ext == ".gif":
+            image_mime = "image/gif"
+        elif ext == ".bmp":
+            image_mime = "image/bmp"
+        elif ext == ".webp":
+            image_mime = "image/webp"
+        elif ext == ".ico":
+            image_mime = "image/x-icon"
+        else:
+            image_mime = "image/png"  # fallback
+
+        audit_logger.info(f"READ: {path} ({size} bytes, IMAGE {image_mime})")
+
+        # Return in data URL format that vision models can understand
+        return f"data:{image_mime};base64,{b64_data}"
 
     # For document formats (PDF/DOCX/PPTX), extract text first, then check extracted size
     # This allows large binary documents as long as the extracted text fits in context

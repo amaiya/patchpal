@@ -1290,6 +1290,9 @@ It's currently empty (just the template). The file is automatically loaded at se
                                 f"\033[1;33m⚠️  Tool output truncated: {result_size:,} chars → {MAX_TOOL_OUTPUT_CHARS:,} chars\033[0m"
                             )
 
+                    # Check if result contains an image (data URL)
+                    is_image_result = result_str.startswith("data:image/")
+
                     self.messages.append(
                         {
                             "role": "tool",
@@ -1300,7 +1303,11 @@ It's currently empty (just the template). The file is automatically loaded at se
                     )
 
                     # Show tool result summary (always visible for better debugging)
-                    if (
+                    if is_image_result:
+                        # For image results, show a friendly message
+                        image_size = len(result_str)
+                        print(f"\033[2m   → Image loaded ({image_size:,} chars base64)\033[0m")
+                    elif (
                         tool_name.startswith("huggingface_")
                         or "_mcp_" in tool_name
                         or tool_name.startswith("mcp_")

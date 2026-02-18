@@ -23,7 +23,15 @@ export PATCHPAL_REQUIRE_PERMISSION=true      # Prompt before executing commands/
 
 # File Safety
 export PATCHPAL_MAX_FILE_SIZE=512000         # Maximum file size in bytes for read/write (default: 500KB)
+                                             # Applies to: text files, SVG files
                                              # Reduced from 10MB to prevent context window explosions
+export PATCHPAL_MAX_IMAGE_SIZE=10485760      # Maximum image file size in bytes (default: 10MB)
+                                             # Applies to: PNG, JPG, GIF, BMP, WEBP (not SVG)
+                                             # Note: Images grow ~33% when base64 encoded
+                                             # A 4MB image → ~5.3MB base64 string
+                                             # Also limited by PATCHPAL_MAX_TOOL_OUTPUT_CHARS (100K default)
+                                             # Practical limit: ~75KB images with default settings
+                                             # Vision APIs resize images automatically, so smaller is recommended
 export PATCHPAL_MAX_TOOL_OUTPUT_LINES=2000   # Maximum lines per tool output (default: 2000)
                                              # Prevents any single tool from dominating context
 export PATCHPAL_MAX_TOOL_OUTPUT_CHARS=100000 # Maximum characters per tool output (default: 100K)
@@ -151,4 +159,20 @@ patchpal
 export PATCHPAL_REQUIRE_PERMISSION=false     # ⚠️  Disables all permission prompts
 export PATCHPAL_MAX_ITERATIONS=200           # Allow longer runs
 patchpal
+```
+
+**Image Analysis with Vision Models:**
+```bash
+# Use a vision-capable model
+export PATCHPAL_MODEL=openai/gpt-4o           # or anthropic/claude-sonnet-4-5
+
+# For larger images, increase BOTH limits:
+export PATCHPAL_MAX_IMAGE_SIZE=$((20*1024*1024))      # 20MB file size
+export PATCHPAL_MAX_TOOL_OUTPUT_CHARS=$((20*1024*1024))  # 20MB base64 output
+
+patchpal
+# Then: "Look at screenshot.png and explain what's wrong"
+
+# Tip: For best performance, compress images before analysis
+# Vision APIs resize large images automatically anyway
 ```
