@@ -30,6 +30,9 @@ def temp_repo(monkeypatch):
 
         monkeypatch.setattr(common, "REPO_ROOT", tmpdir_path)
 
+        # Disable permission prompts during tests
+        monkeypatch.setenv("PATCHPAL_REQUIRE_PERMISSION", "false")
+
         # Mock permission manager to auto-grant all permissions in tests
         class MockPermissionManager:
             def request_permission(self, *args, **kwargs):
@@ -414,9 +417,16 @@ def test_apply_patch_simple(temp_repo):
 
 
 def test_apply_patch_not_found(temp_repo):
-    """Test error when file doesn't exist."""
-    with pytest.raises(ValueError, match="not found"):
-        apply_patch("nonexistent.txt", "new content")
+    """Test that apply_patch can create new files."""
+    result = apply_patch("nonexistent.txt", "new content")
+
+    # Should succeed in creating the file
+    assert "success" in result.lower() or "applied" in result.lower()
+
+    # Verify file was created
+    assert (temp_repo / "nonexistent.txt").exists()
+    content = (temp_repo / "nonexistent.txt").read_text()
+    assert content == "new content"
 
 
 def test_run_shell_basic(temp_repo):

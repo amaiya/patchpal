@@ -1364,42 +1364,42 @@ It's currently empty (just the template). The file is automatically loaded at se
                             or result_size > MAX_TOOL_OUTPUT_CHARS
                         ):
                             truncated_by_lines = total_lines > MAX_TOOL_OUTPUT_LINES
-                        truncated_by_chars = result_size > MAX_TOOL_OUTPUT_CHARS
+                            truncated_by_chars = result_size > MAX_TOOL_OUTPUT_CHARS
 
-                        # Truncate to limits
-                        truncated_lines = lines[:MAX_TOOL_OUTPUT_LINES]
-                        truncated_str = "\n".join(truncated_lines)
+                            # Truncate to limits
+                            truncated_lines = lines[:MAX_TOOL_OUTPUT_LINES]
+                            truncated_str = "\n".join(truncated_lines)
 
-                        # Also enforce character limit
-                        if len(truncated_str) > MAX_TOOL_OUTPUT_CHARS:
-                            truncated_str = truncated_str[:MAX_TOOL_OUTPUT_CHARS]
+                            # Also enforce character limit
+                            if len(truncated_str) > MAX_TOOL_OUTPUT_CHARS:
+                                truncated_str = truncated_str[:MAX_TOOL_OUTPUT_CHARS]
 
-                        removed_lines = total_lines - len(truncated_str.split("\n"))
+                            removed_lines = total_lines - len(truncated_str.split("\n"))
 
-                        if truncated_by_lines:
-                            truncation_note = f"\n\n... {removed_lines:,} lines truncated ({total_lines:,} total lines) ...\n\n"
-                        else:
-                            truncation_note = f"\n\n... output truncated to {MAX_TOOL_OUTPUT_CHARS:,} characters (was {result_size:,}) ...\n\n"
+                            if truncated_by_lines:
+                                truncation_note = f"\n\n... {removed_lines:,} lines truncated ({total_lines:,} total lines) ...\n\n"
+                            else:
+                                truncation_note = f"\n\n... output truncated to {MAX_TOOL_OUTPUT_CHARS:,} characters (was {result_size:,}) ...\n\n"
 
-                        # Add helpful hint message
-                        hint = (
-                            f"{truncation_note}"
-                            f"Output exceeded limits ({MAX_TOOL_OUTPUT_LINES:,} lines or {MAX_TOOL_OUTPUT_CHARS:,} characters).\n"
-                            f"Consider:\n"
-                            f"- Using grep() to search files directly\n"
-                            f"- Using read_lines() to read files in chunks\n"
-                            f"- Refining the command to filter output (e.g., | grep, | head)"
-                        )
-
-                        result_str = truncated_str + hint
-                        if truncated_by_lines:
-                            print(
-                                f"\033[1;33m⚠️  Tool output truncated: {total_lines:,} lines → {MAX_TOOL_OUTPUT_LINES:,} lines\033[0m"
+                            # Add helpful hint message
+                            hint = (
+                                f"{truncation_note}"
+                                f"Output exceeded limits ({MAX_TOOL_OUTPUT_LINES:,} lines or {MAX_TOOL_OUTPUT_CHARS:,} characters).\n"
+                                f"Consider:\n"
+                                f"- Using grep() to search files directly\n"
+                                f"- Using read_lines() to read files in chunks\n"
+                                f"- Refining the command to filter output (e.g., | grep, | head)"
                             )
-                        elif truncated_by_chars:
-                            print(
-                                f"\033[1;33m⚠️  Tool output truncated: {result_size:,} chars → {MAX_TOOL_OUTPUT_CHARS:,} chars\033[0m"
-                            )
+
+                            result_str = truncated_str + hint
+                            if truncated_by_lines:
+                                print(
+                                    f"\033[1;33m⚠️  Tool output truncated: {total_lines:,} lines → {MAX_TOOL_OUTPUT_LINES:,} lines\033[0m"
+                                )
+                            elif truncated_by_chars:
+                                print(
+                                    f"\033[1;33m⚠️  Tool output truncated: {result_size:,} chars → {MAX_TOOL_OUTPUT_CHARS:,} chars\033[0m"
+                                )
 
                         # Add truncated/normal text result to messages
                         self.messages.append(
@@ -1414,11 +1414,7 @@ It's currently empty (just the template). The file is automatically loaded at se
                     # is_image_result already set above
 
                     # Show tool result summary (always visible for better debugging)
-                    if is_image_result:
-                        # For image results, show a friendly message
-                        image_size = len(result_str)
-                        print(f"\033[2m   → Image loaded ({image_size:,} chars base64)\033[0m")
-                    elif (
+                    if not is_image_result and (
                         tool_name.startswith("huggingface_")
                         or "_mcp_" in tool_name
                         or tool_name.startswith("mcp_")
