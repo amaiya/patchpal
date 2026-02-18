@@ -64,26 +64,13 @@ def read_file(path: str) -> str:
 
         # For raster images, allow larger files (up to 10MB) since they're for vision models
         # Vision APIs have their own limits and will resize as needed
+        # Images are formatted as multimodal content by the agent, bypassing tool output truncation
         max_image_size = int(os.getenv("PATCHPAL_MAX_IMAGE_SIZE", 10 * 1024 * 1024))  # 10MB default
         if size > max_image_size:
             raise ValueError(
                 f"Image file too large: {size:,} bytes (max {max_image_size:,} bytes)\n"
                 f"Set PATCHPAL_MAX_IMAGE_SIZE env var to increase\n"
                 f"Note: Most vision APIs resize images automatically, so smaller images are recommended"
-            )
-
-        # Also check estimated base64 size (images grow ~33% when encoded)
-        # This prevents triggering generic tool output truncation
-        estimated_base64_size = int(size * 1.34)  # 33% overhead + small buffer
-        max_tool_output_chars = int(os.getenv("PATCHPAL_MAX_TOOL_OUTPUT_CHARS", 100000))
-        if estimated_base64_size > max_tool_output_chars:
-            raise ValueError(
-                f"Image too large for context window: {size:,} bytes → ~{estimated_base64_size:,} chars when base64 encoded\n"
-                f"Maximum tool output size: {max_tool_output_chars:,} chars (set via PATCHPAL_MAX_TOOL_OUTPUT_CHARS)\n"
-                f"Recommendations:\n"
-                f"  - Use a smaller/compressed image (current: {size / 1024 / 1024:.1f}MB)\n"
-                f"  - Or increase: export PATCHPAL_MAX_TOOL_OUTPUT_CHARS={estimated_base64_size * 2}\n"
-                f"Note: Vision APIs resize large images automatically"
             )
 
         # Encode as base64
@@ -112,8 +99,9 @@ def read_file(path: str) -> str:
 
         audit_logger.info(f"READ: {path} ({size} bytes, IMAGE {image_mime})")
 
-        # Return in data URL format that vision models can understand
-        return f"data:{image_mime};base64,{b64_data}"
+        # Return IMAGE_DATA format that agent will convert to multimodal content
+        # This bypasses tool output truncation limits (PATCHPAL_MAX_TOOL_OUTPUT_CHARS)
+        return f"IMAGE_DATA:{image_mime}:{b64_data}"
 
     # For document formats (PDF/DOCX/PPTX), extract text first, then check extracted size
     # This allows large binary documents as long as the extracted text fits in context

@@ -77,7 +77,26 @@ class TokenEstimator:
             tokens += 4  # Role overhead
 
         if "content" in message and message["content"]:
-            tokens += self.estimate_tokens(str(message["content"]))
+            content = message["content"]
+
+            # Handle multimodal content (list of content blocks)
+            if isinstance(content, list):
+                for block in content:
+                    if isinstance(block, dict):
+                        if block.get("type") == "text":
+                            # Text content
+                            tokens += self.estimate_tokens(str(block.get("text", "")))
+                        elif block.get("type") == "image_url":
+                            # Image content - vision models charge ~85-170 tokens per image
+                            # depending on detail level (low/high/auto)
+                            # Use 170 as conservative estimate
+                            tokens += 170
+                    else:
+                        # Fallback for unexpected structure
+                        tokens += self.estimate_tokens(str(block))
+            else:
+                # Regular text content
+                tokens += self.estimate_tokens(str(content))
 
         # Tool calls
         if message.get("tool_calls"):

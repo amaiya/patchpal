@@ -481,10 +481,16 @@ It's currently empty (just the template). The file is automatically loaded at se
         pruned_chars = 0
         for msg in self.messages:
             if msg.get("role") == "tool" and msg.get("content"):
-                content_size = len(str(msg["content"]))
+                content = msg["content"]
+
+                # Skip multimodal content (images) - they should not be pruned
+                if isinstance(content, list):
+                    continue
+
+                content_size = len(str(content))
                 if content_size > max_chars:
                     original_size = content_size
-                    msg["content"] = str(msg["content"])[:max_chars] + truncation_message
+                    msg["content"] = str(content)[:max_chars] + truncation_message
                     pruned_chars += original_size - len(msg["content"])
         return pruned_chars
 
@@ -1242,17 +1248,60 @@ It's currently empty (just the template). The file is automatically loaded at se
                                 print(f"\033[1;31m✗ {tool_name}: {e}\033[0m")
 
                     # Add tool result to messages
-                    # Apply universal output limits to prevent context explosions
                     result_str = str(tool_result)
                     result_size = len(result_str)
-                    lines = result_str.split("\n")
-                    total_lines = len(lines)
 
-                    # Check if output exceeds universal limits
-                    from patchpal.tools import MAX_TOOL_OUTPUT_CHARS, MAX_TOOL_OUTPUT_LINES
+                    # Check if result contains an image (IMAGE_DATA format)
+                    # Images bypass truncation and are formatted as multimodal content
+                    is_image_result = result_str.startswith("IMAGE_DATA:")
 
-                    if total_lines > MAX_TOOL_OUTPUT_LINES or result_size > MAX_TOOL_OUTPUT_CHARS:
-                        truncated_by_lines = total_lines > MAX_TOOL_OUTPUT_LINES
+                    if is_image_result:
+                        # Parse: IMAGE_DATA:mime:base64data
+                        parts = result_str.split(":", 2)
+                        if len(parts) == 3:
+                            _, mime, b64_data = parts
+                            # Format as multimodal content for vision models
+                            self.messages.append(
+                                {
+                                    "role": "tool",
+                                    "tool_call_id": tool_call.id,
+                                    "name": tool_name,
+                                    "content": [
+                                        {"type": "text", "text": "Image loaded successfully"},
+                                        {
+                                            "type": "image_url",
+                                            "image_url": {"url": f"data:{mime};base64,{b64_data}"},
+                                        },
+                                    ],
+                                }
+                            )
+                            # Show friendly message
+                            print(
+                                f"\033[2m   → Image loaded ({len(b64_data):,} chars base64, formatted as multimodal content)\033[0m"
+                            )
+                        else:
+                            # Fallback if format is wrong - treat as regular text
+                            self.messages.append(
+                                {
+                                    "role": "tool",
+                                    "tool_call_id": tool_call.id,
+                                    "name": tool_name,
+                                    "content": result_str,
+                                }
+                            )
+                    else:
+                        # Apply universal output limits to text results
+                        lines = result_str.split("\n")
+                        total_lines = len(lines)
+
+                        # Check if output exceeds universal limits
+                        from patchpal.tools import MAX_TOOL_OUTPUT_CHARS, MAX_TOOL_OUTPUT_LINES
+
+                        if (
+                            total_lines > MAX_TOOL_OUTPUT_LINES
+                            or result_size > MAX_TOOL_OUTPUT_CHARS
+                        ):
+                            truncated_by_lines = total_lines > MAX_TOOL_OUTPUT_LINES
                         truncated_by_chars = result_size > MAX_TOOL_OUTPUT_CHARS
 
                         # Truncate to limits
@@ -1290,17 +1339,17 @@ It's currently empty (just the template). The file is automatically loaded at se
                                 f"\033[1;33m⚠️  Tool output truncated: {result_size:,} chars → {MAX_TOOL_OUTPUT_CHARS:,} chars\033[0m"
                             )
 
-                    # Check if result contains an image (data URL)
-                    is_image_result = result_str.startswith("data:image/")
+                        # Add truncated/normal text result to messages
+                        self.messages.append(
+                            {
+                                "role": "tool",
+                                "tool_call_id": tool_call.id,
+                                "name": tool_name,
+                                "content": result_str,
+                            }
+                        )
 
-                    self.messages.append(
-                        {
-                            "role": "tool",
-                            "tool_call_id": tool_call.id,
-                            "name": tool_name,
-                            "content": result_str,
-                        }
-                    )
+                    # is_image_result already set above
 
                     # Show tool result summary (always visible for better debugging)
                     if is_image_result:

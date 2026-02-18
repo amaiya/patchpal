@@ -144,12 +144,14 @@ def test_read_file_image_png(temp_repo):
 
     result = read_file("test.png")
 
-    # Should be a data URL
-    assert result.startswith("data:image/png;base64,")
-    # Should contain base64 encoded data
-    assert "base64," in result
-    # Should not be empty after the prefix
-    assert len(result) > 30
+    # Should be in IMAGE_DATA format
+    assert result.startswith("IMAGE_DATA:image/png:")
+    # Should contain base64 data after the second colon
+    parts = result.split(":", 2)
+    assert len(parts) == 3
+    assert parts[0] == "IMAGE_DATA"
+    assert parts[1] == "image/png"
+    assert len(parts[2]) > 0  # Has base64 data
 
 
 def test_read_file_image_jpeg(temp_repo):
@@ -162,7 +164,7 @@ def test_read_file_image_jpeg(temp_repo):
     result = read_file("test.jpg")
 
     # Should have JPEG MIME type
-    assert result.startswith("data:image/jpeg;base64,")
+    assert result.startswith("IMAGE_DATA:image/jpeg:")
 
 
 def test_read_file_svg_as_text(temp_repo):
@@ -196,32 +198,13 @@ def test_read_file_image_size_default(temp_repo):
     image_data = b"\xff\xd8\xff\xe0\x00\x10JFIF" + b"\x00" * (50 * 1024)
     (temp_repo / "small.jpg").write_bytes(image_data)
 
-    # Should succeed and return base64
+    # Should succeed and return IMAGE_DATA format
     result = read_file("small.jpg")
-    assert result.startswith("data:image/jpeg;base64,")
-    # Verify it's actually base64 encoded
-    assert len(result) > 50000  # Should have content
-
-
-def test_read_file_image_exceeds_output_limit(temp_repo, monkeypatch):
-    """Test that images are rejected if base64 output would exceed tool output limit."""
-    # Set a small tool output limit
-    monkeypatch.setenv("PATCHPAL_MAX_TOOL_OUTPUT_CHARS", "10000")
-
-    # Create a 100KB image - base64 will be ~134KB, exceeding 10K limit
-    large_image = b"\xff\xd8\xff\xe0\x00\x10JFIF" + b"\x00" * (100 * 1024)
-    (temp_repo / "toolarge.jpg").write_bytes(large_image)
-
-    # Need to reload to pick up env var
-    import importlib
-
-    import patchpal.tools.file_operations
-
-    importlib.reload(patchpal.tools.file_operations)
-    from patchpal.tools.file_operations import read_file as read_file_reloaded
-
-    with pytest.raises(ValueError, match="Image too large for context window"):
-        read_file_reloaded("toolarge.jpg")
+    assert result.startswith("IMAGE_DATA:image/jpeg:")
+    # Verify it has base64 data
+    parts = result.split(":", 2)
+    assert len(parts) == 3
+    assert len(parts[2]) > 50000  # Should have substantial base64 content
 
 
 def test_read_lines_single_line(temp_repo):
