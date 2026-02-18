@@ -160,15 +160,25 @@ patchpal
 
 **Image Analysis with Vision Models:**
 ```bash
-# Use a vision-capable model
-export PATCHPAL_MODEL=openai/gpt-4o           # or anthropic/claude-sonnet-4-5
-
-# Images up to 10MB work out of the box (multimodal formatting bypasses output limits)
-# For even larger images:
-export PATCHPAL_MAX_IMAGE_SIZE=$((20*1024*1024))      # 20MB file size
-
+# Anthropic/Claude (5MB limit via Bedrock or Direct API)
+export PATCHPAL_MODEL=anthropic/claude-3-5-sonnet-20241022
 patchpal
-# Then: "Look at screenshot.png and explain what's wrong"
+
+# OpenAI/GPT-4o (20MB limit)
+export PATCHPAL_MODEL=openai/gpt-4o
+patchpal
+
+# Both work the same way from user perspective:
+You: Look at screenshot.png and explain what's wrong
+
+# The agent automatically:
+# - Detects the model provider
+# - Formats images appropriately:
+#   * Anthropic: multimodal content in tool results
+#   * OpenAI: images injected as user messages (API workaround)
+
+# For images exceeding provider limits, increase PatchPal's limit:
+export PATCHPAL_MAX_IMAGE_SIZE=$((20*1024*1024))  # 20MB
 
 # Tip: Use compressed images (1-2MB) for faster processing
 # Vision APIs resize large images automatically anyway

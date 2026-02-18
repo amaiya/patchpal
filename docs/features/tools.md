@@ -5,14 +5,18 @@ The agent has the following tools:
 ## File Operations
 - **read_file**: Read contents of files in the repository
   - Supports text files, images (PNG, JPG, GIF, etc.), and documents (PDF, DOCX, PPTX)
-  - **Image Support**: When using vision-capable models (GPT-4o, Claude 3.5 Sonnet), images are automatically formatted as multimodal content
+  - **Image Support**: When using vision-capable models (GPT-4o, Claude 3.5 Sonnet), images are automatically formatted for the model
     - Example: Just mention image files in your prompt: "Look at screenshot.png and tell me what's wrong"
     - Supported formats: PNG, JPG, JPEG, GIF, BMP, WEBP (SVG returned as text)
     - The agent will automatically call `read_file` on image files when needed
     - **Size limits**:
       - Maximum file size: 10MB (configurable with `PATCHPAL_MAX_IMAGE_SIZE`)
-      - Images bypass tool output truncation limits (100K chars) via multimodal formatting
-      - Vision APIs resize large images automatically anyway
+      - Provider limits: OpenAI (20MB), Anthropic/Bedrock (5MB)
+      - Images bypass tool output truncation limits (100K chars)
+    - **Multi-provider support**:
+      - **Anthropic/Claude**: Images in tool results (multimodal content)
+      - **OpenAI/GPT**: Images injected as user messages (API limitation workaround)
+      - Automatic detection and formatting based on model provider
     - **Recommendation**: Use compressed images for faster processing (1-2MB optimal)
   - Text file limit: 500KB by default (configurable with `PATCHPAL_MAX_FILE_SIZE`)
   - For larger files, use `read_lines` or `grep` for targeted access

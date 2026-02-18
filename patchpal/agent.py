@@ -995,6 +995,38 @@ It's currently empty (just the template). The file is automatically loaded at se
                 }
             )
 
+            # For OpenAI: Inject any pending images as a user message
+            # OpenAI doesn't support images in tool results, so we collected them and inject here
+            if hasattr(self, "_pending_images") and self._pending_images:
+                image_content = [
+                    {
+                        "type": "text",
+                        "text": "Here are the image(s) from the tool result:",
+                    }
+                ]
+
+                for img in self._pending_images:
+                    image_content.append(
+                        {
+                            "type": "image_url",
+                            "image_url": {"url": f"data:{img['mime']};base64,{img['data']}"},
+                        }
+                    )
+
+                self.messages.append(
+                    {
+                        "role": "user",
+                        "content": image_content,
+                    }
+                )
+
+                print(
+                    f"\033[2m   → Injected {len(self._pending_images)} image(s) as user message for OpenAI\033[0m"
+                )
+
+                # Clear pending images
+                self._pending_images = []
+
             # Check if there are tool calls
             if hasattr(assistant_message, "tool_calls") and assistant_message.tool_calls:
                 # Print explanation text before executing tools (render as markdown)
@@ -1260,25 +1292,55 @@ It's currently empty (just the template). The file is automatically loaded at se
                         parts = result_str.split(":", 2)
                         if len(parts) == 3:
                             _, mime, b64_data = parts
-                            # Format as multimodal content for vision models
-                            self.messages.append(
-                                {
-                                    "role": "tool",
-                                    "tool_call_id": tool_call.id,
-                                    "name": tool_name,
-                                    "content": [
-                                        {"type": "text", "text": "Image loaded successfully"},
-                                        {
-                                            "type": "image_url",
-                                            "image_url": {"url": f"data:{mime};base64,{b64_data}"},
-                                        },
-                                    ],
-                                }
-                            )
-                            # Show friendly message
-                            print(
-                                f"\033[2m   → Image loaded ({len(b64_data):,} chars base64, formatted as multimodal content)\033[0m"
-                            )
+
+                            # OpenAI doesn't support images in tool results, only in user messages
+                            # We need to handle this differently for OpenAI vs other providers
+                            if self._is_openai_model():
+                                # For OpenAI: Add text-only tool result
+                                # Store image to inject as user message later
+                                self.messages.append(
+                                    {
+                                        "role": "tool",
+                                        "tool_call_id": tool_call.id,
+                                        "name": tool_name,
+                                        "content": "Image loaded successfully (see attached image below)",
+                                    }
+                                )
+
+                                # Store pending image to inject after assistant response
+                                if not hasattr(self, "_pending_images"):
+                                    self._pending_images = []
+                                self._pending_images.append(
+                                    {
+                                        "mime": mime,
+                                        "data": b64_data,
+                                    }
+                                )
+
+                                print(
+                                    f"\033[2m   → Image loaded ({len(b64_data):,} chars base64, will inject as user message for OpenAI)\033[0m"
+                                )
+                            else:
+                                # For Anthropic/Claude/others: Use multimodal content in tool result
+                                self.messages.append(
+                                    {
+                                        "role": "tool",
+                                        "tool_call_id": tool_call.id,
+                                        "name": tool_name,
+                                        "content": [
+                                            {"type": "text", "text": "Image loaded successfully"},
+                                            {
+                                                "type": "image_url",
+                                                "image_url": {
+                                                    "url": f"data:{mime};base64,{b64_data}"
+                                                },
+                                            },
+                                        ],
+                                    }
+                                )
+                                print(
+                                    f"\033[2m   → Image loaded ({len(b64_data):,} chars base64, formatted as multimodal content)\033[0m"
+                                )
                         else:
                             # Fallback if format is wrong - treat as regular text
                             self.messages.append(
