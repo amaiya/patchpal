@@ -7,6 +7,18 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
+## 0.14.3 (TBD)
+
+### new:
+- N/A
+
+### changed:
+- N/A
+
+### fixed:
+- Fixes `ask_user` display issue with markdown (#67)
+
+
 ## 0.14.2 (2026-02-17)
 
 ### new:

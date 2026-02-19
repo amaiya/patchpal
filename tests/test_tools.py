@@ -1791,6 +1791,26 @@ def test_ask_user_empty_options_list(monkeypatch):
         assert result == "Free form answer"
 
 
+def test_ask_user_with_markdown_code_block(monkeypatch):
+    """Test that code blocks in questions are rendered properly."""
+    from patchpal.tools import ask_user, reset_operation_counter
+
+    reset_operation_counter()
+
+    question_with_code = """Can you run this command?
+
+```python
+import os
+print(os.environ.get('SSL_CERT_FILE'))
+```
+"""
+
+    # Mock prompt to return an answer
+    with patch("prompt_toolkit.prompt", return_value="Done"):
+        result = ask_user(question_with_code)
+        assert result == "Done"
+
+
 # ============================================================================
 # Flexible edit_file Matching Strategy Tests
 # ============================================================================
