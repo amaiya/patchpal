@@ -227,6 +227,9 @@ def _supports_prompt_caching(model_id: str) -> bool:
     Returns:
         True if the model supports prompt caching
     """
+    if os.getenv("PATCHPAL_DISABLE_PROMPT_CACHING", "").lower() in ("true", "1", "yes"):
+        return False
+
     # Anthropic models support caching (direct API or via Bedrock)
     if "anthropic" in model_id.lower() or "claude" in model_id.lower():
         return True
@@ -921,22 +924,27 @@ It's currently empty (just the template). The file is automatically loaded at se
 
             # Use LiteLLM for all providers
             try:
-                # Build tool list (built-in + custom)
-                tools = list(TOOLS)
-                if self.custom_tools:
-                    from patchpal.tool_schema import function_to_tool_schema
+                # Build tool list (built-in + custom) unless disabled
+                tools = None
+                if os.getenv("PATCHPAL_DISABLE_TOOLS", "").lower() not in ("true", "1", "yes"):
+                    tools = list(TOOLS)
+                    if self.custom_tools:
+                        from patchpal.tool_schema import function_to_tool_schema
 
-                    for func in self.custom_tools:
-                        tools.append(function_to_tool_schema(func))
+                        for func in self.custom_tools:
+                            tools.append(function_to_tool_schema(func))
 
-                response = litellm.completion(
-                    model=self.model_id,
-                    messages=messages,
-                    tools=tools,
-                    tool_choice="auto",
-                    timeout=LLM_TIMEOUT,
+                completion_kwargs = {
+                    "model": self.model_id,
+                    "messages": messages,
+                    "timeout": LLM_TIMEOUT,
                     **self.litellm_kwargs,
-                )
+                }
+                if tools is not None:
+                    completion_kwargs["tools"] = tools
+                    completion_kwargs["tool_choice"] = "auto"
+
+                response = litellm.completion(**completion_kwargs)
 
                 # Track token usage from this LLM call
                 self.total_llm_calls += 1

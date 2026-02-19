@@ -13,7 +13,7 @@ Most recent releases are shown at the top. Each release shows:
 - N/A
 
 ### changed:
-- N/A
+- Added debugging options: `PATCHPAL_DISABLE_TOOLS` and `PATCHPAL_DISABLE_PROMPT_CACHING`
 
 ### fixed:
 - Fixes `ask_user` display issue with markdown (#67)
