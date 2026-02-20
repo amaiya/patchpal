@@ -7,6 +7,18 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
+## 0.15.1 (TBD)
+
+### new:
+- N/A
+
+### changed:
+- Updated `apply_patch` tool description and system prompt based on `gpt-oss-20b` mistakes with `apply_patch` (#71)
+
+### fixed:
+- N/A
+
+
 ## 0.15.0 (2026-02-20)
 
 ### new:

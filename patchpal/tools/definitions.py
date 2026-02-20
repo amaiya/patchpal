@@ -172,7 +172,7 @@ Tip: Read README first for context when exploring repositories.""",
         "type": "function",
         "function": {
             "name": "apply_patch",
-            "description": "Modify a file by replacing its contents. Primarily for repository files. Writing outside repository requires explicit user permission. Returns a unified diff of changes.",
+            "description": "Replace a file's entire contents with new content. You MUST provide the complete new file content as a string. Use this for large-scale changes or when rewriting multiple sections. For small single-string replacements, use edit_file instead. Returns a unified diff of changes.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -182,7 +182,7 @@ Tip: Read README first for context when exploring repositories.""",
                     },
                     "new_content": {
                         "type": "string",
-                        "description": "The complete new content for the file",
+                        "description": "The complete new file content (you must provide the entire file contents, not just changes)",
                     },
                 },
                 "required": ["path", "new_content"],
