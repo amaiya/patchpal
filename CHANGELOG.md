@@ -7,6 +7,18 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
+## 0.15.0 (2026-02-20)
+
+### new:
+- prune unnecessary tools in favor of safe shell commands (#69)
+
+### changed:
+- Use minimal ("simple") system prompt as default (#68)
+
+### fixed:
+- Fixes `ask_user` display issue with markdown (#67)
+
+
 ## 0.14.2 (2026-02-17)
 
 ### new:

@@ -118,20 +118,34 @@ def ask_user(question: str, options: Optional[list] = None) -> str:
     from prompt_toolkit import prompt
     from prompt_toolkit.formatted_text import FormattedText
     from rich.console import Console
+    from rich.markdown import Markdown
     from rich.panel import Panel
 
     console = Console()
 
-    # Format the question in a panel
+    # Format the question - use markdown rendering if it contains markdown syntax
     console.print()
-    console.print(
-        Panel(
-            question,
-            title="[bold cyan]Question from Agent[/bold cyan]",
-            border_style="cyan",
-            padding=(1, 2),
+
+    # Check if the question contains markdown code blocks or other markdown
+    has_markdown = any(marker in question for marker in ["```", "**", "##", "- ", "* ", "1. "])
+
+    if has_markdown:
+        # For markdown content, just use a simple header to keep code blocks copyable
+        console.print("[bold cyan]Question from Agent:[/bold cyan]")
+        console.print()
+        md = Markdown(question)
+        console.print(md)
+        console.print()
+    else:
+        # Simple text question in a panel
+        console.print(
+            Panel(
+                question,
+                title="[bold cyan]Question from Agent[/bold cyan]",
+                border_style="cyan",
+                padding=(1, 2),
+            )
         )
-    )
 
     # Show options if provided
     if options:

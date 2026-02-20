@@ -272,7 +272,9 @@ class TestPathTraversal:
         monkeypatch.setattr(patchpal.tools.common, "REPO_ROOT", repo_root)
 
         # Mock permission request to deny access
-        def mock_request_permission(self, tool_name, description, pattern=None, context=None):
+        def mock_request_permission(
+            self, tool_name, description, pattern=None, context=None, full_command=None
+        ):
             return False  # Deny permission
 
         monkeypatch.setattr(
@@ -308,7 +310,9 @@ class TestPathTraversal:
         monkeypatch.setattr(patchpal.tools.common, "REPO_ROOT", repo_root)
 
         # Mock permission request to deny access
-        def mock_request_permission(self, tool_name, description, pattern=None, context=None):
+        def mock_request_permission(
+            self, tool_name, description, pattern=None, context=None, full_command=None
+        ):
             return False  # Deny permission
 
         monkeypatch.setattr(
@@ -387,7 +391,9 @@ def test_comprehensive_security_demo(temp_repo, monkeypatch):
     # ----------------------------
     # Mock permission request
     # ----------------------------
-    def mock_request_permission(self, tool_name, description, pattern=None, context=None):
+    def mock_request_permission(
+        self, tool_name, description, pattern=None, context=None, full_command=None
+    ):
         # Deny write operations for paths outside repo
         if tool_name in ("apply_patch", "edit_file") and pattern:
             if pattern.endswith("/"):  # outside repo
@@ -434,7 +440,7 @@ def test_comprehensive_security_demo(temp_repo, monkeypatch):
     # ----------------------------
     read_file = patchpal.tools.read_file
     apply_patch = patchpal.tools.apply_patch
-    list_files = patchpal.tools.list_files
+    grep = patchpal.tools.grep
     run_shell = patchpal.tools.run_shell
 
     # ----------------------------
@@ -451,8 +457,8 @@ def test_comprehensive_security_demo(temp_repo, monkeypatch):
     )
     assert "normal.txt" in output
 
-    files = list_files()
-    assert "normal.txt" in files
+    result = grep("normal", file_glob="*.txt")
+    assert "normal.txt" in result
 
     # ----------------------------
     # 2. Sensitive files blocked
@@ -507,7 +513,7 @@ def test_comprehensive_security_demo(temp_repo, monkeypatch):
 
 ## Mock permission request to deny only for outside-repo writes
 
-# def mock_request_permission(self, tool_name, description, pattern=None, context=None):
+# def mock_request_permission(self, tool_name, description, pattern=None, context=None, full_command=None):
 ## Only deny write operations (apply_patch/edit_file) for paths outside repo
 # if tool_name in ("apply_patch", "edit_file") and pattern:
 ## New pattern format: directory-based (e.g., "tmp/") for files outside repo

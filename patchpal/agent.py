@@ -154,8 +154,7 @@ def _get_current_datetime_message() -> str:
 def _load_system_prompt() -> str:
     """Load system prompt from markdown file and substitute dynamic values.
 
-    Checks PATCHPAL_USE_SIMPLE_PROMPT and PATCHPAL_SYSTEM_PROMPT environment variables.
-    Priority: PATCHPAL_SYSTEM_PROMPT > PATCHPAL_USE_SIMPLE_PROMPT > default
+    Checks PATCHPAL_SYSTEM_PROMPT environment variable for custom prompt path.
 
     Note: Date/time is NOT included here - it's dynamically injected on each API call
     via _get_current_datetime_message() to prevent staleness in long sessions.
@@ -176,9 +175,6 @@ def _load_system_prompt() -> str:
             print("\033[1;33m   Falling back to default system prompt.\033[0m\n")
             # Fall back to default
             prompt_path = os.path.join(os.path.dirname(__file__), "prompts", "system_prompt.md")
-    elif os.getenv("PATCHPAL_USE_SIMPLE_PROMPT", "").lower() in ("true", "1", "yes"):
-        # Use simplified prompt
-        prompt_path = os.path.join(os.path.dirname(__file__), "prompts", "system_prompt_simple.md")
     else:
         # Use default prompt from package directory
         prompt_path = os.path.join(os.path.dirname(__file__), "prompts", "system_prompt.md")
@@ -1081,11 +1077,6 @@ It's currently empty (just the template). The file is automatically loaded at se
                                     f"\033[2m📖 Reading lines {start}-{end}: {tool_args.get('path', '')}\033[0m",
                                     flush=True,
                                 )
-                            elif tool_name == "count_lines":
-                                print(
-                                    f"\033[2m🔢 Counting lines: {tool_args.get('path', '')}\033[0m",
-                                    flush=True,
-                                )
                             elif tool_name == "code_structure":
                                 print(
                                     f"\033[2m🔍 Analyzing structure: {tool_args.get('path', '')}\033[0m",
@@ -1106,8 +1097,6 @@ It's currently empty (just the template). The file is automatically loaded at se
                                     f"\033[2m🗺️  Generating repository map (max {max_files} files{patterns})...\033[0m",
                                     flush=True,
                                 )
-                            elif tool_name == "list_files":
-                                print("\033[2m📁 Listing files...\033[0m", flush=True)
                             elif tool_name == "get_file_info":
                                 print(
                                     f"\033[2m📊 Getting info: {tool_args.get('path', '')}\033[0m",
@@ -1123,28 +1112,9 @@ It's currently empty (just the template). The file is automatically loaded at se
                                     f"\033[2m📝 Patching: {tool_args.get('path', '')}\033[0m",
                                     flush=True,
                                 )
-                            elif tool_name == "git_status":
-                                print("\033[2m🔀 Git status...\033[0m", flush=True)
-                            elif tool_name == "git_diff":
-                                print(
-                                    f"\033[2m🔀 Git diff{': ' + tool_args.get('path', '') if tool_args.get('path') else '...'}\033[0m",
-                                    flush=True,
-                                )
-                            elif tool_name == "git_log":
-                                print("\033[2m🔀 Git log...\033[0m", flush=True)
                             elif tool_name == "grep":
                                 print(
                                     f"\033[2m🔍 Searching: {tool_args.get('pattern', '')}\033[0m",
-                                    flush=True,
-                                )
-                            elif tool_name == "find_files":
-                                print(
-                                    f"\033[2m🔍 Finding: {tool_args.get('pattern', '')}\033[0m",
-                                    flush=True,
-                                )
-                            elif tool_name == "tree":
-                                print(
-                                    f"\033[2m🌳 Tree: {tool_args.get('path', '.')}\033[0m",
                                     flush=True,
                                 )
                             elif tool_name == "list_skills":

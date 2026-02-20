@@ -137,7 +137,7 @@ def run_shell(cmd: str) -> str:
 
     # Pass working_dir separately for display purposes
     if not permission_manager.request_permission(
-        "run_shell", description, pattern=pattern, context=working_dir
+        "run_shell", description, pattern=pattern, context=working_dir, full_command=cmd
     ):
         return "Operation cancelled by user."
 

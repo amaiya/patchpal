@@ -62,32 +62,41 @@ def test_agent_has_correct_tools():
     """Test that the agent has the correct tools defined."""
     from patchpal.agent import TOOL_FUNCTIONS, TOOLS
 
-    # Verify we have 27 tools (original 17 + 6 TODO tools + 1 ask_user + 1 code_structure + 1 get_repo_map + 1 count_lines)
-    assert len(TOOLS) == 27
-    assert len(TOOL_FUNCTIONS) == 27
+    # Verify we have 20 built-in tools (removed 7 tools: count_lines, list_files, find_files, tree, git_status, git_diff, git_log)
+    assert len(TOOLS) == 20
+    assert len(TOOL_FUNCTIONS) == 20
 
     # Verify tool names
     tool_names = [tool["function"]["name"] for tool in TOOLS]
+    # File operations
     assert "read_file" in tool_names
     assert "read_lines" in tool_names
-    assert "count_lines" in tool_names
+    assert "get_file_info" in tool_names
+    # Code analysis
     assert "code_structure" in tool_names
     assert "get_repo_map" in tool_names
-    assert "list_files" in tool_names
-    assert "get_file_info" in tool_names
-    assert "find_files" in tool_names
-    assert "tree" in tool_names
+    # File editing
     assert "edit_file" in tool_names
     assert "apply_patch" in tool_names
-    assert "git_status" in tool_names
-    assert "git_diff" in tool_names
-    assert "git_log" in tool_names
+    # Search
     assert "grep" in tool_names
+    # Skills
     assert "list_skills" in tool_names
     assert "use_skill" in tool_names
+    # Web tools
     assert "web_search" in tool_names
     assert "web_fetch" in tool_names
+    # Shell
     assert "run_shell" in tool_names
+    # TODO tools (6)
+    assert "todo_add" in tool_names
+    assert "todo_list" in tool_names
+    assert "todo_complete" in tool_names
+    assert "todo_update" in tool_names
+    assert "todo_remove" in tool_names
+    assert "todo_clear" in tool_names
+    # User interaction
+    assert "ask_user" in tool_names
     # New TODO tools
     assert "todo_add" in tool_names
     assert "todo_list" in tool_names
@@ -103,25 +112,16 @@ def test_agent_system_prompt():
     """Test that the agent has proper system prompt."""
     from patchpal.agent import SYSTEM_PROMPT, _get_current_datetime_message
 
-    # Verify system prompt has key principles (tools are provided via API, not in prompt)
+    # Verify system prompt has key principles
     assert "expert software engineer" in SYSTEM_PROMPT.lower()
-    assert "avoid over-engineering" in SYSTEM_PROMPT.lower()
-    assert "read before modifying" in SYSTEM_PROMPT.lower()
-
-    # Verify system prompt mentions strategic tool guidance
-    assert "get_repo_map" in SYSTEM_PROMPT  # Strategic advice to use it FIRST
-    assert "todo_add" in SYSTEM_PROMPT  # Guidance on breaking down tasks
-    assert "ask_user" in SYSTEM_PROMPT  # Guidance on when to ask for clarification
+    assert "read files before editing" in SYSTEM_PROMPT.lower()
+    assert "security" in SYSTEM_PROMPT.lower()
+    assert "concise" in SYSTEM_PROMPT.lower()
 
     # Verify dynamic date/time message function works correctly
     datetime_msg = _get_current_datetime_message()
     assert "Current Date and Time" in datetime_msg
     assert "Today is" in datetime_msg
-
-    # Verify key behavioral sections are present
-    assert "Response Brevity" in SYSTEM_PROMPT
-    assert "Proactiveness Balance" in SYSTEM_PROMPT
-    assert "Security Policy" in SYSTEM_PROMPT
 
 
 def test_create_agent_bedrock_env_setup(monkeypatch):
@@ -207,11 +207,11 @@ def test_agent_run_with_tool_call(monkeypatch):
     """Test agent.run() with a tool call."""
     from patchpal.agent import create_agent
 
-    # First response: agent wants to call list_files
+    # First response: agent wants to call read_file
     tool_call = MagicMock()
     tool_call.id = "call_123"
-    tool_call.function.name = "list_files"
-    tool_call.function.arguments = "{}"
+    tool_call.function.name = "read_file"
+    tool_call.function.arguments = '{"path": "test.py"}'
 
     mock_response1 = MagicMock()
     mock_response1.choices = [MagicMock()]
@@ -223,18 +223,18 @@ def test_agent_run_with_tool_call(monkeypatch):
     mock_response2 = MagicMock()
     mock_response2.choices = [MagicMock()]
     mock_response2.choices[0].message = MagicMock()
-    mock_response2.choices[0].message.content = "Found 3 files"
+    mock_response2.choices[0].message.content = "The file contains Python code"
     mock_response2.choices[0].message.tool_calls = None
 
     with patch("patchpal.agent.litellm.completion", side_effect=[mock_response1, mock_response2]):
-        with patch("patchpal.tools.list_files", return_value=["file1.py", "file2.py", "file3.py"]):
+        with patch("patchpal.tools.read_file", return_value="def hello(): pass"):
             agent = create_agent()
             # Disable permissions for test
             monkeypatch.setenv("PATCHPAL_REQUIRE_PERMISSION", "false")
 
-            result = agent.run("List files")
+            result = agent.run("Read test.py")
 
-            assert result == "Found 3 files"
+            assert result == "The file contains Python code"
             # Should have: user message, assistant with tool call, tool result, assistant response
             assert len(agent.messages) == 4
 
@@ -724,8 +724,8 @@ def test_agent_keyboard_interrupt_after_successful_retry(monkeypatch):
     # First call: return a tool call
     tool_call = MagicMock()
     tool_call.id = "call_xyz"
-    tool_call.function.name = "list_files"
-    tool_call.function.arguments = "{}"
+    tool_call.function.name = "read_file"
+    tool_call.function.arguments = '{"path": "test.py"}'
 
     mock_response_1 = MagicMock()
     mock_response_1.choices = [MagicMock()]
@@ -737,23 +737,23 @@ def test_agent_keyboard_interrupt_after_successful_retry(monkeypatch):
     mock_response_2 = MagicMock()
     mock_response_2.choices = [MagicMock()]
     mock_response_2.choices[0].message = MagicMock()
-    mock_response_2.choices[0].message.content = "I found 3 files."
+    mock_response_2.choices[0].message.content = "I found the Python code."
     mock_response_2.choices[0].message.tool_calls = None
 
-    # Mock list_files to raise interrupt first, then succeed
+    # Mock read_file to raise interrupt first, then succeed
     from patchpal.agent import TOOL_FUNCTIONS
 
-    original_list_files = TOOL_FUNCTIONS["list_files"]
+    original_read_file = TOOL_FUNCTIONS["read_file"]
 
     call_count = [0]
 
-    def mock_list_files_conditional():
+    def mock_read_file_conditional(path):
         call_count[0] += 1
         if call_count[0] == 1:
             raise KeyboardInterrupt()
-        return ["file1.py", "file2.py", "file3.py"]
+        return "def hello(): pass"
 
-    TOOL_FUNCTIONS["list_files"] = mock_list_files_conditional
+    TOOL_FUNCTIONS["read_file"] = mock_read_file_conditional
 
     try:
         with patch(
@@ -763,7 +763,7 @@ def test_agent_keyboard_interrupt_after_successful_retry(monkeypatch):
 
             # First run: should be interrupted
             try:
-                agent.run("List files")
+                agent.run("Read test.py")
                 assert False, "Expected KeyboardInterrupt"
             except KeyboardInterrupt:
                 pass
@@ -778,10 +778,10 @@ def test_agent_keyboard_interrupt_after_successful_retry(monkeypatch):
             result = agent.run("Try again")
 
             # Should complete successfully
-            assert result == "I found 3 files."
+            assert result == "I found the Python code."
 
     finally:
-        TOOL_FUNCTIONS["list_files"] = original_list_files
+        TOOL_FUNCTIONS["read_file"] = original_read_file
 
 
 def test_cache_token_tracking():

@@ -413,12 +413,21 @@ Supported models: Any LiteLLM-supported model
 
     # Show custom prompt indicator if set
     custom_prompt_path = os.getenv("PATCHPAL_SYSTEM_PROMPT")
-    use_simple = os.getenv("PATCHPAL_USE_SIMPLE_PROMPT", "").lower() in ("true", "1", "yes")
 
     if custom_prompt_path:
         print(f"\033[1;36m🔧 Using custom system prompt: {custom_prompt_path}\033[0m")
-    elif use_simple:
-        print("\033[1;36m🔧 Using simplified system prompt\033[0m")
+
+    # Show minimal tools mode indicator if active
+    if os.getenv("PATCHPAL_MINIMAL_TOOLS", "false").lower() in ("true", "1", "yes"):
+        web_enabled = os.getenv("PATCHPAL_ENABLE_WEB", "true").lower() in ("true", "1", "yes")
+        if web_enabled:
+            print(
+                "\033[1;36m🔧 Minimal tools mode: 6 tools (read_file, edit_file, apply_patch, run_shell, web_search, web_fetch)\033[0m"
+            )
+        else:
+            print(
+                "\033[1;36m🔧 Minimal tools mode: 4 tools (read_file, edit_file, apply_patch, run_shell)\033[0m"
+            )
 
     print(
         "\nType \033[1;33m'exit'\033[0m to quit or \033[1;33m'/help'\033[0m to see available commands.\n"

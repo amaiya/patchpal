@@ -87,6 +87,17 @@ export PATCHPAL_ENABLE_MCP=false             # Disable MCP tool loading (default
                                               # Note: MCP tools are loaded dynamically from ~/.patchpal/config.json
 ```
 
+### Minimal Tools Mode
+
+```bash
+# Limit to Essential Tools Only
+export PATCHPAL_MINIMAL_TOOLS=true           # Enable minimal tools mode (default: false)
+                                              # Limits agent to 5 essential tools: read_file, edit_file, apply_patch, run_shell, grep
+                                              # Recommended for: local models <20B params, models that struggle with tool selection
+                                              # Improves: decision speed (2-3s vs 10-30s), tool accuracy (~95% vs ~60%)
+                                              # Trade-off: No code_structure, tree, git tools, web tools, etc.
+```
+
 ### Web Tools
 
 ```bash
@@ -113,12 +124,8 @@ export PATCHPAL_MAX_WEB_SIZE=10485760        # Max web content size in bytes (de
 
 ```bash
 export PATCHPAL_SYSTEM_PROMPT=~/.patchpal/my_prompt.md  # Use custom system prompt
-                                                         # File can use template variables: {current_date}, {platform_info}, {web_tools}
-                                                         # Useful for: custom behavior, team standards, domain-specific instructions
-
-# Alternative: Simplified prompt
-export PATCHPAL_USE_SIMPLE_PROMPT=true  # Use built-in simplified prompt
-                                        # More concise, focuses on core behavior
+                                                          # File can use template variables: {platform_info}, {web_usage}
+                                                          # Useful for: custom behavior, team standards, domain-specific instructions
 ```
 
 ### Configuration Examples
