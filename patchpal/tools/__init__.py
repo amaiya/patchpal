@@ -42,18 +42,11 @@ from patchpal.tools.file_editing import (
     edit_file,
 )
 from patchpal.tools.file_operations import (
-    count_lines,
-    find_files,
     get_file_info,
-    list_files,
     read_file,
     read_lines,
-    tree,
 )
-from patchpal.tools.git_tools import (
-    git_diff,
-    git_log,
-    git_status,
+from patchpal.tools.grep_tool import (
     grep,
 )
 from patchpal.tools.repo_map import (
@@ -87,11 +80,7 @@ __all__ = [
     # File operations
     "read_file",
     "read_lines",
-    "count_lines",
-    "list_files",
     "get_file_info",
-    "find_files",
-    "tree",
     # Code analysis
     "code_structure",
     # Repository map
@@ -101,10 +90,7 @@ __all__ = [
     # File editing
     "apply_patch",
     "edit_file",
-    # Git tools
-    "git_status",
-    "git_diff",
-    "git_log",
+    # Search
     "grep",
     # TODO tools
     "reset_session_todos",

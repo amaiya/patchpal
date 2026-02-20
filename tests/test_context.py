@@ -429,48 +429,6 @@ class TestContextManager:
         for i in range(recent_start_idx, len(messages)):
             assert "[Tool output pruned" not in str(pruned_messages[i].get("content", ""))
 
-    def test_prune_tool_outputs_intelligent_list_files(self):
-        """Test intelligent summarization for list_files."""
-        manager = ContextManager("gpt-4", "test")
-        # Lower thresholds for testing
-        manager.PRUNE_PROTECT = 5000
-        manager.PRUNE_MINIMUM = 100
-
-        # Put test message FIRST so it's old
-        file_list = "\n".join([f"file{i}.py" for i in range(100)])
-        messages = []
-
-        # First user turn
-        messages.append({"role": "user", "content": "List files"})
-
-        # Add the list_files we want to test at the BEGINNING (will be old)
-        messages.append(
-            {"role": "tool", "content": file_list, "name": "list_files", "tool_call_id": "test"}
-        )
-
-        # Add enough messages after to push test beyond PRUNE_PROTECT (need > 5K tokens = 15K chars)
-        for i in range(5):
-            messages.append(
-                {
-                    "role": "tool",
-                    "content": "y" * 4000,
-                    "name": "recent",
-                    "tool_call_id": f"recent_{i}",
-                }
-            )
-
-        # Add user turns to make the old tools eligible for pruning
-        messages.append({"role": "user", "content": "Continue"})
-        messages.append({"role": "user", "content": "Keep going"})
-
-        pruned_messages, tokens_saved = manager.prune_tool_outputs(messages, intelligent=True)
-
-        # The test message should be pruned with intelligent summary
-        list_files_msg = [m for m in pruned_messages if m.get("tool_call_id") == "test"][0]
-        assert "[Pruned list_files:" in list_files_msg["content"]
-        assert "100 files" in list_files_msg["content"]
-        assert "file0.py" in list_files_msg["content"]  # Sample file
-
     def test_prune_tool_outputs_intelligent_read_file(self):
         """Test intelligent summarization for read_file preserves first/last lines."""
         manager = ContextManager("gpt-4", "test")
@@ -567,15 +525,15 @@ class TestContextManager:
         manager.PRUNE_MINIMUM = 100
 
         # Put test message FIRST so it's old
-        file_list = "\n".join([f"file{i}.py" for i in range(50)])
+        grep_results = "\n".join([f"file{i}.py:10:match line {i}" for i in range(50)])
         messages = []
 
         # First user turn
-        messages.append({"role": "user", "content": "List files"})
+        messages.append({"role": "user", "content": "Search for pattern"})
 
         # Add test message at the BEGINNING
         messages.append(
-            {"role": "tool", "content": file_list, "name": "list_files", "tool_call_id": "test"}
+            {"role": "tool", "content": grep_results, "name": "grep", "tool_call_id": "test"}
         )
 
         # Add enough recent messages to push test beyond PRUNE_PROTECT
@@ -606,7 +564,7 @@ class TestContextManager:
         # They should be different
         assert simple_content != smart_content
         assert "[Tool output pruned - was" in simple_content  # Simple marker
-        assert "[Pruned list_files:" in smart_content  # Intelligent summary
+        assert "[Pruned grep:" in smart_content  # Intelligent summary
 
     def test_prune_tool_outputs_protects_last_two_turns(self):
         """Test that pruning protects tool outputs from the last 2 conversational turns.

@@ -10,16 +10,10 @@ from patchpal.tools import (
     apply_patch,
     ask_user,
     code_structure,
-    count_lines,
     edit_file,
-    find_files,
     get_file_info,
     get_repo_map,
-    git_diff,
-    git_log,
-    git_status,
     grep,
-    list_files,
     list_skills,
     read_file,
     read_lines,
@@ -30,7 +24,6 @@ from patchpal.tools import (
     todo_list,
     todo_remove,
     todo_update,
-    tree,
     use_skill,
     web_fetch,
     web_search,
@@ -78,23 +71,6 @@ TOOLS = [
                     },
                 },
                 "required": ["path", "start_line"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "count_lines",
-            "description": "Count the number of lines in a file efficiently (useful before read_lines to find total line count)",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "path": {
-                        "type": "string",
-                        "description": "Path to the file - can be relative to repository root or an absolute path",
-                    }
-                },
-                "required": ["path"],
             },
         },
     },
@@ -172,14 +148,6 @@ Tip: Read README first for context when exploring repositories.""",
     {
         "type": "function",
         "function": {
-            "name": "list_files",
-            "description": "List ALL files in the ENTIRE repository - no filtering by directory. This tool shows every file across all folders. To list files in a specific directory, use the 'tree' tool with a path parameter instead.",
-            "parameters": {"type": "object", "properties": {}, "required": []},
-        },
-    },
-    {
-        "type": "function",
-        "function": {
             "name": "get_file_info",
             "description": "Get detailed metadata for file(s) - size, modification time, type. Works with any file on the system. Supports single files, directories, or glob patterns (e.g., 'tests/*.py', '/etc/*.conf').",
             "parameters": {
@@ -191,52 +159,6 @@ Tip: Read README first for context when exploring repositories.""",
                     }
                 },
                 "required": ["path"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "find_files",
-            "description": "Find files by name pattern using glob-style wildcards (e.g., '*.py', 'test_*.txt', '**/*.md'). Faster than list_files when searching for specific file names.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "pattern": {
-                        "type": "string",
-                        "description": "Glob pattern to match file names (e.g., '*.py' for Python files, 'test_*.py' for test files)",
-                    },
-                    "case_sensitive": {
-                        "type": "boolean",
-                        "description": "Whether to match case-sensitively (default: true)",
-                    },
-                },
-                "required": ["pattern"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "tree",
-            "description": "Show directory tree structure for a specific directory path. Use this to list files in a particular folder (e.g., './tests', 'src/components'). Works with any directory on the system - repository folders, /etc, /var/log, etc.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "path": {
-                        "type": "string",
-                        "description": "Starting directory path - can be relative or absolute (default: current directory '.', examples: '/etc', '/var/log', 'src')",
-                    },
-                    "max_depth": {
-                        "type": "integer",
-                        "description": "Maximum depth to traverse (default: 3, max: 10)",
-                    },
-                    "show_hidden": {
-                        "type": "boolean",
-                        "description": "Include hidden files/directories (default: false)",
-                    },
-                },
-                "required": [],
             },
         },
     },
@@ -283,56 +205,6 @@ Tip: Read README first for context when exploring repositories.""",
                     },
                 },
                 "required": ["path", "new_content"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "git_status",
-            "description": "Get git repository status showing modified, staged, and untracked files. No permission required - read-only operation.",
-            "parameters": {"type": "object", "properties": {}, "required": []},
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "git_diff",
-            "description": "Get git diff to see changes. No permission required - read-only operation.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "path": {
-                        "type": "string",
-                        "description": "Optional: specific file path to show diff for",
-                    },
-                    "staged": {
-                        "type": "boolean",
-                        "description": "If true, show staged changes (--cached), else show unstaged changes",
-                    },
-                },
-                "required": [],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "git_log",
-            "description": "Get git commit history. No permission required - read-only operation.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "max_count": {
-                        "type": "integer",
-                        "description": "Maximum number of commits to show (default: 10, max: 50)",
-                    },
-                    "path": {
-                        "type": "string",
-                        "description": "Optional: specific file path to show history for",
-                    },
-                },
-                "required": [],
             },
         },
     },
@@ -593,18 +465,11 @@ Tip: Read README first for context when exploring repositories.""",
 TOOL_FUNCTIONS = {
     "read_file": read_file,
     "read_lines": read_lines,
-    "count_lines": count_lines,
     "code_structure": code_structure,
     "get_repo_map": get_repo_map,
-    "list_files": list_files,
     "get_file_info": get_file_info,
-    "find_files": find_files,
-    "tree": tree,
     "edit_file": edit_file,
     "apply_patch": apply_patch,
-    "git_status": git_status,
-    "git_diff": git_diff,
-    "git_log": git_log,
     "grep": grep,
     "web_search": web_search,
     "web_fetch": web_fetch,
@@ -630,6 +495,24 @@ def get_tools(web_tools_enabled: bool = True):
     Returns:
         Tuple of (tools_list, tool_functions_dict)
     """
+    # Check if minimal tools mode is enabled (for local models with tool confusion)
+    minimal_mode = os.getenv("PATCHPAL_MINIMAL_TOOLS", "false").lower() in ("true", "1", "yes")
+
+    if minimal_mode:
+        # Base minimal tools (always included)
+        minimal_tool_names = ["read_file", "edit_file", "apply_patch", "run_shell"]
+
+        # Add web tools if enabled
+        if web_tools_enabled:
+            minimal_tool_names.extend(["web_search", "web_fetch"])
+
+        tools = [tool for tool in TOOLS if tool["function"]["name"] in minimal_tool_names]
+        functions = {
+            name: func for name, func in TOOL_FUNCTIONS.items() if name in minimal_tool_names
+        }
+
+        return tools, functions
+
     # Start with built-in tools
     tools = TOOLS.copy()
     functions = TOOL_FUNCTIONS.copy()

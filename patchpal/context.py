@@ -346,10 +346,9 @@ Be comprehensive but concise. The goal is to continue work seamlessly without lo
         """Create an intelligent summary of a tool output.
 
         Different tools need different summarization strategies:
-        - Navigation tools (list_files, tree, get_repo_map): Just note they ran
+        - Navigation tools (get_repo_map): Just note they ran
         - read_file: Keep first/last lines with ellipsis
         - grep: Keep match count and first few results
-        - git_status: Simple status summary
         - run_shell: Command + exit code + key numbers
 
         Args:
@@ -363,22 +362,7 @@ Be comprehensive but concise. The goal is to continue work seamlessly without lo
         original_len = len(content_str)
 
         # Tools that can be heavily summarized (low information loss)
-        if tool_name == "list_files":
-            # Extract file count
-            lines = content_str.split("\n")
-            file_count = len([line for line in lines if line.strip() and not line.startswith("[")])
-            sample_files = [
-                line.strip() for line in lines[:3] if line.strip() and not line.startswith("[")
-            ]
-            return f"[Pruned list_files: {file_count} files, e.g., {', '.join(sample_files)}...]"
-
-        elif tool_name == "tree":
-            # Extract directory count and depth
-            lines = content_str.split("\n")
-            dir_count = content_str.count("/")
-            return f"[Pruned tree: ~{dir_count} directories, {len(lines)} lines of structure]"
-
-        elif tool_name == "get_repo_map":
+        if tool_name == "get_repo_map":
             # Extract file count and some top-level info
             if "files analyzed" in content_str:
                 import re
@@ -394,15 +378,6 @@ Be comprehensive but concise. The goal is to continue work seamlessly without lo
                 if "class" in line.lower() or "def" in line.lower()
             ]
             return f"[Pruned repo_map: {file_count} files analyzed, ~{original_len:,} chars of structure]"
-
-        elif tool_name == "git_status":
-            # Extract just the counts
-            modified = content_str.count("modified:")
-            untracked = content_str.count("untracked:")
-            staged = content_str.count("new file:") + content_str.count("modified:")
-            return (
-                f"[Pruned git_status: {modified} modified, {untracked} untracked, {staged} staged]"
-            )
 
         elif tool_name == "run_shell":
             # Extract command and summarize output
@@ -456,14 +431,7 @@ Be comprehensive but concise. The goal is to continue work seamlessly without lo
             else:
                 return content_str[:500] + f"\n\n... [+{len(content_str) - 500} chars omitted]"
 
-        elif tool_name in ("git_diff", "git_log"):
-            # Keep first 300 chars of diffs/logs
-            if len(content_str) <= 300:
-                return content_str
-            else:
-                return content_str[:300] + f"\n\n... [+{len(content_str) - 300} chars omitted]"
-
-        elif tool_name in ("find_files", "get_file_info"):
+        elif tool_name == "get_file_info":
             # Keep first 200 chars
             if len(content_str) <= 200:
                 return content_str
