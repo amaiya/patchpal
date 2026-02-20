@@ -103,25 +103,16 @@ def test_agent_system_prompt():
     """Test that the agent has proper system prompt."""
     from patchpal.agent import SYSTEM_PROMPT, _get_current_datetime_message
 
-    # Verify system prompt has key principles (tools are provided via API, not in prompt)
+    # Verify system prompt has key principles
     assert "expert software engineer" in SYSTEM_PROMPT.lower()
-    assert "avoid over-engineering" in SYSTEM_PROMPT.lower()
-    assert "read before modifying" in SYSTEM_PROMPT.lower()
-
-    # Verify system prompt mentions strategic tool guidance
-    assert "get_repo_map" in SYSTEM_PROMPT  # Strategic advice to use it FIRST
-    assert "todo_add" in SYSTEM_PROMPT  # Guidance on breaking down tasks
-    assert "ask_user" in SYSTEM_PROMPT  # Guidance on when to ask for clarification
+    assert "read files before editing" in SYSTEM_PROMPT.lower()
+    assert "security" in SYSTEM_PROMPT.lower()
+    assert "concise" in SYSTEM_PROMPT.lower()
 
     # Verify dynamic date/time message function works correctly
     datetime_msg = _get_current_datetime_message()
     assert "Current Date and Time" in datetime_msg
     assert "Today is" in datetime_msg
-
-    # Verify key behavioral sections are present
-    assert "Response Brevity" in SYSTEM_PROMPT
-    assert "Proactiveness Balance" in SYSTEM_PROMPT
-    assert "Security Policy" in SYSTEM_PROMPT
 
 
 def test_create_agent_bedrock_env_setup(monkeypatch):

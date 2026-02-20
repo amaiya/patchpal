@@ -7,13 +7,14 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
-## 0.14.3 (TBD)
+## 0.15.0 (TBD)
 
 ### new:
 - N/A
 
 ### changed:
 - Added debugging options: `PATCHPAL_DISABLE_TOOLS` and `PATCHPAL_DISABLE_PROMPT_CACHING`
+- Use minimal ("simple") system prompt as default (#68)
 
 ### fixed:
 - Fixes `ask_user` display issue with markdown (#67)
