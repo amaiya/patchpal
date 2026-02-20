@@ -7,8 +7,6 @@ from patchpal.cli.autopilot import autopilot_loop
 from patchpal.tools import (
     apply_patch,
     edit_file,
-    get_file_info,
-    grep,
     read_file,
     run_shell,
     web_fetch,
@@ -17,10 +15,8 @@ from patchpal.tools import (
 
 __all__ = [
     "read_file",
-    "get_file_info",
     "edit_file",
     "apply_patch",
-    "grep",
     "web_search",
     "web_fetch",
     "run_shell",

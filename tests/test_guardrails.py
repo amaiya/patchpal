@@ -440,7 +440,6 @@ def test_comprehensive_security_demo(temp_repo, monkeypatch):
     # ----------------------------
     read_file = patchpal.tools.read_file
     apply_patch = patchpal.tools.apply_patch
-    grep = patchpal.tools.grep
     run_shell = patchpal.tools.run_shell
 
     # ----------------------------
@@ -457,8 +456,14 @@ def test_comprehensive_security_demo(temp_repo, monkeypatch):
     )
     assert "normal.txt" in output
 
-    result = grep("normal", file_glob="*.txt")
-    assert "normal.txt" in result
+    # Test file listing with run_shell (replaces grep/get_file_info tests)
+    import shutil
+
+    if shutil.which("ls") or sys.platform == "win32":
+        # Use ls on Unix or dir on Windows
+        cmd = "ls *.txt" if shutil.which("ls") else "dir /b *.txt"
+        result = run_shell(cmd)
+        assert "normal.txt" in result
 
     # ----------------------------
     # 2. Sensitive files blocked

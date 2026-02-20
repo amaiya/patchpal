@@ -90,6 +90,37 @@ class PermissionManager:
             "git diff",
             "git log",
             "git show",
+            # Test runners (Python)
+            "pytest",
+            "python -m pytest",
+            "python3 -m pytest",
+            "unittest",
+            "python -m unittest",
+            "python3 -m unittest",
+            # Test runners (JavaScript/Node.js)
+            "npm test",
+            "npm run test",
+            "yarn test",
+            "jest",
+            "mocha",
+            "vitest",
+            # Test runners (Go)
+            "go test",
+            # Test runners (Rust)
+            "cargo test",
+            # Test runners (Ruby)
+            "rspec",
+            "rake test",
+            "ruby -I test",
+            # Test runners (Java)
+            "mvn test",
+            "gradle test",
+            "./gradlew test",
+            # Test runners (PHP)
+            "phpunit",
+            "composer test",
+            # Test runners (C#/.NET)
+            "dotnet test",
             # File/text processing
             "wc",
             "file",

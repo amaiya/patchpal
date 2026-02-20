@@ -11,9 +11,7 @@ from patchpal.tools import (
     ask_user,
     code_structure,
     edit_file,
-    get_file_info,
     get_repo_map,
-    grep,
     list_skills,
     read_file,
     read_lines,
@@ -148,23 +146,6 @@ Tip: Read README first for context when exploring repositories.""",
     {
         "type": "function",
         "function": {
-            "name": "get_file_info",
-            "description": "Get detailed metadata for file(s) - size, modification time, type. Works with any file on the system. Supports single files, directories, or glob patterns (e.g., 'tests/*.py', '/etc/*.conf').",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "path": {
-                        "type": "string",
-                        "description": "Path to file, directory, or glob pattern - can be relative or absolute (e.g., 'tests/*.txt', '/var/log/', '/etc/fstab')",
-                    }
-                },
-                "required": ["path"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
             "name": "edit_file",
             "description": "Edit a file by replacing an exact string. More efficient than apply_patch for small changes. Primarily for repository files. Writing outside repository requires explicit user permission. The old_string must match exactly and appear only once.",
             "parameters": {
@@ -205,39 +186,6 @@ Tip: Read README first for context when exploring repositories.""",
                     },
                 },
                 "required": ["path", "new_content"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "grep",
-            "description": "Search for a pattern in files. Much faster than run_shell with grep. Returns results in 'file:line:content' format.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "pattern": {
-                        "type": "string",
-                        "description": "Regular expression pattern to search for",
-                    },
-                    "file_glob": {
-                        "type": "string",
-                        "description": "Optional glob pattern to filter files (e.g., '*.py', 'src/**/*.js')",
-                    },
-                    "case_sensitive": {
-                        "type": "boolean",
-                        "description": "Whether the search should be case-sensitive (default: true)",
-                    },
-                    "max_results": {
-                        "type": "integer",
-                        "description": "Maximum number of results to return (default: 100)",
-                    },
-                    "path": {
-                        "type": "string",
-                        "description": "Optional file or directory path to search in (relative to repo root or absolute). Defaults to repository root.",
-                    },
-                },
-                "required": ["pattern"],
             },
         },
     },
@@ -467,10 +415,8 @@ TOOL_FUNCTIONS = {
     "read_lines": read_lines,
     "code_structure": code_structure,
     "get_repo_map": get_repo_map,
-    "get_file_info": get_file_info,
     "edit_file": edit_file,
     "apply_patch": apply_patch,
-    "grep": grep,
     "web_search": web_search,
     "web_fetch": web_fetch,
     "list_skills": list_skills,
