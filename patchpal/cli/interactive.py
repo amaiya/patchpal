@@ -515,6 +515,17 @@ Supported models: Any LiteLLM-supported model
                 print("    /compact                    Manually trigger context compaction")
                 print("    /prune                      Prune old tool outputs (keeps last 2 turns)")
                 print()
+                print("  \033[1;33mSubtask Mode (Local Models):\033[0m")
+                print(
+                    "    /subtask <prompt>           Run task with isolated context (fresh agent)"
+                )
+                print(
+                    "                                Ideal for: complex sub-problems, local models"
+                )
+                print(
+                    "                                Example: /subtask Create User model with tests"
+                )
+                print()
                 print("  \033[1;33mMCP (Model Context Protocol):\033[0m")
                 print("    /mcp servers                List configured MCP servers")
                 print(
@@ -1399,6 +1410,71 @@ Supported models: Any LiteLLM-supported model
 
             # Skip empty input
             if not user_input:
+                continue
+
+            # Handle /subtask command - run with isolated context
+            if user_input.lower().startswith("/subtask"):
+                # Extract the task prompt (everything after "/subtask ")
+                if len(user_input) <= 9:  # Just "/subtask" with no args
+                    print("\n\033[1;31mError: No task specified\033[0m")
+                    print("Usage: /subtask <task prompt>")
+                    print()
+                    print("Example:")
+                    print("  /subtask Create User model with tests, ensure all pass")
+                    print()
+                    print(
+                        "💡 Subtask runs in isolated context, ideal for complex sub-problems or local models"
+                    )
+                    continue
+
+                task_prompt = user_input[9:].strip()
+
+                # Prompt for optional parameters
+                try:
+                    max_iter_str = pt_prompt(
+                        FormattedText([("", "Max iterations? [10]: "), ("", "")])
+                    ).strip()
+                    max_iter = int(max_iter_str) if max_iter_str else 10
+
+                    signal_str = pt_prompt(
+                        FormattedText([("", "Completion signal? [<SUBTASK_DONE>]: "), ("", "")])
+                    ).strip()
+                    signal = signal_str if signal_str else "<SUBTASK_DONE>"
+                except KeyboardInterrupt:
+                    print("\n  Cancelled.")
+                    continue
+                except ValueError:
+                    print("\n\033[1;31mError: Invalid iteration count\033[0m")
+                    continue
+
+                # Log subtask invocation
+                audit_logger.info(f"SUBTASK_START: {task_prompt[:100]}")
+
+                # Run subtask with isolated context
+                try:
+                    result = agent.run_subtask(
+                        task_prompt=task_prompt,
+                        max_iterations=max_iter,
+                        completion_signal=signal,
+                    )
+
+                    # Log completion
+                    audit_logger.info(f"SUBTASK_COMPLETE: {len(result)} chars returned")
+
+                    # Show result (already injected into parent context)
+                    print("\n" + "=" * 80)
+                    print("\033[1;32mSubtask Result:\033[0m")
+                    print("=" * 80)
+                    console.print(Markdown(result))
+                    print("=" * 80)
+
+                except KeyboardInterrupt:
+                    print("\n\033[1;33mSubtask interrupted by user\033[0m")
+                    audit_logger.info("SUBTASK_INTERRUPTED")
+                except Exception as e:
+                    print(f"\n\033[1;31mSubtask error: {e}\033[0m")
+                    audit_logger.error(f"SUBTASK_ERROR: {e}")
+
                 continue
 
             # Handle skill invocations (/skillname args...)

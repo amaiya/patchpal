@@ -889,6 +889,145 @@ It's currently empty (just the template). The file is automatically loaded at se
                             }
                         )
 
+    def run_subtask(
+        self,
+        task_prompt: str,
+        max_iterations: int = 10,
+        completion_signal: str = "<SUBTASK_DONE>",
+    ) -> str:
+        """Execute a focused subtask with isolated context.
+
+        Creates a fresh agent instance with empty conversation history, runs the task
+        until completion signal is found, then injects only the result back to parent.
+
+        This is ideal for:
+        - Complex sub-problems that would bloat parent context
+        - Iterative tasks (write tests, fix until passing)
+        - Local models with limited context windows
+
+        Args:
+            task_prompt: The task for the subtask agent to perform
+            max_iterations: Maximum iterations for subtask (default: 10)
+            completion_signal: String to look for indicating completion (default: <SUBTASK_DONE>)
+
+        Returns:
+            The subtask's final response
+
+        Example:
+            # Main conversation is at 80K tokens
+            result = agent.run_subtask(
+                "Create User model with SQLAlchemy, write tests, ensure all pass. "
+                "Output <SUBTASK_DONE> when tests pass.",
+                max_iterations=10
+            )
+            # Subtask runs in fresh ~5K token context
+            # Parent only sees: "Subtask completed: Created User model..."
+        """
+        # Create completely fresh agent with same configuration
+        subtask_agent = create_agent(
+            model_id=self.model_id,
+            custom_tools=self.custom_tools,
+            litellm_kwargs=self.litellm_kwargs,
+        )
+
+        # Show subtask starting
+        print(f"\n\033[1;36m{'─' * 80}\033[0m")
+        print("\033[1;36m🔹 Subtask Mode: Running with isolated context\033[0m")
+
+        # Show token comparison
+        parent_tokens = self.context_manager.estimate_messages_tokens(self.messages)
+        subtask_tokens = subtask_agent.context_manager.estimate_messages_tokens(
+            subtask_agent.messages
+        )
+        print(
+            f"\033[2m   Parent context: {parent_tokens:,} tokens | Subtask context: {subtask_tokens:,} tokens\033[0m"
+        )
+        print(f"\033[1;36m{'─' * 80}\033[0m\n")
+
+        # Add completion signal instruction to task
+        full_prompt = f"{task_prompt}\n\nWhen complete, output: {completion_signal}"
+
+        # Run subtask with iteration loop
+        result = None
+        for iteration in range(1, max_iterations + 1):
+            print(
+                f"\033[2m🔄 Subtask iteration {iteration}/{max_iterations}\033[0m",
+                flush=True,
+            )
+
+            try:
+                response = subtask_agent.run(full_prompt, max_iterations=100)
+
+                # Check for completion signal
+                if completion_signal in response:
+                    result = response
+                    print(f"\n\033[1;32m✓ Subtask completed in {iteration} iteration(s)\033[0m")
+                    break
+
+                # No completion signal - continue iterating
+                print(
+                    "\033[2m   No completion signal detected, continuing...\033[0m\n",
+                    flush=True,
+                )
+
+            except KeyboardInterrupt:
+                print("\n\033[1;33m⚠️  Subtask interrupted by user\033[0m")
+                result = "Subtask interrupted by user"
+                break
+            except Exception as e:
+                print(f"\n\033[1;31m✗ Subtask error: {e}\033[0m")
+                result = f"Subtask failed: {e}"
+                break
+
+        # If no result after max iterations
+        if result is None:
+            print(
+                f"\n\033[1;33m⚠️  Subtask did not complete within {max_iterations} iterations\033[0m"
+            )
+            result = (
+                f"Subtask incomplete after {max_iterations} iterations. "
+                f"Last response:\n{response if 'response' in locals() else 'No response'}"
+            )
+
+        # Aggregate costs from subtask back to parent
+        self.cumulative_cost += subtask_agent.cumulative_cost
+        self.cumulative_input_tokens += subtask_agent.cumulative_input_tokens
+        self.cumulative_output_tokens += subtask_agent.cumulative_output_tokens
+        self.cumulative_cache_creation_tokens += subtask_agent.cumulative_cache_creation_tokens
+        self.cumulative_cache_read_tokens += subtask_agent.cumulative_cache_read_tokens
+        self.cumulative_openai_cached_tokens += subtask_agent.cumulative_openai_cached_tokens
+        self.total_llm_calls += subtask_agent.total_llm_calls
+
+        # Show final token comparison
+        parent_tokens_after = self.context_manager.estimate_messages_tokens(self.messages)
+        subtask_tokens_final = subtask_agent.context_manager.estimate_messages_tokens(
+            subtask_agent.messages
+        )
+        print(f"\n\033[1;36m{'─' * 80}\033[0m")
+        print("\033[1;36m🔹 Subtask Complete: Result injected back to parent\033[0m")
+        print(
+            f"\033[2m   Parent: {parent_tokens:,} → {parent_tokens_after:,} tokens | "
+            f"Subtask used: {subtask_tokens_final:,} tokens\033[0m"
+        )
+        print(
+            f"\033[2m   Subtask LLM calls: {subtask_agent.total_llm_calls} | "
+            f"Tokens: {subtask_agent.cumulative_input_tokens + subtask_agent.cumulative_output_tokens:,}\033[0m"
+        )
+        if subtask_agent.cumulative_cost > 0:
+            print(f"\033[2m   Subtask cost: ${subtask_agent.cumulative_cost:.4f}\033[0m")
+        print(f"\033[1;36m{'─' * 80}\033[0m\n")
+
+        # Inject result into parent's context
+        # Use a clear marker so parent knows this came from a subtask
+        self.messages.append(
+            {
+                "role": "assistant",
+                "content": f"[Subtask Result]\n\n{result}",
+            }
+        )
+
+        return result
+
     def _run_agent_loop(self, max_iterations: int) -> str:
         """Internal method that runs the agent loop.
 
