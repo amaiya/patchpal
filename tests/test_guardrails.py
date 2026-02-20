@@ -165,14 +165,25 @@ class TestCommandSafety:
 
     def test_blocks_dangerous_patterns(self, temp_repo):
         """Test that dangerous command patterns are blocked."""
+        import platform
+
         from patchpal.tools import run_shell
 
-        dangerous_commands = [
-            "echo test > /dev/sda",
-            "rm -rf /",
-            "cat file | dd of=/dev/sda",
-            "echo test | sudo tee /etc/test",  # Piping to sudo (replaced --force)
-        ]
+        if platform.system() == "Windows":
+            dangerous_commands = [
+                "echo test > \\\\.\\PhysicalDrive0",  # Writing to device
+                "cat file | dd of=output",  # Piping to dd
+                "echo test | shred",  # Piping to shred
+                "mkfs.ext4 /dev/sda1",  # Format filesystem
+                ":(){:|:&};:",  # Fork bomb
+            ]
+        else:
+            dangerous_commands = [
+                "echo test > /dev/sda",
+                "rm -rf /",
+                "cat file | dd of=/dev/sda",
+                "echo test | sudo tee /etc/test",  # Piping to sudo
+            ]
 
         for cmd in dangerous_commands:
             with pytest.raises(ValueError, match="dangerous"):
@@ -492,8 +503,15 @@ def test_comprehensive_security_demo(temp_repo, monkeypatch):
     # ----------------------------
     # 6. Dangerous commands blocked
     # ----------------------------
-    with pytest.raises(ValueError):
-        run_shell("rm -rf /")
+    import platform
+
+    if platform.system() == "Windows":
+        # Use Windows-specific dangerous pattern
+        with pytest.raises(ValueError):
+            run_shell("cat file | dd of=output")
+    else:
+        with pytest.raises(ValueError):
+            run_shell("rm -rf /")
 
     # ----------------------------
     # 7. Outside-repo writes blocked

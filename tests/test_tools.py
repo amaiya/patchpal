@@ -537,6 +537,8 @@ def test_run_shell_complex_safe_command(temp_repo):
 
 def test_run_shell_dangerous_patterns_blocked(temp_repo, monkeypatch):
     """Test that dangerous patterns are blocked by default."""
+    import platform
+
     from patchpal.tools import run_shell
 
     # Disable permission prompts for this test
@@ -556,16 +558,25 @@ def test_run_shell_dangerous_patterns_blocked(temp_repo, monkeypatch):
     # Re-patch REPO_ROOT after reload
     monkeypatch.setattr("patchpal.tools.common.REPO_ROOT", temp_repo)
 
-    # These should be blocked (including new additions)
-    dangerous_cmds = [
-        "rm -rf /tmp/test",
-        "echo hello | dd of=/dev/null",
-        "cat file > /dev/sda",
-        "echo test | sudo tee /etc/test",  # Piping to sudo
-        "cat secrets | shred",  # Piping to shred (NEW)
-        "mkfs.ext4 /dev/sdb1",  # Format filesystem (NEW)
-        ":(){:|:&};:",  # Fork bomb (NEW)
-    ]
+    # Platform-specific dangerous commands
+    if platform.system() == "Windows":
+        dangerous_cmds = [
+            "echo test > \\\\.\\PhysicalDrive0",  # Writing to device
+            "cat file | dd of=output",  # Piping to dd
+            "echo test | shred",  # Piping to shred (NEW)
+            "mkfs.ext4 /dev/sda1",  # Format filesystem (NEW)
+            ":(){:|:&};:",  # Fork bomb (NEW)
+        ]
+    else:
+        dangerous_cmds = [
+            "rm -rf /tmp/test",
+            "echo hello | dd of=/dev/null",
+            "cat file > /dev/sda",
+            "echo test | sudo tee /etc/test",  # Piping to sudo
+            "cat secrets | shred",  # Piping to shred (NEW)
+            "mkfs.ext4 /dev/sdb1",  # Format filesystem (NEW)
+            ":(){:|:&};:",  # Fork bomb (NEW)
+        ]
 
     for cmd in dangerous_cmds:
         with pytest.raises(ValueError, match="Blocked dangerous"):

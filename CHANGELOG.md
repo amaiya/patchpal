@@ -14,6 +14,7 @@ Most recent releases are shown at the top. Each release shows:
 
 ### changed:
 - Use minimal ("simple") system prompt as default (#68)
+- Updated command blocking (#70)
 
 ### fixed:
 - Fixes `ask_user` display issue with markdown (#67)
