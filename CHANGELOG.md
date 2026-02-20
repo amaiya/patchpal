@@ -13,7 +13,6 @@ Most recent releases are shown at the top. Each release shows:
 - N/A
 
 ### changed:
-- Added debugging options: `PATCHPAL_DISABLE_TOOLS` and `PATCHPAL_DISABLE_PROMPT_CACHING`
 - Use minimal ("simple") system prompt as default (#68)
 
 ### fixed:

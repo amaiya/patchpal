@@ -417,12 +417,6 @@ Supported models: Any LiteLLM-supported model
     if custom_prompt_path:
         print(f"\033[1;36m🔧 Using custom system prompt: {custom_prompt_path}\033[0m")
 
-    if os.getenv("PATCHPAL_DISABLE_PROMPT_CACHING", "").lower() in ("true", "1", "yes"):
-        print("\033[1;33m🧯 Prompt caching disabled (PATCHPAL_DISABLE_PROMPT_CACHING=true)\033[0m")
-
-    if os.getenv("PATCHPAL_DISABLE_TOOLS", "").lower() in ("true", "1", "yes"):
-        print("\033[1;33m🧯 Tools disabled (PATCHPAL_DISABLE_TOOLS=true)\033[0m")
-
     print(
         "\nType \033[1;33m'exit'\033[0m to quit or \033[1;33m'/help'\033[0m to see available commands.\n"
     )

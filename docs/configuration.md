@@ -82,21 +82,6 @@ export PATCHPAL_ENABLE_MCP=false             # Disable MCP tool loading (default
                                               # Note: MCP tools are loaded dynamically from ~/.patchpal/config.json
 ```
 
-### Debugging & Development
-
-```bash
-# Prompt Caching
-export PATCHPAL_DISABLE_PROMPT_CACHING=true  # Disable prompt caching (default: false - enabled)
-                                              # Useful for: debugging, testing different prompts, cost analysis
-                                              # Note: Only Anthropic Claude and AWS Bedrock Nova models support explicit caching
-                                              # Gemini uses automatic implicit caching (requires no configuration)
-
-# Tool System
-export PATCHPAL_DISABLE_TOOLS=true           # Disable all tool usage (default: false - enabled)
-                                              # Useful for: testing chat-only mode, debugging tool issues
-                                              # ⚠️  WARNING: Agent cannot perform file operations without tools
-```
-
 ### Web Tools
 
 ```bash
