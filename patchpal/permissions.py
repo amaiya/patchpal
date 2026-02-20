@@ -25,6 +25,11 @@ class PermissionManager:
         # Using streaming mode in CLI allows permissions to work properly
         self.enabled = os.getenv("PATCHPAL_REQUIRE_PERMISSION", "true").lower() == "true"
 
+        # Auto-grant harmless read-only commands in all modes
+        # Since these replace dedicated tools that were removed (list_files, tree, etc.),
+        # they should always work seamlessly
+        self._grant_harmless_commands()
+
     def _load_persistent_grants(self) -> dict:
         """Load persistent permission grants from file."""
         if self.permissions_file.exists():
@@ -43,12 +48,114 @@ class PermissionManager:
         except IOError as e:
             print(f"Warning: Could not save permissions: {e}")
 
-    def _check_existing_grant(self, tool_name: str, pattern: Optional[str] = None) -> bool:
+    def _grant_harmless_commands(self):
+        """Auto-grant harmless read-only commands in all modes.
+
+        These commands replace dedicated tools that were removed (list_files, tree,
+        find_files, count_lines) to reduce redundancy. Since those tools didn't
+        require permissions, their shell equivalents shouldn't either.
+        """
+        # Check if web tools are enabled
+        web_tools_enabled = os.getenv("PATCHPAL_ENABLE_WEB", "true").lower() in ("true", "1", "yes")
+
+        # List of command patterns that are always safe (read-only, no side effects)
+        harmless_patterns = [
+            # Search (replaces grep tool)
+            "grep",
+            "egrep",
+            "fgrep",
+            "findstr",  # Windows equivalent of grep
+            # File finding (replaces find_files tool)
+            "find",
+            "where",  # Windows equivalent of which/find
+            # Directory listing (replaces list_files tool)
+            "ls",
+            "dir",
+            # File reading (complement to read_file tool)
+            "cat",
+            "head",
+            "tail",
+            "type",  # Windows equivalent of cat
+            "more",  # Windows pager
+            "less",  # Unix pager
+            # PowerShell read-only commands (Windows)
+            "get-content",  # PowerShell cat equivalent
+            "get-childitem",  # PowerShell ls equivalent
+            "get-item",  # PowerShell file info
+            "select-object",  # PowerShell filtering (read-only)
+            # Directory tree (replaces tree tool)
+            "tree",
+            # Git read-only (replace git_* tools)
+            "git status",
+            "git diff",
+            "git log",
+            "git show",
+            # File/text processing
+            "wc",
+            "file",
+            "stat",  # Unix file info (detailed metadata)
+            "awk",  # Text processing (read-only when not using -i)
+            # Command/path info
+            "which",
+            "whereis",
+            # Output
+            "echo",
+            # Current directory
+            "pwd",
+            "cd",  # When used without args (shows current dir on Windows)
+            "chdir",  # Windows cd equivalent
+            # Environment
+            "env",
+            "printenv",
+            "set",  # Windows environment vars (read-only when no args)
+            # Network diagnostic (read-only, no data retrieval)
+            "ping",
+            "tracert",  # Windows traceroute
+            "nslookup",  # DNS lookup
+            "ipconfig",  # Windows network config (read-only)
+            "ifconfig",  # Unix network config (read-only)
+            # Disk/system info
+            "df",
+            "du",
+            "vol",  # Windows volume info
+            # Process info
+            "ps",
+            "top",
+            "tasklist",  # Windows process list
+            # System info
+            "whoami",
+            "hostname",
+            "uname",  # Unix system info
+            "ver",  # Windows version
+            "systeminfo",  # Windows system info (read-only)
+            # Date/time
+            "date",
+            "time",
+        ]
+
+        # Only add curl/wget if web tools are enabled (they retrieve data from internet)
+        if web_tools_enabled:
+            harmless_patterns.extend(["curl", "wget"])
+
+        # Grant session-only permissions for these patterns
+        # This way they work through the normal permission flow
+        if "run_shell" not in self.session_grants:
+            self.session_grants["run_shell"] = []
+
+        # Add harmless patterns if not already granted
+        for pattern in harmless_patterns:
+            if pattern not in self.session_grants["run_shell"]:
+                self.session_grants["run_shell"].append(pattern)
+
+    def _check_existing_grant(
+        self, tool_name: str, pattern: Optional[str] = None, full_command: Optional[str] = None
+    ) -> bool:
         """Check if permission was previously granted.
 
         Args:
             tool_name: Name of the tool (e.g., 'run_shell', 'apply_patch')
             pattern: Optional pattern for matching (e.g., 'pytest' for pytest commands)
+            full_command: Optional full command string (e.g., 'git status' for multi-word matching)
 
         Returns:
             True if permission was previously granted
@@ -57,17 +164,35 @@ class PermissionManager:
         if tool_name in self.session_grants:
             if self.session_grants[tool_name] is True:  # Granted for all
                 return True
-            if pattern and isinstance(self.session_grants[tool_name], list):
-                if pattern in self.session_grants[tool_name]:
+            if isinstance(self.session_grants[tool_name], list):
+                # Check exact pattern match
+                if pattern and pattern in self.session_grants[tool_name]:
                     return True
+                # Check if full command starts with any granted pattern (for multi-word commands like "git status")
+                # Only do startswith matching for multi-word patterns (contain spaces)
+                if full_command:
+                    cmd_lower = full_command.strip().lower()
+                    for granted_pattern in self.session_grants[tool_name]:
+                        # Only use startswith for multi-word patterns
+                        if " " in granted_pattern and cmd_lower.startswith(granted_pattern.lower()):
+                            return True
 
         # Check persistent grants
         if tool_name in self.persistent_grants:
             if self.persistent_grants[tool_name] is True:  # Granted for all
                 return True
-            if pattern and isinstance(self.persistent_grants[tool_name], list):
-                if pattern in self.persistent_grants[tool_name]:
+            if isinstance(self.persistent_grants[tool_name], list):
+                # Check exact pattern match
+                if pattern and pattern in self.persistent_grants[tool_name]:
                     return True
+                # Check if full command starts with any granted pattern (for multi-word commands like "git status")
+                # Only do startswith matching for multi-word patterns (contain spaces)
+                if full_command:
+                    cmd_lower = full_command.strip().lower()
+                    for granted_pattern in self.persistent_grants[tool_name]:
+                        # Only use startswith for multi-word patterns
+                        if " " in granted_pattern and cmd_lower.startswith(granted_pattern.lower()):
+                            return True
 
         return False
 
@@ -110,6 +235,7 @@ class PermissionManager:
         description: str,
         pattern: Optional[str] = None,
         context: Optional[str] = None,
+        full_command: Optional[str] = None,
     ) -> bool:
         """Request permission from user to execute a tool.
 
@@ -118,6 +244,7 @@ class PermissionManager:
             description: Human-readable description of what will be executed
             pattern: Optional pattern for matching (e.g., 'pytest' for pytest commands, 'python:/tmp' for python in /tmp)
             context: Optional context string for display (e.g., working directory)
+            full_command: Optional full command string (e.g., 'git status' for multi-word matching)
 
         Returns:
             True if permission granted, False otherwise
@@ -126,8 +253,8 @@ class PermissionManager:
         if not self.enabled:
             return True
 
-        # Check if already granted
-        if self._check_existing_grant(tool_name, pattern):
+        # Check if already granted (with full_command for multi-word pattern matching)
+        if self._check_existing_grant(tool_name, pattern, full_command):
             return True
 
         # Display the request - use stderr to avoid Rich console capture

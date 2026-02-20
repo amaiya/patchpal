@@ -7,10 +7,10 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
-## 0.15.0 (TBD)
+## 0.15.0 (2026-02-20)
 
 ### new:
-- N/A
+- prune unnecessary tools in favor of safe shell commands (#69)
 
 ### changed:
 - Use minimal ("simple") system prompt as default (#68)

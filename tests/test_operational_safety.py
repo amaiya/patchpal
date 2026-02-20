@@ -247,7 +247,7 @@ class TestResourceLimits:
         from patchpal.tools import (
             apply_patch,
             get_operation_count,
-            list_files,
+            grep,
             read_file,
             reset_operation_counter,
             run_shell,
@@ -259,7 +259,7 @@ class TestResourceLimits:
         read_file("test.txt")
         assert get_operation_count() == 1
 
-        list_files()
+        grep("test", path="test.txt")
         assert get_operation_count() == 2
 
         apply_patch("test.txt", "new content")
@@ -323,7 +323,7 @@ class TestIntegration:
         from patchpal.tools import (
             apply_patch,
             get_operation_count,
-            list_files,
+            grep,
             read_file,
             reset_operation_counter,
             run_shell,
@@ -331,9 +331,9 @@ class TestIntegration:
 
         reset_operation_counter()
 
-        # 1. List files (operation 1)
-        files = list_files()
-        assert "test.txt" in files
+        # 1. Search files (operation 1)
+        result = grep("original", file_glob="*.txt")
+        assert "test.txt" in result
         assert get_operation_count() == 1
 
         # 2. Read file (operation 2)
