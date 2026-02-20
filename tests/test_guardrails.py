@@ -171,7 +171,7 @@ class TestCommandSafety:
             "echo test > /dev/sda",
             "rm -rf /",
             "cat file | dd of=/dev/sda",
-            "git push --force",
+            "echo test | sudo tee /etc/test",  # Piping to sudo (replaced --force)
         ]
 
         for cmd in dangerous_commands:

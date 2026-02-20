@@ -535,6 +535,77 @@ def test_run_shell_complex_safe_command(temp_repo):
     assert "3" in result or "count.txt" in result
 
 
+def test_run_shell_dangerous_patterns_blocked(temp_repo, monkeypatch):
+    """Test that dangerous patterns are blocked by default."""
+    from patchpal.tools import run_shell
+
+    # Disable permission prompts for this test
+    monkeypatch.setenv("PATCHPAL_REQUIRE_PERMISSION", "false")
+
+    # Need to reload the modules to pick up the new environment variable
+    import importlib
+
+    import patchpal.tools
+    import patchpal.tools.common
+    import patchpal.tools.shell_tools
+
+    importlib.reload(patchpal.tools.common)
+    importlib.reload(patchpal.tools.shell_tools)
+    importlib.reload(patchpal.tools)
+
+    # Re-patch REPO_ROOT after reload
+    monkeypatch.setattr("patchpal.tools.common.REPO_ROOT", temp_repo)
+
+    # These should be blocked (including new additions)
+    dangerous_cmds = [
+        "rm -rf /tmp/test",
+        "echo hello | dd of=/dev/null",
+        "cat file > /dev/sda",
+        "echo test | sudo tee /etc/test",  # Piping to sudo
+        "cat secrets | shred",  # Piping to shred (NEW)
+        "mkfs.ext4 /dev/sdb1",  # Format filesystem (NEW)
+        ":(){:|:&};:",  # Fork bomb (NEW)
+    ]
+
+    for cmd in dangerous_cmds:
+        with pytest.raises(ValueError, match="Blocked dangerous"):
+            run_shell(cmd)
+
+
+def test_run_shell_dangerous_patterns_allowed_with_sudo_flag(temp_repo, monkeypatch):
+    """Test that dangerous patterns are allowed when PATCHPAL_ALLOW_SUDO=true."""
+    from patchpal.tools import run_shell
+
+    # Set environment variable to allow dangerous operations
+    monkeypatch.setenv("PATCHPAL_ALLOW_SUDO", "true")
+    monkeypatch.setenv("PATCHPAL_REQUIRE_PERMISSION", "false")
+
+    # Need to reload the modules to pick up the new environment variable
+    import importlib
+
+    import patchpal.tools
+    import patchpal.tools.common
+    import patchpal.tools.shell_tools
+
+    importlib.reload(patchpal.tools.common)
+    importlib.reload(patchpal.tools.shell_tools)
+    importlib.reload(patchpal.tools)
+
+    # Re-patch REPO_ROOT after reload
+    monkeypatch.setattr("patchpal.tools.common.REPO_ROOT", temp_repo)
+
+    # These commands should NOT be blocked by dangerous checks anymore
+    # Test that previously blocked commands now execute (or fail for other reasons)
+    try:
+        # Test that commands with previously dangerous patterns are not blocked
+        result = run_shell("echo 'test' > /dev/null")
+        # Command should execute (redirecting to /dev/null always works)
+        assert result is not None
+    except ValueError as e:
+        # Should NOT be blocked by dangerous pattern/token check
+        assert "Blocked dangerous" not in str(e)
+
+
 def test_check_path_validates_existence():
     """Test that _check_path validates file existence."""
     from patchpal.tools.common import _check_path

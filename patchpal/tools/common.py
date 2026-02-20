@@ -49,19 +49,40 @@ except ImportError:
 REPO_ROOT = Path(".").resolve()
 
 # Platform-aware command blocking - minimal list since we have permission system
-# Only block privilege escalation commands specific to each platform
-# Allow sudo if explicitly enabled via environment variable
+# Allow dangerous operations if explicitly enabled via environment variable
 ALLOW_SUDO = os.getenv("PATCHPAL_ALLOW_SUDO", "false").lower() == "true"
 
 if ALLOW_SUDO:
-    # Sudo allowed - no command blocking
-    FORBIDDEN = set()
+    # Dangerous operations allowed - no command blocking
+    DANGEROUS_TOKENS = set()
+    DANGEROUS_PATTERNS = []
 elif platform.system() == "Windows":
-    # Windows privilege escalation commands
-    FORBIDDEN = {"runas", "psexec"}  # Run as different user, SysInternals elevated execution
+    # Windows privilege escalation commands (token-based matching)
+    DANGEROUS_TOKENS = {"runas", "psexec"}  # Run as different user, SysInternals elevated execution
+    # Windows dangerous patterns (substring matching)
+    DANGEROUS_PATTERNS = [
+        "> \\\\.\\",  # Writing to device objects (e.g., \\.\PhysicalDrive0)
+        "| dd",  # Piping to dd
+        "| shred",  # Piping to shred (secure delete)
+        "mkfs.",  # Format filesystem
+        ":(){",  # Fork bomb
+    ]
 else:
-    # Unix/Linux/macOS privilege escalation commands
-    FORBIDDEN = {"sudo", "su"}  # Privilege escalation
+    # Unix/Linux/macOS privilege escalation commands (token-based matching)
+    DANGEROUS_TOKENS = {"sudo", "su", "doas"}  # Privilege escalation (doas is sudo alternative)
+    # Unix/Linux/macOS dangerous patterns (substring matching)
+    DANGEROUS_PATTERNS = [
+        "> /dev/",  # Writing to devices
+        "rm -rf /",  # Recursive delete from root
+        "| dd",  # Piping to dd (disk destroyer)
+        "| sudo ",  # Piping to sudo (bypass token check)
+        "| shred",  # Piping to shred (secure delete)
+        "mkfs.",  # Format filesystem (mkfs.ext4, mkfs.xfs, etc.)
+        ":(){",  # Fork bomb signature
+    ]
+
+# Backward compatibility alias
+FORBIDDEN = DANGEROUS_TOKENS
 
 # Sensitive file patterns
 SENSITIVE_PATTERNS = {
