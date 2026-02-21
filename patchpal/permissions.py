@@ -73,14 +73,11 @@ class PermissionManager:
             "ls",
             "dir",
             # File reading (complement to read_file tool)
-            "cat",
             "head",
             "tail",
-            "type",  # Windows equivalent of cat
             "more",  # Windows pager
             "less",  # Unix pager
             # PowerShell read-only commands (Windows)
-            "get-content",  # PowerShell cat equivalent
             "get-childitem",  # PowerShell ls equivalent
             "get-item",  # PowerShell file info
             "select-object",  # PowerShell filtering (read-only)
@@ -130,8 +127,6 @@ class PermissionManager:
             # Command/path info
             "which",
             "whereis",
-            # Output
-            "echo",
             # Current directory
             "pwd",
             "cd",  # When used without args (shows current dir on Windows)

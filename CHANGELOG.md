@@ -14,6 +14,7 @@ Most recent releases are shown at the top. Each release shows:
 
 ### changed:
 - Centralized environment variable configuration (#72)
+- Removed `cat`, `echo`, `type`, and `get-content` from auto-granted harmless commands to prevent shell redirection bypass of file write permissions
 
 ### fixed:
 - N/A
