@@ -1,10 +1,11 @@
 """Permission management for PatchPal tool execution."""
 
 import json
-import os
 from functools import wraps
 from pathlib import Path
 from typing import Optional
+
+from patchpal.config import config
 
 
 class PermissionManager:
@@ -23,7 +24,7 @@ class PermissionManager:
 
         # Check if permissions are globally disabled
         # Using streaming mode in CLI allows permissions to work properly
-        self.enabled = os.getenv("PATCHPAL_REQUIRE_PERMISSION", "true").lower() == "true"
+        self.enabled = config.REQUIRE_PERMISSION
 
         # Auto-grant harmless read-only commands in all modes
         # Since these replace dedicated tools that were removed (list_files, tree, etc.),
@@ -56,7 +57,7 @@ class PermissionManager:
         require permissions, their shell equivalents shouldn't either.
         """
         # Check if web tools are enabled
-        web_tools_enabled = os.getenv("PATCHPAL_ENABLE_WEB", "true").lower() in ("true", "1", "yes")
+        web_tools_enabled = config.ENABLE_WEB
 
         # List of command patterns that are always safe (read-only, no side effects)
         harmless_patterns = [
@@ -72,14 +73,12 @@ class PermissionManager:
             "ls",
             "dir",
             # File reading (complement to read_file tool)
-            "cat",
             "head",
             "tail",
-            "type",  # Windows equivalent of cat
+            "sed",  # Stream editor (read-only when used for display: sed -n 'Np')
             "more",  # Windows pager
             "less",  # Unix pager
             # PowerShell read-only commands (Windows)
-            "get-content",  # PowerShell cat equivalent
             "get-childitem",  # PowerShell ls equivalent
             "get-item",  # PowerShell file info
             "select-object",  # PowerShell filtering (read-only)
@@ -90,6 +89,37 @@ class PermissionManager:
             "git diff",
             "git log",
             "git show",
+            # Test runners (Python)
+            "pytest",
+            "python -m pytest",
+            "python3 -m pytest",
+            "unittest",
+            "python -m unittest",
+            "python3 -m unittest",
+            # Test runners (JavaScript/Node.js)
+            "npm test",
+            "npm run test",
+            "yarn test",
+            "jest",
+            "mocha",
+            "vitest",
+            # Test runners (Go)
+            "go test",
+            # Test runners (Rust)
+            "cargo test",
+            # Test runners (Ruby)
+            "rspec",
+            "rake test",
+            "ruby -I test",
+            # Test runners (Java)
+            "mvn test",
+            "gradle test",
+            "./gradlew test",
+            # Test runners (PHP)
+            "phpunit",
+            "composer test",
+            # Test runners (C#/.NET)
+            "dotnet test",
             # File/text processing
             "wc",
             "file",
@@ -98,8 +128,6 @@ class PermissionManager:
             # Command/path info
             "which",
             "whereis",
-            # Output
-            "echo",
             # Current directory
             "pwd",
             "cd",  # When used without args (shows current dir on Windows)

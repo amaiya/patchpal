@@ -1,8 +1,9 @@
 """Context window management and token estimation."""
 
-import os
 from datetime import datetime
 from typing import Any, Callable, Dict, List, Tuple
+
+from patchpal.config import config
 
 try:
     import tiktoken
@@ -132,17 +133,13 @@ class ContextManager:
     """Manage context window with auto-compaction and pruning."""
 
     # OpenCode-inspired thresholds - configurable via environment variables
-    PRUNE_PROTECT = int(
-        os.getenv("PATCHPAL_PRUNE_PROTECT", "40000")
-    )  # Keep last 40k tokens of tool outputs
-    PRUNE_MINIMUM = int(
-        os.getenv("PATCHPAL_PRUNE_MINIMUM", "20000")
-    )  # Minimum tokens to prune to make it worthwhile
-    COMPACT_THRESHOLD = float(
-        os.getenv("PATCHPAL_COMPACT_THRESHOLD", "0.75")
+    PRUNE_PROTECT = config.PRUNE_PROTECT  # Keep last 40k tokens of tool outputs
+    PRUNE_MINIMUM = config.PRUNE_MINIMUM  # Minimum tokens to prune to make it worthwhile
+    COMPACT_THRESHOLD = (
+        config.COMPACT_THRESHOLD
     )  # Compact at 75% capacity (lower due to estimation inaccuracy)
     ENABLE_PROACTIVE_PRUNING = (
-        os.getenv("PATCHPAL_PROACTIVE_PRUNING", "true").lower() == "true"
+        config.PROACTIVE_PRUNING
     )  # Proactively prune after tool calls when outputs exceed PRUNE_PROTECT (default: true)
 
     # Model context limits (tokens)
@@ -269,7 +266,7 @@ Be comprehensive but concise. The goal is to continue work seamlessly without lo
             Context window size in tokens
         """
         # Allow override for testing
-        override = os.getenv("PATCHPAL_CONTEXT_LIMIT")
+        override = config.CONTEXT_LIMIT
         if override:
             try:
                 return int(override)

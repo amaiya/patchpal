@@ -18,41 +18,6 @@ PatchPal includes a comprehensive set of built-in tools for file operations, git
       show_root_heading: true
       heading_level: 4
 
-### count_lines
-
-::: patchpal.tools.file_operations.count_lines
-    options:
-      show_root_heading: true
-      heading_level: 4
-
-### list_files
-
-::: patchpal.tools.file_operations.list_files
-    options:
-      show_root_heading: true
-      heading_level: 4
-
-### get_file_info
-
-::: patchpal.tools.file_operations.get_file_info
-    options:
-      show_root_heading: true
-      heading_level: 4
-
-### find_files
-
-::: patchpal.tools.file_operations.find_files
-    options:
-      show_root_heading: true
-      heading_level: 4
-
-### tree
-
-::: patchpal.tools.file_operations.tree
-    options:
-      show_root_heading: true
-      heading_level: 4
-
 ## File Editing
 
 ### apply_patch

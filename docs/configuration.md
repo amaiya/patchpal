@@ -43,6 +43,17 @@ export PATCHPAL_ALLOW_SENSITIVE=true         # Allow access to .env, credentials
 export PATCHPAL_ALLOW_SUDO=true              # Allow sudo/privilege escalation (default: false - blocked)
                                               # ⚠️  WARNING: Only enable in trusted, controlled environments
 export PATCHPAL_SHELL_TIMEOUT=60             # Shell command timeout in seconds (default: 30)
+
+# Output Filtering
+export PATCHPAL_FILTER_OUTPUTS=true          # Filter verbose command outputs (default: true)
+                                              # Only applies to specific commands: test runners, git log, build tools
+                                              # Patterns matched: pytest, npm test, git log, pip install, cargo build, etc.
+                                              # Shows only failures, errors, and summaries for matched commands
+                                              # Can save 75%+ on output tokens for verbose commands
+                                              # All other commands return full output
+export PATCHPAL_MAX_OUTPUT_LINES=500         # Max lines of shell output (default: 500)
+                                              # Applied to ALL shell commands to prevent context flooding
+                                              # If output exceeds this, shows first/last portions with truncation notice
 ```
 
 ### Operational Controls
@@ -163,6 +174,14 @@ patchpal
 export PATCHPAL_REQUIRE_PERMISSION=false     # ⚠️  Disables all permission prompts
 export PATCHPAL_MAX_ITERATIONS=200           # Allow longer runs
 patchpal
+```
+
+**Autopilot Mode (CI/CD Integration):**
+```bash
+export PATCHPAL_AUTOPILOT_CONFIRMED=true     # Skip autopilot safety confirmation (default: false)
+                                              # ⚠️  Only use in CI/CD or automation contexts
+                                              # Autopilot mode allows continuous iterative execution
+patchpal autopilot "Implement feature X"
 ```
 
 **Image Analysis with Vision Models:**

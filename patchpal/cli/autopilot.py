@@ -27,6 +27,7 @@ import os
 import sys
 
 from patchpal.agent import create_agent
+from patchpal.config import config
 
 
 def autopilot_loop(
@@ -70,7 +71,7 @@ def autopilot_loop(
 
     # Create agent
     agent = create_agent(
-        model_id=model or os.getenv("PATCHPAL_MODEL", "anthropic/claude-sonnet-4-5"),
+        model_id=model or config.MODEL,
         custom_tools=custom_tools,
         litellm_kwargs=litellm_kwargs,
     )
@@ -178,7 +179,7 @@ def main():
     print()
 
     # Check for environment variable to skip prompt (for automation)
-    if os.getenv("PATCHPAL_AUTOPILOT_CONFIRMED") != "true":
+    if not config.AUTOPILOT_CONFIRMED:
         try:
             response = input("Continue with autopilot mode? (yes/no): ").strip().lower()
             if response != "yes":

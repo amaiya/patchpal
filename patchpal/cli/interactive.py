@@ -1,5 +1,4 @@
 import argparse
-import os
 import sys
 import warnings
 from pathlib import Path
@@ -13,6 +12,7 @@ from rich.console import Console
 from rich.markdown import Markdown
 
 from patchpal.agent import create_agent
+from patchpal.config import config
 from patchpal.tools import audit_logger
 
 
@@ -336,12 +336,12 @@ Supported models: Any LiteLLM-supported model
         set_require_permission_for_all(True)
 
     # Determine model to use (priority: CLI arg > env var > default)
-    model_id = args.model or os.getenv("PATCHPAL_MODEL") or "anthropic/claude-sonnet-4-5"
+    model_id = args.model or config.MODEL
 
     # Parse litellm_kwargs from environment variable if set
     # Format: PATCHPAL_LITELLM_KWARGS='{"reasoning_effort": "high", "temperature": 0.7}'
     litellm_kwargs = None
-    litellm_kwargs_env = os.getenv("PATCHPAL_LITELLM_KWARGS")
+    litellm_kwargs_env = config.LITELLM_KWARGS
     if litellm_kwargs_env:
         try:
             import json
@@ -376,7 +376,7 @@ Supported models: Any LiteLLM-supported model
     )
 
     # Get max iterations from environment variable or use default
-    max_iterations = int(os.getenv("PATCHPAL_MAX_ITERATIONS", "100"))
+    max_iterations = config.MAX_ITERATIONS
 
     # Create Rich console for markdown rendering
     console = Console()
@@ -412,14 +412,14 @@ Supported models: Any LiteLLM-supported model
         print("\033[1;33m🔒 Permission required for ALL operations (including reads)\033[0m")
 
     # Show custom prompt indicator if set
-    custom_prompt_path = os.getenv("PATCHPAL_SYSTEM_PROMPT")
+    custom_prompt_path = config.SYSTEM_PROMPT
 
     if custom_prompt_path:
         print(f"\033[1;36m🔧 Using custom system prompt: {custom_prompt_path}\033[0m")
 
     # Show minimal tools mode indicator if active
-    if os.getenv("PATCHPAL_MINIMAL_TOOLS", "false").lower() in ("true", "1", "yes"):
-        web_enabled = os.getenv("PATCHPAL_ENABLE_WEB", "true").lower() in ("true", "1", "yes")
+    if config.MINIMAL_TOOLS:
+        web_enabled = config.ENABLE_WEB
         if web_enabled:
             print(
                 "\033[1;36m🔧 Minimal tools mode: 6 tools (read_file, edit_file, apply_patch, run_shell, web_search, web_fetch)\033[0m"
@@ -563,7 +563,7 @@ Supported models: Any LiteLLM-supported model
                 print(f"  Model: {model_id}")
 
                 # Show context limit info
-                override = os.getenv("PATCHPAL_CONTEXT_LIMIT")
+                override = config.CONTEXT_LIMIT
                 if override:
                     print(
                         f"  \033[1;33m⚠️  Context limit overridden: {stats['context_limit']:,} tokens (PATCHPAL_CONTEXT_LIMIT={override})\033[0m"
@@ -1180,8 +1180,8 @@ Supported models: Any LiteLLM-supported model
                         if config_path.exists():
                             try:
                                 with open(config_path) as f:
-                                    config = json.load(f)
-                                    mcp_servers = config.get("mcp", {})
+                                    mcp_config = json.load(f)
+                                    mcp_servers = mcp_config.get("mcp", {})
 
                                     if mcp_servers:
                                         print(f"\nFrom: {config_path}")

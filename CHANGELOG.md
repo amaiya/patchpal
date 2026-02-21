@@ -7,6 +7,31 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
+## 0.16.0 (TBD)
+
+### new:
+- N/A
+
+### changed:
+- Centralized environment variable configuration (#72)
+- Removed `cat`, `echo`, `type`, and `get-content` from auto-granted harmless commands to prevent shell redirection bypass of file write permissions
+
+### fixed:
+- N/A
+
+
+## 0.15.1 (2026-02-20)
+
+### new:
+- N/A
+
+### changed:
+- Updated `apply_patch` tool description and system prompt based on `gpt-oss-20b` mistakes with `apply_patch` (#71)
+
+### fixed:
+- N/A
+
+
 ## 0.15.0 (2026-02-20)
 
 ### new:
@@ -14,6 +39,7 @@ Most recent releases are shown at the top. Each release shows:
 
 ### changed:
 - Use minimal ("simple") system prompt as default (#68)
+- Updated command blocking (#70)
 
 ### fixed:
 - Fixes `ask_user` display issue with markdown (#67)

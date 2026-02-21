@@ -1,10 +1,9 @@
 """File operation tools (read, get info)."""
 
 import mimetypes
-import os
 from typing import Optional
 
-from patchpal.tools import common
+from patchpal.config import config
 from patchpal.tools.common import (
     MAX_FILE_SIZE,
     _check_path,
@@ -63,7 +62,7 @@ def read_file(path: str) -> str:
         # For raster images, allow larger files (up to 10MB) since they're for vision models
         # Vision APIs have their own limits and will resize as needed
         # Images are formatted as multimodal content by the agent, bypassing tool output truncation
-        max_image_size = int(os.getenv("PATCHPAL_MAX_IMAGE_SIZE", 10 * 1024 * 1024))  # 10MB default
+        max_image_size = config.MAX_IMAGE_SIZE
         if size > max_image_size:
             raise ValueError(
                 f"Image file too large: {size:,} bytes (max {max_image_size:,} bytes)\n"
@@ -239,124 +238,4 @@ def read_lines(path: str, start_line: int, end_line: Optional[int] = None) -> st
     audit_logger.info(
         f"READ_LINES: {path} lines {start_line}-{actual_end_line} ({len(requested_lines)} lines)"
     )
-    return output
-
-
-@require_permission_for_read(
-    "get_file_info",
-    get_description=lambda path: f"   Get info: {path}",
-    get_pattern=lambda path: path,
-)
-def get_file_info(path: str) -> str:
-    """
-    Get metadata for file(s) at the specified path.
-
-    Args:
-        path: Path to file, directory, or glob pattern (e.g., "tests/*.txt")
-              Can be relative to repository root or absolute
-
-    Returns:
-        Formatted string with file metadata (name, size, modified time, type)
-        For multiple files, returns one line per file
-
-    Raises:
-        ValueError: If no files found
-    """
-    _operation_limiter.check_limit(f"get_file_info({path[:30]}...)")
-
-    # Handle glob patterns
-    if "*" in path or "?" in path:
-        # It's a glob pattern
-        # Use glob to find matching files
-        try:
-            matches = list(common.REPO_ROOT.glob(path))
-        except Exception as e:
-            raise ValueError(f"Invalid glob pattern: {e}")
-
-        if not matches:
-            return f"No files found matching pattern: {path}"
-
-        # Filter to files only
-        files = [p for p in matches if p.is_file()]
-        if not files:
-            return f"No files found matching pattern: {path}"
-    else:
-        # Single path
-        p = _check_path(path, must_exist=False)
-
-        if not p.exists():
-            return f"Path does not exist: {path}"
-
-        if p.is_file():
-            files = [p]
-        elif p.is_dir():
-            # List all files in directory (non-recursive)
-            files = [f for f in p.iterdir() if f.is_file() and not f.name.startswith(".")]
-            if not files:
-                return f"No files found in directory: {path}"
-        else:
-            return f"Path is not a file or directory: {path}"
-
-    # Format file information
-    results = []
-    for file_path in sorted(files):
-        try:
-            stat = file_path.stat()
-
-            # Try to get relative path; if it fails (e.g., Windows short names),
-            # use the file name or absolute path
-            try:
-                relative_path = file_path.relative_to(common.REPO_ROOT)
-            except ValueError:
-                # Can't compute relative path (e.g., Windows short name mismatch)
-                # Try to compute it manually by resolving both paths
-                try:
-                    resolved_file = file_path.resolve()
-                    resolved_repo = common.REPO_ROOT.resolve()
-                    relative_path = resolved_file.relative_to(resolved_repo)
-                except (ValueError, OSError):
-                    # Last resort: just use the file name
-                    relative_path = file_path.name
-
-            # Format size
-            size = stat.st_size
-            if size < 1024:
-                size_str = f"{size}B"
-            elif size < 1024 * 1024:
-                size_str = f"{size / 1024:.1f}KB"
-            else:
-                size_str = f"{size / (1024 * 1024):.1f}MB"
-
-            # Format modification time
-            from datetime import datetime
-
-            mtime = datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d %H:%M:%S")
-
-            # Detect file type
-            if _is_binary_file(file_path):
-                file_type = "binary"
-            else:
-                mime_type, _ = mimetypes.guess_type(str(file_path))
-                file_type = mime_type or "text"
-
-            results.append(f"{str(relative_path):<50} {size_str:>10}  {mtime}  {file_type}")
-
-        except Exception as e:
-            # Get relative path for error message (may fail if path is invalid)
-            try:
-                relative_path = file_path.relative_to(common.REPO_ROOT)
-            except Exception:
-                try:
-                    resolved_file = file_path.resolve()
-                    resolved_repo = common.REPO_ROOT.resolve()
-                    relative_path = resolved_file.relative_to(resolved_repo)
-                except Exception:
-                    relative_path = file_path.name
-            results.append(f"{str(relative_path):<50} ERROR: {e}")
-
-    header = f"{'Path':<50} {'Size':>10}  {'Modified'}            {'Type'}"
-    separator = "-" * 100
-
-    output = f"{header}\n{separator}\n" + "\n".join(results)
-    audit_logger.info(f"FILE_INFO: {path} - {len(files)} file(s)")
     return output
