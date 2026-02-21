@@ -75,6 +75,7 @@ class PermissionManager:
             # File reading (complement to read_file tool)
             "head",
             "tail",
+            "sed",  # Stream editor (read-only when used for display: sed -n 'Np')
             "more",  # Windows pager
             "less",  # Unix pager
             # PowerShell read-only commands (Windows)
