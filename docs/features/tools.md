@@ -21,6 +21,9 @@ Read contents of files anywhere on the system (repository files, logs, configs).
     - **Anthropic/Claude**: Images in tool results (multimodal content)
     - **OpenAI/GPT**: Images injected as user messages (API limitation workaround)
     - Automatic detection and formatting based on model provider
+  - **Non-vision models**: Set `PATCHPAL_BLOCK_IMAGES=true` to replace images with text placeholders
+    - Prevents API errors from non-vision models (gpt-3.5-turbo, claude-instant, local models)
+    - Also useful for privacy compliance (prevent image data from being sent to LLM)
   - **Recommendation**: Use compressed images for faster processing (1-2MB optimal)
 - Text file limit: 500KB by default (configurable with `PATCHPAL_MAX_FILE_SIZE`)
 - For larger files, use `read_lines` for targeted access
@@ -189,6 +192,7 @@ Execute shell commands in the repository.
 
 - `PATCHPAL_MAX_FILE_SIZE` - Maximum file size for text files in read_file (default: 500KB)
 - `PATCHPAL_MAX_IMAGE_SIZE` - Maximum image file size for read_file (default: 10MB)
+- `PATCHPAL_BLOCK_IMAGES` - Block images from being sent to LLM (default: false)
 - `PATCHPAL_ENABLE_WEB` - Enable/disable web tools (default: true)
 - `PATCHPAL_ALLOW_SUDO` - Allow sudo/su commands (default: false)
 - `PATCHPAL_MINIMAL_TOOLS` - Use minimal tools mode: 4-6 core tools only (default: false)

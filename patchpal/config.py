@@ -104,6 +104,15 @@ class Config:
         return int(os.getenv("PATCHPAL_MAX_IMAGE_SIZE", str(10 * 1024 * 1024)))
 
     @property
+    def BLOCK_IMAGES(self) -> bool:
+        """Block images from being sent to LLM (default: false).
+
+        When enabled, images are replaced with text placeholders before sending to the model.
+        Useful for non-vision models or to reduce costs/privacy concerns.
+        """
+        return _get_env_bool("PATCHPAL_BLOCK_IMAGES", "false")
+
+    @property
     def READ_ONLY(self) -> bool:
         """Prevent all file modifications (default: false)."""
         return _get_env_bool("PATCHPAL_READ_ONLY", "false")

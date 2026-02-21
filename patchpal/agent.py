@@ -500,6 +500,57 @@ It's currently empty (just the template). The file is automatically loaded at se
             "openai" in model_lower or "gpt" in model_lower or self.model_id.startswith("openai/")
         )
 
+    def _filter_images_if_blocked(self, messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Filter images from messages if PATCHPAL_BLOCK_IMAGES is enabled.
+
+        Replaces image content with text placeholders to support non-vision models
+        or when user explicitly wants to block images (cost/privacy).
+
+        Args:
+            messages: List of message dictionaries
+
+        Returns:
+            Filtered messages with images replaced by text if blocking is enabled
+        """
+        if not config.BLOCK_IMAGES:
+            return messages
+
+        filtered = []
+        for msg in messages:
+            # Only filter user and tool messages that might contain images
+            if msg.get("role") in ["user", "tool"] and isinstance(msg.get("content"), list):
+                filtered_content = []
+                for block in msg["content"]:
+                    if isinstance(block, dict) and block.get("type") == "image_url":
+                        # Replace image with text placeholder
+                        filtered_content.append(
+                            {
+                                "type": "text",
+                                "text": "[Image blocked - PATCHPAL_BLOCK_IMAGES=true. Set to false to enable vision capabilities.]",
+                            }
+                        )
+                    else:
+                        filtered_content.append(block)
+
+                # Dedupe consecutive image block placeholders
+                deduped = []
+                last_was_blocked = False
+                for block in filtered_content:
+                    is_blocked = (
+                        isinstance(block, dict)
+                        and block.get("type") == "text"
+                        and block.get("text", "").startswith("[Image blocked")
+                    )
+                    if not (is_blocked and last_was_blocked):
+                        deduped.append(block)
+                    last_was_blocked = is_blocked
+
+                filtered.append({**msg, "content": deduped})
+            else:
+                filtered.append(msg)
+
+        return filtered
+
     def _perform_auto_compaction(self):
         """Perform automatic context window compaction.
 
@@ -916,6 +967,9 @@ It's currently empty (just the template). The file is automatically loaded at se
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "system", "content": _get_current_datetime_message()},
             ] + self.messages
+
+            # Filter images if BLOCK_IMAGES is enabled (for non-vision models or user preference)
+            messages = self._filter_images_if_blocked(messages)
 
             # Apply prompt caching for supported models (Anthropic/Claude)
             messages = _apply_prompt_caching(messages, self.model_id)

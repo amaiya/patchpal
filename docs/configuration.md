@@ -208,4 +208,11 @@ export PATCHPAL_MAX_IMAGE_SIZE=$((20*1024*1024))  # 20MB
 
 # Tip: Use compressed images (1-2MB) for faster processing
 # Vision APIs resize large images automatically anyway
+
+# Block images for non-vision models (or for privacy):
+export PATCHPAL_BLOCK_IMAGES=true                # Replace images with text placeholders (default: false)
+                                                 # Useful for:
+                                                 # - Non-vision models (gpt-3.5-turbo, claude-instant, local models)
+                                                 # - Privacy compliance (prevent image data from being sent)
+                                                 # Images are replaced with: "[Image blocked - PATCHPAL_BLOCK_IMAGES=true...]"
 ```
