@@ -478,9 +478,15 @@ It's currently empty (just the template). The file is automatically loaded at se
             if msg.get("role") == "tool" and msg.get("content"):
                 content = msg["content"]
 
-                # Skip multimodal content (images) - they should not be pruned
+                # Skip multimodal content containing images - they should not be pruned
+                # Images bypass normal truncation limits for vision model analysis
                 if isinstance(content, list):
-                    continue
+                    has_images = any(
+                        isinstance(block, dict) and block.get("type") == "image_url"
+                        for block in content
+                    )
+                    if has_images:
+                        continue
 
                 content_size = len(str(content))
                 if content_size > max_chars:
@@ -516,7 +522,9 @@ It's currently empty (just the template). The file is automatically loaded at se
         parts = result_str.split(":", 2)
         if len(parts) == 3:
             _, mime, b64_data = parts
-            return (mime, b64_data)
+            # Validate that both mime and base64 are non-empty
+            if mime and b64_data:
+                return (mime, b64_data)
 
         return None
 
@@ -547,6 +555,41 @@ It's currently empty (just the template). The file is automatically loaded at se
         # Store pending image to inject after assistant response
         if not hasattr(self, "_pending_images"):
             self._pending_images = []
+
+        # Safety limits for pending images (OpenAI workaround)
+        # - Max 20 images per turn (prevents memory exhaustion)
+        # - Total size limit based on estimated base64 size
+        max_pending_images = 20
+        max_pending_size_mb = 50  # Conservative limit (~67MB base64)
+
+        pending_count = len(self._pending_images)
+        pending_size_mb = sum(len(img["data"]) for img in self._pending_images) / (1024 * 1024)
+        current_size_mb = len(b64_data) / (1024 * 1024)
+
+        if pending_count >= max_pending_images:
+            print(
+                f"\033[1;33m⚠️  Warning: Already have {pending_count} pending images. "
+                f"Skipping additional image to prevent memory issues.\033[0m"
+            )
+            # Add warning to tool result instead
+            self.messages[-1]["content"] = (
+                f"Image loaded but not attached (already have {pending_count} pending images in this turn). "
+                f"Consider processing images in smaller batches."
+            )
+            return
+
+        if pending_size_mb + current_size_mb > max_pending_size_mb:
+            print(
+                f"\033[1;33m⚠️  Warning: Pending images total {pending_size_mb:.1f}MB. "
+                f"Adding {current_size_mb:.1f}MB would exceed {max_pending_size_mb}MB limit.\033[0m"
+            )
+            # Add warning to tool result instead
+            self.messages[-1]["content"] = (
+                f"Image loaded but not attached (would exceed {max_pending_size_mb}MB memory limit). "
+                f"Current pending: {pending_size_mb:.1f}MB, this image: {current_size_mb:.1f}MB."
+            )
+            return
+
         self._pending_images.append(
             {
                 "mime": mime,
@@ -1036,7 +1079,13 @@ It's currently empty (just the template). The file is automatically loaded at se
         If the last message is an assistant message with tool_calls but no
         corresponding tool responses, we need to either remove the message
         or add error responses to maintain valid conversation structure.
+
+        Also clears any pending images for OpenAI that weren't injected.
         """
+        # Clear any pending images that weren't injected
+        if hasattr(self, "_pending_images"):
+            self._pending_images = []
+
         if not self.messages:
             return
 
@@ -1085,6 +1134,11 @@ It's currently empty (just the template). The file is automatically loaded at se
         """
         # Agent loop
         for iteration in range(max_iterations):
+            # Clear any stale pending images from previous iteration (safety check)
+            # Images should already be injected, but this prevents accumulation on error
+            if hasattr(self, "_pending_images") and self._pending_images:
+                self._pending_images = []
+
             # Show thinking message
             print("\033[2m🤔 Thinking...\033[0m", flush=True)
 
@@ -1155,6 +1209,9 @@ It's currently empty (just the template). The file is automatically loaded at se
                 self._calculate_cost(response)
 
             except Exception as e:
+                # Clean up any pending images before returning error
+                if hasattr(self, "_pending_images"):
+                    self._pending_images = []
                 return f"Error calling model: {e}"
 
             # Get the assistant's response

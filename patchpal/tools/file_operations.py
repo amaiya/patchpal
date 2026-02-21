@@ -73,8 +73,14 @@ def read_file(path: str) -> str:
         # Encode as base64
         import base64
 
-        content_bytes = p.read_bytes()
-        b64_data = base64.b64encode(content_bytes).decode("utf-8")
+        try:
+            content_bytes = p.read_bytes()
+            b64_data = base64.b64encode(content_bytes).decode("utf-8")
+        except Exception as e:
+            raise ValueError(
+                f"Failed to read or encode image file '{path}': {e}\n"
+                f"The file may be corrupted or inaccessible."
+            )
 
         # Determine MIME type
         if mime_type:

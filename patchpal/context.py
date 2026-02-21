@@ -88,10 +88,13 @@ class TokenEstimator:
                             # Text content
                             tokens += self.estimate_tokens(str(block.get("text", "")))
                         elif block.get("type") == "image_url":
-                            # Image content - vision models charge ~85-170 tokens per image
-                            # depending on detail level (low/high/auto)
-                            # Use 170 as conservative estimate
-                            tokens += 170
+                            # Image content - vision models charge varying amounts depending on:
+                            # - Image dimensions (larger = more tokens)
+                            # - Detail level (low/high/auto)
+                            # - Provider (OpenAI: 765-2,298, Anthropic/others: similar)
+                            # Use 1200 tokens as conservative cross-provider estimate
+                            # Reference: oh-my-pi uses same value for reliable context management
+                            tokens += 1200
                     else:
                         # Fallback for unexpected structure
                         tokens += self.estimate_tokens(str(block))
