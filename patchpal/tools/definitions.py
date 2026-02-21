@@ -171,7 +171,7 @@ Tip: Read README first for context when exploring repositories.""",
         "type": "function",
         "function": {
             "name": "apply_patch",
-            "description": "Replace a file's entire contents with new content. You MUST provide the complete new file content as a string. Use this for large-scale changes or when rewriting multiple sections. For small single-string replacements, use edit_file instead. Returns a unified diff of changes.",
+            "description": "Replace a file's entire contents with new content. You MUST provide the complete new file content as a string. Use this for large-scale changes or when rewriting multiple sections or creating new files. For small single-string replacements, use edit_file instead. Returns a unified diff of changes.",
             "parameters": {
                 "type": "object",
                 "properties": {

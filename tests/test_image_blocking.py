@@ -93,7 +93,7 @@ def test_filter_images_disabled(monkeypatch):
         },
     ]
 
-    filtered = agent._filter_images_if_blocked(messages)
+    filtered = agent.image_handler.filter_images_if_blocked(messages)
 
     # Should pass through unchanged
     assert len(filtered) == 2
@@ -137,7 +137,7 @@ def test_filter_images_enabled(monkeypatch):
         },
     ]
 
-    filtered = agent._filter_images_if_blocked(messages)
+    filtered = agent.image_handler.filter_images_if_blocked(messages)
 
     # Should replace images with text
     assert len(filtered) == 2
@@ -178,7 +178,7 @@ def test_filter_images_deduplication(monkeypatch):
         }
     ]
 
-    filtered = agent._filter_images_if_blocked(messages)
+    filtered = agent.image_handler.filter_images_if_blocked(messages)
 
     # Should dedupe consecutive placeholders
     assert len(filtered[0]["content"]) == 3  # 1 placeholder + text + 1 placeholder
@@ -218,7 +218,7 @@ def test_filter_images_preserves_text(monkeypatch):
         }
     ]
 
-    filtered = agent._filter_images_if_blocked(messages)
+    filtered = agent.image_handler.filter_images_if_blocked(messages)
 
     # Text should be preserved
     assert filtered[0]["content"][0]["type"] == "text"
@@ -255,7 +255,7 @@ def test_filter_images_only_affects_user_and_tool_messages(monkeypatch):
         },
     ]
 
-    filtered = agent._filter_images_if_blocked(messages)
+    filtered = agent.image_handler.filter_images_if_blocked(messages)
 
     # System and assistant messages should be unchanged
     assert filtered[0] == messages[0]
@@ -288,7 +288,7 @@ def test_filter_images_handles_string_content(monkeypatch):
         {"role": "assistant", "content": "Hi there"},
     ]
 
-    filtered = agent._filter_images_if_blocked(messages)
+    filtered = agent.image_handler.filter_images_if_blocked(messages)
 
     # Should pass through unchanged
     assert filtered == messages

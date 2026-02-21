@@ -348,6 +348,11 @@ class PatchPalAgent:
 
         self.model_id = _normalize_bedrock_model_id(model_id)
 
+        # Initialize image handler for vision model support
+        from patchpal.tools.image_handler import ImageHandler
+
+        self.image_handler = ImageHandler(self.model_id)
+
         # Register Ollama models as supporting native function calling
         # LiteLLM defaults to JSON mode if not explicitly registered
         if self.model_id.startswith("ollama_chat/"):
@@ -480,13 +485,8 @@ It's currently empty (just the template). The file is automatically loaded at se
 
                 # Skip multimodal content containing images - they should not be pruned
                 # Images bypass normal truncation limits for vision model analysis
-                if isinstance(content, list):
-                    has_images = any(
-                        isinstance(block, dict) and block.get("type") == "image_url"
-                        for block in content
-                    )
-                    if has_images:
-                        continue
+                if self.image_handler.should_skip_pruning(content):
+                    continue
 
                 content_size = len(str(content))
                 if content_size > max_chars:
@@ -498,6 +498,8 @@ It's currently empty (just the template). The file is automatically loaded at se
     def _is_openai_model(self) -> bool:
         """Check if the current model is an OpenAI model.
 
+        Used for model-specific behavior (e.g., cache token tracking, image handling).
+
         Returns:
             True if the model is OpenAI, False otherwise
         """
@@ -505,221 +507,6 @@ It's currently empty (just the template). The file is automatically loaded at se
         return (
             "openai" in model_lower or "gpt" in model_lower or self.model_id.startswith("openai/")
         )
-
-    def _parse_image_data(self, result_str: str) -> Optional[tuple[str, str]]:
-        """Parse IMAGE_DATA format string.
-
-        Args:
-            result_str: Result string that may contain IMAGE_DATA format
-
-        Returns:
-            Tuple of (mime_type, base64_data) if valid IMAGE_DATA, None otherwise
-        """
-        if not result_str.startswith("IMAGE_DATA:"):
-            return None
-
-        # Parse: IMAGE_DATA:mime:base64data
-        parts = result_str.split(":", 2)
-        if len(parts) == 3:
-            _, mime, b64_data = parts
-            # Validate that both mime and base64 are non-empty
-            if mime and b64_data:
-                return (mime, b64_data)
-
-        return None
-
-    def _add_image_tool_result_openai(
-        self, tool_call_id: str, tool_name: str, mime: str, b64_data: str
-    ):
-        """Handle image tool result for OpenAI (store pending, add text-only result).
-
-        OpenAI doesn't support images in tool results, so we store the image
-        and inject it as a user message after the assistant responds.
-
-        Args:
-            tool_call_id: ID of the tool call
-            tool_name: Name of the tool
-            mime: MIME type of the image
-            b64_data: Base64-encoded image data
-        """
-        # Add text-only tool result
-        self.messages.append(
-            {
-                "role": "tool",
-                "tool_call_id": tool_call_id,
-                "name": tool_name,
-                "content": "Image loaded successfully (see attached image below)",
-            }
-        )
-
-        # Store pending image to inject after assistant response
-        if not hasattr(self, "_pending_images"):
-            self._pending_images = []
-
-        # Safety limits for pending images (OpenAI workaround)
-        # - Max 20 images per turn (prevents memory exhaustion)
-        # - Total size limit based on estimated base64 size
-        max_pending_images = 20
-        max_pending_size_mb = 50  # Conservative limit (~67MB base64)
-
-        pending_count = len(self._pending_images)
-        pending_size_mb = sum(len(img["data"]) for img in self._pending_images) / (1024 * 1024)
-        current_size_mb = len(b64_data) / (1024 * 1024)
-
-        if pending_count >= max_pending_images:
-            print(
-                f"\033[1;33m⚠️  Warning: Already have {pending_count} pending images. "
-                f"Skipping additional image to prevent memory issues.\033[0m"
-            )
-            # Add warning to tool result instead
-            self.messages[-1]["content"] = (
-                f"Image loaded but not attached (already have {pending_count} pending images in this turn). "
-                f"Consider processing images in smaller batches."
-            )
-            return
-
-        if pending_size_mb + current_size_mb > max_pending_size_mb:
-            print(
-                f"\033[1;33m⚠️  Warning: Pending images total {pending_size_mb:.1f}MB. "
-                f"Adding {current_size_mb:.1f}MB would exceed {max_pending_size_mb}MB limit.\033[0m"
-            )
-            # Add warning to tool result instead
-            self.messages[-1]["content"] = (
-                f"Image loaded but not attached (would exceed {max_pending_size_mb}MB memory limit). "
-                f"Current pending: {pending_size_mb:.1f}MB, this image: {current_size_mb:.1f}MB."
-            )
-            return
-
-        self._pending_images.append(
-            {
-                "mime": mime,
-                "data": b64_data,
-            }
-        )
-
-        print(
-            f"\033[2m   → Image loaded ({len(b64_data):,} chars base64, will inject as user message for OpenAI)\033[0m"
-        )
-
-    def _add_image_tool_result_anthropic(
-        self, tool_call_id: str, tool_name: str, mime: str, b64_data: str
-    ):
-        """Handle image tool result for Anthropic/Claude (multimodal content).
-
-        Anthropic supports images directly in tool results as multimodal content.
-
-        Args:
-            tool_call_id: ID of the tool call
-            tool_name: Name of the tool
-            mime: MIME type of the image
-            b64_data: Base64-encoded image data
-        """
-        self.messages.append(
-            {
-                "role": "tool",
-                "tool_call_id": tool_call_id,
-                "name": tool_name,
-                "content": [
-                    {"type": "text", "text": "Image loaded successfully"},
-                    {
-                        "type": "image_url",
-                        "image_url": {"url": f"data:{mime};base64,{b64_data}"},
-                    },
-                ],
-            }
-        )
-        print(
-            f"\033[2m   → Image loaded ({len(b64_data):,} chars base64, formatted as multimodal content)\033[0m"
-        )
-
-    def _inject_pending_images_for_openai(self):
-        """Inject pending images as user message for OpenAI.
-
-        OpenAI doesn't support images in tool results, so we collect them
-        and inject as a separate user message after the assistant responds.
-        """
-        if not hasattr(self, "_pending_images") or not self._pending_images:
-            return
-
-        image_content = [
-            {
-                "type": "text",
-                "text": "Here are the image(s) from the tool result:",
-            }
-        ]
-
-        for img in self._pending_images:
-            image_content.append(
-                {
-                    "type": "image_url",
-                    "image_url": {"url": f"data:{img['mime']};base64,{img['data']}"},
-                }
-            )
-
-        self.messages.append(
-            {
-                "role": "user",
-                "content": image_content,
-            }
-        )
-
-        print(
-            f"\033[2m   → Injected {len(self._pending_images)} image(s) as user message for OpenAI\033[0m"
-        )
-
-        # Clear pending images
-        self._pending_images = []
-
-    def _filter_images_if_blocked(self, messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """Filter images from messages if PATCHPAL_BLOCK_IMAGES is enabled.
-
-        Replaces image content with text placeholders to support non-vision models
-        or when user explicitly wants to block images (cost/privacy).
-
-        Args:
-            messages: List of message dictionaries
-
-        Returns:
-            Filtered messages with images replaced by text if blocking is enabled
-        """
-        if not config.BLOCK_IMAGES:
-            return messages
-
-        filtered = []
-        for msg in messages:
-            # Only filter user and tool messages that might contain images
-            if msg.get("role") in ["user", "tool"] and isinstance(msg.get("content"), list):
-                filtered_content = []
-                for block in msg["content"]:
-                    if isinstance(block, dict) and block.get("type") == "image_url":
-                        # Replace image with text placeholder
-                        filtered_content.append(
-                            {
-                                "type": "text",
-                                "text": "[Image blocked - PATCHPAL_BLOCK_IMAGES=true. Set to false to enable vision capabilities.]",
-                            }
-                        )
-                    else:
-                        filtered_content.append(block)
-
-                # Dedupe consecutive image block placeholders
-                deduped = []
-                last_was_blocked = False
-                for block in filtered_content:
-                    is_blocked = (
-                        isinstance(block, dict)
-                        and block.get("type") == "text"
-                        and block.get("text", "").startswith("[Image blocked")
-                    )
-                    if not (is_blocked and last_was_blocked):
-                        deduped.append(block)
-                    last_was_blocked = is_blocked
-
-                filtered.append({**msg, "content": deduped})
-            else:
-                filtered.append(msg)
-
-        return filtered
 
     def _perform_auto_compaction(self):
         """Perform automatic context window compaction.
@@ -1083,8 +870,7 @@ It's currently empty (just the template). The file is automatically loaded at se
         Also clears any pending images for OpenAI that weren't injected.
         """
         # Clear any pending images that weren't injected
-        if hasattr(self, "_pending_images"):
-            self._pending_images = []
+        self.image_handler.clear_pending_images()
 
         if not self.messages:
             return
@@ -1136,8 +922,8 @@ It's currently empty (just the template). The file is automatically loaded at se
         for iteration in range(max_iterations):
             # Clear any stale pending images from previous iteration (safety check)
             # Images should already be injected, but this prevents accumulation on error
-            if hasattr(self, "_pending_images") and self._pending_images:
-                self._pending_images = []
+            if self.image_handler.has_pending_images():
+                self.image_handler.clear_pending_images()
 
             # Show thinking message
             print("\033[2m🤔 Thinking...\033[0m", flush=True)
@@ -1150,7 +936,7 @@ It's currently empty (just the template). The file is automatically loaded at se
             ] + self.messages
 
             # Filter images if BLOCK_IMAGES is enabled (for non-vision models or user preference)
-            messages = self._filter_images_if_blocked(messages)
+            messages = self.image_handler.filter_images_if_blocked(messages)
 
             # Apply prompt caching for supported models (Anthropic/Claude)
             messages = _apply_prompt_caching(messages, self.model_id)
@@ -1210,8 +996,7 @@ It's currently empty (just the template). The file is automatically loaded at se
 
             except Exception as e:
                 # Clean up any pending images before returning error
-                if hasattr(self, "_pending_images"):
-                    self._pending_images = []
+                self.image_handler.clear_pending_images()
                 return f"Error calling model: {e}"
 
             # Get the assistant's response
@@ -1230,7 +1015,7 @@ It's currently empty (just the template). The file is automatically loaded at se
 
             # For OpenAI: Inject any pending images as a user message
             # OpenAI doesn't support images in tool results, so we collected them and inject here
-            self._inject_pending_images_for_openai()
+            self.image_handler.inject_pending_images(self.messages)
 
             # Check if there are tool calls
             if hasattr(assistant_message, "tool_calls") and assistant_message.tool_calls:
@@ -1464,19 +1249,19 @@ It's currently empty (just the template). The file is automatically loaded at se
 
                     # Check if result contains an image (IMAGE_DATA format)
                     # Images bypass truncation and are formatted as multimodal content
-                    image_data = self._parse_image_data(result_str)
+                    image_data = self.image_handler.parse_image_data(result_str)
                     is_image_result = False
 
                     if image_data:
                         # Handle image result based on provider
                         mime, b64_data = image_data
-                        if self._is_openai_model():
-                            self._add_image_tool_result_openai(
-                                tool_call.id, tool_name, mime, b64_data
+                        if self.image_handler.is_openai_model():
+                            self.image_handler._add_image_tool_result_openai(
+                                self.messages, tool_call.id, tool_name, mime, b64_data
                             )
                         else:
-                            self._add_image_tool_result_anthropic(
-                                tool_call.id, tool_name, mime, b64_data
+                            self.image_handler._add_image_tool_result_anthropic(
+                                self.messages, tool_call.id, tool_name, mime, b64_data
                             )
                         is_image_result = True
                     else:
