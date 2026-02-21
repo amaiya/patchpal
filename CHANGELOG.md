@@ -7,14 +7,15 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
-## 0.16.3 (TBD)
+## 0.16.3 (2026-02-21)
 
 ### new:
 - N/A
 
 ### changed:
 - Moved `tool_schema.py` to `tools` folder
-- Fix out-dated tool descriptions
+- Pruned system prompt and updated out-dated tool descriptions (#73)
+- Removed `__main__.py` (#73)
 
 ### fixed:
 - N/A

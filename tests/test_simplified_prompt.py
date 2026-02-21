@@ -33,8 +33,7 @@ def test_system_prompt_has_required_sections():
         content = f.read()
 
     # Check for key sections (tools are provided via API, not listed in prompt)
-    assert "Overview" in content or "Rules" in content
-    assert "Rules" in content
+    assert "Key guidance" in content or "Rules" in content
 
     # Check that strategic guidance is present
     assert "read_file" in content.lower() or "read files" in content.lower()
