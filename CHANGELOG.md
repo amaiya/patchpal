@@ -7,6 +7,17 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
+## 0.16.2 (2026-02-21)
+
+### new:
+- N/A
+
+### changed:
+- N/A
+
+### fixed:
+- Fixed permission bypass vulnerability in shell command wrappers (`find -exec`, `xargs`, `sh -c`, `eval`)
+
 ## 0.16.1 (2026-02-21)
 
 ### new:
