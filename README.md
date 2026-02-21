@@ -80,6 +80,8 @@ export PATCHPAL_MODEL=openai/gpt-5.2
 patchpal
 ```
 
+**Tip for Local Models:** Local models (Ollama, vLLM) may work better with the environment variable setting, `PATCHPAL_MINIMAL_TOOLS=true`, which provides only essential tools (`read_file`, `edit_file`, `apply_patch`, `run_shell`), reducing tool confusion with smaller models.
+
 **Note:** As of this writing, cloud models are much better suited for agentic workflows than local models.
 
 
