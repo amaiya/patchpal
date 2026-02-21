@@ -23,7 +23,12 @@ export PATCHPAL_REQUIRE_PERMISSION=true      # Prompt before executing commands/
 
 # File Safety
 export PATCHPAL_MAX_FILE_SIZE=512000         # Maximum file size in bytes for read/write (default: 500KB)
+                                             # Applies to: text files, SVG files
                                              # Reduced from 10MB to prevent context window explosions
+export PATCHPAL_MAX_IMAGE_SIZE=10485760      # Maximum image file size in bytes (default: 10MB)
+                                             # Applies to: PNG, JPG, GIF, BMP, WEBP (not SVG)
+                                             # Images are formatted as multimodal content, bypassing tool output limits
+                                             # Vision APIs resize images automatically, so 1-2MB is optimal
 export PATCHPAL_MAX_TOOL_OUTPUT_LINES=2000   # Maximum lines per tool output (default: 2000)
                                              # Prevents any single tool from dominating context
 export PATCHPAL_MAX_TOOL_OUTPUT_CHARS=100000 # Maximum characters per tool output (default: 100K)
@@ -101,7 +106,7 @@ export PATCHPAL_MINIMAL_TOOLS=true           # Enable minimal tools mode (defaul
                                               # Limits agent to 5 essential tools: read_file, edit_file, apply_patch, run_shell, grep
                                               # Recommended for: local models <20B params, models that struggle with tool selection
                                               # Improves: decision speed (2-3s vs 10-30s), tool accuracy (~95% vs ~60%)
-                                              # Trade-off: No code_structure, tree, git tools, web tools, etc.
+                                              # Trade-off: No code_structure, web tools, TODO tools, etc.
 ```
 
 ### Web Tools
@@ -177,4 +182,37 @@ export PATCHPAL_AUTOPILOT_CONFIRMED=true     # Skip autopilot safety confirmatio
                                               # ⚠️  Only use in CI/CD or automation contexts
                                               # Autopilot mode allows continuous iterative execution
 patchpal autopilot "Implement feature X"
+```
+
+**Image Analysis with Vision Models:**
+```bash
+# Anthropic/Claude (5MB limit via Bedrock or Direct API)
+export PATCHPAL_MODEL=anthropic/claude-3-5-sonnet-20241022
+patchpal
+
+# OpenAI/GPT-4o (20MB limit)
+export PATCHPAL_MODEL=openai/gpt-4o
+patchpal
+
+# Both work the same way from user perspective:
+You: Look at screenshot.png and explain what's wrong
+
+# The agent automatically:
+# - Detects the model provider
+# - Formats images appropriately:
+#   * Anthropic: multimodal content in tool results
+#   * OpenAI: images injected as user messages (API workaround)
+
+# For images exceeding provider limits, increase PatchPal's limit:
+export PATCHPAL_MAX_IMAGE_SIZE=$((20*1024*1024))  # 20MB
+
+# Tip: Use compressed images (1-2MB) for faster processing
+# Vision APIs resize large images automatically anyway
+
+# Block images for non-vision models (or for privacy):
+export PATCHPAL_BLOCK_IMAGES=true                # Replace images with text placeholders (default: false)
+                                                 # Useful for:
+                                                 # - Non-vision models (gpt-3.5-turbo, claude-instant, local models)
+                                                 # - Privacy compliance (prevent image data from being sent)
+                                                 # Images are replaced with: "[Image blocked - PATCHPAL_BLOCK_IMAGES=true...]"
 ```

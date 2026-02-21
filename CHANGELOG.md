@@ -7,10 +7,22 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
-## 0.16.0 (TBD)
+## 0.16.1 (2026-02-21)
 
 ### new:
 - N/A
+
+### changed:
+-N/A
+
+### fixed:
+- Fixed permissions issue with `sed`
+
+
+## 0.16.0 (2026-02-21)
+
+### new:
+- Support for image understanding (#66)
 
 ### changed:
 - Centralized environment variable configuration (#72)

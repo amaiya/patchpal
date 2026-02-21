@@ -36,7 +36,7 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "read_file",
-            "description": "Read the contents of a file. Can read files anywhere on the system (repository files, system configs like /etc/fstab, logs, etc.) for automation and debugging. Supports PDF, DOCX, PPTX extraction. Sensitive files (.env, credentials) are blocked for safety.",
+            "description": "Read the contents of a file. Can read files anywhere on the system (repository files, system configs like /etc/fstab, logs, etc.) for automation and debugging. Supports text files, images (PNG, JPG, GIF, etc.), and documents (PDF, DOCX, PPTX) with automatic format detection. Images are returned as base64 data URLs for vision model analysis. Sensitive files (.env, credentials) are blocked for safety.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -244,7 +244,7 @@ If you get a HashlineMismatchError, use the corrected LINE#ID references shown i
         "type": "function",
         "function": {
             "name": "apply_patch",
-            "description": "Replace a file's entire contents with new content. You MUST provide the complete new file content as a string. Use this for large-scale changes or when rewriting multiple sections. For small single-string replacements, use edit_file instead. Returns a unified diff of changes.",
+            "description": "Replace a file's entire contents with new content. You MUST provide the complete new file content as a string. Use this for large-scale changes or when rewriting multiple sections or creating new files. For small single-string replacements, use edit_file instead. Returns a unified diff of changes.",
             "parameters": {
                 "type": "object",
                 "properties": {

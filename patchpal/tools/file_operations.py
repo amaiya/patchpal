@@ -4,6 +4,7 @@ import mimetypes
 import os
 from typing import Optional
 
+from patchpal.config import config
 from patchpal.tools.common import (
     MAX_FILE_SIZE,
     _check_path,
@@ -28,13 +29,13 @@ def read_file(path: str) -> str:
     """
     Read the contents of a file.
 
-    Supports text files and documents (PDF, DOCX, PPTX) with automatic text extraction.
+    Supports text files, images, and documents (PDF, DOCX, PPTX) with automatic processing.
 
     Args:
         path: Path to the file (relative to repository root or absolute)
 
     Returns:
-        The file contents as a string (text extracted from documents)
+        The file contents as a string (text extracted from documents, base64 for images)
 
     Raises:
         ValueError: If file is too large, unsupported binary format, or sensitive
@@ -47,6 +48,68 @@ def read_file(path: str) -> str:
     size = p.stat().st_size
     mime_type, _ = mimetypes.guess_type(str(p))
     ext = p.suffix.lower()
+
+    # Image formats - return as base64 data URL for vision models
+    image_extensions = {".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp", ".svg", ".ico"}
+    if ext in image_extensions or (mime_type and mime_type.startswith("image/")):
+        # For SVG, return as text since it's XML-based
+        if ext == ".svg" or mime_type == "image/svg+xml":
+            # SVG is text, so apply normal size limit
+            if size > MAX_FILE_SIZE:
+                raise ValueError(
+                    f"SVG file too large: {size:,} bytes (max {MAX_FILE_SIZE:,} bytes)\n"
+                    f"Set PATCHPAL_MAX_FILE_SIZE env var to increase"
+                )
+            content = p.read_text(encoding="utf-8", errors="replace")
+            audit_logger.info(f"READ: {path} ({size} bytes, SVG as text)")
+            return content
+
+        # For raster images, allow larger files (up to 10MB) since they're for vision models
+        # Vision APIs have their own limits and will resize as needed
+        # Images are formatted as multimodal content by the agent, bypassing tool output truncation
+        max_image_size = config.MAX_IMAGE_SIZE
+        if size > max_image_size:
+            raise ValueError(
+                f"Image file too large: {size:,} bytes (max {max_image_size:,} bytes)\n"
+                f"Set PATCHPAL_MAX_IMAGE_SIZE env var to increase\n"
+                f"Note: Most vision APIs resize images automatically, so smaller images are recommended"
+            )
+
+        # Encode as base64
+        import base64
+
+        try:
+            content_bytes = p.read_bytes()
+            b64_data = base64.b64encode(content_bytes).decode("utf-8")
+        except Exception as e:
+            raise ValueError(
+                f"Failed to read or encode image file '{path}': {e}\n"
+                f"The file may be corrupted or inaccessible."
+            )
+
+        # Determine MIME type
+        if mime_type:
+            image_mime = mime_type
+        elif ext == ".jpg" or ext == ".jpeg":
+            image_mime = "image/jpeg"
+        elif ext == ".png":
+            image_mime = "image/png"
+        elif ext == ".gif":
+            image_mime = "image/gif"
+        elif ext == ".bmp":
+            image_mime = "image/bmp"
+        elif ext == ".webp":
+            image_mime = "image/webp"
+        elif ext == ".ico":
+            image_mime = "image/x-icon"
+        else:
+            image_mime = "image/png"  # fallback
+
+        audit_logger.info(f"READ: {path} ({size} bytes, IMAGE {image_mime})")
+
+        # Return IMAGE_DATA format that agent will convert to multimodal content
+        # This bypasses tool output truncation limits (PATCHPAL_MAX_TOOL_OUTPUT_CHARS)
+        return f"IMAGE_DATA:{image_mime}:{b64_data}"
 
     # For document formats (PDF/DOCX/PPTX), extract text first, then check extracted size
     # This allows large binary documents as long as the extracted text fits in context
