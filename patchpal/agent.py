@@ -1015,7 +1015,8 @@ It's currently empty (just the template). The file is automatically loaded at se
 
             # For OpenAI: Inject any pending images as a user message
             # OpenAI doesn't support images in tool results, so we collected them and inject here
-            self.image_handler.inject_pending_images(self.messages)
+            if self.image_handler.is_openai_model():
+                self.image_handler.inject_pending_images(self.messages)
 
             # Check if there are tool calls
             if hasattr(assistant_message, "tool_calls") and assistant_message.tool_calls:
