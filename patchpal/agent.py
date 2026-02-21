@@ -1408,6 +1408,7 @@ It's currently empty (just the template). The file is automatically loaded at se
                     # Check if result contains an image (IMAGE_DATA format)
                     # Images bypass truncation and are formatted as multimodal content
                     image_data = self._parse_image_data(result_str)
+                    is_image_result = False
 
                     if image_data:
                         # Handle image result based on provider
