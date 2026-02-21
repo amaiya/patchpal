@@ -66,36 +66,6 @@ PatchPal includes a comprehensive set of built-in tools for file operations, git
       show_root_heading: true
       heading_level: 4
 
-## Git Operations
-
-### git_status
-
-::: patchpal.tools.git_tools.git_status
-    options:
-      show_root_heading: true
-      heading_level: 4
-
-### git_diff
-
-::: patchpal.tools.git_tools.git_diff
-    options:
-      show_root_heading: true
-      heading_level: 4
-
-### git_log
-
-::: patchpal.tools.git_tools.git_log
-    options:
-      show_root_heading: true
-      heading_level: 4
-
-### grep
-
-::: patchpal.tools.git_tools.grep
-    options:
-      show_root_heading: true
-      heading_level: 4
-
 ## Shell Execution
 
 ### run_shell
