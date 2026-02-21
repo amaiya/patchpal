@@ -500,6 +500,133 @@ It's currently empty (just the template). The file is automatically loaded at se
             "openai" in model_lower or "gpt" in model_lower or self.model_id.startswith("openai/")
         )
 
+    def _parse_image_data(self, result_str: str) -> Optional[tuple[str, str]]:
+        """Parse IMAGE_DATA format string.
+
+        Args:
+            result_str: Result string that may contain IMAGE_DATA format
+
+        Returns:
+            Tuple of (mime_type, base64_data) if valid IMAGE_DATA, None otherwise
+        """
+        if not result_str.startswith("IMAGE_DATA:"):
+            return None
+
+        # Parse: IMAGE_DATA:mime:base64data
+        parts = result_str.split(":", 2)
+        if len(parts) == 3:
+            _, mime, b64_data = parts
+            return (mime, b64_data)
+
+        return None
+
+    def _add_image_tool_result_openai(
+        self, tool_call_id: str, tool_name: str, mime: str, b64_data: str
+    ):
+        """Handle image tool result for OpenAI (store pending, add text-only result).
+
+        OpenAI doesn't support images in tool results, so we store the image
+        and inject it as a user message after the assistant responds.
+
+        Args:
+            tool_call_id: ID of the tool call
+            tool_name: Name of the tool
+            mime: MIME type of the image
+            b64_data: Base64-encoded image data
+        """
+        # Add text-only tool result
+        self.messages.append(
+            {
+                "role": "tool",
+                "tool_call_id": tool_call_id,
+                "name": tool_name,
+                "content": "Image loaded successfully (see attached image below)",
+            }
+        )
+
+        # Store pending image to inject after assistant response
+        if not hasattr(self, "_pending_images"):
+            self._pending_images = []
+        self._pending_images.append(
+            {
+                "mime": mime,
+                "data": b64_data,
+            }
+        )
+
+        print(
+            f"\033[2m   → Image loaded ({len(b64_data):,} chars base64, will inject as user message for OpenAI)\033[0m"
+        )
+
+    def _add_image_tool_result_anthropic(
+        self, tool_call_id: str, tool_name: str, mime: str, b64_data: str
+    ):
+        """Handle image tool result for Anthropic/Claude (multimodal content).
+
+        Anthropic supports images directly in tool results as multimodal content.
+
+        Args:
+            tool_call_id: ID of the tool call
+            tool_name: Name of the tool
+            mime: MIME type of the image
+            b64_data: Base64-encoded image data
+        """
+        self.messages.append(
+            {
+                "role": "tool",
+                "tool_call_id": tool_call_id,
+                "name": tool_name,
+                "content": [
+                    {"type": "text", "text": "Image loaded successfully"},
+                    {
+                        "type": "image_url",
+                        "image_url": {"url": f"data:{mime};base64,{b64_data}"},
+                    },
+                ],
+            }
+        )
+        print(
+            f"\033[2m   → Image loaded ({len(b64_data):,} chars base64, formatted as multimodal content)\033[0m"
+        )
+
+    def _inject_pending_images_for_openai(self):
+        """Inject pending images as user message for OpenAI.
+
+        OpenAI doesn't support images in tool results, so we collect them
+        and inject as a separate user message after the assistant responds.
+        """
+        if not hasattr(self, "_pending_images") or not self._pending_images:
+            return
+
+        image_content = [
+            {
+                "type": "text",
+                "text": "Here are the image(s) from the tool result:",
+            }
+        ]
+
+        for img in self._pending_images:
+            image_content.append(
+                {
+                    "type": "image_url",
+                    "image_url": {"url": f"data:{img['mime']};base64,{img['data']}"},
+                }
+            )
+
+        self.messages.append(
+            {
+                "role": "user",
+                "content": image_content,
+            }
+        )
+
+        print(
+            f"\033[2m   → Injected {len(self._pending_images)} image(s) as user message for OpenAI\033[0m"
+        )
+
+        # Clear pending images
+        self._pending_images = []
+
     def _filter_images_if_blocked(self, messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Filter images from messages if PATCHPAL_BLOCK_IMAGES is enabled.
 
@@ -1046,35 +1173,7 @@ It's currently empty (just the template). The file is automatically loaded at se
 
             # For OpenAI: Inject any pending images as a user message
             # OpenAI doesn't support images in tool results, so we collected them and inject here
-            if hasattr(self, "_pending_images") and self._pending_images:
-                image_content = [
-                    {
-                        "type": "text",
-                        "text": "Here are the image(s) from the tool result:",
-                    }
-                ]
-
-                for img in self._pending_images:
-                    image_content.append(
-                        {
-                            "type": "image_url",
-                            "image_url": {"url": f"data:{img['mime']};base64,{img['data']}"},
-                        }
-                    )
-
-                self.messages.append(
-                    {
-                        "role": "user",
-                        "content": image_content,
-                    }
-                )
-
-                print(
-                    f"\033[2m   → Injected {len(self._pending_images)} image(s) as user message for OpenAI\033[0m"
-                )
-
-                # Clear pending images
-                self._pending_images = []
+            self._inject_pending_images_for_openai()
 
             # Check if there are tool calls
             if hasattr(assistant_message, "tool_calls") and assistant_message.tool_calls:
@@ -1308,72 +1407,20 @@ It's currently empty (just the template). The file is automatically loaded at se
 
                     # Check if result contains an image (IMAGE_DATA format)
                     # Images bypass truncation and are formatted as multimodal content
-                    is_image_result = result_str.startswith("IMAGE_DATA:")
+                    image_data = self._parse_image_data(result_str)
 
-                    if is_image_result:
-                        # Parse: IMAGE_DATA:mime:base64data
-                        parts = result_str.split(":", 2)
-                        if len(parts) == 3:
-                            _, mime, b64_data = parts
-
-                            # OpenAI doesn't support images in tool results, only in user messages
-                            # We need to handle this differently for OpenAI vs other providers
-                            if self._is_openai_model():
-                                # For OpenAI: Add text-only tool result
-                                # Store image to inject as user message later
-                                self.messages.append(
-                                    {
-                                        "role": "tool",
-                                        "tool_call_id": tool_call.id,
-                                        "name": tool_name,
-                                        "content": "Image loaded successfully (see attached image below)",
-                                    }
-                                )
-
-                                # Store pending image to inject after assistant response
-                                if not hasattr(self, "_pending_images"):
-                                    self._pending_images = []
-                                self._pending_images.append(
-                                    {
-                                        "mime": mime,
-                                        "data": b64_data,
-                                    }
-                                )
-
-                                print(
-                                    f"\033[2m   → Image loaded ({len(b64_data):,} chars base64, will inject as user message for OpenAI)\033[0m"
-                                )
-                            else:
-                                # For Anthropic/Claude/others: Use multimodal content in tool result
-                                self.messages.append(
-                                    {
-                                        "role": "tool",
-                                        "tool_call_id": tool_call.id,
-                                        "name": tool_name,
-                                        "content": [
-                                            {"type": "text", "text": "Image loaded successfully"},
-                                            {
-                                                "type": "image_url",
-                                                "image_url": {
-                                                    "url": f"data:{mime};base64,{b64_data}"
-                                                },
-                                            },
-                                        ],
-                                    }
-                                )
-                                print(
-                                    f"\033[2m   → Image loaded ({len(b64_data):,} chars base64, formatted as multimodal content)\033[0m"
-                                )
-                        else:
-                            # Fallback if format is wrong - treat as regular text
-                            self.messages.append(
-                                {
-                                    "role": "tool",
-                                    "tool_call_id": tool_call.id,
-                                    "name": tool_name,
-                                    "content": result_str,
-                                }
+                    if image_data:
+                        # Handle image result based on provider
+                        mime, b64_data = image_data
+                        if self._is_openai_model():
+                            self._add_image_tool_result_openai(
+                                tool_call.id, tool_name, mime, b64_data
                             )
+                        else:
+                            self._add_image_tool_result_anthropic(
+                                tool_call.id, tool_name, mime, b64_data
+                            )
+                        is_image_result = True
                     else:
                         # Apply universal output limits to text results
                         lines = result_str.split("\n")
