@@ -42,12 +42,8 @@ from patchpal.tools.file_editing import (
     edit_file,
 )
 from patchpal.tools.file_operations import (
-    get_file_info,
     read_file,
     read_lines,
-)
-from patchpal.tools.grep_tool import (
-    grep,
 )
 from patchpal.tools.repo_map import (
     clear_repo_map_cache,
@@ -80,7 +76,6 @@ __all__ = [
     # File operations
     "read_file",
     "read_lines",
-    "get_file_info",
     # Code analysis
     "code_structure",
     # Repository map
@@ -90,8 +85,6 @@ __all__ = [
     # File editing
     "apply_patch",
     "edit_file",
-    # Search
-    "grep",
     # TODO tools
     "reset_session_todos",
     "todo_add",

@@ -5,6 +5,8 @@ import os
 import requests
 from bs4 import BeautifulSoup
 
+from patchpal.config import config
+
 try:
     from ddgs import DDGS
 except ImportError:
@@ -187,7 +189,7 @@ def web_search(query: str, max_results: int = 5) -> str:
     try:
         # Determine SSL verification setting
         # Priority: PATCHPAL_VERIFY_SSL env var > SSL_CERT_FILE > REQUESTS_CA_BUNDLE > default True
-        verify_ssl = os.getenv("PATCHPAL_VERIFY_SSL")
+        verify_ssl = config.VERIFY_SSL
         if verify_ssl is not None:
             # User explicitly set PATCHPAL_VERIFY_SSL
             if verify_ssl.lower() in ("false", "0", "no"):

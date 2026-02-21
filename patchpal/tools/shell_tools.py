@@ -5,7 +5,8 @@ from typing import Optional
 
 from patchpal.tools import common
 from patchpal.tools.common import (
-    FORBIDDEN,
+    DANGEROUS_PATTERNS,
+    DANGEROUS_TOKENS,
     SHELL_TIMEOUT,
     OutputFilter,
     _get_permission_manager,
@@ -143,23 +144,20 @@ def run_shell(cmd: str) -> str:
 
     _operation_limiter.check_limit(f"run_shell({cmd[:50]}...)")
 
-    # Basic token-based blocking
-    if any(tok in FORBIDDEN for tok in cmd.split()):
+    # Check for dangerous tokens (privilege escalation commands)
+    # Token-based matching: splits command and checks each token
+    if any(tok in DANGEROUS_TOKENS for tok in cmd.split()):
         raise ValueError(
-            f"Blocked dangerous command: {cmd}\nForbidden operations: {', '.join(FORBIDDEN)}"
+            f"Blocked dangerous command: {cmd}\nForbidden operations: {', '.join(DANGEROUS_TOKENS)}"
         )
 
-    # Additional pattern-based blocking
-    dangerous_patterns = [
-        "> /dev/",  # Writing to devices
-        "rm -rf /",  # Recursive delete
-        "| dd",  # Piping to dd
-        "--force",  # Force flags often dangerous
-    ]
-
-    for pattern in dangerous_patterns:
+    # Check for dangerous patterns (destructive operations)
+    # Substring matching: checks if pattern appears anywhere in command
+    for pattern in DANGEROUS_PATTERNS:
         if pattern in cmd:
-            raise ValueError(f"Blocked dangerous pattern in command: {pattern}")
+            raise ValueError(
+                f"Blocked dangerous pattern in command: {pattern}\nFull command: {cmd}"
+            )
 
     audit_logger.info(f"SHELL: {cmd}")
 

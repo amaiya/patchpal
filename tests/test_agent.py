@@ -62,24 +62,21 @@ def test_agent_has_correct_tools():
     """Test that the agent has the correct tools defined."""
     from patchpal.agent import TOOL_FUNCTIONS, TOOLS
 
-    # Verify we have 20 built-in tools (removed 7 tools: count_lines, list_files, find_files, tree, git_status, git_diff, git_log)
-    assert len(TOOLS) == 20
-    assert len(TOOL_FUNCTIONS) == 20
+    # Verify we have 18 built-in tools (removed grep and get_file_info as they have shell equivalents)
+    assert len(TOOLS) == 18
+    assert len(TOOL_FUNCTIONS) == 18
 
     # Verify tool names
     tool_names = [tool["function"]["name"] for tool in TOOLS]
     # File operations
     assert "read_file" in tool_names
     assert "read_lines" in tool_names
-    assert "get_file_info" in tool_names
     # Code analysis
     assert "code_structure" in tool_names
     assert "get_repo_map" in tool_names
     # File editing
     assert "edit_file" in tool_names
     assert "apply_patch" in tool_names
-    # Search
-    assert "grep" in tool_names
     # Skills
     assert "list_skills" in tool_names
     assert "use_skill" in tool_names

@@ -48,20 +48,44 @@ except ImportError:
 
 REPO_ROOT = Path(".").resolve()
 
+# Import config for centralized environment variable access
+from patchpal.config import config  # noqa: E402
+
 # Platform-aware command blocking - minimal list since we have permission system
-# Only block privilege escalation commands specific to each platform
-# Allow sudo if explicitly enabled via environment variable
-ALLOW_SUDO = os.getenv("PATCHPAL_ALLOW_SUDO", "false").lower() == "true"
+# Allow dangerous operations if explicitly enabled via environment variable
+ALLOW_SUDO = config.ALLOW_SUDO
 
 if ALLOW_SUDO:
-    # Sudo allowed - no command blocking
-    FORBIDDEN = set()
+    # Dangerous operations allowed - no command blocking
+    DANGEROUS_TOKENS = set()
+    DANGEROUS_PATTERNS = []
 elif platform.system() == "Windows":
-    # Windows privilege escalation commands
-    FORBIDDEN = {"runas", "psexec"}  # Run as different user, SysInternals elevated execution
+    # Windows privilege escalation commands (token-based matching)
+    DANGEROUS_TOKENS = {"runas", "psexec"}  # Run as different user, SysInternals elevated execution
+    # Windows dangerous patterns (substring matching)
+    DANGEROUS_PATTERNS = [
+        "> \\\\.\\",  # Writing to device objects (e.g., \\.\PhysicalDrive0)
+        "| dd",  # Piping to dd
+        "| shred",  # Piping to shred (secure delete)
+        "mkfs.",  # Format filesystem
+        ":(){",  # Fork bomb
+    ]
 else:
-    # Unix/Linux/macOS privilege escalation commands
-    FORBIDDEN = {"sudo", "su"}  # Privilege escalation
+    # Unix/Linux/macOS privilege escalation commands (token-based matching)
+    DANGEROUS_TOKENS = {"sudo", "su", "doas"}  # Privilege escalation (doas is sudo alternative)
+    # Unix/Linux/macOS dangerous patterns (substring matching)
+    DANGEROUS_PATTERNS = [
+        "> /dev/",  # Writing to devices
+        "rm -rf /",  # Recursive delete from root
+        "| dd",  # Piping to dd (disk destroyer)
+        "| sudo ",  # Piping to sudo (bypass token check)
+        "| shred",  # Piping to shred (secure delete)
+        "mkfs.",  # Format filesystem (mkfs.ext4, mkfs.xfs, etc.)
+        ":(){",  # Fork bomb signature
+    ]
+
+# Backward compatibility alias
+FORBIDDEN = DANGEROUS_TOKENS
 
 # Sensitive file patterns
 SENSITIVE_PATTERNS = {
@@ -101,26 +125,22 @@ CRITICAL_FILES = {
 # Reduced from 10MB to 500KB to prevent context window explosions
 # A 3.46MB file = ~1.15M tokens which exceeds most model context limits (128K-200K)
 # 500KB ≈ 166K tokens which is safe for most models
-MAX_FILE_SIZE = int(os.getenv("PATCHPAL_MAX_FILE_SIZE", 500 * 1024))  # 500KB default
-READ_ONLY_MODE = os.getenv("PATCHPAL_READ_ONLY", "false").lower() == "true"
-ALLOW_SENSITIVE = os.getenv("PATCHPAL_ALLOW_SENSITIVE", "false").lower() == "true"
-ENABLE_AUDIT_LOG = os.getenv("PATCHPAL_AUDIT_LOG", "true").lower() == "true"
-ENABLE_BACKUPS = os.getenv("PATCHPAL_ENABLE_BACKUPS", "false").lower() == "true"
-MAX_OPERATIONS = int(os.getenv("PATCHPAL_MAX_OPERATIONS", 10000))
+MAX_FILE_SIZE = config.MAX_FILE_SIZE
+READ_ONLY_MODE = config.READ_ONLY
+ALLOW_SENSITIVE = config.ALLOW_SENSITIVE
+ENABLE_AUDIT_LOG = config.AUDIT_LOG
+ENABLE_BACKUPS = config.ENABLE_BACKUPS
+MAX_OPERATIONS = config.MAX_OPERATIONS
 
 # Universal tool output limits (applied after tool execution to prevent context explosions)
 # Similar to OpenCode's approach but with more generous limits
-MAX_TOOL_OUTPUT_LINES = int(os.getenv("PATCHPAL_MAX_TOOL_OUTPUT_LINES", "2000"))  # 2000 lines
-MAX_TOOL_OUTPUT_CHARS = int(
-    os.getenv("PATCHPAL_MAX_TOOL_OUTPUT_CHARS", "100000")
-)  # 100K characters
+MAX_TOOL_OUTPUT_LINES = config.MAX_TOOL_OUTPUT_LINES
+MAX_TOOL_OUTPUT_CHARS = config.MAX_TOOL_OUTPUT_CHARS
 # Note: Character-based (not bytes) to avoid breaking Unicode during truncation
 
 # Web request configuration
-WEB_REQUEST_TIMEOUT = int(os.getenv("PATCHPAL_WEB_TIMEOUT", 30))  # 30 seconds
-MAX_WEB_CONTENT_SIZE = int(
-    os.getenv("PATCHPAL_MAX_WEB_SIZE", 5 * 1024 * 1024)
-)  # 5MB download limit (prevents downloading huge files)
+WEB_REQUEST_TIMEOUT = config.WEB_TIMEOUT
+MAX_WEB_CONTENT_SIZE = config.MAX_WEB_SIZE
 # Note: Web fetch output is handled by universal MAX_TOOL_OUTPUT_CHARS limit
 # Use browser-like User-Agent to avoid bot blocking (e.g., GitHub redirects work with browser UA)
 WEB_USER_AGENT = f"Mozilla/5.0 (compatible; PatchPal/{__version__}; +AI Code Assistant)"
@@ -131,11 +151,11 @@ WEB_HEADERS = {
 }
 
 # Shell command configuration
-SHELL_TIMEOUT = int(os.getenv("PATCHPAL_SHELL_TIMEOUT", 30))  # 30 seconds default
+SHELL_TIMEOUT = config.SHELL_TIMEOUT
 
 # Output filtering configuration - reduce token usage from verbose commands
-ENABLE_OUTPUT_FILTERING = os.getenv("PATCHPAL_FILTER_OUTPUTS", "true").lower() == "true"
-MAX_OUTPUT_LINES = int(os.getenv("PATCHPAL_MAX_OUTPUT_LINES", 500))  # Max lines of output
+ENABLE_OUTPUT_FILTERING = config.FILTER_OUTPUTS
+MAX_OUTPUT_LINES = config.MAX_OUTPUT_LINES
 
 # Global flag for requiring permission on ALL operations (including reads)
 # Set via CLI flag --require-permission-for-all

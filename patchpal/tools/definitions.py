@@ -4,16 +4,13 @@ This module contains the tool schemas (in LiteLLM format) and the mapping
 from tool names to their implementation functions.
 """
 
-import os
-
+from patchpal.config import config
 from patchpal.tools import (
     apply_patch,
     ask_user,
     code_structure,
     edit_file,
-    get_file_info,
     get_repo_map,
-    grep,
     list_skills,
     read_file,
     read_lines,
@@ -148,23 +145,6 @@ Tip: Read README first for context when exploring repositories.""",
     {
         "type": "function",
         "function": {
-            "name": "get_file_info",
-            "description": "Get detailed metadata for file(s) - size, modification time, type. Works with any file on the system. Supports single files, directories, or glob patterns (e.g., 'tests/*.py', '/etc/*.conf').",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "path": {
-                        "type": "string",
-                        "description": "Path to file, directory, or glob pattern - can be relative or absolute (e.g., 'tests/*.txt', '/var/log/', '/etc/fstab')",
-                    }
-                },
-                "required": ["path"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
             "name": "edit_file",
             "description": "Edit a file by replacing an exact string. More efficient than apply_patch for small changes. Primarily for repository files. Writing outside repository requires explicit user permission. The old_string must match exactly and appear only once.",
             "parameters": {
@@ -191,7 +171,7 @@ Tip: Read README first for context when exploring repositories.""",
         "type": "function",
         "function": {
             "name": "apply_patch",
-            "description": "Modify a file by replacing its contents. Primarily for repository files. Writing outside repository requires explicit user permission. Returns a unified diff of changes.",
+            "description": "Replace a file's entire contents with new content. You MUST provide the complete new file content as a string. Use this for large-scale changes or when rewriting multiple sections. For small single-string replacements, use edit_file instead. Returns a unified diff of changes.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -201,43 +181,10 @@ Tip: Read README first for context when exploring repositories.""",
                     },
                     "new_content": {
                         "type": "string",
-                        "description": "The complete new content for the file",
+                        "description": "The complete new file content (you must provide the entire file contents, not just changes)",
                     },
                 },
                 "required": ["path", "new_content"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "grep",
-            "description": "Search for a pattern in files. Much faster than run_shell with grep. Returns results in 'file:line:content' format.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "pattern": {
-                        "type": "string",
-                        "description": "Regular expression pattern to search for",
-                    },
-                    "file_glob": {
-                        "type": "string",
-                        "description": "Optional glob pattern to filter files (e.g., '*.py', 'src/**/*.js')",
-                    },
-                    "case_sensitive": {
-                        "type": "boolean",
-                        "description": "Whether the search should be case-sensitive (default: true)",
-                    },
-                    "max_results": {
-                        "type": "integer",
-                        "description": "Maximum number of results to return (default: 100)",
-                    },
-                    "path": {
-                        "type": "string",
-                        "description": "Optional file or directory path to search in (relative to repo root or absolute). Defaults to repository root.",
-                    },
-                },
-                "required": ["pattern"],
             },
         },
     },
@@ -449,7 +396,7 @@ Tip: Read README first for context when exploring repositories.""",
         "type": "function",
         "function": {
             "name": "run_shell",
-            "description": "Run a safe shell command in the repository. Commands execute from repository root automatically (no need for 'cd'). Privilege escalation (sudo, su) blocked by default unless PATCHPAL_ALLOW_SUDO=true.",
+            "description": "Run a safe shell command in the repository. Commands execute from repository root automatically (no need for 'cd'). Privilege escalation (sudo, su) and destructive patterns (rm -rf /, piping to dd, writing to /dev/) blocked by default unless PATCHPAL_ALLOW_SUDO=true.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -467,10 +414,8 @@ TOOL_FUNCTIONS = {
     "read_lines": read_lines,
     "code_structure": code_structure,
     "get_repo_map": get_repo_map,
-    "get_file_info": get_file_info,
     "edit_file": edit_file,
     "apply_patch": apply_patch,
-    "grep": grep,
     "web_search": web_search,
     "web_fetch": web_fetch,
     "list_skills": list_skills,
@@ -496,7 +441,7 @@ def get_tools(web_tools_enabled: bool = True):
         Tuple of (tools_list, tool_functions_dict)
     """
     # Check if minimal tools mode is enabled (for local models with tool confusion)
-    minimal_mode = os.getenv("PATCHPAL_MINIMAL_TOOLS", "false").lower() in ("true", "1", "yes")
+    minimal_mode = config.MINIMAL_TOOLS
 
     if minimal_mode:
         # Base minimal tools (always included)
@@ -525,7 +470,7 @@ def get_tools(web_tools_enabled: bool = True):
         functions = {k: v for k, v in functions.items() if k not in ("web_search", "web_fetch")}
 
     # Load MCP tools dynamically (unless disabled via environment variable)
-    if os.getenv("PATCHPAL_ENABLE_MCP", "true").lower() in ("true", "1", "yes"):
+    if config.ENABLE_MCP:
         try:
             mcp_tools, mcp_functions = load_mcp_tools()
             if mcp_tools:

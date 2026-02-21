@@ -1,8 +1,8 @@
 # Built-In Tools
 
-PatchPal provides 20 built-in tools for file operations, code analysis, web access, task planning, and user interaction.
+PatchPal provides 18 built-in tools for file operations, code analysis, web access, task planning, and user interaction.
 
-## File Operations (3 tools)
+## File Operations (2 tools)
 
 ### read_file
 Read contents of files anywhere on the system (repository files, logs, configs).
@@ -18,13 +18,6 @@ Read specific line ranges from a file without loading the entire file.
 - **Example**: `read_lines("app.py", 100, 150)` - read lines 100-150
 - More efficient than `read_file` when you only need a few lines
 - Useful for viewing code sections, error context, or specific regions
-
-### get_file_info
-Get detailed metadata for file(s) - size, modification time, type.
-
-- **Single file**: `get_file_info("file.txt")`
-- **Directory**: `get_file_info("src/")`
-- **Glob patterns**: `get_file_info("tests/*.py")`
 
 ## Code Analysis (2 tools)
 
@@ -63,18 +56,6 @@ Modify files by replacing entire contents.
 - Use for large-scale changes or multiple edits
 - Returns unified diff showing changes
 - Best for rewriting entire files or complex modifications
-
-## Search (1 tool)
-
-### grep
-Search for patterns in code files with regex support.
-
-- **Example**: `grep("TODO", file_glob="*.py")` - find all TODOs in Python files
-- **Example**: `grep("function.*userId", path="src/")` - regex search in src directory
-- Uses ripgrep (if available) or falls back to grep
-- Much faster than `run_shell` with grep
-- Returns results in `file:line:content` format
-- Supports case-insensitive search, file filtering, result limits
 
 ## Web Tools (2 tools)
 
@@ -165,10 +146,11 @@ Execute shell commands in the repository.
 - **Example**: `run_shell("pytest tests/test_auth.py")`
 - **Example**: `run_shell("npm install lodash")`
 - Commands execute from repository root automatically (no need for `cd`)
-- **56 harmless commands auto-granted** (no permission prompts):
+- **80+ harmless commands auto-granted** (no permission prompts):
   - File operations: `wc`, `stat`, `find`, `ls`, `cat`, `head`, `tail`
   - Search: `grep`, `awk`
   - Git (read-only): `git status`, `git diff`, `git log`
+  - Test runners: `pytest`, `jest`, `mocha`, `go test`, `cargo test`, `mvn test`, `dotnet test`, etc.
   - System info: `whoami`, `hostname`, `date`, `uname`
   - Network diagnostics: `ping`, `tracert`, `nslookup`
 - Dangerous commands require permission (e.g., `rm`, `pip install`, script execution)
@@ -178,16 +160,15 @@ Execute shell commands in the repository.
 
 | Category | Tools | Count |
 |----------|-------|-------|
-| File Operations | read_file, read_lines, get_file_info | 3 |
+| File Operations | read_file, read_lines | 2 |
 | Code Analysis | code_structure, get_repo_map | 2 |
 | File Editing | edit_file, apply_patch | 2 |
-| Search | grep | 1 |
 | Web | web_search, web_fetch | 2 |
 | Task Planning | todo_add, todo_list, todo_complete, todo_update, todo_remove, todo_clear | 6 |
 | Skills | list_skills, use_skill | 2 |
 | User Interaction | ask_user | 1 |
 | Shell | run_shell | 1 |
-| **Total** | | **20** |
+| **Total** | | **18** |
 
 ## Configuration
 

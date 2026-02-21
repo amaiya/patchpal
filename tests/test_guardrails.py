@@ -165,14 +165,25 @@ class TestCommandSafety:
 
     def test_blocks_dangerous_patterns(self, temp_repo):
         """Test that dangerous command patterns are blocked."""
+        import platform
+
         from patchpal.tools import run_shell
 
-        dangerous_commands = [
-            "echo test > /dev/sda",
-            "rm -rf /",
-            "cat file | dd of=/dev/sda",
-            "git push --force",
-        ]
+        if platform.system() == "Windows":
+            dangerous_commands = [
+                "echo test > \\\\.\\PhysicalDrive0",  # Writing to device
+                "cat file | dd of=output",  # Piping to dd
+                "echo test | shred",  # Piping to shred
+                "mkfs.ext4 /dev/sda1",  # Format filesystem
+                ":(){:|:&};:",  # Fork bomb
+            ]
+        else:
+            dangerous_commands = [
+                "echo test > /dev/sda",
+                "rm -rf /",
+                "cat file | dd of=/dev/sda",
+                "echo test | sudo tee /etc/test",  # Piping to sudo
+            ]
 
         for cmd in dangerous_commands:
             with pytest.raises(ValueError, match="dangerous"):
@@ -440,7 +451,6 @@ def test_comprehensive_security_demo(temp_repo, monkeypatch):
     # ----------------------------
     read_file = patchpal.tools.read_file
     apply_patch = patchpal.tools.apply_patch
-    grep = patchpal.tools.grep
     run_shell = patchpal.tools.run_shell
 
     # ----------------------------
@@ -457,8 +467,14 @@ def test_comprehensive_security_demo(temp_repo, monkeypatch):
     )
     assert "normal.txt" in output
 
-    result = grep("normal", file_glob="*.txt")
-    assert "normal.txt" in result
+    # Test file listing with run_shell (replaces grep/get_file_info tests)
+    import shutil
+
+    if shutil.which("ls") or sys.platform == "win32":
+        # Use ls on Unix or dir on Windows
+        cmd = "ls *.txt" if shutil.which("ls") else "dir /b *.txt"
+        result = run_shell(cmd)
+        assert "normal.txt" in result
 
     # ----------------------------
     # 2. Sensitive files blocked
@@ -487,8 +503,15 @@ def test_comprehensive_security_demo(temp_repo, monkeypatch):
     # ----------------------------
     # 6. Dangerous commands blocked
     # ----------------------------
-    with pytest.raises(ValueError):
-        run_shell("rm -rf /")
+    import platform
+
+    if platform.system() == "Windows":
+        # Use Windows-specific dangerous pattern
+        with pytest.raises(ValueError):
+            run_shell("cat file | dd of=output")
+    else:
+        with pytest.raises(ValueError):
+            run_shell("rm -rf /")
 
     # ----------------------------
     # 7. Outside-repo writes blocked
