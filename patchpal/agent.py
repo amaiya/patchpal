@@ -11,12 +11,13 @@ import litellm
 from rich.console import Console
 from rich.markdown import Markdown
 
+from patchpal.config import config
 from patchpal.context import ContextManager
 from patchpal.tools.definitions import get_tools
 
 # LLM API timeout in seconds (default: 300 seconds = 5 minutes)
 # Can be overridden with PATCHPAL_LLM_TIMEOUT environment variable
-LLM_TIMEOUT = int(os.getenv("PATCHPAL_LLM_TIMEOUT", "300"))
+LLM_TIMEOUT = config.LLM_TIMEOUT
 
 
 def _is_bedrock_arn(model_id: str) -> bool:
@@ -99,7 +100,7 @@ def _is_govcloud_bedrock(model_id: str) -> bool:
 
 
 # Get tool definitions (with web tools optionally disabled for air-gapped environments)
-WEB_TOOLS_ENABLED = os.getenv("PATCHPAL_ENABLE_WEB", "true").lower() in ("true", "1", "yes")
+WEB_TOOLS_ENABLED = config.ENABLE_WEB
 TOOLS, TOOL_FUNCTIONS = get_tools(web_tools_enabled=WEB_TOOLS_ENABLED)
 
 
@@ -163,7 +164,7 @@ def _load_system_prompt() -> str:
         The formatted system prompt string
     """
     # Check for custom system prompt path from environment variable
-    custom_prompt_path = os.getenv("PATCHPAL_SYSTEM_PROMPT")
+    custom_prompt_path = config.SYSTEM_PROMPT
 
     if custom_prompt_path:
         # Use custom prompt file
@@ -374,9 +375,7 @@ class PatchPalAgent:
         self.context_manager = ContextManager(self.model_id, SYSTEM_PROMPT)
 
         # Check if auto-compaction is enabled (default: True)
-        self.enable_auto_compact = (
-            os.getenv("PATCHPAL_DISABLE_AUTOCOMPACT", "false").lower() != "true"
-        )
+        self.enable_auto_compact = not config.DISABLE_AUTOCOMPACT
 
         # Track last compaction to prevent compaction loops
         self._last_compaction_message_count = 0

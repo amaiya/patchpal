@@ -7,6 +7,18 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
+## 0.16.0 (TBD)
+
+### new:
+- N/A
+
+### changed:
+- Centralized environment variable configuration (#72)
+
+### fixed:
+- N/A
+
+
 ## 0.15.1 (2026-02-20)
 
 ### new:

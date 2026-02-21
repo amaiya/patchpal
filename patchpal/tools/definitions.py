@@ -4,8 +4,7 @@ This module contains the tool schemas (in LiteLLM format) and the mapping
 from tool names to their implementation functions.
 """
 
-import os
-
+from patchpal.config import config
 from patchpal.tools import (
     apply_patch,
     ask_user,
@@ -442,7 +441,7 @@ def get_tools(web_tools_enabled: bool = True):
         Tuple of (tools_list, tool_functions_dict)
     """
     # Check if minimal tools mode is enabled (for local models with tool confusion)
-    minimal_mode = os.getenv("PATCHPAL_MINIMAL_TOOLS", "false").lower() in ("true", "1", "yes")
+    minimal_mode = config.MINIMAL_TOOLS
 
     if minimal_mode:
         # Base minimal tools (always included)
@@ -471,7 +470,7 @@ def get_tools(web_tools_enabled: bool = True):
         functions = {k: v for k, v in functions.items() if k not in ("web_search", "web_fetch")}
 
     # Load MCP tools dynamically (unless disabled via environment variable)
-    if os.getenv("PATCHPAL_ENABLE_MCP", "true").lower() in ("true", "1", "yes"):
+    if config.ENABLE_MCP:
         try:
             mcp_tools, mcp_functions = load_mcp_tools()
             if mcp_tools:

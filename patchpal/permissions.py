@@ -1,10 +1,11 @@
 """Permission management for PatchPal tool execution."""
 
 import json
-import os
 from functools import wraps
 from pathlib import Path
 from typing import Optional
+
+from patchpal.config import config
 
 
 class PermissionManager:
@@ -23,7 +24,7 @@ class PermissionManager:
 
         # Check if permissions are globally disabled
         # Using streaming mode in CLI allows permissions to work properly
-        self.enabled = os.getenv("PATCHPAL_REQUIRE_PERMISSION", "true").lower() == "true"
+        self.enabled = config.REQUIRE_PERMISSION
 
         # Auto-grant harmless read-only commands in all modes
         # Since these replace dedicated tools that were removed (list_files, tree, etc.),
@@ -56,7 +57,7 @@ class PermissionManager:
         require permissions, their shell equivalents shouldn't either.
         """
         # Check if web tools are enabled
-        web_tools_enabled = os.getenv("PATCHPAL_ENABLE_WEB", "true").lower() in ("true", "1", "yes")
+        web_tools_enabled = config.ENABLE_WEB
 
         # List of command patterns that are always safe (read-only, no side effects)
         harmless_patterns = [
