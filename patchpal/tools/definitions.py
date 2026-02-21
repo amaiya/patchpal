@@ -146,13 +146,13 @@ Tip: Read README first for context when exploring repositories.""",
         "type": "function",
         "function": {
             "name": "edit_file",
-            "description": "Edit a file by replacing an exact string. More efficient than apply_patch for small changes. Primarily for repository files. Writing outside repository requires explicit user permission. The old_string must match exactly and appear only once.",
+            "description": "Edit a file by replacing an exact string. More efficient than apply_patch for small changes. The old_string must match exactly and appear only once.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "path": {
                         "type": "string",
-                        "description": "Path to the file - relative to repository root or absolute path (note: writes outside repository require permission)",
+                        "description": "Path to the file - relative to repository root or absolute path",
                     },
                     "old_string": {
                         "type": "string",
@@ -177,7 +177,7 @@ Tip: Read README first for context when exploring repositories.""",
                 "properties": {
                     "path": {
                         "type": "string",
-                        "description": "Path to the file - relative to repository root or absolute path (note: writes outside repository require permission)",
+                        "description": "Path to the file - relative to repository root or absolute path",
                     },
                     "new_content": {
                         "type": "string",

@@ -14,6 +14,7 @@ Most recent releases are shown at the top. Each release shows:
 
 ### changed:
 - Moved `tool_schema.py` to `tools` folder
+- Fix out-dated tool descriptions
 
 ### fixed:
 - N/A
