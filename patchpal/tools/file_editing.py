@@ -1,8 +1,9 @@
-"""File editing tools (apply_patch, edit_file)."""
+"""File editing tools (apply_patch, edit_file, edit_file_hashline)."""
 
 import difflib
+import os
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional, Union
 
 from patchpal.tools import common
 from patchpal.tools.common import (
@@ -18,6 +19,17 @@ from patchpal.tools.common import (
     _is_inside_repo,
     _operation_limiter,
     audit_logger,
+)
+from patchpal.tools.hashline import (
+    AppendEdit,
+    EditResult,
+    HashlineMismatchError,
+    InsertEdit,
+    PrependEdit,
+    ReplaceEdit,
+    SetEdit,
+    apply_hashline_edits,
+    parse_tag,
 )
 
 
@@ -39,6 +51,10 @@ def _get_outside_repo_warning(path: Path) -> str:
         if path.resolve() != MEMORY_FILE.resolve():
             return "\n   ⚠️  WARNING: Writing file outside repository\n"
     return ""
+
+
+# Check if hashline mode is enabled via environment variable
+HASHLINE_MODE = os.getenv("PATCHPAL_HASHLINE", "false").lower() in ("true", "1", "yes")
 
 
 # ============================================================================
@@ -428,3 +444,200 @@ def edit_file(path: str, old_string: str, new_string: str) -> str:
 
     backup_msg = f"\n[Backup saved: {backup_path}]" if backup_path else ""
     return f"Successfully edited {path}{backup_msg}\n\nChange:\n{diff_str}"
+
+
+def edit_file_hashline(
+    path: str,
+    edits: List[
+        Union[
+            dict,  # For JSON-serialized edits from LLM
+            SetEdit,
+            ReplaceEdit,
+            AppendEdit,
+            PrependEdit,
+            InsertEdit,
+        ]
+    ],
+) -> str:
+    """
+    Edit a file using hashline-based line references for precise, stable edits.
+
+    This uses content hashes to verify line identity, preventing edits from being
+    applied to the wrong location if the file changed since it was last read.
+
+    Hashline format: Each line is identified as "LINE#HASH" where:
+    - LINE is the 1-indexed line number
+    - HASH is a 2-character content hash
+
+    Supported operations:
+    - set: Replace a single line
+      {"op": "set", "tag": "5#AA", "content": ["new line"]}
+
+    - replace: Replace a range of lines
+      {"op": "replace", "first": "5#AA", "last": "7#BB", "content": ["new", "lines"]}
+
+    - append: Append lines after a specific line (or at EOF if no 'after')
+      {"op": "append", "after": "5#AA", "content": ["new lines"]}
+      {"op": "append", "content": ["append at EOF"]}
+
+    - prepend: Prepend lines before a specific line (or at BOF if no 'before')
+      {"op": "prepend", "before": "5#AA", "content": ["new lines"]}
+      {"op": "prepend", "content": ["prepend at BOF"]}
+
+    - insert: Insert lines between two specific lines
+      {"op": "insert", "after": "5#AA", "before": "6#BB", "content": ["new line"]}
+
+    Args:
+        path: Relative path to the file from the repository root
+        edits: List of edit operations (dicts or Edit objects)
+
+    Returns:
+        Confirmation message with changes made
+
+    Raises:
+        ValueError: If file not found or edit operations invalid
+        HashlineMismatchError: If line hashes don't match (file changed since last read)
+
+    Example:
+        # Read file first to get line hashes:
+        # 1#ZP:def foo():
+        # 2#MQ:    return 42
+        # 3#VR:
+
+        edit_file_hashline("test.py", [
+            {"op": "set", "tag": "2#MQ", "content": ["    return 100"]}
+        ])
+    """
+    _operation_limiter.check_limit(f"edit_file_hashline({path[:30]}...)")
+
+    if READ_ONLY_MODE:
+        raise ValueError(
+            "Cannot edit files in read-only mode\n"
+            "Set PATCHPAL_READ_ONLY=false to allow modifications"
+        )
+
+    p = _check_path(path, must_exist=True)
+
+    # Read current content
+    try:
+        content = p.read_text(encoding="utf-8", errors="replace")
+    except Exception as e:
+        raise ValueError(f"Failed to read file: {e}")
+
+    # Convert dict edits to proper Edit objects
+    edit_objects: List[Union[SetEdit, ReplaceEdit, AppendEdit, PrependEdit, InsertEdit]] = []
+
+    for edit in edits:
+        if isinstance(edit, dict):
+            op = edit.get("op")
+
+            if op == "set":
+                tag = parse_tag(edit["tag"])
+                content_lines = edit.get("content", [])
+                if isinstance(content_lines, str):
+                    content_lines = [content_lines]
+                edit_objects.append(SetEdit(tag=tag, content=content_lines))
+
+            elif op == "replace":
+                first = parse_tag(edit["first"])
+                last = parse_tag(edit["last"])
+                content_lines = edit.get("content", [])
+                if isinstance(content_lines, str):
+                    content_lines = [content_lines]
+                edit_objects.append(ReplaceEdit(first=first, last=last, content=content_lines))
+
+            elif op == "append":
+                after = parse_tag(edit["after"]) if "after" in edit else None
+                content_lines = edit.get("content", [])
+                if isinstance(content_lines, str):
+                    content_lines = [content_lines]
+                edit_objects.append(AppendEdit(content=content_lines, after=after))
+
+            elif op == "prepend":
+                before = parse_tag(edit["before"]) if "before" in edit else None
+                content_lines = edit.get("content", [])
+                if isinstance(content_lines, str):
+                    content_lines = [content_lines]
+                edit_objects.append(PrependEdit(content=content_lines, before=before))
+
+            elif op == "insert":
+                after = parse_tag(edit["after"])
+                before = parse_tag(edit["before"])
+                content_lines = edit.get("content", [])
+                if isinstance(content_lines, str):
+                    content_lines = [content_lines]
+                edit_objects.append(InsertEdit(after=after, before=before, content=content_lines))
+
+            else:
+                raise ValueError(f"Unknown edit operation: {op}")
+
+        else:
+            # Already an Edit object
+            edit_objects.append(edit)
+
+    if not edit_objects:
+        raise ValueError("No edits provided")
+
+    # Apply edits (this validates line hashes and applies changes)
+    try:
+        result: EditResult = apply_hashline_edits(content, edit_objects)
+    except HashlineMismatchError as e:
+        # Re-raise with more context
+        raise HashlineMismatchError(e.mismatches, e.file_lines) from None
+
+    # Check if anything actually changed
+    if result.content == content:
+        return f"No changes made to {path} - edits produced identical content."
+
+    # Generate diff for permission check and display
+    old_lines = content.splitlines(keepends=True)
+    new_lines = result.content.splitlines(keepends=True)
+    diff = difflib.unified_diff(
+        old_lines, new_lines, fromfile=f"{path} (before)", tofile=f"{path} (after)"
+    )
+    diff_str = "".join(diff)
+
+    # Check permission before proceeding
+    permission_manager = _get_permission_manager()
+    diff_display = _format_colored_diff(content, result.content, file_path=path)
+
+    # Get permission pattern (directory for outside repo, relative path for inside)
+    permission_pattern = _get_permission_pattern_for_path(path, p)
+
+    # Add warning if writing outside repository (unless it's PatchPal's managed files)
+    outside_repo_warning = _get_outside_repo_warning(p)
+
+    description = f"   ● Update({path}) [hashline edit]{outside_repo_warning}\n{diff_display}"
+
+    if not permission_manager.request_permission(
+        "edit_file_hashline", description, pattern=permission_pattern
+    ):
+        return "Operation cancelled by user."
+
+    # Check git status for uncommitted changes
+    git_status = _check_git_status()
+    git_warning = ""
+    if _is_inside_repo(p) and git_status.get("is_repo") and git_status.get("has_uncommitted"):
+        relative_path = str(p.relative_to(common.REPO_ROOT))
+        if any(relative_path in change for change in git_status.get("changes", [])):
+            git_warning = "\n⚠️  Note: File has uncommitted changes in git\n"
+
+    # Backup existing file
+    backup_path = _backup_file(p)
+
+    # Write the new content
+    p.write_text(result.content)
+
+    # Check if critical file
+    warning = ""
+    if _is_critical_file(p):
+        warning = "\n⚠️  WARNING: Modifying critical infrastructure file!\n"
+
+    audit_logger.info(
+        f"HASHLINE_EDIT: {path} ({len(edit_objects)} edits, {len(content)} -> {len(result.content)} bytes)"
+    )
+
+    backup_msg = f"\n[Backup saved: {backup_path}]" if backup_path else ""
+    edit_summary = f"{len(edit_objects)} edit{'s' if len(edit_objects) > 1 else ''}"
+
+    return f"Successfully applied {edit_summary} to {path}{warning}{git_warning}{backup_msg}\n\nDiff:\n{diff_str}"

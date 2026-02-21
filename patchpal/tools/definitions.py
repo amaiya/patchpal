@@ -4,12 +4,15 @@ This module contains the tool schemas (in LiteLLM format) and the mapping
 from tool names to their implementation functions.
 """
 
+import os
+
 from patchpal.config import config
 from patchpal.tools import (
     apply_patch,
     ask_user,
     code_structure,
     edit_file,
+    edit_file_hashline,
     get_repo_map,
     list_skills,
     read_file,
@@ -164,6 +167,76 @@ Tip: Read README first for context when exploring repositories.""",
                     },
                 },
                 "required": ["path", "old_string", "new_string"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "edit_file_hashline",
+            "description": """Edit a file using hashline-based line references for precise, stable edits. Uses content hashes to verify line identity, preventing edits from being applied to the wrong location if the file changed.
+
+Each line is identified as 'LINE#HASH' (e.g., '5#ZP'). When reading files, you'll see lines formatted as 'LINE#HASH:content'.
+
+Supported operations:
+- set: Replace a single line
+- replace: Replace a range of lines
+- append: Append lines after a specific line (or at EOF if no 'after')
+- prepend: Prepend lines before a specific line (or at BOF if no 'before')
+- insert: Insert lines between two specific lines
+
+Example: {"op": "set", "tag": "5#ZP", "content": ["new line"]}
+
+If you get a HashlineMismatchError, use the corrected LINE#ID references shown in the error message.""",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "Path to the file - relative to repository root or absolute path",
+                    },
+                    "edits": {
+                        "type": "array",
+                        "description": "Array of edit operations to apply",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "op": {
+                                    "type": "string",
+                                    "enum": ["set", "replace", "append", "prepend", "insert"],
+                                    "description": "Operation type",
+                                },
+                                "tag": {
+                                    "type": "string",
+                                    "description": "Line reference (LINE#HASH) for set operation",
+                                },
+                                "first": {
+                                    "type": "string",
+                                    "description": "First line reference (LINE#HASH) for replace operation",
+                                },
+                                "last": {
+                                    "type": "string",
+                                    "description": "Last line reference (LINE#HASH) for replace operation",
+                                },
+                                "after": {
+                                    "type": "string",
+                                    "description": "Line reference (LINE#HASH) to append/insert after",
+                                },
+                                "before": {
+                                    "type": "string",
+                                    "description": "Line reference (LINE#HASH) to prepend/insert before",
+                                },
+                                "content": {
+                                    "type": "array",
+                                    "items": {"type": "string"},
+                                    "description": "Array of new lines to insert/replace (can also be a single string)",
+                                },
+                            },
+                            "required": ["op", "content"],
+                        },
+                    },
+                },
+                "required": ["path", "edits"],
             },
         },
     },
@@ -415,6 +488,7 @@ TOOL_FUNCTIONS = {
     "code_structure": code_structure,
     "get_repo_map": get_repo_map,
     "edit_file": edit_file,
+    "edit_file_hashline": edit_file_hashline,
     "apply_patch": apply_patch,
     "web_search": web_search,
     "web_fetch": web_fetch,
@@ -461,6 +535,19 @@ def get_tools(web_tools_enabled: bool = True):
     # Start with built-in tools
     tools = TOOLS.copy()
     functions = TOOL_FUNCTIONS.copy()
+
+    # Check if hashline mode is enabled - swap edit_file for edit_file_hashline
+    hashline_mode = os.getenv("PATCHPAL_HASHLINE", "false").lower() in ("true", "1", "yes")
+    if hashline_mode:
+        # Remove edit_file and keep edit_file_hashline
+        tools = [tool for tool in tools if tool["function"]["name"] != "edit_file"]
+        if "edit_file" in functions:
+            del functions["edit_file"]
+    else:
+        # Remove edit_file_hashline and keep edit_file
+        tools = [tool for tool in tools if tool["function"]["name"] != "edit_file_hashline"]
+        if "edit_file_hashline" in functions:
+            del functions["edit_file_hashline"]
 
     # Filter out web tools if disabled
     if not web_tools_enabled:

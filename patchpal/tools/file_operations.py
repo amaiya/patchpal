@@ -1,6 +1,7 @@
 """File operation tools (read, get info)."""
 
 import mimetypes
+import os
 from typing import Optional
 
 from patchpal.tools.common import (
@@ -14,6 +15,10 @@ from patchpal.tools.common import (
     extract_text_from_pptx,
     require_permission_for_read,
 )
+from patchpal.tools.hashline import format_hash_lines
+
+# Check if hashline mode is enabled via environment variable
+HASHLINE_MODE = os.getenv("PATCHPAL_HASHLINE", "false").lower() in ("true", "1", "yes")
 
 
 @require_permission_for_read(
@@ -94,6 +99,11 @@ def read_file(path: str) -> str:
     # Read as text file
     content = p.read_text(encoding="utf-8", errors="replace")
     audit_logger.info(f"READ: {path} ({size} bytes)")
+
+    # Format with hashline prefixes if enabled
+    if HASHLINE_MODE:
+        return format_hash_lines(content)
+
     return content
 
 
@@ -164,11 +174,19 @@ def read_lines(path: str, start_line: int, end_line: Optional[int] = None) -> st
     # Extract requested lines (convert to 0-indexed)
     requested_lines = lines[start_line - 1 : actual_end_line]
 
-    # Format output with line numbers
+    # Format output with line numbers (and hashes if hashline mode enabled)
     result = []
-    for i, line in enumerate(requested_lines, start=start_line):
-        # Remove trailing newline for cleaner output
-        result.append(f"{i:4d}  {line.rstrip()}")
+    if HASHLINE_MODE:
+        from patchpal.tools.hashline import compute_line_hash
+
+        for i, line in enumerate(requested_lines, start=start_line):
+            line_content = line.rstrip()
+            hash_val = compute_line_hash(i, line_content)
+            result.append(f"{i}#{hash_val}:{line_content}")
+    else:
+        for i, line in enumerate(requested_lines, start=start_line):
+            # Remove trailing newline for cleaner output
+            result.append(f"{i:4d}  {line.rstrip()}")
 
     output = "\n".join(result)
 

@@ -40,6 +40,7 @@ from patchpal.tools.common import (
 from patchpal.tools.file_editing import (
     apply_patch,
     edit_file,
+    edit_file_hashline,
 )
 from patchpal.tools.file_operations import (
     read_file,
@@ -85,6 +86,7 @@ __all__ = [
     # File editing
     "apply_patch",
     "edit_file",
+    "edit_file_hashline",
     # TODO tools
     "reset_session_todos",
     "todo_add",
