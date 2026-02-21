@@ -60,3 +60,5 @@ patchpal --model ollama_chat/gpt-oss:20b
 export PATCHPAL_MODEL=anthropic/claude-opus-4-5
 patchpal
 ```
+
+**Tip for Local Models:** Local models (i.e., models served by Ollama or vLLM) may work better with the environment variable setting,           `PATCHPAL_MINIMAL_TOOLS=true`, which provides only essential tools (`read_file`, `edit_file`, `apply_patch`, `run_shell`), reducing tool        confusion with smaller models.
