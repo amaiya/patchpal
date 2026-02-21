@@ -7,10 +7,10 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
-## 0.16.0 (TBD)
+## 0.16.0 (2026-02-21)
 
 ### new:
-- N/A
+- Support for image understanding (#66)
 
 ### changed:
 - Centralized environment variable configuration (#72)
