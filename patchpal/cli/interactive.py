@@ -352,7 +352,7 @@ Supported models: Any LiteLLM-supported model
             litellm_kwargs = None
 
     # Discover custom tools from ~/.patchpal/tools/ and <repo>/.patchpal/tools/
-    from patchpal.tool_schema import discover_tools, list_custom_tools
+    from patchpal.tools.tool_schema import discover_tools, list_custom_tools
 
     repo_root = Path(".").resolve()
     custom_tools = discover_tools(repo_root=repo_root)
