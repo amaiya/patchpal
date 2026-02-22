@@ -1074,3 +1074,385 @@ def test_llm_timeout_passed_to_completion(monkeypatch):
         assert len(completion_kwargs) > 0
         assert "timeout" in completion_kwargs[0]
         assert completion_kwargs[0]["timeout"] == 300  # Default value
+
+
+def test_run_subtask_basic_completion(monkeypatch):
+    """Test that run_subtask creates isolated context and returns result."""
+    from patchpal.agent import create_agent
+
+    # Disable permissions
+    monkeypatch.setenv("PATCHPAL_REQUIRE_PERMISSION", "false")
+
+    # Mock response that includes completion signal
+    mock_response = MagicMock()
+    mock_response.choices = [MagicMock()]
+    mock_response.choices[0].message = MagicMock()
+    mock_response.choices[0].message.content = "Task completed successfully.\n\n<SUBTASK_DONE>"
+    mock_response.choices[0].message.tool_calls = None
+    # Add usage stats to prevent formatting errors
+    mock_response.usage = MagicMock()
+    mock_response.usage.prompt_tokens = 100
+    mock_response.usage.completion_tokens = 50
+    mock_response.usage.cache_creation_input_tokens = 0
+    mock_response.usage.cache_read_input_tokens = 0
+
+    with patch("patchpal.agent.litellm.completion", return_value=mock_response):
+        agent = create_agent()
+
+        # Add some messages to parent context
+        agent.messages.append({"role": "user", "content": "Previous conversation"})
+        parent_message_count = len(agent.messages)
+
+        # Run subtask
+        result = agent.run_subtask(
+            task_prompt="Do a simple task",
+            max_iterations=5,
+            completion_signal="<SUBTASK_DONE>",
+        )
+
+        # Verify result contains completion signal
+        assert "<SUBTASK_DONE>" in result
+        assert "Task completed successfully" in result
+
+        # Verify parent context was updated with subtask result
+        assert len(agent.messages) > parent_message_count
+        last_message = agent.messages[-1]
+        assert last_message["role"] == "assistant"
+        assert "[Subtask Result]" in last_message["content"]
+        assert result in last_message["content"]
+
+
+def test_run_subtask_isolated_context(monkeypatch):
+    """Test that subtask runs with isolated (fresh) context."""
+    from patchpal.agent import create_agent
+
+    # Disable permissions
+    monkeypatch.setenv("PATCHPAL_REQUIRE_PERMISSION", "false")
+
+    # Track all completion calls to verify subtask has fresh context
+    completion_calls = []
+
+    def mock_completion(*args, **kwargs):
+        completion_calls.append(kwargs)
+
+        mock_response = MagicMock()
+        mock_response.choices = [MagicMock()]
+        mock_response.choices[0].message = MagicMock()
+        mock_response.choices[0].message.content = "Subtask result <SUBTASK_DONE>"
+        mock_response.choices[0].message.tool_calls = None
+        # Add usage stats
+        mock_response.usage = MagicMock()
+        mock_response.usage.prompt_tokens = 100
+        mock_response.usage.completion_tokens = 50
+        mock_response.usage.cache_creation_input_tokens = 0
+        mock_response.usage.cache_read_input_tokens = 0
+
+        return mock_response
+
+    with patch("patchpal.agent.litellm.completion", side_effect=mock_completion):
+        agent = create_agent()
+
+        # Add several messages to parent context
+        agent.messages.append({"role": "user", "content": "Parent message 1"})
+        agent.messages.append({"role": "assistant", "content": "Parent response 1"})
+        agent.messages.append({"role": "user", "content": "Parent message 2"})
+
+        # Run subtask
+        agent.run_subtask("Do isolated task", max_iterations=3)
+
+        # Verify subtask completion call has fresh context
+        # The subtask should only have system message + the subtask prompt
+        subtask_call = completion_calls[-1]
+        subtask_messages = subtask_call["messages"]
+
+        # Should not include parent conversation messages
+        message_contents = [msg.get("content", "") for msg in subtask_messages]
+        assert "Parent message 1" not in str(message_contents)
+        assert "Parent message 2" not in str(message_contents)
+
+        # Should include the subtask prompt
+        assert any("Do isolated task" in str(content) for content in message_contents)
+
+
+def test_run_subtask_max_iterations(monkeypatch):
+    """Test that run_subtask respects max_iterations limit."""
+    from patchpal.agent import create_agent
+
+    # Disable permissions
+    monkeypatch.setenv("PATCHPAL_REQUIRE_PERMISSION", "false")
+
+    call_count = [0]
+
+    def mock_completion(*args, **kwargs):
+        call_count[0] += 1
+        mock_response = MagicMock()
+        mock_response.choices = [MagicMock()]
+        mock_response.choices[0].message = MagicMock()
+        # Never return completion signal
+        mock_response.choices[0].message.content = f"Iteration {call_count[0]} response"
+        mock_response.choices[0].message.tool_calls = None
+        # Add usage stats
+        mock_response.usage = MagicMock()
+        mock_response.usage.prompt_tokens = 100
+        mock_response.usage.completion_tokens = 50
+        mock_response.usage.cache_creation_input_tokens = 0
+        mock_response.usage.cache_read_input_tokens = 0
+        return mock_response
+
+    with patch("patchpal.agent.litellm.completion", side_effect=mock_completion):
+        agent = create_agent()
+
+        # Run subtask with max_iterations=3
+        result = agent.run_subtask(
+            task_prompt="Task without completion", max_iterations=3, completion_signal="<DONE>"
+        )
+
+        # Should have made exactly 3 calls (respecting max_iterations)
+        assert call_count[0] == 3
+
+        # Result should indicate incomplete
+        assert "incomplete" in result.lower() or "did not complete" in result.lower()
+
+
+def test_run_subtask_cost_aggregation(monkeypatch):
+    """Test that subtask costs are aggregated back to parent agent."""
+    from patchpal.agent import create_agent
+
+    # Disable permissions
+    monkeypatch.setenv("PATCHPAL_REQUIRE_PERMISSION", "false")
+
+    mock_response = MagicMock()
+    mock_response.choices = [MagicMock()]
+    mock_response.choices[0].message = MagicMock()
+    mock_response.choices[0].message.content = "Result <SUBTASK_DONE>"
+    mock_response.choices[0].message.tool_calls = None
+    # Add usage statistics
+    mock_response.usage = MagicMock()
+    mock_response.usage.prompt_tokens = 500
+    mock_response.usage.completion_tokens = 100
+    mock_response.usage.cache_creation_input_tokens = 0
+    mock_response.usage.cache_read_input_tokens = 0
+
+    with patch("patchpal.agent.litellm.completion", return_value=mock_response):
+        agent = create_agent()
+
+        # Record initial cumulative stats
+        initial_input_tokens = agent.cumulative_input_tokens
+        initial_output_tokens = agent.cumulative_output_tokens
+        initial_llm_calls = agent.total_llm_calls
+
+        # Run subtask
+        agent.run_subtask("Task", max_iterations=2)
+
+        # Verify costs were aggregated from subtask to parent
+        assert agent.cumulative_input_tokens > initial_input_tokens
+        assert agent.cumulative_output_tokens > initial_output_tokens
+        assert agent.total_llm_calls > initial_llm_calls
+
+
+def test_run_subtask_with_tool_calls(monkeypatch):
+    """Test that subtask can execute tool calls independently."""
+    from patchpal.agent import create_agent
+
+    # Disable permissions
+    monkeypatch.setenv("PATCHPAL_REQUIRE_PERMISSION", "false")
+
+    call_count = [0]
+
+    def mock_completion(*args, **kwargs):
+        call_count[0] += 1
+
+        if call_count[0] == 1:
+            # First call: return a tool call
+            tool_call = MagicMock()
+            tool_call.id = "call_123"
+            tool_call.function.name = "read_file"
+            tool_call.function.arguments = '{"path": "test.txt"}'
+
+            mock_response = MagicMock()
+            mock_response.choices = [MagicMock()]
+            mock_response.choices[0].message = MagicMock()
+            mock_response.choices[0].message.content = ""
+            mock_response.choices[0].message.tool_calls = [tool_call]
+            # Add usage stats
+            mock_response.usage = MagicMock()
+            mock_response.usage.prompt_tokens = 100
+            mock_response.usage.completion_tokens = 50
+            mock_response.usage.cache_creation_input_tokens = 0
+            mock_response.usage.cache_read_input_tokens = 0
+            return mock_response
+        else:
+            # Second call: return result with completion signal
+            mock_response = MagicMock()
+            mock_response.choices = [MagicMock()]
+            mock_response.choices[0].message = MagicMock()
+            mock_response.choices[0].message.content = "File read successfully. <SUBTASK_DONE>"
+            mock_response.choices[0].message.tool_calls = None
+            # Add usage stats
+            mock_response.usage = MagicMock()
+            mock_response.usage.prompt_tokens = 100
+            mock_response.usage.completion_tokens = 50
+            mock_response.usage.cache_creation_input_tokens = 0
+            mock_response.usage.cache_read_input_tokens = 0
+            return mock_response
+
+    with patch("patchpal.agent.litellm.completion", side_effect=mock_completion):
+        with patch("patchpal.tools.read_file", return_value="test file content"):
+            agent = create_agent()
+
+            result = agent.run_subtask("Read a file", max_iterations=3)
+
+            # Verify subtask completed
+            assert "<SUBTASK_DONE>" in result
+            assert "successfully" in result.lower()
+
+
+def test_run_subtask_keyboard_interrupt(monkeypatch):
+    """Test that run_subtask handles keyboard interrupt gracefully."""
+    from patchpal.agent import create_agent
+
+    # Disable permissions
+    monkeypatch.setenv("PATCHPAL_REQUIRE_PERMISSION", "false")
+
+    def mock_completion(*args, **kwargs):
+        raise KeyboardInterrupt()
+
+    with patch("patchpal.agent.litellm.completion", side_effect=mock_completion):
+        agent = create_agent()
+
+        result = agent.run_subtask("Task", max_iterations=3)
+
+        # Should return interrupted message without crashing
+        assert "interrupted" in result.lower()
+
+
+def test_run_subtask_exception_handling(monkeypatch):
+    """Test that run_subtask handles exceptions during execution."""
+    from patchpal.agent import create_agent
+
+    # Disable permissions
+    monkeypatch.setenv("PATCHPAL_REQUIRE_PERMISSION", "false")
+
+    def mock_completion(*args, **kwargs):
+        raise Exception("Simulated error")
+
+    with patch("patchpal.agent.litellm.completion", side_effect=mock_completion):
+        agent = create_agent()
+
+        result = agent.run_subtask("Task", max_iterations=3)
+
+        # Should return error message without crashing
+        assert "failed" in result.lower() or "error" in result.lower()
+        assert "Simulated error" in result
+
+
+def test_run_subtask_custom_completion_signal(monkeypatch):
+    """Test that run_subtask respects custom completion signal."""
+    from patchpal.agent import create_agent
+
+    # Disable permissions
+    monkeypatch.setenv("PATCHPAL_REQUIRE_PERMISSION", "false")
+
+    mock_response = MagicMock()
+    mock_response.choices = [MagicMock()]
+    mock_response.choices[0].message = MagicMock()
+    mock_response.choices[0].message.content = "Task complete. CUSTOM_SIGNAL"
+    mock_response.choices[0].message.tool_calls = None
+    # Add usage stats
+    mock_response.usage = MagicMock()
+    mock_response.usage.prompt_tokens = 100
+    mock_response.usage.completion_tokens = 50
+    mock_response.usage.cache_creation_input_tokens = 0
+    mock_response.usage.cache_read_input_tokens = 0
+
+    with patch("patchpal.agent.litellm.completion", return_value=mock_response):
+        agent = create_agent()
+
+        result = agent.run_subtask("Task", max_iterations=3, completion_signal="CUSTOM_SIGNAL")
+
+        # Should detect custom signal and complete
+        assert "CUSTOM_SIGNAL" in result
+        assert "Task complete" in result
+
+
+def test_run_subtask_multiple_iterations(monkeypatch):
+    """Test that run_subtask can iterate multiple times before completion."""
+    from patchpal.agent import create_agent
+
+    # Disable permissions
+    monkeypatch.setenv("PATCHPAL_REQUIRE_PERMISSION", "false")
+
+    call_count = [0]
+
+    def mock_completion(*args, **kwargs):
+        call_count[0] += 1
+
+        mock_response = MagicMock()
+        mock_response.choices = [MagicMock()]
+        mock_response.choices[0].message = MagicMock()
+
+        if call_count[0] < 3:
+            # First 2 iterations: no completion signal
+            mock_response.choices[0].message.content = f"Progress update {call_count[0]}"
+        else:
+            # Third iteration: completion signal
+            mock_response.choices[0].message.content = "Final result <DONE>"
+
+        mock_response.choices[0].message.tool_calls = None
+        # Add usage stats
+        mock_response.usage = MagicMock()
+        mock_response.usage.prompt_tokens = 100
+        mock_response.usage.completion_tokens = 50
+        mock_response.usage.cache_creation_input_tokens = 0
+        mock_response.usage.cache_read_input_tokens = 0
+        return mock_response
+
+    with patch("patchpal.agent.litellm.completion", side_effect=mock_completion):
+        agent = create_agent()
+
+        result = agent.run_subtask("Task", max_iterations=5, completion_signal="<DONE>")
+
+        # Should have iterated exactly 3 times
+        assert call_count[0] == 3
+
+        # Result should be the final one with completion signal
+        assert "<DONE>" in result
+        assert "Final result" in result
+
+
+def test_run_subtask_preserves_parent_configuration(monkeypatch):
+    """Test that subtask agent inherits parent's configuration."""
+    from patchpal.agent import create_agent
+
+    # Disable permissions
+    monkeypatch.setenv("PATCHPAL_REQUIRE_PERMISSION", "false")
+
+    mock_response = MagicMock()
+    mock_response.choices = [MagicMock()]
+    mock_response.choices[0].message = MagicMock()
+    mock_response.choices[0].message.content = "Done <SUBTASK_DONE>"
+    mock_response.choices[0].message.tool_calls = None
+    # Add usage stats
+    mock_response.usage = MagicMock()
+    mock_response.usage.prompt_tokens = 100
+    mock_response.usage.completion_tokens = 50
+    mock_response.usage.cache_creation_input_tokens = 0
+    mock_response.usage.cache_read_input_tokens = 0
+
+    # Track which model_id is used in completion calls
+    completion_models = []
+
+    def track_completion(*args, **kwargs):
+        completion_models.append(kwargs.get("model"))
+        return mock_response
+
+    with patch("patchpal.agent.litellm.completion", side_effect=track_completion):
+        # Create parent agent with custom model
+        parent_agent = create_agent(model_id="openai/gpt-4o")
+
+        # Run subtask
+        parent_agent.run_subtask("Task", max_iterations=2)
+
+        # Verify subtask used same model as parent
+        assert len(completion_models) > 0
+        assert all(model == "openai/gpt-4o" for model in completion_models)
