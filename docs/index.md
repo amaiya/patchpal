@@ -11,7 +11,7 @@ Human-in-the-loop coding agents (e.g., Claude Code, OpenCode, Aider) are typical
 **Key Features**
 
 - [Terminal Interface](usage/interactive.md) for interactive development
-- [Python API](usage/python-api.md) for flexibility and extensibility
+- [Python SDK](usage/python-api.md) for flexibility and extensibility
 - [Built-In](features/tools.md) and [Custom Tools](features/custom-tools.md)
 - [Skills System](features/skills.md)
 - [Autopilot Mode](usage/autopilot.md) using [Ralph Wiggum loops](https://ghuntley.com/ralph/)
