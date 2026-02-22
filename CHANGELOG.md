@@ -7,6 +7,18 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
+## 0.16.5 (2026-02-22)
+
+### new:
+- N/A
+
+### changed:
+- Removed duplicated item from system prompt
+
+### fixed:
+- N/A
+
+
 ## 0.16.4 (2026-02-21)
 
 ### new:
