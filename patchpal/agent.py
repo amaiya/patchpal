@@ -946,7 +946,7 @@ It's currently empty (just the template). The file is automatically loaded at se
                 # Build tool list (built-in + custom)
                 tools = list(TOOLS)
                 if self.custom_tools:
-                    from patchpal.tool_schema import function_to_tool_schema
+                    from patchpal.tools.tool_schema import function_to_tool_schema
 
                     for func in self.custom_tools:
                         tools.append(function_to_tool_schema(func))

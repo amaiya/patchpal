@@ -1,6 +1,6 @@
-# Python API
+# Python SDK
 
-PatchPal can be used programmatically from Python scripts or a REPL, giving you full agent capabilities with a simple API. **Unlike fully autonomous agent frameworks, PatchPal is designed for human-in-the-loop workflows** where users maintain control through interactive permission prompts, making it ideal for code assistance, debugging, and automation tasks that benefit from human oversight.
+PatchPal can be used programmatically from Python scripts or a REPL, giving you full agent capabilities with an easy-to-use Python SDK (Software Development Kit). **PatchPal supports both human-in-the-loop workflows (default) and fully autonomous operation** through [Autopilot mode](autopilot.md). By default, users maintain control through interactive permission prompts, making it ideal for code assistance, debugging, and automation tasks that benefit from human oversight. For fully autonomous iterative development, see the [Autopilot documentation](autopilot.md).
 
 !!! info "Complete API Reference"
     For detailed API documentation with all parameters, return types, and method signatures, see the **[API Reference](../reference/agent.md)** section.
@@ -148,15 +148,15 @@ print(f"Total tokens: {agent.cumulative_input_tokens + agent.cumulative_output_t
 
 ## PatchPal vs. Other Agent Frameworks
 
-Unlike fully autonomous agent frameworks (e.g., smolagents, autogen), PatchPal is explicitly designed for **human-in-the-loop workflows**:
+PatchPal is designed to support both **human-in-the-loop workflows** (default) and **fully autonomous operation** via [Autopilot mode](autopilot.md):
 
-| Feature | PatchPal | Autonomous Frameworks |
-|---------|----------|----------------------|
-| **Design Philosophy** | Human oversight & control | Autonomous execution |
-| **Permission System** | Interactive prompts for sensitive operations | Typically no prompts |
-| **Primary Use Case** | Code assistance, debugging, interactive tasks | Automated workflows, batch processing |
-| **Safety Model** | Write boundary protection, command blocking | Varies by framework |
-| **Custom Tools** | Yes, with automatic schema generation | Yes (varies by framework) |
-| **Best For** | Developers who want AI assistance with control | Automation, research, agent benchmarks |
+| Feature | PatchPal (Interactive) | PatchPal ([Autopilot](autopilot.md)) | Autonomous Frameworks |
+|---------|----------|----------------------|----------------------|
+| **Design Philosophy** | Human oversight & control | Autonomous iteration | Autonomous execution |
+| **Permission System** | Interactive prompts for sensitive operations | Disabled (sandbox only) | Typically no prompts |
+| **Primary Use Case** | Code assistance, debugging, interactive tasks | Iterative development, batch tasks | Automated workflows, batch processing |
+| **Safety Model** | Write boundary protection, command blocking | Sandboxed environments required | Varies by framework |
+| **Custom Tools** | Yes, with automatic schema generation | Yes, same tools as interactive | Yes (varies by framework) |
+| **Best For** | Developers who want AI assistance with control | Throwaway projects, rapid prototyping | Automation, research, agent benchmarks |
 
 The Python API uses the same agent implementation as the CLI, so you get the complete feature set including permissions, safety guardrails, and context management.

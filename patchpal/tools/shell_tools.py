@@ -20,6 +20,8 @@ def _extract_shell_command_info(cmd: str) -> tuple[Optional[str], Optional[str]]
 
     Handles compound commands (&&, ||, ;, |) by identifying the primary
     command being executed and any cd commands that change the working directory.
+    Also detects command execution wrappers (find -exec, xargs, sh -c) and extracts
+    the actual command being executed.
 
     Args:
         cmd: The shell command string
@@ -36,9 +38,92 @@ def _extract_shell_command_info(cmd: str) -> tuple[Optional[str], Optional[str]]
         ('python', '/tmp')
         >>> _extract_shell_command_info("cd src && ls -la | grep test")
         ('ls', 'src')
+        >>> _extract_shell_command_info("find . -exec sed -i 's/a/b/g' {} +")
+        ('sed', None)
+        >>> _extract_shell_command_info("xargs rm -rf")
+        ('rm', None)
     """
     if not cmd or not cmd.strip():
         return None, None
+
+    # First, check for command execution wrappers that delegate to other commands
+    # These are security-sensitive because they can bypass the harmless command list
+    cmd_lower = cmd.strip().lower()
+
+    # find with -exec or -execdir: extract the command after -exec/-execdir
+    if cmd_lower.startswith("find "):
+        # Look for -exec or -execdir
+        for exec_flag in ["-exec", "-execdir"]:
+            if exec_flag in cmd_lower:
+                # Find the position of -exec/-execdir
+                parts = cmd.split()
+                try:
+                    exec_idx = next(i for i, p in enumerate(parts) if p.lower() == exec_flag)
+                    if exec_idx + 1 < len(parts):
+                        # Extract the command and possibly the first flag (e.g., 'sed -n')
+                        executed_cmd = parts[exec_idx + 1]
+                        # Strip common path prefixes and get just the command name
+                        if "/" in executed_cmd:
+                            executed_cmd = executed_cmd.split("/")[-1]
+
+                        # Check if there's a flag right after the command (e.g., sed -n)
+                        # This allows matching multi-word patterns like 'sed -n' in harmless list
+                        if exec_idx + 2 < len(parts) and parts[exec_idx + 2].startswith("-"):
+                            # Include the flag for patterns like 'sed -n'
+                            executed_cmd = f"{executed_cmd} {parts[exec_idx + 2]}"
+
+                        return executed_cmd, None
+                except StopIteration:
+                    pass
+
+    # xargs: extract the command being executed
+    if cmd_lower.startswith("xargs "):
+        # xargs runs a command on each line of input
+        # The command comes after xargs and its options
+        parts = cmd.split()
+        # Skip 'xargs' and any options (start with -)
+        for i in range(1, len(parts)):
+            if not parts[i].startswith("-"):
+                executed_cmd = parts[i]
+                if "/" in executed_cmd:
+                    executed_cmd = executed_cmd.split("/")[-1]
+
+                # Check if there's a flag right after the command (e.g., sed -n)
+                if i + 1 < len(parts) and parts[i + 1].startswith("-"):
+                    executed_cmd = f"{executed_cmd} {parts[i + 1]}"
+
+                return executed_cmd, None
+        # If no command specified, xargs defaults to 'echo' (safe)
+        return "echo", None
+
+    # sh -c, bash -c, etc.: extract the command string
+    for shell_cmd in ["sh -c", "bash -c", "zsh -c", "ksh -c", "dash -c"]:
+        if shell_cmd in cmd_lower:
+            # Find what comes after the -c flag
+            idx = cmd_lower.index(shell_cmd) + len(shell_cmd)
+            remainder = cmd[idx:].strip()
+            # The command is usually in quotes, extract first token and possibly flag
+            if remainder:
+                # Remove leading quotes
+                remainder = remainder.lstrip("\"'")
+                tokens = remainder.split()
+                if tokens:
+                    first_token = tokens[0]
+                    # Check if there's a flag (e.g., sed -n)
+                    if len(tokens) > 1 and tokens[1].startswith("-"):
+                        first_token = f"{first_token} {tokens[1]}"
+                    return first_token, None
+
+    # eval: extract the command being evaluated
+    if cmd_lower.startswith("eval "):
+        remainder = cmd[5:].strip().lstrip("\"'")
+        tokens = remainder.split()
+        if tokens:
+            first_token = tokens[0]
+            # Check if there's a flag (e.g., sed -n)
+            if len(tokens) > 1 and tokens[1].startswith("-"):
+                first_token = f"{first_token} {tokens[1]}"
+            return first_token, None
 
     # Shell operators that indicate compound commands
     # Split by && and || first (they group tighter than ;)

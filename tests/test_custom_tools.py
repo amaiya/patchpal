@@ -3,7 +3,7 @@
 import tempfile
 from pathlib import Path
 
-from patchpal.tool_schema import discover_tools, function_to_tool_schema, list_custom_tools
+from patchpal.tools.tool_schema import discover_tools, function_to_tool_schema, list_custom_tools
 
 
 def test_function_to_tool_schema_basic():
