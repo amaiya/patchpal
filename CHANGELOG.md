@@ -7,6 +7,18 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
+## 0.16.4 (2026-02-21)
+
+### new:
+- N/A
+
+### changed:
+- N/A
+
+### fixed:
+- Fix `web_fetch` 403 errors (#74)
+
+
 ## 0.16.3 (2026-02-21)
 
 ### new:
