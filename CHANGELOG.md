@@ -13,7 +13,7 @@ Most recent releases are shown at the top. Each release shows:
 - N/A
 
 ### changed:
-- Removed duplicated item from system prompt
+- Removed duplicated item from system prompt and added rule about displaying
 - Whitelist `>/dev/null`
 - Updated `code_structure` tool description
 
