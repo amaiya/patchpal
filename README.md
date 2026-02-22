@@ -7,7 +7,7 @@
 
 **PatchPal** is an AI coding agent that helps you build software, debug issues, and automate tasks. It supports agent skills, tool use, and executable Python generation, enabling interactive workflows for tasks such as data analysis, visualization, web scraping, API interactions, and research with synthesized findings.
 
-Human-in-the-loop coding agents (e.g., Claude Code, OpenCode, Aider) are typically mutually exclusive with programmatic agent frameworks (e.g., smolagents, PydanticAI). A key goal of this project is to marry both: use the same agent interactively in your terminal (`patchpal`) or in Python scripts (`agent.run("task")`), plus autopilot mode for autonomous runs.
+Most agent frameworks are [currently built](https://news.ycombinator.com/item?id=44212560) in TypeScript. PatchPal is Python-native, designed for developers who want both interactive terminal use (`patchpal`) and programmatic API access (`agent.run("task")`) in the same tool—without switching ecosystems.
 
 **Key Features**
 - [Terminal Interface](https://amaiya.github.io/patchpal/usage/interactive/) for interactive development
