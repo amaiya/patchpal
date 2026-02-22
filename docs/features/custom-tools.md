@@ -378,7 +378,7 @@ response = agent.run("How many users do we have?")
 # Agent will call get_user_count() automatically
 ```
 
-See the [Python API documentation](../api/usage.md) for more details.
+See the [Python API documentation](../usage/python-api.md) for more details.
 
 ## Troubleshooting
 

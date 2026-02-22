@@ -7,11 +7,11 @@
 
 **PatchPal** is an AI coding agent that helps you build software, debug issues, and automate tasks. It supports agent skills, tool use, and executable Python generation, enabling interactive workflows for tasks such as data analysis, visualization, web scraping, API interactions, and research with synthesized findings.
 
-Human-in-the-loop coding agents (e.g., Claude Code, OpenCode, Aider) are typically mutually exclusive with programmatic agent frameworks (e.g., smolagents, PydanticAI). A key goal of this project is to marry both: use the same agent interactively in your terminal (`patchpal`) or in Python scripts (`agent.run("task")`), plus autopilot mode for autonomous runs.
+Most agent frameworks are [built in TypeScript](https://news.ycombinator.com/item?id=44212560). PatchPal is Python-native, designed for developers who want both interactive terminal use (`patchpal`) and programmatic API access (`agent.run("task")`) in the same tool—without switching ecosystems.
 
 **Key Features**
 - [Terminal Interface](https://amaiya.github.io/patchpal/usage/interactive/) for interactive development
-- [Python API](https://amaiya.github.io/patchpal/usage/python-api/) for flexibility and extensibility
+- [Python SDK](https://amaiya.github.io/patchpal/usage/python-api/) for flexibility and extensibility
 - [Built-In](https://amaiya.github.io/patchpal/features/tools/) and [Custom Tools](https://amaiya.github.io/patchpal/features/custom-tools/)
 - [Skills System](https://amaiya.github.io/patchpal/features/skills/) and [MCP Integration](https://amaiya.github.io/patchpal/features/mcp/)
 - [Autopilot Mode](https://amaiya.github.io/patchpal/usage/autopilot/) using [Ralph Wiggum loops](https://ghuntley.com/ralph/)
@@ -66,7 +66,6 @@ patchpal --model openai/gpt-5.2-codex  # or openai/gpt-5-mini, anthropic/claude-
 
 # Use vLLM (local)
 # Note: vLLM server must be started with --tool-call-parser and --enable-auto-tool-choice
-# See "Using Local Models (vLLM & Ollama)" section below for details
 export HOSTED_VLLM_API_BASE=http://localhost:8000
 export HOSTED_VLLM_API_KEY=token-abc123
 patchpal --model hosted_vllm/openai/gpt-oss-20b

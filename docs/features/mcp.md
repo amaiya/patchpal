@@ -377,6 +377,6 @@ See `examples/mcp/simple_server.py` for a complete example.
 ## Resources
 
 - **[MCP Specification](https://modelcontextprotocol.io/)** - Official protocol docs
-- **[Example Servers](../examples/mcp/)** - Local examples and testing guides
-- **[MCP CLI Reference](../examples/mcp/README.md)** - Detailed CLI documentation
+- **[Example Servers](https://github.com/amaiya/patchpal/tree/main/examples/mcp)** - Local examples and testing guides
+- **[MCP CLI Reference](https://github.com/amaiya/patchpal/blob/main/examples/mcp/README.md)** - Detailed CLI documentation
 - **[Python SDK](https://github.com/modelcontextprotocol/python-sdk)** - Build custom servers

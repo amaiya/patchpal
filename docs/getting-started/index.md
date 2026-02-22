@@ -47,7 +47,6 @@ patchpal --model openai/gpt-5.2-codex  # or openai/gpt-5-mini, anthropic/claude-
 
 # Use vLLM (local)
 # Note: vLLM server must be started with --tool-call-parser and --enable-auto-tool-choice
-# See "Using Local Models (vLLM & Ollama)" section below for details
 export HOSTED_VLLM_API_BASE=http://localhost:8000
 export HOSTED_VLLM_API_KEY=token-abc123
 patchpal --model hosted_vllm/openai/gpt-oss-20b
@@ -60,3 +59,5 @@ patchpal --model ollama_chat/gpt-oss:20b
 export PATCHPAL_MODEL=anthropic/claude-opus-4-5
 patchpal
 ```
+
+**Tip for Local Models:** Local models (i.e., models served by Ollama or vLLM) may work better with the environment variable setting,           `PATCHPAL_MINIMAL_TOOLS=true`, which provides only essential tools (`read_file`, `edit_file`, `apply_patch`, `run_shell`), reducing tool        confusion with smaller models.

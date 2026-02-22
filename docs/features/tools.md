@@ -8,8 +8,24 @@ PatchPal provides 18 built-in tools for file operations, code analysis, web acce
 Read contents of files anywhere on the system (repository files, logs, configs).
 
 - **Example**: `read_file("src/app.py")`
-- Supports PDF, DOCX, PPTX text extraction
-- Limited to 500KB by default (configurable with `PATCHPAL_MAX_FILE_SIZE`)
+- Supports text files, images (PNG, JPG, GIF, etc.), and documents (PDF, DOCX, PPTX)
+- **Image Support**: When using vision-capable models (GPT-4o, Claude 3.5 Sonnet), images are automatically formatted for the model
+  - Example: Just mention image files in your prompt: "Look at screenshot.png and tell me what's wrong"
+  - Supported formats: PNG, JPG, JPEG, GIF, BMP, WEBP (SVG returned as text)
+  - The agent will automatically call `read_file` on image files when needed
+  - **Size limits**:
+    - Maximum file size: 10MB (configurable with `PATCHPAL_MAX_IMAGE_SIZE`)
+    - Provider limits: OpenAI (20MB), Anthropic/Bedrock (5MB)
+    - Images bypass tool output truncation limits (100K chars)
+  - **Multi-provider support**:
+    - **Anthropic/Claude**: Images in tool results (multimodal content)
+    - **OpenAI/GPT**: Images injected as user messages (API limitation workaround)
+    - Automatic detection and formatting based on model provider
+  - **Non-vision models**: Set `PATCHPAL_BLOCK_IMAGES=true` to replace images with text placeholders
+    - Prevents API errors from non-vision models (gpt-3.5-turbo, claude-instant, local models)
+    - Also useful for privacy compliance (prevent image data from being sent to LLM)
+  - **Recommendation**: Use compressed images for faster processing (1-2MB optimal)
+- Text file limit: 500KB by default (configurable with `PATCHPAL_MAX_FILE_SIZE`)
 - For larger files, use `read_lines` for targeted access
 
 ### read_lines
@@ -174,7 +190,9 @@ Execute shell commands in the repository.
 
 ### Environment Variables
 
-- `PATCHPAL_MAX_FILE_SIZE` - Maximum file size for read_file (default: 500KB)
+- `PATCHPAL_MAX_FILE_SIZE` - Maximum file size for text files in read_file (default: 500KB)
+- `PATCHPAL_MAX_IMAGE_SIZE` - Maximum image file size for read_file (default: 10MB)
+- `PATCHPAL_BLOCK_IMAGES` - Block images from being sent to LLM (default: false)
 - `PATCHPAL_ENABLE_WEB` - Enable/disable web tools (default: true)
 - `PATCHPAL_ALLOW_SUDO` - Allow sudo/su commands (default: false)
 - `PATCHPAL_MINIMAL_TOOLS` - Use minimal tools mode: 4-6 core tools only (default: false)
@@ -190,7 +208,7 @@ This reduces tool count to 4-6 for local models with tool confusion issues. Harm
 ## Permission System
 
 ### Read Operations (Auto-Granted)
-- Reading repository files
+- Reading repository files (including images)
 - Listing files and directories
 - Searching with grep
 - Analyzing code structure

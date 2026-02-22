@@ -33,7 +33,7 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "read_file",
-            "description": "Read the contents of a file. Can read files anywhere on the system (repository files, system configs like /etc/fstab, logs, etc.) for automation and debugging. Supports PDF, DOCX, PPTX extraction. Sensitive files (.env, credentials) are blocked for safety.",
+            "description": "Read the contents of a file. Can read files anywhere on the system (repository files, system configs like /etc/fstab, logs, etc.) for automation and debugging. Supports text files, images (PNG, JPG, GIF, etc.), and documents (PDF, DOCX, PPTX) with automatic format detection. Images are returned as base64 data URLs for vision model analysis. Sensitive files (.env, credentials) are blocked for safety.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -146,13 +146,13 @@ Tip: Read README first for context when exploring repositories.""",
         "type": "function",
         "function": {
             "name": "edit_file",
-            "description": "Edit a file by replacing an exact string. More efficient than apply_patch for small changes. Primarily for repository files. Writing outside repository requires explicit user permission. The old_string must match exactly and appear only once.",
+            "description": "Edit a file by replacing an exact string. More efficient than apply_patch for small changes. The old_string must match exactly and appear only once.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "path": {
                         "type": "string",
-                        "description": "Path to the file - relative to repository root or absolute path (note: writes outside repository require permission)",
+                        "description": "Path to the file - relative to repository root or absolute path",
                     },
                     "old_string": {
                         "type": "string",
@@ -171,13 +171,13 @@ Tip: Read README first for context when exploring repositories.""",
         "type": "function",
         "function": {
             "name": "apply_patch",
-            "description": "Replace a file's entire contents with new content. You MUST provide the complete new file content as a string. Use this for large-scale changes or when rewriting multiple sections. For small single-string replacements, use edit_file instead. Returns a unified diff of changes.",
+            "description": "Replace a file's entire contents with new content. You MUST provide the complete new file content as a string. Prefer edit_file for targeted changes. Use this for large-scale rewrites or creating new files. Returns a unified diff of changes.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "path": {
                         "type": "string",
-                        "description": "Path to the file - relative to repository root or absolute path (note: writes outside repository require permission)",
+                        "description": "Path to the file - relative to repository root or absolute path",
                     },
                     "new_content": {
                         "type": "string",

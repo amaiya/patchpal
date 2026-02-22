@@ -7,10 +7,71 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
-## 0.16.0 (TBD)
+## 0.16.5 (2026-02-22)
 
 ### new:
 - N/A
+
+### changed:
+- Removed duplicated item from system prompt
+
+### fixed:
+- N/A
+
+
+## 0.16.4 (2026-02-21)
+
+### new:
+- N/A
+
+### changed:
+- N/A
+
+### fixed:
+- Fix `web_fetch` 403 errors (#74)
+
+
+## 0.16.3 (2026-02-21)
+
+### new:
+- N/A
+
+### changed:
+- Moved `tool_schema.py` to `tools` folder
+- Pruned system prompt and updated out-dated tool descriptions (#73)
+- Removed `__main__.py` (#73)
+
+### fixed:
+- N/A
+
+
+## 0.16.2 (2026-02-21)
+
+### new:
+- N/A
+
+### changed:
+- N/A
+
+### fixed:
+- Fixed permission bypass vulnerability in shell command wrappers (`find -exec`, `xargs`, `sh -c`, `eval`)
+
+## 0.16.1 (2026-02-21)
+
+### new:
+- N/A
+
+### changed:
+-N/A
+
+### fixed:
+- Fixed permissions issue with `sed`
+
+
+## 0.16.0 (2026-02-21)
+
+### new:
+- Support for image understanding (#66)
 
 ### changed:
 - Centralized environment variable configuration (#72)

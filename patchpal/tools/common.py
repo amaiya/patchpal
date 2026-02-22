@@ -143,11 +143,16 @@ WEB_REQUEST_TIMEOUT = config.WEB_TIMEOUT
 MAX_WEB_CONTENT_SIZE = config.MAX_WEB_SIZE
 # Note: Web fetch output is handled by universal MAX_TOOL_OUTPUT_CHARS limit
 # Use browser-like User-Agent to avoid bot blocking (e.g., GitHub redirects work with browser UA)
-WEB_USER_AGENT = f"Mozilla/5.0 (compatible; PatchPal/{__version__}; +AI Code Assistant)"
+# Use standard browser UA instead of identifying as AI/bot to avoid blocking by sites like Reddit
+WEB_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
 WEB_HEADERS = {
     "User-Agent": WEB_USER_AGENT,
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,application/pdf,text/plain,*/*;q=0.8",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
     "Accept-Language": "en-US,en;q=0.9",
+    "Accept-Encoding": "gzip, deflate, br",
+    "DNT": "1",
+    "Connection": "keep-alive",
+    "Upgrade-Insecure-Requests": "1",
 }
 
 # Shell command configuration

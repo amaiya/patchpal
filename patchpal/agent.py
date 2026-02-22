@@ -348,6 +348,11 @@ class PatchPalAgent:
 
         self.model_id = _normalize_bedrock_model_id(model_id)
 
+        # Initialize image handler for vision model support
+        from patchpal.tools.image_handler import ImageHandler
+
+        self.image_handler = ImageHandler(self.model_id)
+
         # Register Ollama models as supporting native function calling
         # LiteLLM defaults to JSON mode if not explicitly registered
         if self.model_id.startswith("ollama_chat/"):
@@ -476,15 +481,24 @@ It's currently empty (just the template). The file is automatically loaded at se
         pruned_chars = 0
         for msg in self.messages:
             if msg.get("role") == "tool" and msg.get("content"):
-                content_size = len(str(msg["content"]))
+                content = msg["content"]
+
+                # Skip multimodal content containing images - they should not be pruned
+                # Images bypass normal truncation limits for vision model analysis
+                if self.image_handler.should_skip_pruning(content):
+                    continue
+
+                content_size = len(str(content))
                 if content_size > max_chars:
                     original_size = content_size
-                    msg["content"] = str(msg["content"])[:max_chars] + truncation_message
+                    msg["content"] = str(content)[:max_chars] + truncation_message
                     pruned_chars += original_size - len(msg["content"])
         return pruned_chars
 
     def _is_openai_model(self) -> bool:
         """Check if the current model is an OpenAI model.
+
+        Used for model-specific behavior (e.g., cache token tracking, image handling).
 
         Returns:
             True if the model is OpenAI, False otherwise
@@ -852,7 +866,12 @@ It's currently empty (just the template). The file is automatically loaded at se
         If the last message is an assistant message with tool_calls but no
         corresponding tool responses, we need to either remove the message
         or add error responses to maintain valid conversation structure.
+
+        Also clears any pending images for OpenAI that weren't injected.
         """
+        # Clear any pending images that weren't injected
+        self.image_handler.clear_pending_images()
+
         if not self.messages:
             return
 
@@ -1040,6 +1059,11 @@ It's currently empty (just the template). The file is automatically loaded at se
         """
         # Agent loop
         for iteration in range(max_iterations):
+            # Clear any stale pending images from previous iteration (safety check)
+            # Images should already be injected, but this prevents accumulation on error
+            if self.image_handler.has_pending_images():
+                self.image_handler.clear_pending_images()
+
             # Show thinking message
             print("\033[2m🤔 Thinking...\033[0m", flush=True)
 
@@ -1050,6 +1074,9 @@ It's currently empty (just the template). The file is automatically loaded at se
                 {"role": "system", "content": _get_current_datetime_message()},
             ] + self.messages
 
+            # Filter images if BLOCK_IMAGES is enabled (for non-vision models or user preference)
+            messages = self.image_handler.filter_images_if_blocked(messages)
+
             # Apply prompt caching for supported models (Anthropic/Claude)
             messages = _apply_prompt_caching(messages, self.model_id)
 
@@ -1058,7 +1085,7 @@ It's currently empty (just the template). The file is automatically loaded at se
                 # Build tool list (built-in + custom)
                 tools = list(TOOLS)
                 if self.custom_tools:
-                    from patchpal.tool_schema import function_to_tool_schema
+                    from patchpal.tools.tool_schema import function_to_tool_schema
 
                     for func in self.custom_tools:
                         tools.append(function_to_tool_schema(func))
@@ -1107,6 +1134,8 @@ It's currently empty (just the template). The file is automatically loaded at se
                 self._calculate_cost(response)
 
             except Exception as e:
+                # Clean up any pending images before returning error
+                self.image_handler.clear_pending_images()
                 return f"Error calling model: {e}"
 
             # Get the assistant's response
@@ -1122,6 +1151,11 @@ It's currently empty (just the template). The file is automatically loaded at se
                     else None,
                 }
             )
+
+            # For OpenAI: Inject any pending images as a user message
+            # OpenAI doesn't support images in tool results, so we collected them and inject here
+            if self.image_handler.is_openai_model():
+                self.image_handler.inject_pending_images(self.messages)
 
             # Check if there are tool calls
             if hasattr(assistant_message, "tool_calls") and assistant_message.tool_calls:
@@ -1350,65 +1384,90 @@ It's currently empty (just the template). The file is automatically loaded at se
                                 print(f"\033[1;31m✗ {tool_name}: {e}\033[0m")
 
                     # Add tool result to messages
-                    # Apply universal output limits to prevent context explosions
                     result_str = str(tool_result)
                     result_size = len(result_str)
-                    lines = result_str.split("\n")
-                    total_lines = len(lines)
 
-                    # Check if output exceeds universal limits
-                    from patchpal.tools import MAX_TOOL_OUTPUT_CHARS, MAX_TOOL_OUTPUT_LINES
+                    # Check if result contains an image (IMAGE_DATA format)
+                    # Images bypass truncation and are formatted as multimodal content
+                    image_data = self.image_handler.parse_image_data(result_str)
+                    is_image_result = False
 
-                    if total_lines > MAX_TOOL_OUTPUT_LINES or result_size > MAX_TOOL_OUTPUT_CHARS:
-                        truncated_by_lines = total_lines > MAX_TOOL_OUTPUT_LINES
-                        truncated_by_chars = result_size > MAX_TOOL_OUTPUT_CHARS
-
-                        # Truncate to limits
-                        truncated_lines = lines[:MAX_TOOL_OUTPUT_LINES]
-                        truncated_str = "\n".join(truncated_lines)
-
-                        # Also enforce character limit
-                        if len(truncated_str) > MAX_TOOL_OUTPUT_CHARS:
-                            truncated_str = truncated_str[:MAX_TOOL_OUTPUT_CHARS]
-
-                        removed_lines = total_lines - len(truncated_str.split("\n"))
-
-                        if truncated_by_lines:
-                            truncation_note = f"\n\n... {removed_lines:,} lines truncated ({total_lines:,} total lines) ...\n\n"
+                    if image_data:
+                        # Handle image result based on provider
+                        mime, b64_data = image_data
+                        if self.image_handler.is_openai_model():
+                            self.image_handler._add_image_tool_result_openai(
+                                self.messages, tool_call.id, tool_name, mime, b64_data
+                            )
                         else:
-                            truncation_note = f"\n\n... output truncated to {MAX_TOOL_OUTPUT_CHARS:,} characters (was {result_size:,}) ...\n\n"
+                            self.image_handler._add_image_tool_result_anthropic(
+                                self.messages, tool_call.id, tool_name, mime, b64_data
+                            )
+                        is_image_result = True
+                    else:
+                        # Apply universal output limits to text results
+                        lines = result_str.split("\n")
+                        total_lines = len(lines)
 
-                        # Add helpful hint message
-                        hint = (
-                            f"{truncation_note}"
-                            f"Output exceeded limits ({MAX_TOOL_OUTPUT_LINES:,} lines or {MAX_TOOL_OUTPUT_CHARS:,} characters).\n"
-                            f"Consider:\n"
-                            f"- Using grep() to search files directly\n"
-                            f"- Using read_lines() to read files in chunks\n"
-                            f"- Refining the command to filter output (e.g., | grep, | head)"
+                        # Check if output exceeds universal limits
+                        from patchpal.tools import MAX_TOOL_OUTPUT_CHARS, MAX_TOOL_OUTPUT_LINES
+
+                        if (
+                            total_lines > MAX_TOOL_OUTPUT_LINES
+                            or result_size > MAX_TOOL_OUTPUT_CHARS
+                        ):
+                            truncated_by_lines = total_lines > MAX_TOOL_OUTPUT_LINES
+                            truncated_by_chars = result_size > MAX_TOOL_OUTPUT_CHARS
+
+                            # Truncate to limits
+                            truncated_lines = lines[:MAX_TOOL_OUTPUT_LINES]
+                            truncated_str = "\n".join(truncated_lines)
+
+                            # Also enforce character limit
+                            if len(truncated_str) > MAX_TOOL_OUTPUT_CHARS:
+                                truncated_str = truncated_str[:MAX_TOOL_OUTPUT_CHARS]
+
+                            removed_lines = total_lines - len(truncated_str.split("\n"))
+
+                            if truncated_by_lines:
+                                truncation_note = f"\n\n... {removed_lines:,} lines truncated ({total_lines:,} total lines) ...\n\n"
+                            else:
+                                truncation_note = f"\n\n... output truncated to {MAX_TOOL_OUTPUT_CHARS:,} characters (was {result_size:,}) ...\n\n"
+
+                            # Add helpful hint message
+                            hint = (
+                                f"{truncation_note}"
+                                f"Output exceeded limits ({MAX_TOOL_OUTPUT_LINES:,} lines or {MAX_TOOL_OUTPUT_CHARS:,} characters).\n"
+                                f"Consider:\n"
+                                f"- Using grep() to search files directly\n"
+                                f"- Using read_lines() to read files in chunks\n"
+                                f"- Refining the command to filter output (e.g., | grep, | head)"
+                            )
+
+                            result_str = truncated_str + hint
+                            if truncated_by_lines:
+                                print(
+                                    f"\033[1;33m⚠️  Tool output truncated: {total_lines:,} lines → {MAX_TOOL_OUTPUT_LINES:,} lines\033[0m"
+                                )
+                            elif truncated_by_chars:
+                                print(
+                                    f"\033[1;33m⚠️  Tool output truncated: {result_size:,} chars → {MAX_TOOL_OUTPUT_CHARS:,} chars\033[0m"
+                                )
+
+                        # Add truncated/normal text result to messages
+                        self.messages.append(
+                            {
+                                "role": "tool",
+                                "tool_call_id": tool_call.id,
+                                "name": tool_name,
+                                "content": result_str,
+                            }
                         )
 
-                        result_str = truncated_str + hint
-                        if truncated_by_lines:
-                            print(
-                                f"\033[1;33m⚠️  Tool output truncated: {total_lines:,} lines → {MAX_TOOL_OUTPUT_LINES:,} lines\033[0m"
-                            )
-                        elif truncated_by_chars:
-                            print(
-                                f"\033[1;33m⚠️  Tool output truncated: {result_size:,} chars → {MAX_TOOL_OUTPUT_CHARS:,} chars\033[0m"
-                            )
-
-                    self.messages.append(
-                        {
-                            "role": "tool",
-                            "tool_call_id": tool_call.id,
-                            "name": tool_name,
-                            "content": result_str,
-                        }
-                    )
+                    # is_image_result already set above
 
                     # Show tool result summary (always visible for better debugging)
-                    if (
+                    if not is_image_result and (
                         tool_name.startswith("huggingface_")
                         or "_mcp_" in tool_name
                         or tool_name.startswith("mcp_")

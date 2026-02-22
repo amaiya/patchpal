@@ -6,21 +6,21 @@ Create your own tools to extend PatchPal's capabilities with automatic schema ge
 
 ### function_to_tool_schema
 
-::: patchpal.tool_schema.function_to_tool_schema
+::: patchpal.tools.tool_schema.function_to_tool_schema
     options:
       show_root_heading: true
       heading_level: 4
 
 ### python_type_to_json_schema
 
-::: patchpal.tool_schema.python_type_to_json_schema
+::: patchpal.tools.tool_schema.python_type_to_json_schema
     options:
       show_root_heading: true
       heading_level: 4
 
 ### parse_docstring_params
 
-::: patchpal.tool_schema.parse_docstring_params
+::: patchpal.tools.tool_schema.parse_docstring_params
     options:
       show_root_heading: true
       heading_level: 4
@@ -29,14 +29,14 @@ Create your own tools to extend PatchPal's capabilities with automatic schema ge
 
 ### discover_tools
 
-::: patchpal.tool_schema.discover_tools
+::: patchpal.tools.tool_schema.discover_tools
     options:
       show_root_heading: true
       heading_level: 4
 
 ### list_custom_tools
 
-::: patchpal.tool_schema.list_custom_tools
+::: patchpal.tools.tool_schema.list_custom_tools
     options:
       show_root_heading: true
       heading_level: 4

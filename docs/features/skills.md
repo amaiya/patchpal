@@ -31,7 +31,7 @@ description: One-line description
 # Detailed Instructions
 - Step 1: Do this
 - Step 2: Do that
-- Use specific PatchPal tools like git_status, read_file, etc.
+- Use specific PatchPal tools like read_file, code_structure, run_shell, etc.
 ```
 
 ## Example Skills
