@@ -953,8 +953,8 @@ It's currently empty (just the template). The file is automatically loaded at se
         print("\033[1;36m🔹 Subtask Mode: Running with isolated context\033[0m")
 
         # Show token comparison
-        parent_tokens = self.context_manager.estimate_messages_tokens(self.messages)
-        subtask_tokens = subtask_agent.context_manager.estimate_messages_tokens(
+        parent_tokens = self.context_manager.estimator.estimate_messages_tokens(self.messages)
+        subtask_tokens = subtask_agent.context_manager.estimator.estimate_messages_tokens(
             subtask_agent.messages
         )
         print(
@@ -1017,8 +1017,8 @@ It's currently empty (just the template). The file is automatically loaded at se
         self.total_llm_calls += subtask_agent.total_llm_calls
 
         # Show final token comparison
-        parent_tokens_after = self.context_manager.estimate_messages_tokens(self.messages)
-        subtask_tokens_final = subtask_agent.context_manager.estimate_messages_tokens(
+        parent_tokens_after = self.context_manager.estimator.estimate_messages_tokens(self.messages)
+        subtask_tokens_final = subtask_agent.context_manager.estimator.estimate_messages_tokens(
             subtask_agent.messages
         )
         print(f"\n\033[1;36m{'─' * 80}\033[0m")
