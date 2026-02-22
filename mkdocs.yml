@@ -86,7 +86,7 @@ nav:
       - Offline Deployment: models/offline-deployment.md
   - Usage:
       - Interactive Usage: usage/interactive.md
-      - Python API: usage/python-api.md
+      - Python SDK: usage/python-api.md
       - Autopilot Mode: usage/autopilot.md
       - Example Tasks: usage/examples.md
   - Configuration: configuration.md
