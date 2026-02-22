@@ -15,6 +15,7 @@ Most recent releases are shown at the top. Each release shows:
 ### changed:
 - Removed duplicated item from system prompt
 - Whitelist `>/dev/null`
+- Updated `code_structure` tool description
 
 ### fixed:
 - N/A

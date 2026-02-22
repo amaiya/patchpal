@@ -75,7 +75,7 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "code_structure",
-            "description": "Analyze code structure using tree-sitter AST parsing without reading the full file. Returns a compact overview showing functions, classes, methods with their line numbers and signatures. Much more efficient than read_file for understanding large code files. Supports 40+ languages including Python, JavaScript, TypeScript, Go, Rust, Java, C/C++. Use this BEFORE read_file when exploring unfamiliar code.",
+            "description": "Analyze code structure using tree-sitter AST parsing without reading the full file. Returns a compact overview showing functions, classes, methods with their line numbers and signatures. Supports 40+ languages including Python, JavaScript, TypeScript, Go, Rust, Java, C/C++. Use this INSTEAD OF read_file when you need structure overview but not implementation details (e.g., finding function names, understanding file organization). For exploring multiple files or getting oriented in a codebase, use get_repo_map instead—it's much more efficient than calling code_structure on each file individually.",
             "parameters": {
                 "type": "object",
                 "properties": {
