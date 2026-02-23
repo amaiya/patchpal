@@ -17,6 +17,7 @@ Most recent releases are shown at the top. Each release shows:
 
 ### fixed:
 - Fixed encoding issue affecting Windows file reads/writes (#75)
+- Added Windows shell detection
 
 
 ## 0.16.5 (2026-02-22)
