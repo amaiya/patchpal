@@ -144,6 +144,12 @@ class PermissionManager:
             # ============================================================================
             # PowerShell Cmdlets (Windows)
             # ============================================================================
+            # PowerShell command wrappers (for commands like: powershell -Command "Get-ChildItem")
+            # Note: The actual cmdlet extraction happens in shell_tools.py, but these provide fallback
+            "powershell -command",
+            "powershell -c",
+            "pwsh -command",
+            "pwsh -c",
             # Directory/file operations
             "get-childitem",
             "get-item",
