@@ -35,7 +35,13 @@ class PermissionManager:
         """Load persistent permission grants from file."""
         if self.permissions_file.exists():
             try:
-                with open(self.permissions_file, "r") as f:
+                with open(
+                    self.permissions_file,
+                    "r",
+                    encoding="utf-8",
+                    errors="surrogateescape",
+                    newline=None,
+                ) as f:
                     return json.load(f)
             except (json.JSONDecodeError, IOError):
                 return {}
@@ -44,7 +50,9 @@ class PermissionManager:
     def _save_persistent_grants(self):
         """Save persistent permission grants to file."""
         try:
-            with open(self.permissions_file, "w") as f:
+            with open(
+                self.permissions_file, "w", encoding="utf-8", errors="surrogateescape", newline="\n"
+            ) as f:
                 json.dump(self.persistent_grants, f, indent=2)
         except IOError as e:
             print(f"Warning: Could not save permissions: {e}")
@@ -61,104 +69,195 @@ class PermissionManager:
 
         # List of command patterns that are always safe (read-only, no side effects)
         harmless_patterns = [
-            # Search (replaces grep tool)
+            # ============================================================================
+            # Linux/macOS/Unix Commands
+            # ============================================================================
+            # Search/grep
             "grep",
             "egrep",
             "fgrep",
-            "findstr",  # Windows equivalent of grep
-            # File finding (replaces find_files tool)
+            # File finding
             "find",
-            "where",  # Windows equivalent of which/find
-            # Directory listing (replaces list_files tool)
+            # Directory listing
             "ls",
-            "dir",
-            # File reading (complement to read_file tool)
+            # File reading/paging
             "head",
             "tail",
             "sed -n",  # Stream editor (read-only display mode: sed -n 'Np')
-            "more",  # Windows pager
-            "less",  # Unix pager
-            # PowerShell read-only commands (Windows)
-            "get-childitem",  # PowerShell ls equivalent
-            "get-item",  # PowerShell file info
-            "select-object",  # PowerShell filtering (read-only)
-            # Directory tree (replaces tree tool)
-            "tree",
-            # Git read-only (replace git_* tools)
-            "git status",
-            "git diff",
-            "git log",
-            "git show",
-            # Test runners (Python)
-            "pytest",
-            "python -m pytest",
-            "python3 -m pytest",
-            "unittest",
-            "python -m unittest",
-            "python3 -m unittest",
-            # Test runners (JavaScript/Node.js)
-            "npm test",
-            "npm run test",
-            "yarn test",
-            "jest",
-            "mocha",
-            "vitest",
-            # Test runners (Go)
-            "go test",
-            # Test runners (Rust)
-            "cargo test",
-            # Test runners (Ruby)
-            "rspec",
-            "rake test",
-            "ruby -I test",
-            # Test runners (Java)
-            "mvn test",
-            "gradle test",
-            "./gradlew test",
-            # Test runners (PHP)
-            "phpunit",
-            "composer test",
-            # Test runners (C#/.NET)
-            "dotnet test",
+            "less",
             # File/text processing
             "wc",
             "file",
-            "stat",  # Unix file info (detailed metadata)
+            "stat",
             "awk",  # Text processing (read-only when not using -i)
             # Command/path info
             "which",
             "whereis",
             # Current directory
             "pwd",
-            "cd",  # When used without args (shows current dir on Windows)
-            "chdir",  # Windows cd equivalent
             # Environment
             "env",
             "printenv",
-            "set",  # Windows environment vars (read-only when no args)
-            # Network diagnostic (read-only, no data retrieval)
-            "ping",
-            "tracert",  # Windows traceroute
-            "nslookup",  # DNS lookup
-            "ipconfig",  # Windows network config (read-only)
-            "ifconfig",  # Unix network config (read-only)
+            # Network diagnostic
+            "ifconfig",
             # Disk/system info
             "df",
             "du",
-            "vol",  # Windows volume info
             # Process info
             "ps",
             "top",
-            "tasklist",  # Windows process list
             # System info
+            "uname",
+            # ============================================================================
+            # Windows Command Prompt (CMD) Commands
+            # ============================================================================
+            # Search
+            "findstr",
+            # File finding
+            "where",
+            # Directory listing
+            "dir",
+            # File reading/paging
+            "more",
+            # Current directory
+            "cd",  # When used without args (shows current dir on Windows)
+            "chdir",
+            # Command Prompt info commands
+            "help",
+            "title",
+            "assoc",
+            "ftype",
+            "doskey /history",
+            # Environment
+            "set",
+            # Network diagnostic
+            "tracert",
+            "nslookup",
+            "ipconfig",
+            # Disk/system info
+            "vol",
+            # Process info
+            "tasklist",
+            # System info
+            "ver",
+            "systeminfo",
+            # ============================================================================
+            # PowerShell Cmdlets (Windows)
+            # ============================================================================
+            # PowerShell command wrappers (for commands like: powershell -Command "Get-ChildItem")
+            # Note: The actual cmdlet extraction happens in shell_tools.py, but these provide fallback
+            "powershell -command",
+            "powershell -c",
+            "pwsh -command",
+            "pwsh -c",
+            # Directory/file operations
+            "get-childitem",
+            "get-item",
+            "get-location",
+            # File finding (Get-ChildItem with -Recurse is used for searching)
+            # Note: Get-ChildItem already listed above serves this purpose
+            # Date/time
+            "get-date",
+            # Process/service info
+            "get-process",
+            "get-service",
+            # System info
+            "get-host",
+            "get-command",
+            "get-alias",
+            "get-variable",
+            "get-member",
+            "get-help",
+            # Search/filter
+            "select-string",
+            "select-object",
+            "where-object",
+            # Formatting
+            "format-table",
+            "format-list",
+            "format-wide",
+            # Data operations
+            "measure-object",
+            "compare-object",
+            "group-object",
+            "sort-object",
+            # Path operations
+            "test-path",
+            "resolve-path",
+            "split-path",
+            "join-path",
+            # PowerShell aliases
+            "gci",
+            "gi",
+            "gl",
+            "gps",
+            "gsv",
+            "gcm",
+            "gal",
+            "gm",
+            "sls",
+            "select",
+            "where",
+            "ft",
+            "fl",
+            "fw",
+            "measure",
+            "sort",
+            "group",
+            # ============================================================================
+            # Cross-Platform Commands
+            # ============================================================================
+            # Directory tree (works on all platforms)
+            "tree",
+            # Network diagnostic (works on all platforms)
+            "ping",
+            # System info (works on all platforms)
             "whoami",
             "hostname",
-            "uname",  # Unix system info
-            "ver",  # Windows version
-            "systeminfo",  # Windows system info (read-only)
-            # Date/time
+            # Date/time (works on all platforms)
             "date",
             "time",
+            # ============================================================================
+            # Git Commands (cross-platform)
+            # ============================================================================
+            "git status",
+            "git diff",
+            "git log",
+            "git show",
+            # ============================================================================
+            # Test Runners (cross-platform)
+            # ============================================================================
+            # Python
+            "pytest",
+            "python -m pytest",
+            "python3 -m pytest",
+            "unittest",
+            "python -m unittest",
+            "python3 -m unittest",
+            # JavaScript/Node.js
+            "npm test",
+            "npm run test",
+            "yarn test",
+            "jest",
+            "mocha",
+            "vitest",
+            # Go
+            "go test",
+            # Rust
+            "cargo test",
+            # Ruby
+            "rspec",
+            "rake test",
+            "ruby -I test",
+            # Java
+            "mvn test",
+            "gradle test",
+            "./gradlew test",
+            # PHP
+            "phpunit",
+            "composer test",
+            # C#/.NET
+            "dotnet test",
         ]
 
         # Only add curl/wget if web tools are enabled (they retrieve data from internet)
@@ -193,9 +292,12 @@ class PermissionManager:
             if self.session_grants[tool_name] is True:  # Granted for all
                 return True
             if isinstance(self.session_grants[tool_name], list):
-                # Check exact pattern match
-                if pattern and pattern in self.session_grants[tool_name]:
-                    return True
+                # Check pattern match (case-insensitive)
+                if pattern:
+                    pattern_lower = pattern.lower()
+                    for granted_pattern in self.session_grants[tool_name]:
+                        if granted_pattern.lower() == pattern_lower:
+                            return True
                 # Check if full command starts with any granted pattern (for multi-word commands like "git status")
                 # Only do startswith matching for multi-word patterns (contain spaces)
                 if full_command:
@@ -210,9 +312,12 @@ class PermissionManager:
             if self.persistent_grants[tool_name] is True:  # Granted for all
                 return True
             if isinstance(self.persistent_grants[tool_name], list):
-                # Check exact pattern match
-                if pattern and pattern in self.persistent_grants[tool_name]:
-                    return True
+                # Check pattern match (case-insensitive)
+                if pattern:
+                    pattern_lower = pattern.lower()
+                    for granted_pattern in self.persistent_grants[tool_name]:
+                        if granted_pattern.lower() == pattern_lower:
+                            return True
                 # Check if full command starts with any granted pattern (for multi-word commands like "git status")
                 # Only do startswith matching for multi-word patterns (contain spaces)
                 if full_command:

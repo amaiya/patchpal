@@ -220,7 +220,8 @@ def apply_patch(path: str, new_content: str) -> str:
     # Read old content if file exists (needed for diff in permission prompt)
     old_content = ""
     if p.exists():
-        old_content = p.read_text(encoding="utf-8", errors="replace")
+        with open(p, "r", encoding="utf-8", errors="surrogateescape", newline=None) as f:
+            old_content = f.read()
         old = old_content.splitlines(keepends=True)
     else:
         old = []
@@ -274,7 +275,8 @@ def apply_patch(path: str, new_content: str) -> str:
 
     # Write the new content
     p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text(new_content)
+    with open(p, "w", encoding="utf-8", errors="surrogateescape", newline="\n") as f:
+        f.write(new_content)
 
     # Audit log
     audit_logger.info(
@@ -326,7 +328,8 @@ def edit_file(path: str, old_string: str, new_string: str) -> str:
 
     # Read current content
     try:
-        content = p.read_text(encoding="utf-8", errors="replace")
+        with open(p, "r", encoding="utf-8", errors="surrogateescape", newline=None) as f:
+            content = f.read()
     except Exception as e:
         raise ValueError(f"Failed to read file: {e}")
 
@@ -432,7 +435,8 @@ def edit_file(path: str, old_string: str, new_string: str) -> str:
     new_content = content.replace(matched_string, adjusted_new_string)
 
     # Write the new content
-    p.write_text(new_content)
+    with open(p, "w", encoding="utf-8", errors="surrogateescape", newline="\n") as f:
+        f.write(new_content)
 
     # Generate diff for the specific change (use adjusted_new_string for accurate diff)
     old_lines = matched_string.split("\n")

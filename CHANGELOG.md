@@ -7,13 +7,30 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
+## 0.16.6 (2026-02-23)
+
+### new:
+- N/A
+
+### changed:
+- N/A
+
+### fixed:
+- Fixed encoding issue affecting Windows file reads/writes (#75)
+- Fixed line ending normalization on Windows (added newline parameter to prevent CRLF/LF issues)
+- Added Windows shell detection and improved Windows command permissions (#76)
+- Fixed Windows encoding issues with writing to `audit.log`
+
+
 ## 0.16.5 (2026-02-22)
 
 ### new:
 - N/A
 
 ### changed:
-- Removed duplicated item from system prompt
+- Removed duplicated item from system prompt and added rule about displaying
+- Whitelist `>/dev/null`
+- Updated `code_structure` tool description
 
 ### fixed:
 - N/A

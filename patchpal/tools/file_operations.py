@@ -60,7 +60,8 @@ def read_file(path: str) -> str:
                     f"SVG file too large: {size:,} bytes (max {MAX_FILE_SIZE:,} bytes)\n"
                     f"Set PATCHPAL_MAX_FILE_SIZE env var to increase"
                 )
-            content = p.read_text(encoding="utf-8", errors="replace")
+            with open(p, "r", encoding="utf-8", errors="surrogateescape", newline=None) as f:
+                content = f.read()
             audit_logger.info(f"READ: {path} ({size} bytes, SVG as text)")
             return content
 
@@ -160,7 +161,8 @@ def read_file(path: str) -> str:
         )
 
     # Read as text file
-    content = p.read_text(encoding="utf-8", errors="replace")
+    with open(p, "r", encoding="utf-8", errors="surrogateescape", newline=None) as f:
+        content = f.read()
     audit_logger.info(f"READ: {path} ({size} bytes)")
 
     # Format with hashline prefixes if enabled
@@ -220,7 +222,7 @@ def read_lines(path: str, start_line: int, end_line: Optional[int] = None) -> st
 
     # Read file and extract lines
     try:
-        with open(p, "r", encoding="utf-8", errors="replace") as f:
+        with open(p, "r", encoding="utf-8", errors="surrogateescape", newline=None) as f:
             lines = f.readlines()
     except Exception as e:
         raise ValueError(f"Failed to read file: {e}")

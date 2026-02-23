@@ -83,6 +83,41 @@ def test_shell_command_pattern_or_operator():
     assert wd is None
 
 
+def test_shell_command_pattern_powershell():
+    """Test PowerShell command pattern extraction."""
+    from patchpal.tools.shell_tools import _extract_shell_command_info
+
+    # powershell -Command "cmdlet"
+    cmd, wd = _extract_shell_command_info('powershell -Command "Get-ChildItem"')
+    assert cmd == "get-childitem"  # Should extract the cmdlet, not "powershell"
+    assert wd is None
+
+    # powershell -c "cmdlet" (short form)
+    cmd, wd = _extract_shell_command_info('powershell -c "Select-String test"')
+    assert cmd == "select-string"
+    assert wd is None
+
+    # pwsh (PowerShell Core) -Command
+    cmd, wd = _extract_shell_command_info('pwsh -Command "Get-Process"')
+    assert cmd == "get-process"
+    assert wd is None
+
+    # pwsh -c (short form)
+    cmd, wd = _extract_shell_command_info('pwsh -c "Get-Location"')
+    assert cmd == "get-location"
+    assert wd is None
+
+    # Case insensitive - PowerShell commands with mixed case
+    cmd, wd = _extract_shell_command_info('PowerShell -Command "Get-ChildItem"')
+    assert cmd == "get-childitem"
+    assert wd is None
+
+    # Without quotes
+    cmd, wd = _extract_shell_command_info("powershell -Command Get-ChildItem")
+    assert cmd == "get-childitem"
+    assert wd is None
+
+
 def test_shell_command_composite_pattern():
     """Test that run_shell creates correct composite patterns."""
     # We can't easily test run_shell directly due to permission prompts,

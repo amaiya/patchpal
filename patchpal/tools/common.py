@@ -75,7 +75,18 @@ else:
     DANGEROUS_TOKENS = {"sudo", "su", "doas"}  # Privilege escalation (doas is sudo alternative)
     # Unix/Linux/macOS dangerous patterns (substring matching)
     DANGEROUS_PATTERNS = [
-        "> /dev/",  # Writing to devices
+        # Block dangerous device writes (but allow safe ones like /dev/null, /dev/zero, /dev/random, /dev/urandom)
+        "> /dev/sd",  # Block disk devices (sda, sdb, etc.)
+        "> /dev/nvme",  # Block NVMe devices
+        "> /dev/hd",  # Block IDE devices
+        "> /dev/vd",  # Block virtual disk devices
+        "> /dev/xvd",  # Block Xen virtual disk devices
+        "> /dev/loop",  # Block loop devices
+        "> /dev/dm-",  # Block device mapper devices
+        "> /dev/md",  # Block RAID devices
+        "> /dev/mem",  # Block memory access
+        "> /dev/kmem",  # Block kernel memory
+        "> /dev/port",  # Block port I/O
         "rm -rf /",  # Recursive delete from root
         "| dd",  # Piping to dd (disk destroyer)
         "| sudo ",  # Piping to sudo (bypass token check)
@@ -266,10 +277,12 @@ if ENABLE_AUDIT_LOG and not audit_logger.handlers:
 
     audit_logger.setLevel(logging.INFO)
     # Rotate at 10MB, keep 3 backup files (30MB total max)
+    # Use UTF-8 encoding explicitly to handle Unicode characters on Windows
     handler = RotatingFileHandler(
         AUDIT_LOG_FILE,
         maxBytes=10 * 1024 * 1024,  # 10MB
         backupCount=3,
+        encoding="utf-8",  # Explicitly use UTF-8 to avoid Windows cp1252 encoding issues
     )
     handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
     audit_logger.addHandler(handler)

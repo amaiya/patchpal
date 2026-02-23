@@ -96,6 +96,25 @@ def _extract_shell_command_info(cmd: str) -> tuple[Optional[str], Optional[str]]
         # If no command specified, xargs defaults to 'echo' (safe)
         return "echo", None
 
+    # powershell -Command or pwsh -Command: extract the PowerShell cmdlet
+    # Examples: powershell -Command "Get-ChildItem", pwsh -c "Select-String"
+    # IMPORTANT: Check this BEFORE sh -c to avoid matching "sh -c" inside "pwsh -Command"
+    # Check longer patterns first to avoid substring matching issues
+    for ps_prefix in ["powershell -command", "pwsh -command", "powershell -c", "pwsh -c"]:
+        if cmd_lower.startswith(ps_prefix):
+            # Find what comes after the -Command/-c flag
+            idx = len(ps_prefix)
+            remainder = cmd[idx:].strip()
+            # The command is usually in quotes, extract first token
+            if remainder:
+                # Remove leading and trailing quotes
+                remainder = remainder.strip("\"'")
+                tokens = remainder.split()
+                if tokens:
+                    # PowerShell cmdlets are case-insensitive, return in lowercase for matching
+                    first_token = tokens[0].lower()
+                    return first_token, None
+
     # sh -c, bash -c, etc.: extract the command string
     for shell_cmd in ["sh -c", "bash -c", "zsh -c", "ksh -c", "dash -c"]:
         if shell_cmd in cmd_lower:

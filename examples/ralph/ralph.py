@@ -28,7 +28,13 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from patchpal.agent import create_agent
 
 
-def ralph_loop(prompt: str, completion_promise: str, max_iterations: int = 100, model: str = None):
+def ralph_loop(
+    prompt: str,
+    completion_promise: str,
+    max_iterations: int = 100,
+    model: str = None,
+    litellm_kwargs: dict = None,
+):
     """
     Implements the Ralph Wiggum technique with a proper stop hook.
 
@@ -44,6 +50,8 @@ def ralph_loop(prompt: str, completion_promise: str, max_iterations: int = 100, 
         completion_promise: String that signals task completion (e.g., "COMPLETE", "DONE")
         max_iterations: Maximum number of Ralph iterations before giving up
         model: Optional model override (defaults to PATCHPAL_MODEL env var)
+        litellm_kwargs: Optional dict of extra parameters to pass to litellm.completion()
+                       (e.g., {"reasoning_effort": "high"} for reasoning models)
 
     Returns:
         Agent's final response if completion promise found, None otherwise
@@ -53,7 +61,8 @@ def ralph_loop(prompt: str, completion_promise: str, max_iterations: int = 100, 
 
     # Create agent
     agent = create_agent(
-        model_id=model or os.getenv("PATCHPAL_MODEL", "anthropic/claude-sonnet-4-5")
+        model_id=model or os.getenv("PATCHPAL_MODEL", "anthropic/claude-sonnet-4-5"),
+        litellm_kwargs=litellm_kwargs,
     )
 
     print("=" * 80)
