@@ -277,10 +277,12 @@ if ENABLE_AUDIT_LOG and not audit_logger.handlers:
 
     audit_logger.setLevel(logging.INFO)
     # Rotate at 10MB, keep 3 backup files (30MB total max)
+    # Use UTF-8 encoding explicitly to handle Unicode characters on Windows
     handler = RotatingFileHandler(
         AUDIT_LOG_FILE,
         maxBytes=10 * 1024 * 1024,  # 10MB
         backupCount=3,
+        encoding="utf-8",  # Explicitly use UTF-8 to avoid Windows cp1252 encoding issues
     )
     handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
     audit_logger.addHandler(handler)
