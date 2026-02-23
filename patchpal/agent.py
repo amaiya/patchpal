@@ -144,6 +144,7 @@ if os_name == "Windows":
 Commands execute in PowerShell:
 - Use PowerShell cmdlets: `Get-ChildItem`, `Copy-Item`, `Move-Item`, `Remove-Item`, `New-Item`, `Get-Content`
 - Or use aliases: `ls`, `cp`, `mv`, `rm`, `cat`, `mkdir`
+- Search: `Select-String` (grep), `Get-ChildItem -Recurse` (find), `Where-Object` (filter)
 - Path format: Both `/` and `\\` work in PowerShell
 - Chain commands: `;` or `&&` (PowerShell 7+)
 - Variables: `$variable`
@@ -152,7 +153,7 @@ Commands execute in PowerShell:
         PLATFORM_INFO = """## Platform: Windows (Command Prompt)
 Commands execute in CMD:
 - Use: `dir`, `type`, `copy`, `move`, `del`, `mkdir`, `rmdir`
-- Search: `where`, `findstr`
+- Search: `findstr` (grep), `dir /s` (find), `where` (which)
 - Path format: Use backslashes `C:\\path\\to\\file.txt`
   - For relative paths: Use `.\\Documents` NOT `./Documents`
   - For current directory: Use `.` or omit the path prefix
