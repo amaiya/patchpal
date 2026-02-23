@@ -280,7 +280,7 @@ class PermissionManager:
         """Check if permission was previously granted.
 
         Args:
-            tool_name: Name of the tool (e.g., 'run_shell', 'apply_patch')
+            tool_name: Name of the tool (e.g., 'run_shell', 'write_file')
             pattern: Optional pattern for matching (e.g., 'pytest' for pytest commands)
             full_command: Optional full command string (e.g., 'git status' for multi-word matching)
 
@@ -373,7 +373,7 @@ class PermissionManager:
         """Request permission from user to execute a tool.
 
         Args:
-            tool_name: Name of the tool (e.g., 'run_shell', 'apply_patch')
+            tool_name: Name of the tool (e.g., 'run_shell', 'write_file')
             description: Human-readable description of what will be executed
             pattern: Optional pattern for matching (e.g., 'pytest' for pytest commands, 'python:/tmp' for python in /tmp)
             context: Optional context string for display (e.g., working directory)
@@ -410,7 +410,7 @@ class PermissionManager:
         if pattern:
             # For file operations, pattern is the directory (e.g., "tmp/")
             # For shell commands, pattern is the command name (e.g., "python")
-            if tool_name in ("edit_file", "apply_patch"):
+            if tool_name in ("edit_file", "write_file"):
                 # File operation - show directory context
                 if pattern.endswith("/"):
                     # Outside repo - directory pattern like "tmp/"

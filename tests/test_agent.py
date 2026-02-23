@@ -76,7 +76,7 @@ def test_agent_has_correct_tools():
     assert "get_repo_map" in tool_names
     # File editing
     assert "edit_file" in tool_names
-    assert "apply_patch" in tool_names
+    assert "write_file" in tool_names
     # Skills
     assert "list_skills" in tool_names
     assert "use_skill" in tool_names

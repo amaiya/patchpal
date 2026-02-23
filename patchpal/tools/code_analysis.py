@@ -102,7 +102,7 @@ def code_structure(path: str, max_symbols: int = 50) -> str:
 
         Functions (45):
           Line  123: def read_file(path: str, *, encoding: str = "utf-8") -> str
-          Line  234: def apply_patch(path: str, new_content: str) -> str
+          Line  234: def write_file(path: str, content: str) -> str
           ...
 
         Use read_lines('patchpal/tools.py', start, end) to read specific sections.

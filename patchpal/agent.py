@@ -495,7 +495,7 @@ class PatchPalAgent:
 {memory_content}
 
 The information above is from {MEMORY_FILE} and persists across sessions.
-To update it, use edit_file("{MEMORY_FILE}", ...) or apply_patch("{MEMORY_FILE}", ...)."""
+To update it, use edit_file("{MEMORY_FILE}", ...) or write_file("{MEMORY_FILE}", ...)."""
             else:
                 # Empty template - just inform agent
                 memory_msg = f"""# Project Memory (MEMORY.md)
@@ -1151,7 +1151,7 @@ It's currently empty (just the template). The file is automatically loaded at se
                                     f"\033[2m✏️  Editing: {tool_args.get('path', '')}\033[0m",
                                     flush=True,
                                 )
-                            elif tool_name == "apply_patch":
+                            elif tool_name == "write_file":
                                 print(
                                     f"\033[2m📝 Patching: {tool_args.get('path', '')}\033[0m",
                                     flush=True,

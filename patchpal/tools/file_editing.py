@@ -1,4 +1,4 @@
-"""File editing tools (apply_patch, edit_file)."""
+"""File editing tools (write_file, edit_file)."""
 
 import difflib
 from pathlib import Path
@@ -172,13 +172,16 @@ def _find_match_with_strategies(content: str, old_string: str) -> Optional[str]:
 # ============================================================================
 
 
-def apply_patch(path: str, new_content: str) -> str:
+def write_file(path: str, content: str) -> str:
     """
-    Apply changes to a file by replacing its contents.
+    Write complete file contents from scratch.
+
+    Overwrites existing files entirely or creates new ones. Use edit_file for
+    small targeted changes (1-20 lines).
 
     Args:
         path: Relative path to the file from the repository root
-        new_content: The new complete content for the file
+        content: Complete file content (entire file, not just changes)
 
     Returns:
         A confirmation message with the unified diff
@@ -186,7 +189,7 @@ def apply_patch(path: str, new_content: str) -> str:
     Raises:
         ValueError: If in read-only mode or file is too large
     """
-    _operation_limiter.check_limit(f"apply_patch({path})")
+    _operation_limiter.check_limit(f"write_file({path})")
 
     if READ_ONLY_MODE:
         raise ValueError(
@@ -197,7 +200,7 @@ def apply_patch(path: str, new_content: str) -> str:
     p = _check_path(path, must_exist=False)
 
     # Check size of new content
-    new_size = len(new_content.encode("utf-8"))
+    new_size = len(content.encode("utf-8"))
     if new_size > MAX_FILE_SIZE:
         raise ValueError(f"New content too large: {new_size:,} bytes (max {MAX_FILE_SIZE:,} bytes)")
 
@@ -213,7 +216,7 @@ def apply_patch(path: str, new_content: str) -> str:
     # Check permission with colored diff
     permission_manager = _get_permission_manager()
     operation = "Create" if not p.exists() else "Update"
-    diff_display = _format_colored_diff(old_content, new_content, file_path=path)
+    diff_display = _format_colored_diff(old_content, content, file_path=path)
 
     # Get permission pattern (directory for outside repo, relative path for inside)
     permission_pattern = _get_permission_pattern_for_path(path, p)
@@ -224,7 +227,7 @@ def apply_patch(path: str, new_content: str) -> str:
     description = f"   ● {operation}({path}){outside_repo_warning}\n{diff_display}"
 
     if not permission_manager.request_permission(
-        "apply_patch", description, pattern=permission_pattern
+        "write_file", description, pattern=permission_pattern
     ):
         return "Operation cancelled by user."
 
@@ -241,7 +244,7 @@ def apply_patch(path: str, new_content: str) -> str:
     if p.exists():
         backup_path = _backup_file(p)
 
-    new = new_content.splitlines(keepends=True)
+    new = content.splitlines(keepends=True)
 
     # Generate diff
     diff = difflib.unified_diff(
@@ -260,7 +263,7 @@ def apply_patch(path: str, new_content: str) -> str:
     # Write the new content
     p.parent.mkdir(parents=True, exist_ok=True)
     with open(p, "w", encoding="utf-8", errors="surrogateescape", newline="\n") as f:
-        f.write(new_content)
+        f.write(content)
 
     # Audit log
     audit_logger.info(
@@ -325,7 +328,7 @@ def edit_file(path: str, old_string: str, new_string: str) -> str:
         raise ValueError(
             f"String not found in {path}.\n\n"
             f"Searched for:\n{old_string[:200]}\n\n"
-            f"💡 Tip: Use read_lines() to see exact content, or use apply_patch() for larger changes."
+            f"💡 Tip: Use read_lines() to see exact content, or use write_file() for larger changes."
         )
 
     # Count occurrences of the matched string
@@ -345,7 +348,7 @@ def edit_file(path: str, old_string: str, new_string: str) -> str:
         raise ValueError(
             f"String appears {count} times in {path} at lines: {positions}\n"
             f"Add more context (3-5 surrounding lines) to make it unique.\n\n"
-            f"💡 Tip: Use read_lines() to see the exact context, or use apply_patch() for multiple changes."
+            f"💡 Tip: Use read_lines() to see the exact context, or use write_file() for multiple changes."
         )
 
     # Perform indentation adjustment and trailing newline preservation BEFORE showing diff

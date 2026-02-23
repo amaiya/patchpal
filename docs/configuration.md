@@ -111,7 +111,7 @@ export PATCHPAL_ENABLE_MCP=false             # Disable MCP tool loading (default
 ```bash
 # Limit to Essential Tools Only
 export PATCHPAL_MINIMAL_TOOLS=true           # Enable minimal tools mode (default: false)
-                                              # Limits agent to 5 essential tools: read_file, edit_file, apply_patch, run_shell, grep
+                                              # Limits agent to 5 essential tools: read_file, edit_file, write_file, run_shell, grep
                                               # Recommended for: local models <20B params, models that struggle with tool selection
                                               # Improves: decision speed (2-3s vs 10-30s), tool accuracy (~95% vs ~60%)
                                               # Trade-off: No code_structure, web tools, TODO tools, etc.

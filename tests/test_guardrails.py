@@ -80,12 +80,12 @@ class TestFileSizeLimits:
 
     def test_blocks_large_file_write(self, temp_repo):
         """Test that writing large content is blocked."""
-        from patchpal.tools import apply_patch
+        from patchpal.tools import write_file
 
         large_content = "x" * (11 * 1024 * 1024)
 
         with pytest.raises(ValueError, match="too large"):
-            apply_patch("output.txt", large_content)
+            write_file("output.txt", large_content)
 
     def test_allows_normal_size_file(self, temp_repo):
         """Test that normal-sized files work."""
@@ -118,17 +118,17 @@ class TestCriticalFileWarnings:
 
     def test_warns_on_package_json_modify(self, temp_repo):
         """Test that modifying package.json shows warning."""
-        from patchpal.tools import apply_patch
+        from patchpal.tools import write_file
 
-        result = apply_patch("package.json", '{"name": "modified"}')
+        result = write_file("package.json", '{"name": "modified"}')
         assert "WARNING" in result
         assert "critical" in result.lower()
 
     def test_no_warning_on_normal_file(self, temp_repo):
         """Test that normal files don't show warning."""
-        from patchpal.tools import apply_patch
+        from patchpal.tools import write_file
 
-        result = apply_patch("normal.txt", "modified content")
+        result = write_file("normal.txt", "modified content")
         assert "WARNING" not in result
 
 
@@ -142,10 +142,10 @@ class TestReadOnlyMode:
 
         monkeypatch.setattr(patchpal.tools.file_editing, "READ_ONLY_MODE", True)
 
-        from patchpal.tools import apply_patch
+        from patchpal.tools import write_file
 
         with pytest.raises(ValueError, match="read-only mode"):
-            apply_patch("test.txt", "content")
+            write_file("test.txt", "content")
 
     def test_allows_reads_in_readonly(self, temp_repo, monkeypatch):
         """Test that reads work in read-only mode."""
@@ -292,13 +292,13 @@ class TestPathTraversal:
             patchpal.permissions.PermissionManager, "request_permission", mock_request_permission
         )
 
-        from patchpal.tools import apply_patch
+        from patchpal.tools import write_file
 
         # Try to write to parent directory
         outside_path = repo_root.parent / "test_write.txt"
 
         # Should be blocked - permission denied returns a cancellation message
-        result = apply_patch(str(outside_path), "malicious content")
+        result = write_file(str(outside_path), "malicious content")
         assert "cancelled" in result.lower()
 
     def test_blocks_editing_outside_repository(self, temp_repo, monkeypatch):
@@ -406,7 +406,7 @@ def test_comprehensive_security_demo(temp_repo, monkeypatch):
         self, tool_name, description, pattern=None, context=None, full_command=None
     ):
         # Deny write operations for paths outside repo
-        if tool_name in ("apply_patch", "edit_file") and pattern:
+        if tool_name in ("write_file", "edit_file") and pattern:
             if pattern.endswith("/"):  # outside repo
                 return False
             return True
@@ -450,7 +450,7 @@ def test_comprehensive_security_demo(temp_repo, monkeypatch):
     # Access functions via module
     # ----------------------------
     read_file = patchpal.tools.read_file
-    apply_patch = patchpal.tools.apply_patch
+    write_file = patchpal.tools.write_file
     run_shell = patchpal.tools.run_shell
 
     # ----------------------------
@@ -459,7 +459,7 @@ def test_comprehensive_security_demo(temp_repo, monkeypatch):
     content = read_file("normal.txt")
     assert content == "normal file"
 
-    result = apply_patch("test.txt", "new content")
+    result = write_file("test.txt", "new content")
     assert "success" in result.lower()
 
     output = run_shell(
@@ -497,7 +497,7 @@ def test_comprehensive_security_demo(temp_repo, monkeypatch):
     # ----------------------------
     # 5. Critical files warned
     # ----------------------------
-    result = apply_patch("package.json", '{"modified": true}')
+    result = write_file("package.json", '{"modified": true}')
     assert "warning" in result.lower()
 
     # ----------------------------
@@ -517,7 +517,7 @@ def test_comprehensive_security_demo(temp_repo, monkeypatch):
     # 7. Outside-repo writes blocked
     # ----------------------------
     outside_path = repo_root.parent / "test_outside.txt"
-    result = apply_patch(str(outside_path), "test")
+    result = write_file(str(outside_path), "test")
     assert "cancel" in result.lower()
 
     print("✅ All security guardrails working correctly!")
@@ -537,8 +537,8 @@ def test_comprehensive_security_demo(temp_repo, monkeypatch):
 ## Mock permission request to deny only for outside-repo writes
 
 # def mock_request_permission(self, tool_name, description, pattern=None, context=None, full_command=None):
-## Only deny write operations (apply_patch/edit_file) for paths outside repo
-# if tool_name in ("apply_patch", "edit_file") and pattern:
+## Only deny write operations (write_file/edit_file) for paths outside repo
+# if tool_name in ("write_file", "edit_file") and pattern:
 ## New pattern format: directory-based (e.g., "tmp/") for files outside repo
 ## Inside repo uses relative path (e.g., "src/app.py")
 
@@ -579,13 +579,13 @@ def test_comprehensive_security_demo(temp_repo, monkeypatch):
 # patchpal.permissions.PermissionManager, "request_permission", mock_request_permission
 # )
 
-# from patchpal.tools import apply_patch, list_files, read_file, run_shell
+# from patchpal.tools import write_file, list_files, read_file, run_shell
 
 ## 1. Normal operations work
 # content = read_file("normal.txt")
 # assert content == "normal file"
 
-# result = apply_patch("test.txt", "new content")
+# result = write_file("test.txt", "new content")
 # assert "Successfully updated" in result
 
 ## Test shell command (use cross-platform Python instead of ls)
@@ -612,7 +612,7 @@ def test_comprehensive_security_demo(temp_repo, monkeypatch):
 # read_file("binary.bin")
 
 ## 5. Critical files warned
-# result = apply_patch("package.json", '{"modified": true}')
+# result = write_file("package.json", '{"modified": true}')
 # assert "WARNING" in result
 
 ## 6. Dangerous commands blocked
@@ -621,7 +621,7 @@ def test_comprehensive_security_demo(temp_repo, monkeypatch):
 
 ## 7. Write operations outside repo blocked
 # outside_path = temp_repo.parent / "test_outside.txt"
-# result = apply_patch(str(outside_path), "test")
+# result = write_file(str(outside_path), "test")
 # assert "cancelled" in result.lower()
 
 # print("✅ All security guardrails working correctly!")

@@ -409,38 +409,38 @@ def test_code_structure_nonexistent_file(temp_repo):
         code_structure("nonexistent.py")
 
 
-def test_apply_patch_existing_file(temp_repo):
+def test_write_file_existing_file(temp_repo):
     """Test applying a patch to an existing file."""
-    from patchpal.tools import apply_patch
+    from patchpal.tools import write_file
 
-    result = apply_patch("test.txt", "New content!")
+    result = write_file("test.txt", "New content!")
     assert "Successfully updated test.txt" in result
     assert (temp_repo / "test.txt").read_text() == "New content!"
 
 
-def test_apply_patch_new_file(temp_repo):
-    """Test creating a new file with apply_patch."""
-    from patchpal.tools import apply_patch
+def test_write_file_new_file(temp_repo):
+    """Test creating a new file with write_file."""
+    from patchpal.tools import write_file
 
-    result = apply_patch("newfile.txt", "Brand new file")
+    result = write_file("newfile.txt", "Brand new file")
     assert "Successfully updated newfile.txt" in result
     assert (temp_repo / "newfile.txt").read_text() == "Brand new file"
 
 
-def test_apply_patch_in_new_subdir(temp_repo):
+def test_write_file_in_new_subdir(temp_repo):
     """Test creating a file in a new subdirectory."""
-    from patchpal.tools import apply_patch
+    from patchpal.tools import write_file
 
-    result = apply_patch("newdir/newfile.txt", "Content")
+    result = write_file("newdir/newfile.txt", "Content")
     assert "Successfully updated newdir/newfile.txt" in result
     assert (temp_repo / "newdir" / "newfile.txt").read_text() == "Content"
 
 
-def test_apply_patch_shows_diff(temp_repo):
-    """Test that apply_patch shows a diff."""
-    from patchpal.tools import apply_patch
+def test_write_file_shows_diff(temp_repo):
+    """Test that write_file shows a diff."""
+    from patchpal.tools import write_file
 
-    result = apply_patch("test.txt", "Modified content")
+    result = write_file("test.txt", "Modified content")
     assert "Diff:" in result
     assert "-Hello, World!" in result
     assert "+Modified content" in result

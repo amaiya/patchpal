@@ -20,9 +20,9 @@ PatchPal includes a comprehensive set of built-in tools for file operations, git
 
 ## File Editing
 
-### apply_patch
+### write_file
 
-::: patchpal.tools.file_editing.apply_patch
+::: patchpal.tools.file_editing.write_file
     options:
       show_root_heading: true
       heading_level: 4

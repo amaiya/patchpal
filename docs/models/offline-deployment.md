@@ -34,7 +34,7 @@ patchpal --require-permission-for-all
 
 When enabled, the agent will prompt for permission before:
 - **Read operations**: `read_file`, `read_lines`, `code_structure`, `get_repo_map`
-- **Write operations**: `edit_file`, `apply_patch` (always require permission)
+- **Write operations**: `edit_file`, `write_file` (always require permission)
 - **Shell commands**: `run_shell` (always requires permission)
 - **Web operations**: `web_search`, `web_fetch` (always require permission)
 

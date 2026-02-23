@@ -210,8 +210,8 @@ def test_permission_pattern_multiple_traversals_same_dir(mock_repo, monkeypatch)
     assert pattern1 == pattern2 == "tmp/"
 
 
-def test_apply_patch_uses_correct_pattern(mock_repo, monkeypatch, tmp_path):
-    """Test that apply_patch uses directory-based pattern for outside-repo files."""
+def test_write_file_uses_correct_pattern(mock_repo, monkeypatch, tmp_path):
+    """Test that write_file uses directory-based pattern for outside-repo files."""
     # Setup
     monkeypatch.setattr("patchpal.tools.common.REPO_ROOT", mock_repo)
     monkeypatch.setenv("PATCHPAL_REQUIRE_PERMISSION", "true")
@@ -244,11 +244,11 @@ def test_apply_patch_uses_correct_pattern(mock_repo, monkeypatch, tmp_path):
         "patchpal.permissions.PermissionManager.request_permission", mock_request_permission
     )
 
-    from patchpal.tools import apply_patch
+    from patchpal.tools import write_file
 
     # Test writing to /tmp/ using path traversal
     tmp_file = tmp_path / "test_outside.txt"
-    apply_patch(str(tmp_file), "test content")
+    write_file(str(tmp_file), "test content")
 
     # Should use directory pattern (last component of parent)
     assert captured_pattern["pattern"].endswith("/")
@@ -302,7 +302,7 @@ def test_edit_file_uses_correct_pattern(mock_repo, monkeypatch, tmp_path):
 
 
 def test_permission_pattern_consistency_across_tools(mock_repo, monkeypatch, tmp_path):
-    """Test that apply_patch and edit_file use same pattern for same file."""
+    """Test that write_file and edit_file use same pattern for same file."""
     # Setup
     monkeypatch.setattr("patchpal.tools.common.REPO_ROOT", mock_repo)
     monkeypatch.setenv("PATCHPAL_REQUIRE_PERMISSION", "true")
@@ -337,10 +337,10 @@ def test_permission_pattern_consistency_across_tools(mock_repo, monkeypatch, tmp
         "patchpal.permissions.PermissionManager.request_permission", mock_request_permission
     )
 
-    from patchpal.tools import apply_patch, edit_file
+    from patchpal.tools import edit_file, write_file
 
     # Try both tools on same file
-    apply_patch(str(test_file), "new content")
+    write_file(str(test_file), "new content")
     edit_file(str(test_file), "original", "modified")
 
     # Both should use same pattern

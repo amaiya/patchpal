@@ -5,18 +5,18 @@ __version__ = "0.16.6"
 from patchpal.agent import create_agent
 from patchpal.cli.autopilot import autopilot_loop
 from patchpal.tools import (
-    apply_patch,
     edit_file,
     read_file,
     run_shell,
     web_fetch,
     web_search,
+    write_file,
 )
 
 __all__ = [
     "read_file",
     "edit_file",
-    "apply_patch",
+    "write_file",
     "web_search",
     "web_fetch",
     "run_shell",

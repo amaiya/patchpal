@@ -70,7 +70,7 @@ Choice [1-3]:
 ```json
 {
   "run_shell": ["pytest", "npm", "git"],
-  "apply_patch": true,
+  "write_file": true,
   "edit_file": ["config.py", "settings.json"]
 }
 ```

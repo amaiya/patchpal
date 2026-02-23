@@ -61,14 +61,14 @@ Get an overview of the entire codebase in one call.
 Edit a file by replacing an exact string (efficient for small changes).
 
 - **Example**: `edit_file("config.py", "port = 3000", "port = 8080")`
-- More efficient than `apply_patch` for targeted changes
+- More efficient than `write_file` for targeted changes
 - Old string must appear exactly once in the file
 - Best for single-line or small multi-line edits
 
-### apply_patch
+### write_file
 Modify files by replacing entire contents.
 
-- **Example**: `apply_patch("config.py", new_content)`
+- **Example**: `write_file("config.py", new_content)`
 - Use for large-scale changes or multiple edits
 - Returns unified diff showing changes
 - Best for rewriting entire files or complex modifications
@@ -178,7 +178,7 @@ Execute shell commands in the repository.
 |----------|-------|-------|
 | File Operations | read_file, read_lines | 2 |
 | Code Analysis | code_structure, get_repo_map | 2 |
-| File Editing | edit_file, apply_patch | 2 |
+| File Editing | edit_file, write_file | 2 |
 | Web | web_search, web_fetch | 2 |
 | Task Planning | todo_add, todo_list, todo_complete, todo_update, todo_remove, todo_clear | 6 |
 | Skills | list_skills, use_skill | 2 |
@@ -200,7 +200,7 @@ Execute shell commands in the repository.
 ### Minimal Tools Mode
 
 When `PATCHPAL_MINIMAL_TOOLS=true`, only these tools are available:
-- `read_file`, `edit_file`, `apply_patch`, `run_shell`
+- `read_file`, `edit_file`, `write_file`, `run_shell`
 - `web_search`, `web_fetch` (if `PATCHPAL_ENABLE_WEB=true`)
 
 This reduces tool count to 4-6 for local models with tool confusion issues. Harmless shell commands still work without permission prompts.

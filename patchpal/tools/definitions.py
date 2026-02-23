@@ -6,7 +6,6 @@ from tool names to their implementation functions.
 
 from patchpal.config import config
 from patchpal.tools import (
-    apply_patch,
     ask_user,
     code_structure,
     edit_file,
@@ -24,6 +23,7 @@ from patchpal.tools import (
     use_skill,
     web_fetch,
     web_search,
+    write_file,
 )
 from patchpal.tools.mcp import load_mcp_tools
 
@@ -146,7 +146,7 @@ Tip: Read README first for context when exploring repositories.""",
         "type": "function",
         "function": {
             "name": "edit_file",
-            "description": "Edit a file by replacing an exact string. More efficient than apply_patch for small changes. The old_string must match exactly and appear only once.",
+            "description": "Edit a file by finding and replacing a code section. Handles indentation and whitespace differences automatically. Most efficient for small, targeted changes (1-20 lines). The search string should be unique within the file.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -156,11 +156,11 @@ Tip: Read README first for context when exploring repositories.""",
                     },
                     "old_string": {
                         "type": "string",
-                        "description": "The exact string to find and replace (must match exactly including all whitespace; use read_lines to get exact text, or use apply_patch for complex changes)",
+                        "description": "The code section to find and replace (indentation is normalized automatically - focus on content uniqueness)",
                     },
                     "new_string": {
                         "type": "string",
-                        "description": "The string to replace it with",
+                        "description": "The replacement code section",
                     },
                 },
                 "required": ["path", "old_string", "new_string"],
@@ -170,8 +170,8 @@ Tip: Read README first for context when exploring repositories.""",
     {
         "type": "function",
         "function": {
-            "name": "apply_patch",
-            "description": "Replace a file's entire contents with new content. You MUST provide the complete new file content as a string. Prefer edit_file for targeted changes. Use this for large-scale rewrites or creating new files. Returns a unified diff of changes.",
+            "name": "write_file",
+            "description": "Write complete file contents from scratch. Overwrites existing files entirely or creates new ones. Use edit_file for small targeted changes. Use write_file for large-scale rewrites or creating new files. You MUST provide complete file content.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -179,12 +179,12 @@ Tip: Read README first for context when exploring repositories.""",
                         "type": "string",
                         "description": "Path to the file - relative to repository root or absolute path",
                     },
-                    "new_content": {
+                    "content": {
                         "type": "string",
-                        "description": "The complete new file content (you must provide the entire file contents, not just changes)",
+                        "description": "Complete file content (entire file, not just changes)",
                     },
                 },
-                "required": ["path", "new_content"],
+                "required": ["path", "content"],
             },
         },
     },
@@ -415,7 +415,7 @@ TOOL_FUNCTIONS = {
     "code_structure": code_structure,
     "get_repo_map": get_repo_map,
     "edit_file": edit_file,
-    "apply_patch": apply_patch,
+    "write_file": write_file,
     "web_search": web_search,
     "web_fetch": web_fetch,
     "list_skills": list_skills,
@@ -445,7 +445,7 @@ def get_tools(web_tools_enabled: bool = True):
 
     if minimal_mode:
         # Base minimal tools (always included)
-        minimal_tool_names = ["read_file", "edit_file", "apply_patch", "run_shell"]
+        minimal_tool_names = ["read_file", "edit_file", "write_file", "run_shell"]
 
         # Add web tools if enabled
         if web_tools_enabled:

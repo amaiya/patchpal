@@ -155,7 +155,7 @@ def test_uppercase_conversion(input_val, expected):
 
 - Place in `tests/` directory
 - Name as `test_<module_name>.py`
-- Use `apply_patch` to create the test file with content
+- Use `write_file` to create the test file with content
 
 ## 7. Run and Verify
 

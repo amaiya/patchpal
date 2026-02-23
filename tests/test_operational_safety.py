@@ -74,7 +74,7 @@ class TestAuditLogging:
     def test_audit_log_records_write(self, temp_repo, monkeypatch):
         """Test that write operations are logged."""
         import patchpal.tools
-        from patchpal.tools import apply_patch
+        from patchpal.tools import write_file
 
         # Disable permission prompts for this test
         monkeypatch.setenv("PATCHPAL_REQUIRE_PERMISSION", "false")
@@ -82,12 +82,12 @@ class TestAuditLogging:
         # Reset the cached permission manager so it picks up the new env var
         patchpal.tools._permission_manager = None
 
-        apply_patch("test.txt", "new content")
+        write_file("test.txt", "new content")
 
         audit_log = temp_repo / ".patchpal_audit.log"
         if audit_log.exists():
             content = audit_log.read_text()
-            assert "WRITE: test.txt" in content or "apply_patch" in content
+            assert "WRITE: test.txt" in content or "write_file" in content
 
     def test_audit_log_records_shell(self, temp_repo, monkeypatch):
         """Test that shell commands are logged."""
@@ -121,9 +121,9 @@ class TestAutomaticBackups:
         backup_dir = temp_repo / ".patchpal_backups"
         monkeypatch.setattr(patchpal.tools.common, "BACKUP_DIR", backup_dir)
 
-        from patchpal.tools import apply_patch
+        from patchpal.tools import write_file
 
-        apply_patch("test.txt", "modified content")
+        write_file("test.txt", "modified content")
 
         assert backup_dir.exists()
         backups = list(backup_dir.glob("test.txt.*"))
@@ -139,12 +139,12 @@ class TestAutomaticBackups:
         backup_dir = temp_repo / ".patchpal_backups"
         monkeypatch.setattr(patchpal.tools.common, "BACKUP_DIR", backup_dir)
 
-        from patchpal.tools import apply_patch
+        from patchpal.tools import write_file
 
         original = "original content"
         (temp_repo / "test.txt").write_text(original)
 
-        apply_patch("test.txt", "modified content")
+        write_file("test.txt", "modified content")
 
         backup = list(backup_dir.glob("test.txt.*"))[0]
         assert backup.read_text() == original
@@ -159,17 +159,17 @@ class TestAutomaticBackups:
         backup_dir = temp_repo / ".patchpal_backups"
         monkeypatch.setattr(patchpal.tools.common, "BACKUP_DIR", backup_dir)
 
-        from patchpal.tools import apply_patch
+        from patchpal.tools import write_file
 
-        result = apply_patch("test.txt", "modified content")
+        result = write_file("test.txt", "modified content")
 
         assert "Backup saved:" in result or "BACKUP" in result
 
     def test_no_backup_for_new_file(self, temp_repo):
         """Test that no backup is created for new files."""
-        from patchpal.tools import apply_patch
+        from patchpal.tools import write_file
 
-        apply_patch("newfile.txt", "new content")
+        write_file("newfile.txt", "new content")
 
         backup_dir = temp_repo / ".patchpal_backups"
         if backup_dir.exists():
@@ -195,7 +195,7 @@ class TestAutomaticBackups:
         patchpal.tools._permission_manager = None
         patchpal.tools.reset_operation_counter()
 
-        patchpal.tools.apply_patch("test.txt", "modified content")
+        patchpal.tools.write_file("test.txt", "modified content")
 
         backup_dir = temp_repo / ".patchpal_backups"
         if backup_dir.exists():
@@ -245,11 +245,11 @@ class TestResourceLimits:
     def test_all_operations_counted(self, temp_repo):
         """Test that all operation types are counted."""
         from patchpal.tools import (
-            apply_patch,
             get_operation_count,
             read_file,
             reset_operation_counter,
             run_shell,
+            write_file,
         )
 
         reset_operation_counter()
@@ -261,7 +261,7 @@ class TestResourceLimits:
         run_shell("echo test")
         assert get_operation_count() == 2
 
-        apply_patch("test.txt", "new content")
+        write_file("test.txt", "new content")
         assert get_operation_count() == 3
 
         run_shell("ls")
@@ -302,9 +302,9 @@ class TestGitStateAwareness:
             # Modify file to create uncommitted change
             (temp_repo / "test.txt").write_text("changed")
 
-            from patchpal.tools import apply_patch
+            from patchpal.tools import write_file
 
-            result = apply_patch("test.txt", "modified by agent")
+            result = write_file("test.txt", "modified by agent")
 
             # Should warn about uncommitted changes
             # The warning message is: "⚠️  Note: File has uncommitted changes in git"
@@ -320,11 +320,11 @@ class TestIntegration:
     def test_full_workflow_with_all_features(self, temp_repo):
         """Test complete workflow with all operational safety features active."""
         from patchpal.tools import (
-            apply_patch,
             get_operation_count,
             read_file,
             reset_operation_counter,
             run_shell,
+            write_file,
         )
 
         reset_operation_counter()
@@ -340,7 +340,7 @@ class TestIntegration:
         assert get_operation_count() == 2
 
         # 3. Modify file - should create backup and log (operation 3)
-        result = apply_patch("test.txt", "new content")
+        result = write_file("test.txt", "new content")
         assert "Successfully updated" in result
         assert get_operation_count() == 3
 
@@ -381,7 +381,7 @@ class TestIntegration:
         patchpal.tools._permission_manager = None
         patchpal.tools.reset_operation_counter()
 
-        patchpal.tools.apply_patch("test.txt", "modified content")
+        patchpal.tools.write_file("test.txt", "modified content")
 
         # Verify no backup created
         backup_dir = temp_repo / ".patchpal_backups"
@@ -393,7 +393,7 @@ class TestIntegration:
 # Summary test
 def test_operational_safety_summary(temp_repo):
     """Summary test showing all operational safety features."""
-    from patchpal.tools import apply_patch, get_operation_count, read_file
+    from patchpal.tools import get_operation_count, read_file, write_file
 
     # All features should work together
     count_before = get_operation_count()
@@ -404,11 +404,11 @@ def test_operational_safety_summary(temp_repo):
 
     # Modify EXISTING file - should backup, log, check git, warn if critical
     # First modify test.txt (will create backup since it exists)
-    result1 = apply_patch("test.txt", "modified content")
+    result1 = write_file("test.txt", "modified content")
     assert "Successfully updated" in result1
 
     # Then modify package.json (critical file warning)
-    result2 = apply_patch("package.json", '{"name": "modified"}')
+    result2 = write_file("package.json", '{"name": "modified"}')
 
     # Should have warnings for critical file
     assert "WARNING" in result2  # Critical file warning

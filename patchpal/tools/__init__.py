@@ -38,8 +38,8 @@ from patchpal.tools.common import (
     set_require_permission_for_all,
 )
 from patchpal.tools.file_editing import (
-    apply_patch,
     edit_file,
+    write_file,
 )
 from patchpal.tools.file_operations import (
     read_file,
@@ -83,7 +83,7 @@ __all__ = [
     "get_repo_map_stats",
     "clear_repo_map_cache",
     # File editing
-    "apply_patch",
+    "write_file",
     "edit_file",
     # TODO tools
     "reset_session_todos",
