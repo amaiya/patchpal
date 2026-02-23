@@ -347,3 +347,33 @@ def test_permission_pattern_consistency_across_tools(mock_repo, monkeypatch, tmp
     assert len(captured_patterns) == 2
     assert captured_patterns[0] == captured_patterns[1]
     assert captured_patterns[0].endswith("/")
+
+
+def test_harmless_command_with_flags():
+    """Test that harmless commands with flags are automatically granted."""
+    import tempfile
+    from pathlib import Path
+
+    from patchpal.permissions import PermissionManager
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        manager = PermissionManager(Path(tmpdir))
+
+        # Test grep with -l flag (extracted by find -exec)
+        # The harmless list has "grep", pattern will be "grep -l"
+        assert manager._check_existing_grant("run_shell", pattern="grep -l")
+
+        # Test sed with -n flag
+        assert manager._check_existing_grant("run_shell", pattern="sed -n")
+
+        # Test exact matches still work
+        assert manager._check_existing_grant("run_shell", pattern="grep")
+        assert manager._check_existing_grant("run_shell", pattern="find")
+
+        # Test multi-word patterns still work
+        assert manager._check_existing_grant(
+            "run_shell", pattern="git status", full_command="git status --short"
+        )
+
+        # Test non-harmless command requires permission
+        assert not manager._check_existing_grant("run_shell", pattern="dangerous-command")

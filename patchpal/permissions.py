@@ -274,6 +274,56 @@ class PermissionManager:
             if pattern not in self.session_grants["run_shell"]:
                 self.session_grants["run_shell"].append(pattern)
 
+    def _check_grant_list(
+        self,
+        grant_list,
+        tool_name: str,
+        pattern: Optional[str] = None,
+        full_command: Optional[str] = None,
+    ) -> bool:
+        """Check if permission matches a grant list.
+
+        Args:
+            grant_list: Dictionary of grants to check
+            tool_name: Name of the tool (e.g., 'run_shell', 'write_file')
+            pattern: Optional pattern for matching (e.g., 'pytest' for pytest commands)
+            full_command: Optional full command string (e.g., 'git status' for multi-word matching)
+
+        Returns:
+            True if permission matches a grant in the list
+        """
+        if tool_name not in grant_list:
+            return False
+
+        if grant_list[tool_name] is True:  # Granted for all
+            return True
+
+        if isinstance(grant_list[tool_name], list):
+            # Check pattern match (case-insensitive)
+            if pattern:
+                pattern_lower = pattern.lower()
+                for granted_pattern in grant_list[tool_name]:
+                    granted_lower = granted_pattern.lower()
+                    # Exact match
+                    if granted_lower == pattern_lower:
+                        return True
+                    # Check if pattern starts with granted pattern (e.g., "grep -l" starts with "grep")
+                    # This handles commands with flags extracted by find -exec, xargs, etc.
+                    # For single-word granted patterns, check if pattern starts with it + space
+                    if " " not in granted_lower and pattern_lower.startswith(granted_lower + " "):
+                        return True
+
+            # Check if full command starts with any granted pattern (for multi-word commands like "git status")
+            # Only do startswith matching for multi-word patterns (contain spaces)
+            if full_command:
+                cmd_lower = full_command.strip().lower()
+                for granted_pattern in grant_list[tool_name]:
+                    # Only use startswith for multi-word patterns
+                    if " " in granted_pattern and cmd_lower.startswith(granted_pattern.lower()):
+                        return True
+
+        return False
+
     def _check_existing_grant(
         self, tool_name: str, pattern: Optional[str] = None, full_command: Optional[str] = None
     ) -> bool:
@@ -288,44 +338,12 @@ class PermissionManager:
             True if permission was previously granted
         """
         # Check session grants first
-        if tool_name in self.session_grants:
-            if self.session_grants[tool_name] is True:  # Granted for all
-                return True
-            if isinstance(self.session_grants[tool_name], list):
-                # Check pattern match (case-insensitive)
-                if pattern:
-                    pattern_lower = pattern.lower()
-                    for granted_pattern in self.session_grants[tool_name]:
-                        if granted_pattern.lower() == pattern_lower:
-                            return True
-                # Check if full command starts with any granted pattern (for multi-word commands like "git status")
-                # Only do startswith matching for multi-word patterns (contain spaces)
-                if full_command:
-                    cmd_lower = full_command.strip().lower()
-                    for granted_pattern in self.session_grants[tool_name]:
-                        # Only use startswith for multi-word patterns
-                        if " " in granted_pattern and cmd_lower.startswith(granted_pattern.lower()):
-                            return True
+        if self._check_grant_list(self.session_grants, tool_name, pattern, full_command):
+            return True
 
         # Check persistent grants
-        if tool_name in self.persistent_grants:
-            if self.persistent_grants[tool_name] is True:  # Granted for all
-                return True
-            if isinstance(self.persistent_grants[tool_name], list):
-                # Check pattern match (case-insensitive)
-                if pattern:
-                    pattern_lower = pattern.lower()
-                    for granted_pattern in self.persistent_grants[tool_name]:
-                        if granted_pattern.lower() == pattern_lower:
-                            return True
-                # Check if full command starts with any granted pattern (for multi-word commands like "git status")
-                # Only do startswith matching for multi-word patterns (contain spaces)
-                if full_command:
-                    cmd_lower = full_command.strip().lower()
-                    for granted_pattern in self.persistent_grants[tool_name]:
-                        # Only use startswith for multi-word patterns
-                        if " " in granted_pattern and cmd_lower.startswith(granted_pattern.lower()):
-                            return True
+        if self._check_grant_list(self.persistent_grants, tool_name, pattern, full_command):
+            return True
 
         return False
 
