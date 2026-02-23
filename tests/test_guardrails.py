@@ -137,10 +137,10 @@ class TestReadOnlyMode:
 
     def test_blocks_writes_in_readonly(self, temp_repo, monkeypatch):
         """Test that writes are blocked in read-only mode."""
-        # Patch READ_ONLY_MODE in the file_editing module where it's used
-        import patchpal.tools.file_editing
+        # Patch READ_ONLY_MODE in the file_writing module where it's used
+        import patchpal.tools.file_writing
 
-        monkeypatch.setattr(patchpal.tools.file_editing, "READ_ONLY_MODE", True)
+        monkeypatch.setattr(patchpal.tools.file_writing, "READ_ONLY_MODE", True)
 
         from patchpal.tools import write_file
 
@@ -375,10 +375,10 @@ class TestConfigurability:
 
     def test_custom_max_file_size(self, temp_repo, monkeypatch):
         """Test that MAX_FILE_SIZE can be configured."""
-        # Patch MAX_FILE_SIZE in the file_operations module where it's used
-        import patchpal.tools.file_operations
+        # Patch MAX_FILE_SIZE in the file_reading module where it's used
+        import patchpal.tools.file_reading
 
-        monkeypatch.setattr(patchpal.tools.file_operations, "MAX_FILE_SIZE", 1000)
+        monkeypatch.setattr(patchpal.tools.file_reading, "MAX_FILE_SIZE", 1000)
 
         # Should now block even small files
         (temp_repo / "medium.txt").write_text("x" * 2000)

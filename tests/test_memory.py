@@ -203,9 +203,9 @@ def test_memory_file_read_error(temp_memory_dir, monkeypatch, caplog):
         assert agent is not None
 
 
-def test_memory_whitelisting_in_file_editing(temp_memory_dir, monkeypatch):
+def test_memory_whitelisting_in_file_writing(temp_memory_dir, monkeypatch):
     """Test that MEMORY.md is whitelisted for editing without warnings."""
-    from patchpal.tools.file_editing import _get_outside_repo_warning
+    from patchpal.tools.file_writing import _get_outside_repo_warning
 
     memory_path = temp_memory_dir / "MEMORY.md"
     memory_path.write_text(MEMORY_TEMPLATE, encoding="utf-8")

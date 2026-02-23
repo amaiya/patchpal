@@ -1586,7 +1586,7 @@ def test_edit_file_flexible_matching_error_message(temp_repo):
 
 def test_edit_file_matching_strategies_helper_functions(temp_repo):
     """Test the underlying matching strategy helper functions directly."""
-    from patchpal.tools.file_editing import (
+    from patchpal.tools.file_writing import (
         _try_line_trimmed_match,
         _try_simple_match,
         _try_whitespace_normalized_match,
@@ -1613,7 +1613,7 @@ def test_edit_file_matching_strategies_helper_functions(temp_repo):
 
 def test_edit_file_multiline_trimmed_match_helper(temp_repo):
     """Test line-trimmed matching with multi-line blocks."""
-    from patchpal.tools.file_editing import _try_line_trimmed_match
+    from patchpal.tools.file_writing import _try_line_trimmed_match
 
     content = """class Test:
     def method(self):
@@ -1634,7 +1634,7 @@ def test_edit_file_multiline_trimmed_match_helper(temp_repo):
 
 def test_edit_file_finds_match_with_strategy_order(temp_repo):
     """Test that strategies are tried in correct order."""
-    from patchpal.tools.file_editing import _find_match_with_strategies
+    from patchpal.tools.file_writing import _find_match_with_strategies
 
     # Scenario: content has both a substring and a full line
     # Should prefer full line match for code patterns

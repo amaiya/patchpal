@@ -2,34 +2,34 @@
 
 PatchPal includes a comprehensive set of built-in tools for file operations, git, web access, and more.
 
-## File Operations
+## File Reading
 
 ### read_file
 
-::: patchpal.tools.file_operations.read_file
+::: patchpal.tools.file_reading.read_file
     options:
       show_root_heading: true
       heading_level: 4
 
 ### read_lines
 
-::: patchpal.tools.file_operations.read_lines
+::: patchpal.tools.file_reading.read_lines
     options:
       show_root_heading: true
       heading_level: 4
 
-## File Editing
+## File Writing
 
 ### write_file
 
-::: patchpal.tools.file_editing.write_file
+::: patchpal.tools.file_writing.write_file
     options:
       show_root_heading: true
       heading_level: 4
 
 ### edit_file
 
-::: patchpal.tools.file_editing.edit_file
+::: patchpal.tools.file_writing.edit_file
     options:
       show_root_heading: true
       heading_level: 4

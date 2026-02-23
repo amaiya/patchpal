@@ -37,13 +37,13 @@ from patchpal.tools.common import (
     # Permission functions
     set_require_permission_for_all,
 )
-from patchpal.tools.file_editing import (
-    edit_file,
-    write_file,
-)
-from patchpal.tools.file_operations import (
+from patchpal.tools.file_reading import (
     read_file,
     read_lines,
+)
+from patchpal.tools.file_writing import (
+    edit_file,
+    write_file,
 )
 from patchpal.tools.repo_map import (
     clear_repo_map_cache,
