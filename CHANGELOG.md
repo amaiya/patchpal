@@ -7,6 +7,18 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
+## 0.16.6 (2026-02-23)
+
+### new:
+- N/A
+
+### changed:
+- N/A
+
+### fixed:
+- Fixed encoding issue affecting Windows file reads/writes (#75)
+
+
 ## 0.16.5 (2026-02-22)
 
 ### new:

@@ -41,7 +41,7 @@ def _parse_skill_file(skill_path: Path) -> Optional[Skill]:
         Do this and that...
     """
     try:
-        content = skill_path.read_text()
+        content = skill_path.read_text(encoding="utf-8", errors="surrogateescape")
 
         # Check for YAML frontmatter
         if not content.startswith("---"):

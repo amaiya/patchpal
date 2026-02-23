@@ -244,7 +244,7 @@ Related Resources (Ralph Wiggum Technique):
     # Get prompt from file or argument
     if args.prompt_file:
         try:
-            with open(args.prompt_file, "r") as f:
+            with open(args.prompt_file, "r", encoding="utf-8", errors="surrogateescape") as f:
                 prompt = f.read()
         except FileNotFoundError:
             print(f"❌ Error: Prompt file not found: {args.prompt_file}")
