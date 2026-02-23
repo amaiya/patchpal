@@ -111,7 +111,7 @@ def _detect_windows_shell() -> str:
         'powershell', 'cmd', or 'unknown'
     """
     # Check for explicit override first
-    override = os.getenv("PATCHPAL_SHELL")
+    override = config.WINDOWS_SHELL
     if override:
         override_lower = override.lower()
         if "powershell" in override_lower or override_lower == "pwsh":
@@ -164,7 +164,7 @@ Commands execute in CMD:
         # Unknown - provide generic Windows guidance
         PLATFORM_INFO = """## Platform: Windows
 When using run_shell, use appropriate Windows commands for your shell.
-Set PATCHPAL_SHELL=powershell or PATCHPAL_SHELL=cmd to specify your shell explicitly.
+Set PATCHPAL_WINDOWS_SHELL=powershell or PATCHPAL_WINDOWS_SHELL=cmd to specify your shell explicitly.
 """
 else:  # Linux or macOS
     PLATFORM_INFO = f"""## Platform: {os_name} (Unix-like)

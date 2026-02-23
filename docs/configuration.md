@@ -44,6 +44,14 @@ export PATCHPAL_ALLOW_SUDO=true              # Allow sudo/privilege escalation (
                                               # ⚠️  WARNING: Only enable in trusted, controlled environments
 export PATCHPAL_SHELL_TIMEOUT=60             # Shell command timeout in seconds (default: 30)
 
+# Windows Shell Selection
+export PATCHPAL_WINDOWS_SHELL=powershell     # Explicitly set Windows shell (default: auto-detect)
+                                              # Options: 'powershell', 'pwsh', 'cmd'
+                                              # Auto-detection checks PSModulePath and COMSPEC environment variables
+                                              # PowerShell is assumed by default on modern Windows
+                                              # Set this if auto-detection fails or you want to force a specific shell
+                                              # Note: Only applies on Windows; ignored on Linux/macOS
+
 # Output Filtering
 export PATCHPAL_FILTER_OUTPUTS=true          # Filter verbose command outputs (default: true)
                                               # Only applies to specific commands: test runners, git log, build tools
