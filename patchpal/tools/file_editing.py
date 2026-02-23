@@ -328,7 +328,7 @@ def edit_file(path: str, old_string: str, new_string: str) -> str:
         raise ValueError(
             f"String not found in {path}.\n\n"
             f"Searched for:\n{old_string[:200]}\n\n"
-            f"💡 Tip: Use read_lines() to see exact content, or use write_file() for larger changes."
+            f"💡 Tip: Use read_lines() to see exact content."
         )
 
     # Count occurrences of the matched string
@@ -348,7 +348,7 @@ def edit_file(path: str, old_string: str, new_string: str) -> str:
         raise ValueError(
             f"String appears {count} times in {path} at lines: {positions}\n"
             f"Add more context (3-5 surrounding lines) to make it unique.\n\n"
-            f"💡 Tip: Use read_lines() to see the exact context, or use write_file() for multiple changes."
+            f"💡 Tip: Use read_lines() to see the exact context."
         )
 
     # Perform indentation adjustment and trailing newline preservation BEFORE showing diff

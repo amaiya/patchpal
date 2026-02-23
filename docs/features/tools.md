@@ -2,7 +2,7 @@
 
 PatchPal provides 18 built-in tools for file operations, code analysis, web access, task planning, and user interaction.
 
-## File Operations (2 tools)
+## File Reading (2 tools)
 
 ### read_file
 Read contents of files anywhere on the system (repository files, logs, configs).
@@ -35,6 +35,42 @@ Read specific line ranges from a file without loading the entire file.
 - More efficient than `read_file` when you only need a few lines
 - Useful for viewing code sections, error context, or specific regions
 
+## File Writing (2 tools)
+
+### write_file
+Modify files by replacing entire contents.
+
+- **Example**: `write_file("config.py", new_content)`
+- Use for large-scale changes or multiple edits
+- Returns unified diff showing changes
+- Best for rewriting entire files or complex modifications
+
+### edit_file
+Edit a file by replacing an exact string (efficient for small changes).
+
+- **Example**: `edit_file("config.py", "port = 3000", "port = 8080")`
+- More efficient than `write_file` for targeted changes
+- Old string must appear exactly once in the file
+- Best for single-line or small multi-line edits
+
+## Shell (1 tool)
+
+### run_shell
+Execute shell commands in the repository.
+
+- **Example**: `run_shell("pytest tests/test_auth.py")`
+- **Example**: `run_shell("npm install lodash")`
+- Commands execute from repository root automatically (no need for `cd`)
+- **80+ harmless commands auto-granted** (no permission prompts):
+  - File operations: `wc`, `stat`, `find`, `ls`, `cat`, `head`, `tail`
+  - Search: `grep`, `awk`
+  - Git (read-only): `git status`, `git diff`, `git log`
+  - Test runners: `pytest`, `jest`, `mocha`, `go test`, `cargo test`, `mvn test`, `dotnet test`, etc.
+  - System info: `whoami`, `hostname`, `date`, `uname`
+  - Network diagnostics: `ping`, `tracert`, `nslookup`
+- Dangerous commands require permission (e.g., `rm`, `pip install`, script execution)
+- Privilege escalation blocked by default (set `PATCHPAL_ALLOW_SUDO=true` to enable)
+
 ## Code Analysis (2 tools)
 
 ### code_structure
@@ -54,24 +90,6 @@ Get an overview of the entire codebase in one call.
 - **Filtering**: `get_repo_map(include_patterns=["*.py"], exclude_patterns=["*test*"])`
 - **38-70% token savings** vs calling `code_structure` on each file individually
 - Ideal for understanding codebase structure and finding relevant files
-
-## File Editing (2 tools)
-
-### edit_file
-Edit a file by replacing an exact string (efficient for small changes).
-
-- **Example**: `edit_file("config.py", "port = 3000", "port = 8080")`
-- More efficient than `write_file` for targeted changes
-- Old string must appear exactly once in the file
-- Best for single-line or small multi-line edits
-
-### write_file
-Modify files by replacing entire contents.
-
-- **Example**: `write_file("config.py", new_content)`
-- Use for large-scale changes or multiple edits
-- Returns unified diff showing changes
-- Best for rewriting entire files or complex modifications
 
 ## Web Tools (2 tools)
 
@@ -154,36 +172,18 @@ Ask the user a question during task execution.
 - Useful for clarifying requirements, getting decisions, or gathering additional information
 - Supports multiple choice options or free-form answers
 
-## Shell (1 tool)
-
-### run_shell
-Execute shell commands in the repository.
-
-- **Example**: `run_shell("pytest tests/test_auth.py")`
-- **Example**: `run_shell("npm install lodash")`
-- Commands execute from repository root automatically (no need for `cd`)
-- **80+ harmless commands auto-granted** (no permission prompts):
-  - File operations: `wc`, `stat`, `find`, `ls`, `cat`, `head`, `tail`
-  - Search: `grep`, `awk`
-  - Git (read-only): `git status`, `git diff`, `git log`
-  - Test runners: `pytest`, `jest`, `mocha`, `go test`, `cargo test`, `mvn test`, `dotnet test`, etc.
-  - System info: `whoami`, `hostname`, `date`, `uname`
-  - Network diagnostics: `ping`, `tracert`, `nslookup`
-- Dangerous commands require permission (e.g., `rm`, `pip install`, script execution)
-- Privilege escalation blocked by default (set `PATCHPAL_ALLOW_SUDO=true` to enable)
-
 ## Tool Count by Category
 
 | Category | Tools | Count |
 |----------|-------|-------|
-| File Operations | read_file, read_lines | 2 |
+| File Reading | read_file, read_lines | 2 |
+| File Writing | write_file, edit_file | 2 |
+| Shell | run_shell | 1 |
 | Code Analysis | code_structure, get_repo_map | 2 |
-| File Editing | edit_file, write_file | 2 |
 | Web | web_search, web_fetch | 2 |
 | Task Planning | todo_add, todo_list, todo_complete, todo_update, todo_remove, todo_clear | 6 |
 | Skills | list_skills, use_skill | 2 |
 | User Interaction | ask_user | 1 |
-| Shell | run_shell | 1 |
 | **Total** | | **18** |
 
 ## Configuration
