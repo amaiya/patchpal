@@ -61,7 +61,7 @@ def _load_config(config_path: Path) -> Dict[str, Any]:
 
 def _save_config(config: Dict[str, Any], config_path: Path):
     """Save configuration to file."""
-    with open(config_path, "w", encoding="utf-8", errors="surrogateescape") as f:
+    with open(config_path, "w", encoding="utf-8", errors="surrogateescape", newline="\n") as f:
         json.dump(config, f, indent=2)
     print(f"✓ Configuration saved to {config_path}")
 

@@ -1098,7 +1098,10 @@ def _load_mcp_config(config_path: Optional[Path] = None) -> Dict[str, Any]:
         # Explicit path provided - load only that file
         if config_path.exists():
             try:
-                return json.loads(config_path.read_text(encoding="utf-8", errors="surrogateescape"))
+                with open(
+                    config_path, "r", encoding="utf-8", errors="surrogateescape", newline=None
+                ) as f:
+                    return json.load(f)
             except json.JSONDecodeError as e:
                 print(f"Warning: Failed to parse MCP config at {config_path}: {e}")
                 return {}
@@ -1113,9 +1116,10 @@ def _load_mcp_config(config_path: Optional[Path] = None) -> Dict[str, Any]:
     # Load global config first
     if global_config_path.exists():
         try:
-            global_config = json.loads(
-                global_config_path.read_text(encoding="utf-8", errors="surrogateescape")
-            )
+            with open(
+                global_config_path, "r", encoding="utf-8", errors="surrogateescape", newline=None
+            ) as f:
+                global_config = json.load(f)
             merged_config = global_config
         except json.JSONDecodeError as e:
             print(f"Warning: Failed to parse global MCP config at {global_config_path}: {e}")
@@ -1123,9 +1127,10 @@ def _load_mcp_config(config_path: Optional[Path] = None) -> Dict[str, Any]:
     # Load and merge project config (overrides global)
     if project_config_path.exists():
         try:
-            project_config = json.loads(
-                project_config_path.read_text(encoding="utf-8", errors="surrogateescape")
-            )
+            with open(
+                project_config_path, "r", encoding="utf-8", errors="surrogateescape", newline=None
+            ) as f:
+                project_config = json.load(f)
 
             # Merge MCP server configurations
             if "mcp" in project_config:

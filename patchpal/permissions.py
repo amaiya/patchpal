@@ -36,7 +36,11 @@ class PermissionManager:
         if self.permissions_file.exists():
             try:
                 with open(
-                    self.permissions_file, "r", encoding="utf-8", errors="surrogateescape"
+                    self.permissions_file,
+                    "r",
+                    encoding="utf-8",
+                    errors="surrogateescape",
+                    newline=None,
                 ) as f:
                     return json.load(f)
             except (json.JSONDecodeError, IOError):
@@ -46,7 +50,9 @@ class PermissionManager:
     def _save_persistent_grants(self):
         """Save persistent permission grants to file."""
         try:
-            with open(self.permissions_file, "w", encoding="utf-8", errors="surrogateescape") as f:
+            with open(
+                self.permissions_file, "w", encoding="utf-8", errors="surrogateescape", newline="\n"
+            ) as f:
                 json.dump(self.persistent_grants, f, indent=2)
         except IOError as e:
             print(f"Warning: Could not save permissions: {e}")
