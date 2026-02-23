@@ -19,6 +19,7 @@ Most recent releases are shown at the top. Each release shows:
 - Fixed encoding issue affecting Windows file reads/writes (#75)
 - Fixed line ending normalization on Windows (added newline parameter to prevent CRLF/LF issues)
 - Added Windows shell detection and improved Windows command permissions (#76)
+- Fixed Windows encoding issues with writing to `audit.log`
 
 
 ## 0.16.5 (2026-02-22)
