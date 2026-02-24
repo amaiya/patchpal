@@ -16,6 +16,30 @@ from patchpal.config import config
 from patchpal.tools import audit_logger
 
 
+def _sanitize_for_logging(text: str) -> str:
+    """Sanitize text for logging by removing problematic Unicode characters.
+
+    This prevents UnicodeEncodeError on Windows when logging text with
+    emojis or other characters that use surrogate pairs.
+
+    Args:
+        text: Input text that may contain problematic Unicode
+
+    Returns:
+        Sanitized text safe for logging
+    """
+    # On Windows, emojis can be represented as surrogate pairs which can't be encoded in UTF-8
+    # Strategy: encode to bytes using 'surrogatepass' to preserve surrogates,
+    # then decode back using 'replace' to convert them to replacement characters
+    try:
+        # This handles surrogate pairs on Windows by replacing them with �
+        encoded = text.encode("utf-8", errors="surrogatepass")
+        return encoded.decode("utf-8", errors="replace")
+    except (UnicodeEncodeError, UnicodeDecodeError):
+        # Fallback: just remove problematic characters entirely
+        return text.encode("utf-8", errors="ignore").decode("utf-8", errors="ignore")
+
+
 def _format_cost(value: float) -> str:
     """Format cost with smart precision.
 
@@ -1476,8 +1500,10 @@ Supported models: Any LiteLLM-supported model
                     if skill_args:
                         prompt += f"\n\nArguments: {skill_args}"
 
-                    # Log user prompt to audit log
-                    audit_logger.info(f"USER_PROMPT: /{skill_name} {skill_args}")
+                    # Log user prompt to audit log (sanitize to prevent Windows Unicode errors)
+                    audit_logger.info(
+                        _sanitize_for_logging(f"USER_PROMPT: /{skill_name} {skill_args}")
+                    )
                     result = agent.run(prompt, max_iterations=max_iterations)
 
                     print("\n" + "=" * 80)
@@ -1497,8 +1523,8 @@ Supported models: Any LiteLLM-supported model
             # Run the agent (Ctrl-C here will interrupt agent, not exit)
             try:
                 print()  # Add blank line before agent output
-                # Log user prompt to audit log
-                audit_logger.info(f"USER_PROMPT: {user_input}")
+                # Log user prompt to audit log (sanitize to prevent Windows Unicode errors)
+                audit_logger.info(_sanitize_for_logging(f"USER_PROMPT: {user_input}"))
                 result = agent.run(user_input, max_iterations=max_iterations)
 
                 print("\n" + "=" * 80)

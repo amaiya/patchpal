@@ -7,6 +7,18 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
+## 0.17.2 (2026-02-24)
+
+### new:
+- N/A
+
+### changed:
+- N/A
+
+### fixed:
+- Fixed Windows Unicode logging error when user input contains emojis (surrogate pairs can't be encoded in UTF-8)
+
+
 ## 0.17.1 (2026-02-24)
 
 ### new:
