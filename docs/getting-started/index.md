@@ -60,4 +60,4 @@ export PATCHPAL_MODEL=anthropic/claude-opus-4-5
 patchpal
 ```
 
-**Tip for Local Models:** Local models (i.e., models served by Ollama or vLLM) may work better with the environment variable setting,           `PATCHPAL_MINIMAL_TOOLS=true`, which provides only essential tools (`read_file`, `read_lines`, `edit_file`, `write_file`, `run_shell`), reducing tool        confusion with smaller models.
+**Tip for Local Models:** Local models (i.e., models served by Ollama or vLLM) may work better with the environment variable settings, `PATCHPAL_MINIMAL_TOOLS=true` and `PATCHPAL_ENABLE_WEB=false`, which provides only essential tools (`read_file`, `read_lines`, `write_file`, `edit_file`, `run_shell`), reducing tool confusion with smaller models.

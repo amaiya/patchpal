@@ -2,7 +2,7 @@
 
 PatchPal provides 18 built-in tools for file operations, code analysis, web access, task planning, and user interaction.
 
-> **For Local Models:** Set `PATCHPAL_MINIMAL_TOOLS=true` to use only 5 essential tools (`read_file`, `read_lines`, `edit_file`, `write_file`, `run_shell`), reducing tool confusion with smaller models.
+> **For Local Models:** Set `PATCHPAL_MINIMAL_TOOLS=true` and `PATCHPAL_ENABLE_WEB=false` to use only 5 essential tools (`read_file`, `read_lines`, `write_file`, `edit_file`, `run_shell`), reducing tool confusion with smaller models.
 
 ## File Reading (2 tools)
 
@@ -202,7 +202,7 @@ Ask the user a question during task execution.
 ### Minimal Tools Mode
 
 When `PATCHPAL_MINIMAL_TOOLS=true`, only these tools are available:
-- `read_file`, `edit_file`, `write_file`, `run_shell`
+- `read_file`, `read_lines`, `write_file`, `edit_file`, `run_shell`
 - `web_search`, `web_fetch` (if `PATCHPAL_ENABLE_WEB=true`)
 
 This reduces tool count to 4-6 for local models with tool confusion issues. Harmless shell commands still work without permission prompts.
