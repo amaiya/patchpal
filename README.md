@@ -28,6 +28,8 @@ $ pip install patchpal  # install
 $ patchpal              # start
 ```
 
+> Platform support: Linux, macOS, and Windows are all supported
+
 ## Setup
 0. **Install**: `pip install patchpal`
 1. **Get an API key or a Local LLM Engine**:

@@ -26,6 +26,8 @@ $ pip install patchpal  # install
 $ patchpal              # start
 ```
 
+> Platform support: Linux, macOS, and Windows are all supported
+
 ## Beyond Coding: General Problem-Solving
 
 While originally designed for software development, PatchPal is also a general-      purpose assistant. With web search, file operations, shell commands, and custom      tools/skills, it can help with research, data analysis, document processing, log     file analyses, etc.
