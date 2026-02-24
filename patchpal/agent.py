@@ -108,29 +108,15 @@ def _detect_windows_shell() -> str:
     """Detect which shell is being used on Windows.
 
     Returns:
-        'powershell', 'cmd', or 'unknown'
+        'powershell' or 'cmd'
     """
-    # Check for explicit override first
-    override = config.WINDOWS_SHELL
-    if override:
-        override_lower = override.lower()
-        if "powershell" in override_lower or override_lower == "pwsh":
-            return "powershell"
-        elif override_lower == "cmd":
-            return "cmd"
-
     # Detect from environment variables
     # PowerShell sets PSModulePath, CMD does not
     if os.getenv("PSModulePath"):
         return "powershell"
 
-    # Check COMSPEC for cmd.exe
-    comspec = os.getenv("COMSPEC", "").lower()
-    if "cmd.exe" in comspec:
-        return "cmd"
-
-    # Default to PowerShell (more common on modern Windows)
-    return "powershell"
+    # Otherwise assume CMD (works in both CMD and PowerShell)
+    return "cmd"
 
 
 # Detect platform and generate platform-specific guidance
@@ -149,7 +135,7 @@ Commands execute in PowerShell:
 - Chain commands: `;` or `&&` (PowerShell 7+)
 - Variables: `$variable`
 """
-    elif shell_type == "cmd":
+    else:
         PLATFORM_INFO = """## Platform: Windows (Command Prompt)
 Commands execute in CMD:
 - Use: `dir`, `type`, `copy`, `move`, `del`, `mkdir`, `rmdir`
@@ -159,12 +145,6 @@ Commands execute in CMD:
   - For current directory: Use `.` or omit the path prefix
 - Chain commands: `&&` or `&`
 - Variables: `%VARIABLE%`
-"""
-    else:
-        # Unknown - provide generic Windows guidance
-        PLATFORM_INFO = """## Platform: Windows
-When using run_shell, use appropriate Windows commands for your shell.
-Set PATCHPAL_WINDOWS_SHELL=powershell or PATCHPAL_WINDOWS_SHELL=cmd to specify your shell explicitly.
 """
 else:  # Linux or macOS
     PLATFORM_INFO = f"""## Platform: {os_name} (Unix-like)

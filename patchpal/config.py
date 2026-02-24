@@ -141,16 +141,6 @@ class Config:
         """Allow dangerous operations like sudo (default: false)."""
         return _get_env_bool("PATCHPAL_ALLOW_SUDO", "false")
 
-    @property
-    def WINDOWS_SHELL(self) -> Optional[str]:
-        """Windows shell override (optional, default: auto-detect).
-
-        Options: 'powershell', 'pwsh', 'cmd'
-        Only applies on Windows; ignored on Linux/macOS.
-        Auto-detection checks PSModulePath and COMSPEC environment variables.
-        """
-        return os.getenv("PATCHPAL_WINDOWS_SHELL")
-
     # ============================================================================
     # Output Filtering Configuration
     # ============================================================================

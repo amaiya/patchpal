@@ -16,6 +16,7 @@ Most recent releases are shown at the top. Each release shows:
 - Added `read_lines` to `PATCHPAL_MINIMAL_TOOLS` mode (now 5 base tools instead of 4)
 - Updated tool truncation hints to remove reference to non-existent `grep()` tool
 - Updated documentation to reflect `read_lines` inclusion in minimal tools
+- Simplified Windows shell detection: removed `PATCHPAL_WINDOWS_SHELL` environment variable, now auto-detects PowerShell (via `PSModulePath`) or defaults to CMD guidance (which works in both shells)
 
 ### fixed:
 - N/A
