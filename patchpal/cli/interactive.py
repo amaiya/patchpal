@@ -422,11 +422,11 @@ Supported models: Any LiteLLM-supported model
         web_enabled = config.ENABLE_WEB
         if web_enabled:
             print(
-                "\033[1;36m🔧 Minimal tools mode: 6 tools (read_file, edit_file, write_file, run_shell, web_search, web_fetch)\033[0m"
+                "\033[1;36m🔧 Minimal tools mode: 7 tools (read_file, read_lines, edit_file, write_file, run_shell, web_search, web_fetch)\033[0m"
             )
         else:
             print(
-                "\033[1;36m🔧 Minimal tools mode: 4 tools (read_file, edit_file, write_file, run_shell)\033[0m"
+                "\033[1;36m🔧 Minimal tools mode: 5 tools (read_file, read_lines, edit_file, write_file, run_shell)\033[0m"
             )
 
     print(

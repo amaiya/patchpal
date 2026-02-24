@@ -1349,9 +1349,9 @@ It's currently empty (just the template). The file is automatically loaded at se
                                 f"{truncation_note}"
                                 f"Output exceeded limits ({MAX_TOOL_OUTPUT_LINES:,} lines or {MAX_TOOL_OUTPUT_CHARS:,} characters).\n"
                                 f"Consider:\n"
-                                f"- Using grep() to search files directly\n"
                                 f"- Using read_lines() to read files in chunks\n"
-                                f"- Refining the command to filter output (e.g., | grep, | head)"
+                                f"- Using shell commands to filter output (e.g., grep, head, tail)\n"
+                                f"- Refining the command to produce less output"
                             )
 
                             result_str = truncated_str + hint

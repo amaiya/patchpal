@@ -445,7 +445,7 @@ def get_tools(web_tools_enabled: bool = True):
 
     if minimal_mode:
         # Base minimal tools (always included)
-        minimal_tool_names = ["read_file", "edit_file", "write_file", "run_shell"]
+        minimal_tool_names = ["read_file", "read_lines", "edit_file", "write_file", "run_shell"]
 
         # Add web tools if enabled
         if web_tools_enabled:

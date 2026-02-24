@@ -2,6 +2,8 @@
 
 PatchPal provides 18 built-in tools for file operations, code analysis, web access, task planning, and user interaction.
 
+> **For Local Models:** Set `PATCHPAL_MINIMAL_TOOLS=true` to use only 5 essential tools (`read_file`, `read_lines`, `edit_file`, `write_file`, `run_shell`), reducing tool confusion with smaller models.
+
 ## File Reading (2 tools)
 
 ### read_file

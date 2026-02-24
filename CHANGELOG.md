@@ -7,6 +7,20 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
+## 0.17.1 (2026-02-24)
+
+### new:
+- N/A
+
+### changed:
+- Added `read_lines` to `PATCHPAL_MINIMAL_TOOLS` mode (now 5 base tools instead of 4)
+- Updated tool truncation hints to remove reference to non-existent `grep()` tool
+- Updated documentation to reflect `read_lines` inclusion in minimal tools
+
+### fixed:
+- N/A
+
+
 ## 0.17.0 (2026-02-23)
 
 ### new:
