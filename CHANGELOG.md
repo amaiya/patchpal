@@ -7,6 +7,19 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
+## 0.17.3 (2026-02-24)
+
+### new:
+- N/A
+
+### changed:
+- N/A
+
+### fixed:
+- Fixed `find -exec` and `xargs` extraction not working when preceded by `cd` command (e.g., `cd DIR && find ... -exec grep ...` now correctly extracts `grep` instead of `find`)
+- Fixed composite pattern matching (e.g., `find@~/dir`) not matching harmless commands list, causing unnecessary permission prompts for commands like `cd DIR && find` or `cd DIR && grep`
+
+
 ## 0.17.2 (2026-02-24)
 
 ### new:

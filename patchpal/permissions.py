@@ -302,15 +302,25 @@ class PermissionManager:
             # Check pattern match (case-insensitive)
             if pattern:
                 pattern_lower = pattern.lower()
+
+                # Extract command name from composite patterns (e.g., "find@/tmp" -> "find")
+                # The @ separator is used for cd commands: "command@directory"
+                command_name = (
+                    pattern_lower.split("@")[0] if "@" in pattern_lower else pattern_lower
+                )
+
                 for granted_pattern in grant_list[tool_name]:
                     granted_lower = granted_pattern.lower()
-                    # Exact match
-                    if granted_lower == pattern_lower:
+                    # Exact match (check both full pattern and extracted command name)
+                    if granted_lower == pattern_lower or granted_lower == command_name:
                         return True
                     # Check if pattern starts with granted pattern (e.g., "grep -l" starts with "grep")
                     # This handles commands with flags extracted by find -exec, xargs, etc.
                     # For single-word granted patterns, check if pattern starts with it + space
                     if " " not in granted_lower and pattern_lower.startswith(granted_lower + " "):
+                        return True
+                    # Also check command_name for composite patterns
+                    if " " not in granted_lower and command_name.startswith(granted_lower + " "):
                         return True
 
             # Check if full command starts with any granted pattern (for multi-word commands like "git status")

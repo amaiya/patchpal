@@ -15,6 +15,76 @@ from patchpal.tools.common import (
 )
 
 
+def _extract_command_from_exec_wrapper(command_part: str) -> Optional[str]:
+    """Extract the actual command from execution wrappers like find -exec, xargs.
+
+    These wrappers are security-sensitive because they can bypass the harmless
+    command list by delegating to another command.
+
+    Args:
+        command_part: A single command string (not compound)
+
+    Returns:
+        The extracted command if wrapper detected, None otherwise
+
+    Examples:
+        >>> _extract_command_from_exec_wrapper("find . -exec grep -l pattern {} \\;")
+        'grep -l'
+        >>> _extract_command_from_exec_wrapper("xargs rm -rf")
+        'rm'
+        >>> _extract_command_from_exec_wrapper("ls -la")
+        None
+    """
+    cmd_lower = command_part.strip().lower()
+
+    # find with -exec or -execdir: extract the command after -exec/-execdir
+    if cmd_lower.startswith("find "):
+        for exec_flag in ["-exec", "-execdir"]:
+            if exec_flag in cmd_lower:
+                # Find the position of -exec/-execdir
+                parts = command_part.split()
+                try:
+                    exec_idx = next(i for i, p in enumerate(parts) if p.lower() == exec_flag)
+                    if exec_idx + 1 < len(parts):
+                        # Extract the command and possibly the first flag (e.g., 'sed -n')
+                        executed_cmd = parts[exec_idx + 1]
+                        # Strip common path prefixes and get just the command name
+                        if "/" in executed_cmd:
+                            executed_cmd = executed_cmd.split("/")[-1]
+
+                        # Check if there's a flag right after the command (e.g., sed -n)
+                        # This allows matching multi-word patterns like 'sed -n' in harmless list
+                        if exec_idx + 2 < len(parts) and parts[exec_idx + 2].startswith("-"):
+                            # Include the flag for patterns like 'sed -n'
+                            executed_cmd = f"{executed_cmd} {parts[exec_idx + 2]}"
+
+                        return executed_cmd
+                except StopIteration:
+                    pass
+
+    # xargs: extract the command being executed
+    if cmd_lower.startswith("xargs "):
+        # xargs runs a command on each line of input
+        # The command comes after xargs and its options
+        parts = command_part.split()
+        # Skip 'xargs' and any options (start with -)
+        for i in range(1, len(parts)):
+            if not parts[i].startswith("-"):
+                executed_cmd = parts[i]
+                if "/" in executed_cmd:
+                    executed_cmd = executed_cmd.split("/")[-1]
+
+                # Check if there's a flag right after the command (e.g., sed -n)
+                if i + 1 < len(parts) and parts[i + 1].startswith("-"):
+                    executed_cmd = f"{executed_cmd} {parts[i + 1]}"
+
+                return executed_cmd
+        # If no command specified, xargs defaults to 'echo' (safe)
+        return "echo"
+
+    return None
+
+
 def _extract_shell_command_info(cmd: str) -> tuple[Optional[str], Optional[str]]:
     """Extract the meaningful command pattern and working directory from a shell command.
 
@@ -49,52 +119,6 @@ def _extract_shell_command_info(cmd: str) -> tuple[Optional[str], Optional[str]]
     # First, check for command execution wrappers that delegate to other commands
     # These are security-sensitive because they can bypass the harmless command list
     cmd_lower = cmd.strip().lower()
-
-    # find with -exec or -execdir: extract the command after -exec/-execdir
-    if cmd_lower.startswith("find "):
-        # Look for -exec or -execdir
-        for exec_flag in ["-exec", "-execdir"]:
-            if exec_flag in cmd_lower:
-                # Find the position of -exec/-execdir
-                parts = cmd.split()
-                try:
-                    exec_idx = next(i for i, p in enumerate(parts) if p.lower() == exec_flag)
-                    if exec_idx + 1 < len(parts):
-                        # Extract the command and possibly the first flag (e.g., 'sed -n')
-                        executed_cmd = parts[exec_idx + 1]
-                        # Strip common path prefixes and get just the command name
-                        if "/" in executed_cmd:
-                            executed_cmd = executed_cmd.split("/")[-1]
-
-                        # Check if there's a flag right after the command (e.g., sed -n)
-                        # This allows matching multi-word patterns like 'sed -n' in harmless list
-                        if exec_idx + 2 < len(parts) and parts[exec_idx + 2].startswith("-"):
-                            # Include the flag for patterns like 'sed -n'
-                            executed_cmd = f"{executed_cmd} {parts[exec_idx + 2]}"
-
-                        return executed_cmd, None
-                except StopIteration:
-                    pass
-
-    # xargs: extract the command being executed
-    if cmd_lower.startswith("xargs "):
-        # xargs runs a command on each line of input
-        # The command comes after xargs and its options
-        parts = cmd.split()
-        # Skip 'xargs' and any options (start with -)
-        for i in range(1, len(parts)):
-            if not parts[i].startswith("-"):
-                executed_cmd = parts[i]
-                if "/" in executed_cmd:
-                    executed_cmd = executed_cmd.split("/")[-1]
-
-                # Check if there's a flag right after the command (e.g., sed -n)
-                if i + 1 < len(parts) and parts[i + 1].startswith("-"):
-                    executed_cmd = f"{executed_cmd} {parts[i + 1]}"
-
-                return executed_cmd, None
-        # If no command specified, xargs defaults to 'echo' (safe)
-        return "echo", None
 
     # powershell -Command or pwsh -Command: extract the PowerShell cmdlet
     # Examples: powershell -Command "Get-ChildItem", pwsh -c "Select-String"
@@ -195,6 +219,17 @@ def _extract_shell_command_info(cmd: str) -> tuple[Optional[str], Optional[str]]
 
         # Skip setup commands
         if first_token in setup_commands:
+            continue
+
+        # Check if this command is an execution wrapper (find -exec, xargs, etc.)
+        # Extract the actual command being executed for security purposes
+        extracted_cmd = _extract_command_from_exec_wrapper(command_part)
+        if extracted_cmd:
+            primary_command = extracted_cmd
+            # Don't break - keep looking for cd commands that might come after
+            # But we have our primary command now
+            if working_dir is not None:
+                break
             continue
 
         # This is the primary command

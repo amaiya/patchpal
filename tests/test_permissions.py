@@ -377,3 +377,33 @@ def test_harmless_command_with_flags():
 
         # Test non-harmless command requires permission
         assert not manager._check_existing_grant("run_shell", pattern="dangerous-command")
+
+
+def test_find_exec_extraction_with_cd():
+    """Test that find -exec extraction works when preceded by cd."""
+    from patchpal.tools.shell_tools import _extract_shell_command_info
+
+    # Original issue: cd && find -exec should extract inner command
+    cmd = 'cd ~/projects/ghub/patchpal && find . -exec grep -l "pattern" {} \\;'
+    command_name, working_dir = _extract_shell_command_info(cmd)
+    assert command_name == "grep -l"  # Should extract grep, not find
+    assert working_dir == "~/projects/ghub/patchpal"
+
+
+def test_composite_pattern_matching():
+    """Test that composite patterns (command@directory) match harmless commands."""
+    import tempfile
+    from pathlib import Path
+
+    from patchpal.permissions import PermissionManager
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        manager = PermissionManager(Path(tmpdir))
+
+        # Composite patterns should match base commands
+        assert manager._check_existing_grant("run_shell", pattern="find@~/projects/ghub/patchpal")
+        assert manager._check_existing_grant("run_shell", pattern="grep -l@/tmp")
+        assert manager._check_existing_grant("run_shell", pattern="ls@/home")
+
+        # Non-harmless commands should not match
+        assert not manager._check_existing_grant("run_shell", pattern="rm@/tmp")
