@@ -53,7 +53,7 @@ patchpal --model hosted_vllm/openai/gpt-oss-20b
 
 # Use Ollama (local - requires OLLAMA_CONTEXT_LENGTH=32768)
 export OLLAMA_CONTEXT_LENGTH=32768
-patchpal --model ollama_chat/gpt-oss:20b
+patchpal --model ollama_chat/glm-4.7-flash:q4_K_M
 
 # Or set the model via environment variable
 export PATCHPAL_MODEL=anthropic/claude-opus-4-5

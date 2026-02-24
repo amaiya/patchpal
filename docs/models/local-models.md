@@ -120,7 +120,7 @@ docker exec -it ollama ollama run gpt-oss:20b
 # Should show num_ctx much larger than default 4096
 
 # Use with PatchPal
-patchpal --model ollama_chat/gpt-oss:20b
+patchpal --model ollama_chat/glm-4.7-flash:q4_K_M
 ```
 
 **Verifying Context Window Size:**
@@ -130,13 +130,14 @@ patchpal --model ollama_chat/gpt-oss:20b
 docker inspect ollama | grep OLLAMA_CONTEXT_LENGTH
 
 # Or run a model and check parameters
-docker exec -it ollama ollama run gpt-oss:20b
+docker exec -it ollama ollama run glm-4.7-flash:q4_K_M
 >>> /show parameters
 ```
 
 **Recommended Models for Tool Calling:**
 
-- `gpt-oss:20b` - OpenAI's open-source model, excellent tool calling
+- `gpt-oss:20b` - OpenAI's open-source model
+- `glm-4.7-flash:q4_K_M` - Z.ai's GLM model, excellent tool calling
 - `qwen3:32b` - Qwen3 model with good agentic capabilities
 - `qwen3-coder` - Specialized for coding tasks
 
@@ -154,6 +155,7 @@ While Ollama now works with proper configuration, vLLM is still recommended for 
 export OLLAMA_CONTEXT_LENGTH=32768
 patchpal --model ollama_chat/qwen3:32b
 patchpal --model ollama_chat/gpt-oss:20b
+patchpal --model ollama_chat/glm-4.7-flash:q4_K_M
 
 # vLLM (recommended for production)
 patchpal --model hosted_vllm/openai/gpt-oss-20b
