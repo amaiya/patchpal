@@ -73,6 +73,26 @@ Execute shell commands in the repository.
 - Dangerous commands require permission (e.g., `rm`, `pip install`, script execution)
 - Privilege escalation blocked by default (set `PATCHPAL_ALLOW_SUDO=true` to enable)
 
+## Web Tools (2 tools)
+
+### web_search
+Search the web using DuckDuckGo (no API key required).
+
+- **Example**: `web_search("Python asyncio best practices")`
+- Look up error messages and solutions
+- Find current documentation and best practices
+- Research library versions and compatibility
+- Returns top search results with titles, snippets, and URLs
+
+### web_fetch
+Fetch and read content from URLs.
+
+- **Example**: `web_fetch("https://docs.python.org/3/library/asyncio.html")`
+- Read documentation pages and API references
+- Extract text from HTML, PDF, DOCX (Word), and PPTX (PowerPoint)
+- Supports plain text, JSON, XML, and other text formats
+- Warns about unsupported binary formats (images, videos, archives)
+
 ## Code Analysis (2 tools)
 
 ### code_structure
@@ -92,28 +112,6 @@ Get an overview of the entire codebase in one call.
 - **Filtering**: `get_repo_map(include_patterns=["*.py"], exclude_patterns=["*test*"])`
 - **38-70% token savings** vs calling `code_structure` on each file individually
 - Ideal for understanding codebase structure and finding relevant files
-
-## Web Tools (2 tools)
-
-⚠️ **Requires permission** to prevent information leakage about your codebase.
-
-### web_search
-Search the web using DuckDuckGo (no API key required).
-
-- **Example**: `web_search("Python asyncio best practices")`
-- Look up error messages and solutions
-- Find current documentation and best practices
-- Research library versions and compatibility
-- Returns top search results with titles, snippets, and URLs
-
-### web_fetch
-Fetch and read content from URLs.
-
-- **Example**: `web_fetch("https://docs.python.org/3/library/asyncio.html")`
-- Read documentation pages and API references
-- Extract text from HTML, PDF, DOCX (Word), and PPTX (PowerPoint)
-- Supports plain text, JSON, XML, and other text formats
-- Warns about unsupported binary formats (images, videos, archives)
 
 ## Task Planning (6 tools)
 
