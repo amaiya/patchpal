@@ -104,40 +104,12 @@ WEB_TOOLS_ENABLED = config.ENABLE_WEB
 TOOLS, TOOL_FUNCTIONS = get_tools(web_tools_enabled=WEB_TOOLS_ENABLED)
 
 
-def _detect_windows_shell() -> str:
-    """Detect which shell is being used on Windows.
-
-    Returns:
-        'powershell' or 'cmd'
-    """
-    # Detect from environment variables
-    # PowerShell sets PSModulePath, CMD does not
-    if os.getenv("PSModulePath"):
-        return "powershell"
-
-    # Otherwise assume CMD (works in both CMD and PowerShell)
-    return "cmd"
-
-
 # Detect platform and generate platform-specific guidance
 os_name = platform.system()  # 'Linux', 'Darwin', 'Windows'
 
 if os_name == "Windows":
-    shell_type = _detect_windows_shell()
-
-    if shell_type == "powershell":
-        PLATFORM_INFO = """## Platform: Windows (PowerShell)
-Commands execute in PowerShell:
-- Use PowerShell cmdlets: `Get-ChildItem`, `Copy-Item`, `Move-Item`, `Remove-Item`, `New-Item`, `Get-Content`
-- Or use aliases: `ls`, `cp`, `mv`, `rm`, `cat`, `mkdir`
-- Search: `Select-String` (grep), `Get-ChildItem -Recurse` (find), `Where-Object` (filter)
-- Path format: Both `/` and `\\` work in PowerShell
-- Chain commands: `;` or `&&` (PowerShell 7+)
-- Variables: `$variable`
-"""
-    else:
-        PLATFORM_INFO = """## Platform: Windows (Command Prompt)
-Commands execute in CMD:
+    PLATFORM_INFO = """## Platform: Windows
+Commands execute in Windows shell (CMD-compatible commands work in both CMD and PowerShell):
 - Use: `dir`, `type`, `copy`, `move`, `del`, `mkdir`, `rmdir`
 - Search: `findstr` (grep), `dir /s` (find), `where` (which)
 - Path format: Use backslashes `C:\\path\\to\\file.txt`
@@ -145,6 +117,7 @@ Commands execute in CMD:
   - For current directory: Use `.` or omit the path prefix
 - Chain commands: `&&` or `&`
 - Variables: `%VARIABLE%`
+- PowerShell: For PowerShell-specific commands, use `powershell -Command "Your-Command"` or `pwsh -Command "Your-Command"`
 """
 else:  # Linux or macOS
     PLATFORM_INFO = f"""## Platform: {os_name} (Unix-like)

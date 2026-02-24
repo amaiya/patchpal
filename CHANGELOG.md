@@ -13,7 +13,7 @@ Most recent releases are shown at the top. Each release shows:
 - N/A
 
 ### changed:
-- N/A
+- Removed unreliable PowerShell detection; now uses unified Windows guidance (CMD-compatible commands work in both CMD and PowerShell) with tip for invoking PowerShell commands when needed
 
 ### fixed:
 - Fixed Windows Unicode logging error when user input contains emojis (surrogate pairs can't be encoded in UTF-8)
