@@ -542,7 +542,7 @@ Supported models: Any LiteLLM-supported model
                 print()
                 print("  \033[1;33mSkills:\033[0m")
                 print("    /skillname [args]           Invoke a skill (e.g., /commit)")
-                print("    list skills                 Ask agent to list available skills")
+                print("    /list-skills                List available skills")
                 print()
                 print("  \033[1;33mTips:\033[0m")
                 print("    • Use UP/DOWN arrows to navigate command history")
@@ -551,6 +551,50 @@ Supported models: Any LiteLLM-supported model
                 print("    • Use Ctrl+C to cancel current input (not the entire session)")
                 print()
                 print("=" * 70 + "\n")
+                continue
+
+            # Handle /list-skills command - list available skills without LLM call
+            if user_input.lower() in ["list-skills", "/list-skills"]:
+                from patchpal.skills import list_skills as discover_all_skills
+
+                skills = discover_all_skills(repo_root=Path(".").resolve())
+
+                print("\n" + "=" * 84)
+                print("Agent:")
+                print("=" * 84)
+
+                if not skills:
+                    print()
+                    print("No skills found.")
+                    print()
+                    print("To get started:")
+                    print(
+                        "  1. View examples: https://github.com/amaiya/patchpal/tree/main/examples/skills"
+                    )
+                    print("  2. Copy examples to your personal skills directory:")
+                    print("     mkdir -p ~/.patchpal/skills")
+                    print("     # Download and copy skills from the examples folder")
+                    print(
+                        "  3. Or create your own skill in ~/.patchpal/skills/<skill-name>/SKILL.md"
+                    )
+                    print()
+                    print("=" * 84 + "\n")
+                    continue
+
+                print()
+                print(f"Here are the {len(skills)} available skills:")
+                print()
+                for i, skill in enumerate(skills, 1):
+                    desc = skill.description
+                    # Yellow number, bold cyan /skillname
+                    print(f"  \033[1;33m{i}\033[0m \033[1;36m/{skill.name}\033[0m - {desc}")
+                print()
+                print(
+                    "You can invoke these skills by typing \033[1;36m/skillname\033[0m (e.g., \033[1;36m/commit\033[0m) or just ask"
+                )
+                print("naturally and I'll use the appropriate skill.")
+                print()
+                print("=" * 84 + "\n")
                 continue
 
             # Handle /status command - show context window usage

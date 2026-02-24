@@ -10,7 +10,7 @@ Most recent releases are shown at the top. Each release shows:
 ## 0.17.1 (2026-02-24)
 
 ### new:
-- N/A
+- Added `/list-skills` CLI command for instant skill listing without LLM call
 
 ### changed:
 - Added `read_lines` to `PATCHPAL_MINIMAL_TOOLS` mode (now 5 base tools instead of 4)
