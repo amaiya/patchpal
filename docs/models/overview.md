@@ -6,7 +6,7 @@ PatchPal supports any LiteLLM-compatible model. You can configure the model in t
 ```bash
 patchpal --model openai/gpt-5.2-codex
 patchpal --model anthropic/claude-sonnet-4-5
-patchpal --model hosted_vllm/openai/gpt-oss-20b # local model - no API charges
+patchpal --model hosted_vllm/openai/gpt-oss-120b # local model - no API charges
 ```
 
 ## 2. Environment Variable

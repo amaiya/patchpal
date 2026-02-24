@@ -200,7 +200,7 @@ Examples:
   python -m patchpal autopilot --prompt-file task.md --completion-promise "DONE" --max-iterations 50
 
   # With local model (zero API cost)
-  python -m patchpal autopilot --model hosted_vllm/openai/gpt-oss-20b --prompt "..." --completion-promise "DONE"
+  python -m patchpal autopilot --model hosted_vllm/openai/gpt-oss-120b --prompt "..." --completion-promise "DONE"
 
   # Skip confirmation prompt (for automation)
   PATCHPAL_AUTOPILOT_CONFIRMED=true python -m patchpal autopilot --prompt-file task.md --completion-promise "DONE"

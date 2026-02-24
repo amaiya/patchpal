@@ -1432,7 +1432,7 @@ def create_agent(
 
         # With reasoning model
         agent = create_agent(
-            model_id="ollama_chat/gpt-oss:20b",
+            model_id="ollama_chat/gpt-oss:120b",
             litellm_kwargs={"reasoning_effort": "high"}
         )
     """

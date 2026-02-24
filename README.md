@@ -70,11 +70,11 @@ patchpal --model openai/gpt-5.2-codex  # or openai/gpt-5-mini, anthropic/claude-
 # Note: vLLM server must be started with --tool-call-parser and --enable-auto-tool-choice
 export HOSTED_VLLM_API_BASE=http://localhost:8000
 export HOSTED_VLLM_API_KEY=token-abc123
-patchpal --model hosted_vllm/openai/gpt-oss-20b
+patchpal --model hosted_vllm/openai/gpt-oss-120b
 
 # Use Ollama (local - requires OLLAMA_CONTEXT_LENGTH=32768)
 export OLLAMA_CONTEXT_LENGTH=32768
-patchpal --model ollama_chat/gpt-oss:20b
+patchpal --model ollama_chat/gpt-oss:120b
 
 # Or set the model via environment variable
 export PATCHPAL_MODEL=openai/gpt-5.2

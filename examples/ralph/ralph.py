@@ -149,7 +149,7 @@ Examples:
   python ralph.py --prompt-file PROMPT.md --completion-promise "DONE" --max-iterations 50
 
   # With local model (zero API cost)
-  python ralph.py --model hosted_vllm/openai/gpt-oss-20b --prompt "..." --completion-promise "COMPLETE"
+  python ralph.py --model hosted_vllm/openai/gpt-oss-120b --prompt "..." --completion-promise "COMPLETE"
 
 Prompt Best Practices:
   - Clear completion criteria (specific tests, checks, deliverables)

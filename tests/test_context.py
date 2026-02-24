@@ -177,7 +177,7 @@ class TestContextManager:
                 # Bedrock format (provider stripped in agent)
                 ("bedrock/anthropic.claude-sonnet-4-5", 200_000),
                 # Hosted vLLM format
-                ("hosted_vllm/openai/gpt-oss-20b", 128_000),
+                ("hosted_vllm/openai/gpt-oss-120b", 128_000),
             ]
 
             for model_id, expected_limit in test_cases:

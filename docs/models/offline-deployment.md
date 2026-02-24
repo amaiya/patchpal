@@ -11,7 +11,7 @@ patchpal
 export PATCHPAL_ENABLE_WEB=false
 export HOSTED_VLLM_API_BASE=http://localhost:8000
 export HOSTED_VLLM_API_KEY=token-abc123
-patchpal --model hosted_vllm/openai/gpt-oss-20b
+patchpal --model hosted_vllm/openai/gpt-oss-120b
 ```
 
 When web tools are disabled:

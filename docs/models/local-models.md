@@ -22,7 +22,7 @@ vLLM is significantly faster than Ollama due to optimized inference with continu
 pip install vllm
 
 # 2. Start vLLM server with tool calling enabled
-vllm serve openai/gpt-oss-20b \
+vllm serve openai/gpt-oss-120b \
   --dtype auto \
   --api-key token-abc123 \
   --tool-call-parser openai \
@@ -31,7 +31,7 @@ vllm serve openai/gpt-oss-20b \
 # 3. Use with PatchPal (in another terminal)
 export HOSTED_VLLM_API_BASE=http://localhost:8000
 export HOSTED_VLLM_API_KEY=token-abc123
-patchpal --model hosted_vllm/openai/gpt-oss-20b
+patchpal --model hosted_vllm/openai/gpt-oss-120b
 ```
 
 **Using Remote/Hosted vLLM Server:**
@@ -40,7 +40,7 @@ patchpal --model hosted_vllm/openai/gpt-oss-20b
 # For remote vLLM servers (e.g., hosted by your organization)
 export HOSTED_VLLM_API_BASE=https://your-vllm-server.com
 export HOSTED_VLLM_API_KEY=your_api_key_here
-patchpal --model hosted_vllm/openai/gpt-oss-20b
+patchpal --model hosted_vllm/openai/gpt-oss-120b
 ```
 
 **Environment Variables:**
@@ -60,16 +60,16 @@ dtype: "auto"
 
 Then start vLLM:
 ```bash
-vllm serve openai/gpt-oss-20b --config config.yaml
+vllm serve openai/gpt-oss-120b --config config.yaml
 
 # Use with PatchPal
 export HOSTED_VLLM_API_BASE=http://localhost:8000
 export HOSTED_VLLM_API_KEY=token-abc123
-patchpal --model hosted_vllm/openai/gpt-oss-20b
+patchpal --model hosted_vllm/openai/gpt-oss-120b
 ```
 
 **Recommended models for vLLM:**
-- `openai/gpt-oss-20b` - OpenAI's open-source model (use parser: `openai`)
+- `openai/gpt-oss-120b` - OpenAI's open-source model (use parser: `openai`)
 
 **Tool Call Parser Reference:**
 Different models require different parsers. Common parsers include: `qwen3_xml`, `openai`, `deepseek_v3`, `llama3_json`, `mistral`, `hermes`, `pythonic`, `xlam`. See [vLLM Tool Calling docs](https://docs.vllm.ai/en/latest/features/tool_calling/) for the complete list.
@@ -95,7 +95,7 @@ export OLLAMA_CONTEXT_LENGTH=32768
 ollama serve
 
 # In another terminal, use with PatchPal
-patchpal --model ollama_chat/gpt-oss:20b
+patchpal --model ollama_chat/gpt-oss:120b
 ```
 
 **For Docker:**
@@ -115,7 +115,7 @@ docker run -d \
   ollama/ollama
 
 # Verify configuration
-docker exec -it ollama ollama run gpt-oss:20b
+docker exec -it ollama ollama run gpt-oss:120b
 # In the Ollama prompt, type: /show parameters
 # Should show num_ctx much larger than default 4096
 
@@ -136,7 +136,7 @@ docker exec -it ollama ollama run glm-4.7-flash:q4_K_M
 
 **Recommended Models for Tool Calling:**
 
-- `gpt-oss:20b` - OpenAI's open-source model
+- `gpt-oss:120b` - OpenAI's open-source model
 - `glm-4.7-flash:q4_K_M` - Z.ai's GLM model, excellent tool calling
 - `qwen3:32b` - Qwen3 model with good agentic capabilities
 - `qwen3-coder` - Specialized for coding tasks
@@ -154,9 +154,9 @@ While Ollama now works with proper configuration, vLLM is still recommended for 
 # Ollama (works with proper configuration)
 export OLLAMA_CONTEXT_LENGTH=32768
 patchpal --model ollama_chat/qwen3:32b
-patchpal --model ollama_chat/gpt-oss:20b
+patchpal --model ollama_chat/gpt-oss:120b
 patchpal --model ollama_chat/glm-4.7-flash:q4_K_M
 
 # vLLM (recommended for production)
-patchpal --model hosted_vllm/openai/gpt-oss-20b
+patchpal --model hosted_vllm/openai/gpt-oss-120b
 ```

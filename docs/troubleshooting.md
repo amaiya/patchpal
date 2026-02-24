@@ -58,7 +58,7 @@ When using cloud LLM providers (Anthropic, OpenAI, etc.), token usage directly i
   ```bash
   export HOSTED_VLLM_API_BASE=http://localhost:8000
   export HOSTED_VLLM_API_KEY=token-abc123
-  patchpal --model hosted_vllm/openai/gpt-oss-20b
+  patchpal --model hosted_vllm/openai/gpt-oss-120b
   ```
 - **Alternative:** Use Ollama (requires `OLLAMA_CONTEXT_LENGTH=32768`)
 - See [Using Local Models](https://github.com/amaiya/patchpal?tab=readme-ov-file#using-local-models-vllm--ollama) for setup

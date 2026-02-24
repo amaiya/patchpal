@@ -143,7 +143,7 @@ Most recent releases are shown at the top. Each release shows:
 - N/A
 
 ### changed:
-- Updated `apply_patch` tool description and system prompt based on `gpt-oss-20b` mistakes with `apply_patch` (#71)
+- Updated `apply_patch` tool description and system prompt based on `gpt-oss-120b` mistakes with `apply_patch` (#71)
 
 ### fixed:
 - N/A

@@ -144,12 +144,12 @@ export PATCHPAL_SYSTEM_PROMPT=~/.patchpal/my_prompt.md  # Use custom system prom
 **Air-Gapped Environment (Offline, No Web Access):**
 ```bash
 export PATCHPAL_ENABLE_WEB=false
-patchpal --model hosted_vllm/openai/gpt-oss-20b
+patchpal --model hosted_vllm/openai/gpt-oss-120b
 ```
 
 **Reasoning Model with High Effort:**
 ```bash
-export PATCHPAL_MODEL=ollama_chat/gpt-oss:20b
+export PATCHPAL_MODEL=ollama_chat/gpt-oss:120b
 export PATCHPAL_LITELLM_KWARGS='{"reasoning_effort": "high"}'
 patchpal
 ```
