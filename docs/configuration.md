@@ -38,6 +38,10 @@ export PATCHPAL_READ_ONLY=true               # Prevent ALL file modifications (d
                                              # Useful for: code review, exploration, security audits
 export PATCHPAL_ALLOW_SENSITIVE=true         # Allow access to .env, credentials (default: false - blocked)
                                              # Only enable with test/dummy credentials
+export PATCHPAL_RESTRICT_TO_REPO=true        # Restrict file access to repository only (default: false)
+                                             # Prevents reading/writing files outside the repository directory
+                                             # Useful for: preventing PII leakage from external files
+                                             # Examples of blocked paths: /tmp/file.txt, ~/Documents/notes.txt, ../../etc/passwd
 
 # Command Safety
 export PATCHPAL_ALLOW_SUDO=true              # Allow sudo/privilege escalation (default: false - blocked)

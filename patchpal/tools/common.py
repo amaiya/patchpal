@@ -139,6 +139,7 @@ CRITICAL_FILES = {
 MAX_FILE_SIZE = config.MAX_FILE_SIZE
 READ_ONLY_MODE = config.READ_ONLY
 ALLOW_SENSITIVE = config.ALLOW_SENSITIVE
+RESTRICT_TO_REPO = config.RESTRICT_TO_REPO
 ENABLE_AUDIT_LOG = config.AUDIT_LOG
 ENABLE_BACKUPS = config.ENABLE_BACKUPS
 MAX_OPERATIONS = config.MAX_OPERATIONS
@@ -1009,6 +1010,7 @@ def _check_path(path: str, must_exist: bool = True) -> Path:
     Note:
         Can access files anywhere on the system (repository or outside).
         Sensitive files (.env, credentials) are always blocked for safety.
+        Use PATCHPAL_RESTRICT_TO_REPO=true to limit access to repository only.
     """
     # Expand ~ for home directory first
     expanded_path = os.path.expanduser(path)
@@ -1019,6 +1021,15 @@ def _check_path(path: str, must_exist: bool = True) -> Path:
         p = path_obj.resolve()
     else:
         p = (REPO_ROOT / expanded_path).resolve()
+
+    # Check if access is restricted to repository
+    if RESTRICT_TO_REPO and not _is_inside_repo(p):
+        raise ValueError(
+            f"Access outside repository blocked: {path}\n"
+            f"File location: {p}\n"
+            f"Repository root: {REPO_ROOT}\n"
+            f"Set PATCHPAL_RESTRICT_TO_REPO=false to allow external access"
+        )
 
     # Check if file is sensitive FIRST (regardless of whether it exists)
     # This prevents attempts to read/write sensitive files

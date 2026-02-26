@@ -123,6 +123,15 @@ class Config:
         return _get_env_bool("PATCHPAL_ALLOW_SENSITIVE", "false")
 
     @property
+    def RESTRICT_TO_REPO(self) -> bool:
+        """Restrict file access to repository only (default: false).
+
+        When enabled, prevents reading/writing files outside the repository directory.
+        Useful for preventing PII leakage from files in other directories.
+        """
+        return _get_env_bool("PATCHPAL_RESTRICT_TO_REPO", "false")
+
+    @property
     def ENABLE_BACKUPS(self) -> bool:
         """Create backups before modifying files (default: false)."""
         return _get_env_bool("PATCHPAL_ENABLE_BACKUPS", "false")
