@@ -5,6 +5,18 @@
 - The default number of iterations is 100.
 - Increase with `export PATCHPAL_MAX_ITERATIONS=200` (see [Configuration](https://github.com/amaiya/patchpal?tab=readme-ov-file#configuration))
 
+**Agent hangs on "Thinking..." or shows network errors**
+- PatchPal includes automatic retry logic for unstable network connections
+- Network errors trigger automatic retries with exponential backoff:
+  ```
+  ⚠️  Network error: Connection timeout
+     Retrying in 1.2s (attempt 1/3)...
+  ```
+- If retries are exhausted, check your network connection and try again
+- Increase overall timeout if needed: `export PATCHPAL_LLM_TIMEOUT=600` (10 minutes)
+- Common causes: corporate networks with intermittent connectivity, VPN issues, WiFi drops
+- Network resilience is always enabled (socket-level timeouts + 3 automatic retries)
+
 **Error: "Context Window Error - Input is too long"**
 - PatchPal includes automatic context management (compaction) to prevent this error.
 - **Quick fix:** Run `/prune` to remove old tool outputs, or `/compact` to compact the conversation history.

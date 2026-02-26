@@ -13,6 +13,7 @@ from rich.markdown import Markdown
 
 from patchpal.config import config
 from patchpal.context import ContextManager
+from patchpal.llm_resilience import NetworkResilientLLM
 from patchpal.tools.definitions import get_tools
 
 # LLM API timeout in seconds (default: 300 seconds = 5 minutes)
@@ -418,6 +419,14 @@ class PatchPalAgent:
         if litellm_kwargs:
             self.litellm_kwargs.update(litellm_kwargs)
 
+        # Initialize network-resilient LLM wrapper
+        self.resilient_llm = NetworkResilientLLM(
+            max_retries=3,
+            timeout=LLM_TIMEOUT,
+            connect_timeout=10.0,
+            read_timeout=60.0,
+        )
+
         # Load MEMORY.md if it exists and has non-template content
         self._load_project_memory()
 
@@ -638,10 +647,9 @@ It's currently empty (just the template). The file is automatically loaded at se
                 messages = [{"role": "system", "content": SYSTEM_PROMPT}] + msgs
                 # Apply prompt caching for supported models
                 messages = _apply_prompt_caching(messages, self.model_id)
-                response = litellm.completion(
+                response = self.resilient_llm.completion(
                     model=self.model_id,
                     messages=messages,
-                    timeout=LLM_TIMEOUT,
                     **self.litellm_kwargs,
                 )
 
@@ -953,12 +961,11 @@ It's currently empty (just the template). The file is automatically loaded at se
                     for func in self.custom_tools:
                         tools.append(function_to_tool_schema(func))
 
-                response = litellm.completion(
+                response = self.resilient_llm.completion(
                     model=self.model_id,
                     messages=messages,
                     tools=tools,
                     tool_choice="auto",
-                    timeout=LLM_TIMEOUT,
                     **self.litellm_kwargs,
                 )
 

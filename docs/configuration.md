@@ -68,7 +68,33 @@ export PATCHPAL_MAX_OPERATIONS=10000         # Max operations per session (defau
 export PATCHPAL_MAX_ITERATIONS=150           # Max agent iterations per task (default: 100)
                                               # Increase for complex multi-file tasks
 export PATCHPAL_LLM_TIMEOUT=300              # LLM API timeout in seconds (default: 300 = 5 minutes)
-                                              # Prevents indefinite stalls when API is unresponsive
+                                              # Overall request timeout for long-running operations
+                                              # Works with automatic retry logic for network resilience
+```
+
+### Network Resilience
+
+PatchPal includes automatic retry logic to handle unstable network connections. This prevents hangs when running on corporate networks with intermittent connectivity.
+
+**How it works:**
+- **Socket-level timeouts**: Detect stale connections quickly (10s connect, 60s read, 30s write)
+- **Automatic retries**: Up to 3 attempts with exponential backoff (1s, 2s, 4s)
+- **Smart error handling**: Retries network errors (timeouts, 502/503/504), fails immediately on auth/validation errors
+- **Connection refresh**: HTTP client recreated between retries to clear stale state
+
+**User experience:**
+When a network error occurs, you'll see:
+```
+⚠️  Network error: Connection timeout
+   Retrying in 1.2s (attempt 1/3)...
+```
+
+The agent automatically recovers once connectivity is restored. Network resilience is always enabled and requires no configuration.
+
+**Timeout configuration:**
+```bash
+export PATCHPAL_LLM_TIMEOUT=300              # Overall request timeout (default: 300s = 5 minutes)
+                                              # Allows long operations while socket timeouts detect dead connections
 ```
 
 ### Context Window Management
