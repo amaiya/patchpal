@@ -4,6 +4,7 @@ Provides retry logic, connection management, and timeout handling to prevent
 hangs when network connections are unstable or briefly interrupted.
 """
 
+import os
 import random
 import time
 from typing import Any, Dict, List, Optional
@@ -14,6 +15,14 @@ try:
     HTTPX_AVAILABLE = True
 except ImportError:
     HTTPX_AVAILABLE = False
+
+try:
+    from botocore.config import Config as BotoConfig
+
+    BOTO3_AVAILABLE = True
+except ImportError:
+    BOTO3_AVAILABLE = False
+    BotoConfig = None
 
 import litellm
 
@@ -35,7 +44,7 @@ class NetworkResilientLLM:
         max_delay: float = 60.0,
         timeout: int = 300,
         connect_timeout: float = 10.0,
-        read_timeout: float = 60.0,
+        read_timeout: float = 180.0,
     ):
         """Initialize the resilient LLM wrapper.
 
@@ -45,7 +54,7 @@ class NetworkResilientLLM:
             max_delay: Maximum delay between retries in seconds (default: 60.0)
             timeout: Overall request timeout in seconds (default: 300)
             connect_timeout: Connection establishment timeout in seconds (default: 10.0)
-            read_timeout: Read timeout for detecting stale connections (default: 60.0)
+            read_timeout: Read timeout for detecting stale connections (default: 180.0)
         """
         self.max_retries = max_retries
         self.base_delay = base_delay
@@ -55,14 +64,17 @@ class NetworkResilientLLM:
         self.read_timeout = read_timeout
 
         # Configure httpx client with aggressive timeouts
-        # This is used by litellm under the hood
+        # This is used by litellm for HTTP-based providers
         self._configure_httpx()
+
+        # Configure boto3 for AWS Bedrock with proper timeouts
+        self._configure_boto3()
 
     def _configure_httpx(self):
         """Configure httpx with socket-level timeouts.
 
         Sets up connection pooling and timeout configuration that LiteLLM
-        will use for HTTP requests.
+        will use for HTTP requests (e.g., OpenAI, Anthropic, etc.).
         """
         # Skip if httpx is not available (fallback to litellm defaults)
         if not HTTPX_AVAILABLE:
@@ -95,6 +107,34 @@ class NetworkResilientLLM:
                 retries=0,  # We handle retries at a higher level
             ),
         )
+
+    def _configure_boto3(self):
+        """Configure boto3 client for AWS Bedrock with proper timeouts.
+
+        Sets configuration that litellm's bedrock integration will use.
+        This prevents indefinite hangs on AWS Bedrock.
+        """
+        if not BOTO3_AVAILABLE:
+            return
+
+        # Set AWS client config via environment variables
+        os.environ["AWS_MAX_ATTEMPTS"] = "1"  # We handle retries ourselves
+
+        # Create a custom boto3 config with aggressive timeouts
+        boto_config = BotoConfig(
+            connect_timeout=int(self.connect_timeout),
+            read_timeout=int(self.read_timeout),
+            retries={"max_attempts": 0},  # We handle retries at higher level
+        )
+
+        # Store the config for use in completion calls
+        self._boto_config = boto_config
+
+        # LiteLLM uses environment variable AWS_BEDROCK_RUNTIME_CONFIG
+        # But we'll set it programmatically via litellm's internal config
+        # Store reference to allow injection before each call
+        if not hasattr(litellm, "_patchpal_boto_config"):
+            litellm._patchpal_boto_config = boto_config
 
     def _is_retryable_error(self, error: Exception) -> bool:
         """Determine if an error is retryable.
@@ -156,15 +196,31 @@ class NetworkResilientLLM:
 
         while attempt <= self.max_retries:
             try:
-                # Call LiteLLM with configured timeout
-                response = litellm.completion(
-                    model=model,
-                    messages=messages,
-                    tools=tools,
-                    tool_choice=tool_choice,
-                    timeout=self.timeout,
+                # Prepare kwargs with timeout
+                call_kwargs = {
+                    "model": model,
+                    "messages": messages,
+                    "tools": tools,
+                    "tool_choice": tool_choice,
+                    "timeout": self.timeout,
                     **kwargs,
-                )
+                }
+
+                # For AWS Bedrock models, create client with our config
+                if BOTO3_AVAILABLE and hasattr(self, "_boto_config"):
+                    # Check if this is a bedrock model
+                    is_bedrock = "bedrock" in model.lower() or model.startswith("arn:aws")
+                    if is_bedrock:
+                        # Create bedrock client with our timeout config
+                        # LiteLLM will use this if we set it as aws_bedrock_client
+                        import boto3
+
+                        session = boto3.Session()
+                        bedrock_client = session.client("bedrock-runtime", config=self._boto_config)
+                        call_kwargs["aws_bedrock_client"] = bedrock_client
+
+                # Call LiteLLM with configured timeout
+                response = litellm.completion(**call_kwargs)
                 return response
 
             except KeyboardInterrupt:
@@ -202,8 +258,9 @@ class NetworkResilientLLM:
 
                 time.sleep(delay)
 
-                # Recreate httpx client to clear any stale connections
+                # Recreate clients to clear any stale connections
                 self._configure_httpx()
+                self._configure_boto3()
 
         # All retries exhausted
         error_msg = f"LLM API call failed after {self.max_retries} retries: {last_error}"
@@ -211,24 +268,28 @@ class NetworkResilientLLM:
 
     def cleanup(self):
         """Clean up resources and restore original configuration."""
-        # Close current client session
+        # Close current httpx client session
         if hasattr(litellm, "client_session") and litellm.client_session:
             try:
                 litellm.client_session.close()
             except Exception:
                 pass
 
-        # Restore original client session if it existed
+        # Restore original httpx client session if it existed
         if hasattr(litellm, "_original_client_session"):
             litellm.client_session = litellm._original_client_session
             delattr(litellm, "_original_client_session")
+
+        # Clean up boto3 config reference
+        if hasattr(litellm, "_patchpal_boto_config"):
+            delattr(litellm, "_patchpal_boto_config")
 
 
 def create_resilient_llm(
     timeout: int = 300,
     max_retries: int = 3,
     connect_timeout: float = 10.0,
-    read_timeout: float = 60.0,
+    read_timeout: float = 180.0,
 ) -> NetworkResilientLLM:
     """Create a network-resilient LLM wrapper.
 
@@ -236,7 +297,7 @@ def create_resilient_llm(
         timeout: Overall request timeout in seconds (default: 300)
         max_retries: Maximum number of retry attempts (default: 3)
         connect_timeout: Connection establishment timeout (default: 10.0)
-        read_timeout: Read timeout for detecting stale connections (default: 60.0)
+        read_timeout: Read timeout for detecting stale connections (default: 180.0)
 
     Returns:
         Configured NetworkResilientLLM instance

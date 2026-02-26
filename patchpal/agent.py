@@ -424,7 +424,7 @@ class PatchPalAgent:
             max_retries=3,
             timeout=LLM_TIMEOUT,
             connect_timeout=10.0,
-            read_timeout=60.0,
+            read_timeout=180.0,  # 3 minutes to allow long responses
         )
 
         # Load MEMORY.md if it exists and has non-template content
