@@ -7,6 +7,18 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
+## 0.17.4 (2026-02-26)
+
+### new:
+- N/A
+
+### changed:
+- N/A
+
+### fixed:
+- Fixed AWS Bedrock timeout configuration: Added boto3 client with explicit timeouts (connect=10s, read=300s) to prevent indefinite hangs. Previously, `timeout` parameter was ignored for Bedrock, causing "None seconds" timeout errors.
+
+
 ## 0.17.3 (2026-02-24)
 
 ### new:
