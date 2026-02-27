@@ -5,29 +5,17 @@ compatibility with the old `from patchpal.tools import func` imports.
 """
 
 # Re-export all tools from their respective modules
+from patchpal.config import config  # Export config for direct access
 from patchpal.tools.code_analysis import (
     code_structure,
 )
 from patchpal.tools.common import (
-    ALLOW_SENSITIVE,
     AUDIT_LOG_FILE,
     BACKUP_DIR,
-    ENABLE_AUDIT_LOG,
-    ENABLE_BACKUPS,
-    ENABLE_OUTPUT_FILTERING,
-    MAX_FILE_SIZE,
-    MAX_OPERATIONS,
-    MAX_OUTPUT_LINES,
-    MAX_TOOL_OUTPUT_CHARS,
-    MAX_TOOL_OUTPUT_LINES,
-    MAX_WEB_CONTENT_SIZE,
     # Directories
     PATCHPAL_DIR,
-    READ_ONLY_MODE,
     # Configuration
     REPO_ROOT,
-    SHELL_TIMEOUT,
-    WEB_REQUEST_TIMEOUT,
     # Logging
     audit_logger,
     get_operation_count,
@@ -102,21 +90,9 @@ __all__ = [
     "ask_user",
     "list_skills",
     "use_skill",
-    # Configuration
+    # Configuration (use config.PROPERTY instead of static variables)
+    "config",
     "REPO_ROOT",
-    "MAX_FILE_SIZE",
-    "MAX_TOOL_OUTPUT_LINES",
-    "MAX_TOOL_OUTPUT_CHARS",
-    "READ_ONLY_MODE",
-    "ALLOW_SENSITIVE",
-    "ENABLE_AUDIT_LOG",
-    "ENABLE_BACKUPS",
-    "MAX_OPERATIONS",
-    "WEB_REQUEST_TIMEOUT",
-    "MAX_WEB_CONTENT_SIZE",
-    "SHELL_TIMEOUT",
-    "ENABLE_OUTPUT_FILTERING",
-    "MAX_OUTPUT_LINES",
     # Directories
     "PATCHPAL_DIR",
     "BACKUP_DIR",

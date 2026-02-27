@@ -5,7 +5,6 @@ from typing import Optional
 
 from patchpal.config import config
 from patchpal.tools.common import (
-    MAX_FILE_SIZE,
     _check_path,
     _is_binary_file,
     _operation_limiter,
@@ -50,9 +49,9 @@ def read_file(path: str) -> str:
         # For SVG, return as text since it's XML-based
         if ext == ".svg" or mime_type == "image/svg+xml":
             # SVG is text, so apply normal size limit
-            if size > MAX_FILE_SIZE:
+            if size > config.MAX_FILE_SIZE:
                 raise ValueError(
-                    f"SVG file too large: {size:,} bytes (max {MAX_FILE_SIZE:,} bytes)\n"
+                    f"SVG file too large: {size:,} bytes (max {config.MAX_FILE_SIZE:,} bytes)\n"
                     f"Set PATCHPAL_MAX_FILE_SIZE env var to increase"
                 )
             with open(p, "r", encoding="utf-8", errors="surrogateescape", newline=None) as f:
@@ -142,9 +141,9 @@ def read_file(path: str) -> str:
         return text_content
 
     # For non-document files, check size before reading
-    if size > MAX_FILE_SIZE:
+    if size > config.MAX_FILE_SIZE:
         raise ValueError(
-            f"File too large: {size:,} bytes (max {MAX_FILE_SIZE:,} bytes)\n"
+            f"File too large: {size:,} bytes (max {config.MAX_FILE_SIZE:,} bytes)\n"
             f"Set PATCHPAL_MAX_FILE_SIZE env var to increase"
         )
 

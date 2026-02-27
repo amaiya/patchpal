@@ -7,6 +7,56 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
+## 0.18.1 (2026-02-27)
+
+### new:
+- N/A
+
+### changed:
+- N/A
+
+### fixed:
+- Fixed `--maximum-security` mode to require permission for harmless commands (ls, grep, pytest, etc.). Previously, harmless read-only commands were auto-granted in all modes, which defeated the purpose of maximum security. Now harmless commands are only auto-granted when NOT in `--maximum-security` mode.
+- Updated error messages for blocked file access outside repository to mention both `PATCHPAL_RESTRICT_TO_REPO` environment variable and `--maximum-security` flag.
+
+
+## 0.18.0 (2026-02-27)
+
+### new:
+- Added `--maximum-security` CLI flag that enables all security restrictions in a single command: requires permission for all operations, restricts file access to repository only, and disables web access. Ideal for processing sensitive codebases or working in compliance-driven environments.
+
+### changed:
+- Refactor config system to be truly dynamic by removing static variables and reading directly from `config` properties throughout codebase. Simplifies testing and enables runtime configuration changes without module reloads.
+
+### fixed:
+- Fixed LiteLLM deprecation warning for `aws_bedrock_client` parameter. Removed deprecated manual boto3 client creation in favor of LiteLLM's recommended authentication via environment variables. Region configuration now properly handled via `AWS_REGION_NAME` and `AWS_REGION` environment variables set by `_setup_bedrock_env()`. Timeout configuration now relies on LiteLLM's built-in `timeout` parameter instead of custom boto3 client config.
+- Fixed confusing permission prompts for invalid paths in `read_file` and `read_lines`. Path validation (repository restrictions, sensitive file checks) now happens before permission prompts to avoid asking permission for operations that will be rejected anyway.
+
+
+## 0.17.5 (2026-02-26)
+
+### new:
+- N/A
+
+### changed:
+- N/A
+
+### fixed:
+- Fixed AWS Bedrock GovCloud "You must specify a region" errors by ensuring region is properly set via environment variables.
+
+
+## 0.17.4 (2026-02-26)
+
+### new:
+- N/A
+
+### changed:
+- Added `PATCHPAL_RESTRICT_TO_REPO` allowing you to restrict read/write operations to the repo folder
+
+### fixed:
+- Fixed AWS Bedrock timeout configuration: Added boto3 client with explicit timeouts (connect=10s, read=300s) to prevent indefinite hangs. Previously, `timeout` parameter was ignored for Bedrock, causing "None seconds" timeout errors.
+
+
 ## 0.17.3 (2026-02-24)
 
 ### new:

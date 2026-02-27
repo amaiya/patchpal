@@ -64,9 +64,24 @@ def _setup_bedrock_env():
     Maps PatchPal's environment variables to LiteLLM's expected format.
     """
     # Set custom region (e.g., us-gov-east-1 for GovCloud)
-    bedrock_region = os.getenv("AWS_BEDROCK_REGION")
-    if bedrock_region and not os.getenv("AWS_REGION_NAME"):
-        os.environ["AWS_REGION_NAME"] = bedrock_region
+    # LiteLLM checks these environment variables in order:
+    # 1. AWS_REGION_NAME (LiteLLM-specific)
+    # 2. AWS_REGION (standard AWS)
+    # 3. AWS_DEFAULT_REGION (standard AWS)
+    bedrock_region = (
+        os.getenv("AWS_BEDROCK_REGION")
+        or os.getenv("AWS_REGION")
+        or os.getenv("AWS_DEFAULT_REGION")
+        or os.getenv("AWS_REGION_NAME")
+    )
+
+    if bedrock_region:
+        # Set AWS_REGION_NAME for LiteLLM (takes precedence)
+        if not os.getenv("AWS_REGION_NAME"):
+            os.environ["AWS_REGION_NAME"] = bedrock_region
+        # Also set AWS_REGION for boto3 compatibility
+        if not os.getenv("AWS_REGION"):
+            os.environ["AWS_REGION"] = bedrock_region
 
     # Set custom endpoint URL (e.g., VPC endpoint or GovCloud endpoint)
     bedrock_endpoint = os.getenv("AWS_BEDROCK_ENDPOINT")
@@ -647,6 +662,7 @@ It's currently empty (just the template). The file is automatically loaded at se
                 messages = [{"role": "system", "content": SYSTEM_PROMPT}] + msgs
                 # Apply prompt caching for supported models
                 messages = _apply_prompt_caching(messages, self.model_id)
+
                 response = self.resilient_llm.completion(
                     model=self.model_id,
                     messages=messages,
@@ -1280,34 +1296,34 @@ It's currently empty (just the template). The file is automatically loaded at se
                         total_lines = len(lines)
 
                         # Check if output exceeds universal limits
-                        from patchpal.tools import MAX_TOOL_OUTPUT_CHARS, MAX_TOOL_OUTPUT_LINES
+                        from patchpal.config import config
 
                         if (
-                            total_lines > MAX_TOOL_OUTPUT_LINES
-                            or result_size > MAX_TOOL_OUTPUT_CHARS
+                            total_lines > config.MAX_TOOL_OUTPUT_LINES
+                            or result_size > config.MAX_TOOL_OUTPUT_CHARS
                         ):
-                            truncated_by_lines = total_lines > MAX_TOOL_OUTPUT_LINES
-                            truncated_by_chars = result_size > MAX_TOOL_OUTPUT_CHARS
+                            truncated_by_lines = total_lines > config.MAX_TOOL_OUTPUT_LINES
+                            truncated_by_chars = result_size > config.MAX_TOOL_OUTPUT_CHARS
 
                             # Truncate to limits
-                            truncated_lines = lines[:MAX_TOOL_OUTPUT_LINES]
+                            truncated_lines = lines[: config.MAX_TOOL_OUTPUT_LINES]
                             truncated_str = "\n".join(truncated_lines)
 
                             # Also enforce character limit
-                            if len(truncated_str) > MAX_TOOL_OUTPUT_CHARS:
-                                truncated_str = truncated_str[:MAX_TOOL_OUTPUT_CHARS]
+                            if len(truncated_str) > config.MAX_TOOL_OUTPUT_CHARS:
+                                truncated_str = truncated_str[: config.MAX_TOOL_OUTPUT_CHARS]
 
                             removed_lines = total_lines - len(truncated_str.split("\n"))
 
                             if truncated_by_lines:
                                 truncation_note = f"\n\n... {removed_lines:,} lines truncated ({total_lines:,} total lines) ...\n\n"
                             else:
-                                truncation_note = f"\n\n... output truncated to {MAX_TOOL_OUTPUT_CHARS:,} characters (was {result_size:,}) ...\n\n"
+                                truncation_note = f"\n\n... output truncated to {config.MAX_TOOL_OUTPUT_CHARS:,} characters (was {result_size:,}) ...\n\n"
 
                             # Add helpful hint message
                             hint = (
                                 f"{truncation_note}"
-                                f"Output exceeded limits ({MAX_TOOL_OUTPUT_LINES:,} lines or {MAX_TOOL_OUTPUT_CHARS:,} characters).\n"
+                                f"Output exceeded limits ({config.MAX_TOOL_OUTPUT_LINES:,} lines or {config.MAX_TOOL_OUTPUT_CHARS:,} characters).\n"
                                 f"Consider:\n"
                                 f"- Using read_lines() to read files in chunks\n"
                                 f"- Using shell commands to filter output (e.g., grep, head, tail)\n"
@@ -1317,11 +1333,11 @@ It's currently empty (just the template). The file is automatically loaded at se
                             result_str = truncated_str + hint
                             if truncated_by_lines:
                                 print(
-                                    f"\033[1;33m⚠️  Tool output truncated: {total_lines:,} lines → {MAX_TOOL_OUTPUT_LINES:,} lines\033[0m"
+                                    f"\033[1;33m⚠️  Tool output truncated: {total_lines:,} lines → {config.MAX_TOOL_OUTPUT_LINES:,} lines\033[0m"
                                 )
                             elif truncated_by_chars:
                                 print(
-                                    f"\033[1;33m⚠️  Tool output truncated: {result_size:,} chars → {MAX_TOOL_OUTPUT_CHARS:,} chars\033[0m"
+                                    f"\033[1;33m⚠️  Tool output truncated: {result_size:,} chars → {config.MAX_TOOL_OUTPUT_CHARS:,} chars\033[0m"
                                 )
 
                         # Add truncated/normal text result to messages

@@ -13,9 +13,7 @@ except ImportError:
     from duckduckgo_search import DDGS
 
 from patchpal.tools.common import (
-    MAX_WEB_CONTENT_SIZE,
     WEB_HEADERS,
-    WEB_REQUEST_TIMEOUT,
     _get_permission_manager,
     _operation_limiter,
     audit_logger,
@@ -55,7 +53,7 @@ def web_fetch(url: str, extract_text: bool = True) -> str:
         # Make request with timeout and browser-like headers
         response = requests.get(
             url,
-            timeout=WEB_REQUEST_TIMEOUT,
+            timeout=config.WEB_TIMEOUT,
             headers=WEB_HEADERS,
             stream=True,  # Stream to check size first
             allow_redirects=True,  # Follow redirects (including moved repos)
@@ -64,18 +62,18 @@ def web_fetch(url: str, extract_text: bool = True) -> str:
 
         # Check content size
         content_length = response.headers.get("Content-Length")
-        if content_length and int(content_length) > MAX_WEB_CONTENT_SIZE:
+        if content_length and int(content_length) > config.MAX_WEB_SIZE:
             raise ValueError(
                 f"Content too large: {int(content_length):,} bytes "
-                f"(max {MAX_WEB_CONTENT_SIZE:,} bytes)"
+                f"(max {config.MAX_WEB_SIZE:,} bytes)"
             )
 
         # Read content with size limit
         content = b""
         for chunk in response.iter_content(chunk_size=8192):
             content += chunk
-            if len(content) > MAX_WEB_CONTENT_SIZE:
-                raise ValueError(f"Content exceeds size limit ({MAX_WEB_CONTENT_SIZE:,} bytes)")
+            if len(content) > config.MAX_WEB_SIZE:
+                raise ValueError(f"Content exceeds size limit ({config.MAX_WEB_SIZE:,} bytes)")
 
         # Get content type
         content_type = response.headers.get("Content-Type", "").lower()
@@ -154,7 +152,7 @@ def web_fetch(url: str, extract_text: bool = True) -> str:
         return text_content
 
     except requests.Timeout:
-        raise ValueError(f"Request timed out after {WEB_REQUEST_TIMEOUT} seconds")
+        raise ValueError(f"Request timed out after {config.WEB_TIMEOUT} seconds")
     except requests.RequestException as e:
         raise ValueError(f"Failed to fetch URL: {e}")
     except Exception as e:

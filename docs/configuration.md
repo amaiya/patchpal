@@ -16,6 +16,40 @@ export PATCHPAL_LITELLM_KWARGS='{"reasoning_effort": "high", "temperature": 0.7}
 
 ### Security & Permissions
 
+#### Maximum Security Mode
+
+For environments requiring the highest level of security, use the `--maximum-security` CLI flag:
+
+```bash
+patchpal --maximum-security
+```
+
+This single flag enables **all** security restrictions:
+- **Permission for all operations**: Requires approval for ALL operations including read operations (`read_file`, `list_files`, etc.)
+- **Repository-only access**: Blocks reading/writing files outside the repository directory (`PATCHPAL_RESTRICT_TO_REPO=true`)
+- **Web access disabled**: Disables web search and fetch tools to prevent data spillage (`PATCHPAL_ENABLE_WEB=false`)
+
+**When to use:**
+- Processing sensitive codebases with PII or confidential data
+- Working in compliance-driven environments (HIPAA, SOC2, etc.)
+- Evaluating untrusted prompts or skills
+
+**Granular Control:**
+
+You can also enable these restrictions individually:
+
+```bash
+# Require permission for all operations (including reads)
+patchpal --require-permission-for-all
+
+# Or use environment variables for fine-grained control
+export PATCHPAL_RESTRICT_TO_REPO=true  # Block access outside repository
+export PATCHPAL_ENABLE_WEB=false       # Disable web access
+patchpal
+```
+
+#### Environment Variables
+
 ```bash
 # Permission System
 export PATCHPAL_REQUIRE_PERMISSION=true      # Prompt before executing commands/modifying files (default: true)
@@ -38,6 +72,10 @@ export PATCHPAL_READ_ONLY=true               # Prevent ALL file modifications (d
                                              # Useful for: code review, exploration, security audits
 export PATCHPAL_ALLOW_SENSITIVE=true         # Allow access to .env, credentials (default: false - blocked)
                                              # Only enable with test/dummy credentials
+export PATCHPAL_RESTRICT_TO_REPO=true        # Restrict file access to repository only (default: false)
+                                             # Prevents reading/writing files outside the repository directory
+                                             # Useful for: preventing PII leakage from external files
+                                             # Examples of blocked paths: /tmp/file.txt, ~/Documents/notes.txt, ../../etc/passwd
 
 # Command Safety
 export PATCHPAL_ALLOW_SUDO=true              # Allow sudo/privilege escalation (default: false - blocked)
@@ -180,11 +218,18 @@ export PATCHPAL_LITELLM_KWARGS='{"reasoning_effort": "high"}'
 patchpal
 ```
 
-**Maximum Security (Read-Only Analysis):**
+**Maximum Security:**
+```bash
+# Single flag for all security restrictions
+patchpal --maximum-security
+# Enables: permission for all ops, repo-only access, web disabled
+```
+
+**Read-Only Mode (No File Modifications):**
 ```bash
 export PATCHPAL_READ_ONLY=true
-export PATCHPAL_REQUIRE_PERMISSION=true
-patchpal --require-permission-for-all
+patchpal
+# Agent can read files and run commands but cannot modify files
 ```
 
 **Testing Context Management:**

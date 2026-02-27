@@ -4,10 +4,9 @@ import difflib
 from pathlib import Path
 from typing import Optional
 
+from patchpal.config import config
 from patchpal.tools import common
 from patchpal.tools.common import (
-    MAX_FILE_SIZE,
-    READ_ONLY_MODE,
     _backup_file,
     _check_git_status,
     _check_path,
@@ -191,7 +190,7 @@ def write_file(path: str, content: str) -> str:
     """
     _operation_limiter.check_limit(f"write_file({path})")
 
-    if READ_ONLY_MODE:
+    if config.READ_ONLY:
         raise ValueError(
             "Cannot modify files in read-only mode\n"
             "Set PATCHPAL_READ_ONLY=false to allow modifications"
@@ -201,8 +200,10 @@ def write_file(path: str, content: str) -> str:
 
     # Check size of new content
     new_size = len(content.encode("utf-8"))
-    if new_size > MAX_FILE_SIZE:
-        raise ValueError(f"New content too large: {new_size:,} bytes (max {MAX_FILE_SIZE:,} bytes)")
+    if new_size > config.MAX_FILE_SIZE:
+        raise ValueError(
+            f"New content too large: {new_size:,} bytes (max {config.MAX_FILE_SIZE:,} bytes)"
+        )
 
     # Read old content if file exists (needed for diff in permission prompt)
     old_content = ""
@@ -305,7 +306,7 @@ def edit_file(path: str, old_string: str, new_string: str) -> str:
     """
     _operation_limiter.check_limit(f"edit_file({path[:30]}...)")
 
-    if READ_ONLY_MODE:
+    if config.READ_ONLY:
         raise ValueError(
             "Cannot edit files in read-only mode\n"
             "Set PATCHPAL_READ_ONLY=false to allow modifications"
