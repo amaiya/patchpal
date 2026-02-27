@@ -13,7 +13,7 @@ Most recent releases are shown at the top. Each release shows:
 - N/A
 
 ### changed:
-- N/A
+- Added `PATCHPAL_RESTRICT_TO_REPO` allowing you to restrict read/write operations to the repo folder
 
 ### fixed:
 - Fixed AWS Bedrock timeout configuration: Added boto3 client with explicit timeouts (connect=10s, read=300s) to prevent indefinite hangs. Previously, `timeout` parameter was ignored for Bedrock, causing "None seconds" timeout errors.
