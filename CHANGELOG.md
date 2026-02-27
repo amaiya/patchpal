@@ -16,20 +16,8 @@ Most recent releases are shown at the top. Each release shows:
 - Refactor config system to be truly dynamic by removing static variables and reading directly from `config` properties throughout codebase. Simplifies testing and enables runtime configuration changes without module reloads.
 
 ### fixed:
-- N/A
-
-
-
-## 0.17.6 (2026-02-26)
-
-### new:
-- N/A
-
-### changed:
-- N/A
-
-### fixed:
 - Fixed LiteLLM deprecation warning for `aws_bedrock_client` parameter. Removed deprecated manual boto3 client creation in favor of LiteLLM's recommended authentication via environment variables. Region configuration now properly handled via `AWS_REGION_NAME` and `AWS_REGION` environment variables set by `_setup_bedrock_env()`. Timeout configuration now relies on LiteLLM's built-in `timeout` parameter instead of custom boto3 client config.
+
 
 ## 0.17.5 (2026-02-26)
 
