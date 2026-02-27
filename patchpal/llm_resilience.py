@@ -120,6 +120,21 @@ class NetworkResilientLLM:
         # Disable boto3's internal retries - we handle retries at a higher level
         os.environ["AWS_MAX_ATTEMPTS"] = "1"
 
+        # Map Bedrock region env vars to what boto3/LiteLLM expect
+        # LiteLLM checks AWS_REGION_NAME first, then AWS_REGION, then AWS_DEFAULT_REGION
+        bedrock_region = (
+            os.getenv("AWS_BEDROCK_REGION")
+            or os.getenv("AWS_REGION")
+            or os.getenv("AWS_DEFAULT_REGION")
+            or os.getenv("AWS_REGION_NAME")
+        )
+
+        if bedrock_region:
+            if not os.getenv("AWS_REGION_NAME"):
+                os.environ["AWS_REGION_NAME"] = bedrock_region
+            if not os.getenv("AWS_REGION"):
+                os.environ["AWS_REGION"] = bedrock_region
+
         # Set boto3 timeout configuration via environment variables
         # These are used by boto3's botocore client
         os.environ["AWS_METADATA_SERVICE_TIMEOUT"] = str(int(self.connect_timeout))
