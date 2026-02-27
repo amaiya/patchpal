@@ -129,6 +129,9 @@ def test_create_agent_bedrock_env_setup(monkeypatch):
     for key in ["AWS_REGION_NAME", "AWS_BEDROCK_RUNTIME_ENDPOINT"]:
         monkeypatch.delenv(key, raising=False)
 
+    # Disable direct Bedrock mode for this test
+    monkeypatch.setenv("PATCHPAL_BEDROCK_DIRECT", "false")
+
     # Set Bedrock-specific env vars
     monkeypatch.setenv("AWS_BEDROCK_REGION", "us-gov-east-1")
     monkeypatch.setenv(
@@ -147,8 +150,11 @@ def test_create_agent_bedrock_env_setup(monkeypatch):
         == "https://vpce-test.bedrock-runtime.us-gov-east-1.vpce.amazonaws.com"
     )
 
-    # Verify agent has drop_params set for Bedrock
-    assert agent.litellm_kwargs.get("drop_params")
+    # Verify drop_params is NOT set for Bedrock (we removed it to fix timeout issue)
+    assert (
+        "drop_params" not in agent.litellm_kwargs
+        or agent.litellm_kwargs.get("drop_params") is False
+    )
 
 
 def test_create_agent_bedrock_arn_auto_detection(monkeypatch):
@@ -158,27 +164,41 @@ def test_create_agent_bedrock_arn_auto_detection(monkeypatch):
     for key in ["AWS_REGION_NAME", "AWS_BEDROCK_RUNTIME_ENDPOINT"]:
         monkeypatch.delenv(key, raising=False)
 
+    # Disable direct Bedrock mode for this test
+    monkeypatch.setenv("PATCHPAL_BEDROCK_DIRECT", "false")
+
     from patchpal.agent import create_agent
 
     # Create agent with bare ARN (without bedrock/ prefix)
     arn = "arn:aws-us-gov:bedrock:us-gov-east-1:012345678901:inference-profile/us-gov.anthropic.claude-sonnet-4-5-20250929-v1:0"
     agent = create_agent(model_id=arn)
 
-    # Verify bedrock/ prefix was automatically added and drop_params set
+    # Verify bedrock/ prefix was automatically added
     assert agent.model_id == f"bedrock/{arn}"
-    assert agent.litellm_kwargs.get("drop_params")
+    # Verify drop_params is NOT set (we removed it to fix timeout issue)
+    assert (
+        "drop_params" not in agent.litellm_kwargs
+        or agent.litellm_kwargs.get("drop_params") is False
+    )
 
 
-def test_create_agent_bedrock_model_id_auto_detection():
+def test_create_agent_bedrock_model_id_auto_detection(monkeypatch):
     """Test that standard Bedrock model IDs are automatically detected."""
+    # Disable direct Bedrock mode for this test
+    monkeypatch.setenv("PATCHPAL_BEDROCK_DIRECT", "false")
+
     from patchpal.agent import create_agent
 
     # Create agent with bare Bedrock model ID
     agent = create_agent(model_id="anthropic.claude-v2")
 
-    # Verify bedrock/ prefix was automatically added and drop_params set
+    # Verify bedrock/ prefix was automatically added
     assert agent.model_id == "bedrock/anthropic.claude-v2"
-    assert agent.litellm_kwargs.get("drop_params")
+    # Verify drop_params is NOT set (we removed it to fix timeout issue)
+    assert (
+        "drop_params" not in agent.litellm_kwargs
+        or agent.litellm_kwargs.get("drop_params") is False
+    )
 
 
 def test_agent_run_simple_response(monkeypatch):
@@ -1008,9 +1028,12 @@ def test_govcloud_pricing_with_cache_tokens(monkeypatch):
         assert abs(cost - expected_cost) < 1e-9
 
 
-def test_llm_timeout_default_value():
+def test_llm_timeout_default_value(monkeypatch):
     """Test that LLM_TIMEOUT has the correct default value."""
     import sys
+
+    # Unset any existing timeout env var
+    monkeypatch.delenv("PATCHPAL_LLM_TIMEOUT", raising=False)
 
     # Remove module from cache to get fresh import
     if "patchpal.agent" in sys.modules:
@@ -1046,6 +1069,18 @@ def test_llm_timeout_environment_override(monkeypatch):
 
 def test_llm_timeout_passed_to_completion(monkeypatch):
     """Test that timeout parameter is passed to litellm.completion."""
+    import sys
+
+    # Unset any existing timeout env var to use default
+    monkeypatch.delenv("PATCHPAL_LLM_TIMEOUT", raising=False)
+
+    # Disable direct Bedrock mode for this test
+    monkeypatch.setenv("PATCHPAL_BEDROCK_DIRECT", "false")
+
+    # Remove module from cache
+    if "patchpal.agent" in sys.modules:
+        del sys.modules["patchpal.agent"]
+
     from patchpal.agent import create_agent
 
     # Disable permissions for this test

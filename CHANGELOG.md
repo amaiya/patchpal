@@ -7,6 +7,19 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
+## 0.18.2 (2026-02-27)
+
+### new:
+- **Direct boto3 backend for AWS Bedrock**: Added `PATCHPAL_BEDROCK_DIRECT=true` environment variable to bypass LiteLLM and use direct boto3 calls for Bedrock. Provides simpler, more reliable connection path for network-challenged environments (e.g., GovCloud with security appliances). Based on onprem library's approach. LiteLLM remains the default for maximum compatibility.
+
+### changed:
+- N/A
+
+### fixed:
+- **Fixed Bedrock timeout being dropped**: Removed `drop_params=True` for Bedrock models which was causing LiteLLM to drop the `timeout` parameter (not in Bedrock's officially supported params list), resulting in indefinite hangs. Timeout now properly passed to boto3 for all Bedrock requests.
+
+
+
 ## 0.18.1 (2026-02-27)
 
 ### new:

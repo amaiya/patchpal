@@ -70,6 +70,16 @@ class Config:
         """JSON string of additional kwargs to pass to LiteLLM (optional)."""
         return os.getenv("PATCHPAL_LITELLM_KWARGS")
 
+    @property
+    def BEDROCK_DIRECT(self) -> bool:
+        """Use direct boto3 for Bedrock instead of LiteLLM (default: false).
+
+        When true, bypasses LiteLLM and uses direct boto3 calls to Bedrock.
+        This can be more reliable in network environments with security appliances.
+        Based on the approach used in the onprem library.
+        """
+        return _get_env_bool("PATCHPAL_BEDROCK_DIRECT", "false")
+
     # ============================================================================
     # Tool Configuration
     # ============================================================================

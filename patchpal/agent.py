@@ -420,8 +420,28 @@ class PatchPalAgent:
 
         # LiteLLM settings for models that need parameter dropping
         self.litellm_kwargs = {}
-        if self.model_id.startswith("bedrock/"):
-            self.litellm_kwargs["drop_params"] = True
+
+        # Check if using direct Bedrock (bypassing LiteLLM)
+        self.use_bedrock_direct = config.BEDROCK_DIRECT and self.model_id.startswith("bedrock/")
+
+        if self.use_bedrock_direct:
+            # Initialize direct Bedrock client (bypassing LiteLLM)
+            from patchpal.bedrock_direct import DirectBedrockClient
+
+            self.bedrock_client = DirectBedrockClient(
+                model_id=self.model_id,
+                # Don't set max_tokens or temperature - let them use model defaults
+                # or be specified per-request, just like with LiteLLM
+            )
+            print(
+                "\033[1;33m⚡ Using direct boto3 for Bedrock (bypassing LiteLLM)\033[0m", flush=True
+            )
+        elif self.model_id.startswith("bedrock/"):
+            # NOTE: We do NOT use drop_params=True for Bedrock because:
+            # 1. It drops the 'timeout' parameter which is critical for preventing hangs
+            # 2. Bedrock via LiteLLM handles unsupported params gracefully
+            # 3. The timeout param is passed to boto3, not directly to Bedrock API
+
             # Configure LiteLLM to handle Bedrock's strict message alternation requirement
             # This must be set globally, not as a completion parameter
             litellm.modify_params = True
@@ -654,12 +674,20 @@ It's currently empty (just the template). The file is automatically loaded at se
                 # Apply prompt caching for supported models
                 messages = _apply_prompt_caching(messages, self.model_id)
 
-                response = litellm.completion(
-                    model=self.model_id,
-                    messages=messages,
-                    timeout=LLM_TIMEOUT,
-                    **self.litellm_kwargs,
-                )
+                # Choose between direct Bedrock or LiteLLM
+                if self.use_bedrock_direct:
+                    # Use direct boto3 client (bypasses LiteLLM)
+                    response = self.bedrock_client.completion(
+                        messages=messages,
+                    )
+                else:
+                    # Use LiteLLM for all providers
+                    response = litellm.completion(
+                        model=self.model_id,
+                        messages=messages,
+                        timeout=LLM_TIMEOUT,
+                        **self.litellm_kwargs,
+                    )
 
                 # Track token usage from compaction call
                 self.total_llm_calls += 1
@@ -969,14 +997,24 @@ It's currently empty (just the template). The file is automatically loaded at se
                     for func in self.custom_tools:
                         tools.append(function_to_tool_schema(func))
 
-                response = litellm.completion(
-                    model=self.model_id,
-                    messages=messages,
-                    tools=tools,
-                    tool_choice="auto",
-                    timeout=LLM_TIMEOUT,
-                    **self.litellm_kwargs,
-                )
+                # Choose between direct Bedrock or LiteLLM
+                if self.use_bedrock_direct:
+                    # Use direct boto3 client (bypasses LiteLLM)
+                    response = self.bedrock_client.completion(
+                        messages=messages,
+                        tools=tools,
+                        tool_choice="auto",
+                    )
+                else:
+                    # Use LiteLLM for all providers
+                    response = litellm.completion(
+                        model=self.model_id,
+                        messages=messages,
+                        tools=tools,
+                        tool_choice="auto",
+                        timeout=LLM_TIMEOUT,
+                        **self.litellm_kwargs,
+                    )
 
                 # Track token usage from this LLM call
                 self.total_llm_calls += 1
