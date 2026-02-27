@@ -966,7 +966,8 @@ def require_permission_for_read(tool_name: str, get_description, get_pattern=Non
                                 f"Access outside repository blocked: {path}\n"
                                 f"File location: {p}\n"
                                 f"Repository root: {REPO_ROOT}\n"
-                                f"Set PATCHPAL_RESTRICT_TO_REPO=false to allow external access"
+                                f"Set PATCHPAL_RESTRICT_TO_REPO=false to allow external access, "
+                                f"or disable --maximum-security"
                             )
 
                         # Check sensitive file restriction
@@ -1047,7 +1048,8 @@ def _check_path(path: str, must_exist: bool = True) -> Path:
             f"Access outside repository blocked: {path}\n"
             f"File location: {p}\n"
             f"Repository root: {REPO_ROOT}\n"
-            f"Set PATCHPAL_RESTRICT_TO_REPO=false to allow external access"
+            f"Set PATCHPAL_RESTRICT_TO_REPO=false to allow external access, "
+            f"or disable --maximum-security"
         )
 
     # Check if file is sensitive FIRST (regardless of whether it exists)
