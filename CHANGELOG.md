@@ -7,6 +7,19 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
+## 0.18.1 (2026-02-27)
+
+### new:
+- N/A
+
+### changed:
+- N/A
+
+### fixed:
+- Fixed `--maximum-security` mode to require permission for harmless commands (ls, grep, pytest, etc.). Previously, harmless read-only commands were auto-granted in all modes, which defeated the purpose of maximum security. Now harmless commands are only auto-granted when NOT in `--maximum-security` mode.
+- Updated error messages for blocked file access outside repository to mention both `PATCHPAL_RESTRICT_TO_REPO` environment variable and `--maximum-security` flag.
+
+
 ## 0.18.0 (2026-02-27)
 
 ### new:

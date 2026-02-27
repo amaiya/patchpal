@@ -26,10 +26,14 @@ class PermissionManager:
         # Using streaming mode in CLI allows permissions to work properly
         self.enabled = config.REQUIRE_PERMISSION
 
-        # Auto-grant harmless read-only commands in all modes
+        # Auto-grant harmless read-only commands in all modes EXCEPT maximum security
         # Since these replace dedicated tools that were removed (list_files, tree, etc.),
-        # they should always work seamlessly
-        self._grant_harmless_commands()
+        # they should work seamlessly. However, in maximum security mode (--maximum-security),
+        # we require explicit permission for ALL operations including harmless commands.
+        from patchpal.tools.common import get_require_permission_for_all
+
+        if not get_require_permission_for_all():
+            self._grant_harmless_commands()
 
     def _load_persistent_grants(self) -> dict:
         """Load persistent permission grants from file."""
