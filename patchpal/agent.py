@@ -435,11 +435,12 @@ class PatchPalAgent:
             self.litellm_kwargs.update(litellm_kwargs)
 
         # Initialize network-resilient LLM wrapper
+        # Uses environment variables and automatic retries to handle network issues
+        # Especially important for GovCloud Bedrock where network appliances can stall connections
         self.resilient_llm = NetworkResilientLLM(
             max_retries=3,
             timeout=LLM_TIMEOUT,
             connect_timeout=10.0,
-            read_timeout=180.0,  # 3 minutes to allow long responses
         )
 
         # Load MEMORY.md if it exists and has non-template content

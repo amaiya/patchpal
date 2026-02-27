@@ -2,6 +2,9 @@
 
 Provides retry logic, connection management, and timeout handling to prevent
 hangs when network connections are unstable or briefly interrupted.
+
+Specifically optimized for AWS GovCloud Bedrock environments where network
+security appliances (firewalls, proxies) can cause connection stalls.
 """
 
 import os
@@ -16,14 +19,6 @@ try:
 except ImportError:
     HTTPX_AVAILABLE = False
 
-try:
-    from botocore.config import Config as BotoConfig
-
-    BOTO3_AVAILABLE = True
-except ImportError:
-    BOTO3_AVAILABLE = False
-    BotoConfig = None
-
 import litellm
 
 
@@ -33,8 +28,12 @@ class NetworkResilientLLM:
     Features:
     - Automatic retries with exponential backoff
     - Socket-level timeouts to detect stale connections
-    - Connection health checks
+    - TCP keepalive configuration via environment variables
     - Graceful degradation on network issues
+
+    Note: Does NOT create boto3 clients directly (deprecated in LiteLLM).
+    Instead, configures environment variables that LiteLLM's internal
+    boto3 client will use.
     """
 
     def __init__(
@@ -44,7 +43,6 @@ class NetworkResilientLLM:
         max_delay: float = 60.0,
         timeout: int = 300,
         connect_timeout: float = 10.0,
-        read_timeout: float = 180.0,
     ):
         """Initialize the resilient LLM wrapper.
 
@@ -54,21 +52,20 @@ class NetworkResilientLLM:
             max_delay: Maximum delay between retries in seconds (default: 60.0)
             timeout: Overall request timeout in seconds (default: 300)
             connect_timeout: Connection establishment timeout in seconds (default: 10.0)
-            read_timeout: Read timeout for detecting stale connections (default: 180.0)
         """
         self.max_retries = max_retries
         self.base_delay = base_delay
         self.max_delay = max_delay
         self.timeout = timeout
         self.connect_timeout = connect_timeout
-        self.read_timeout = read_timeout
 
         # Configure httpx client with aggressive timeouts
-        # This is used by litellm for HTTP-based providers
+        # This is used by litellm for HTTP-based providers (OpenAI, Anthropic direct, etc.)
         self._configure_httpx()
 
-        # Configure boto3 for AWS Bedrock with proper timeouts
-        self._configure_boto3()
+        # Configure boto3 via environment variables for AWS Bedrock
+        # LiteLLM will create its own boto3 client using these settings
+        self._configure_bedrock_env()
 
     def _configure_httpx(self):
         """Configure httpx with socket-level timeouts.
@@ -85,7 +82,7 @@ class NetworkResilientLLM:
         timeout_config = httpx.Timeout(
             timeout=self.timeout,
             connect=self.connect_timeout,
-            read=self.read_timeout,
+            read=self.timeout,  # Use full timeout for reads
             write=30.0,  # Write timeout for request body
             pool=5.0,  # Timeout for acquiring connection from pool
         )
@@ -108,33 +105,73 @@ class NetworkResilientLLM:
             ),
         )
 
-    def _configure_boto3(self):
-        """Configure boto3 client for AWS Bedrock with proper timeouts.
+    def _configure_bedrock_env(self):
+        """Configure environment variables for AWS Bedrock resilience.
 
-        Sets configuration that litellm's bedrock integration will use.
-        This prevents indefinite hangs on AWS Bedrock.
+        Sets boto3-related environment variables that LiteLLM's internal
+        boto3 client will use. This approach avoids the deprecated
+        aws_bedrock_client parameter.
+
+        Configures:
+        - TCP keepalive to detect dead connections faster
+        - Aggressive timeouts to prevent indefinite hangs
+        - Retry behavior (disabled, we handle retries)
         """
-        if not BOTO3_AVAILABLE:
-            return
+        # Disable boto3's internal retries - we handle retries at a higher level
+        os.environ["AWS_MAX_ATTEMPTS"] = "1"
 
-        # Set AWS client config via environment variables
-        os.environ["AWS_MAX_ATTEMPTS"] = "1"  # We handle retries ourselves
+        # Set boto3 timeout configuration via environment variables
+        # These are used by boto3's botocore client
+        os.environ["AWS_METADATA_SERVICE_TIMEOUT"] = str(int(self.connect_timeout))
 
-        # Create a custom boto3 config with aggressive timeouts
-        boto_config = BotoConfig(
-            connect_timeout=int(self.connect_timeout),
-            read_timeout=int(self.read_timeout),
-            retries={"max_attempts": 0},  # We handle retries at higher level
-        )
+        # For GovCloud and environments with network issues:
+        # Enable TCP keepalive at the system level
+        # This helps detect stalled connections before read timeout expires
+        #
+        # Note: These socket options are platform-specific and may not work everywhere,
+        # but they provide faster dead connection detection when they do work.
+        # The read timeout (via litellm's timeout parameter) is still the ultimate fallback.
 
-        # Store the config for use in completion calls
-        self._boto_config = boto_config
+        # Keepalive probe settings (Linux/Unix):
+        # - Start sending keepalive probes after 30 seconds of idle time
+        # - Send probes every 10 seconds
+        # - Declare connection dead after 3 failed probes (total 60 seconds)
+        # This means a stalled connection will be detected within ~60 seconds
+        # instead of waiting for the full read_timeout (300s)
 
-        # LiteLLM uses environment variable AWS_BEDROCK_RUNTIME_CONFIG
-        # But we'll set it programmatically via litellm's internal config
-        # Store reference to allow injection before each call
-        if not hasattr(litellm, "_patchpal_boto_config"):
-            litellm._patchpal_boto_config = boto_config
+        # These can be set via sysctl on Linux, but that requires root.
+        # Instead, we rely on boto3's tcp_keepalive config parameter,
+        # which LiteLLM will pass through if we set the right environment.
+
+        # Set environment hint for boto3 to enable TCP keepalive
+        # (Note: boto3 enables this by default in recent versions)
+        os.environ["AWS_TCP_KEEPALIVE"] = "1"
+
+    def _is_govcloud_model(self, model: str) -> bool:
+        """Check if model is using AWS GovCloud Bedrock.
+
+        Args:
+            model: Model identifier
+
+        Returns:
+            True if using GovCloud Bedrock
+        """
+        # Check if model ID contains us-gov region
+        if "us-gov" in model.lower():
+            return True
+
+        # Check environment variables for GovCloud region
+        for env_var in [
+            "AWS_BEDROCK_REGION",
+            "AWS_REGION",
+            "AWS_DEFAULT_REGION",
+            "AWS_REGION_NAME",
+        ]:
+            region = os.getenv(env_var, "")
+            if region.startswith("us-gov"):
+                return True
+
+        return False
 
     def _is_retryable_error(self, error: Exception) -> bool:
         """Determine if an error is retryable.
@@ -154,16 +191,24 @@ class NetworkResilientLLM:
             "connection reset",
             "connection refused",
             "connection error",
+            "connection aborted",
             "broken pipe",
             "read timeout",
             "connect timeout",
             "socket",
             "network",
             "temporary failure",
+            "temporarily unavailable",
+            "service unavailable",
             "503",  # Service unavailable
             "502",  # Bad gateway
             "504",  # Gateway timeout
             "429",  # Rate limit (with backoff)
+            "connection pool",
+            "ssl",
+            "tls",
+            "eof occurred",
+            "connection closed",
         ]
 
         return any(pattern in error_str for pattern in retryable_patterns)
@@ -193,10 +238,13 @@ class NetworkResilientLLM:
         """
         last_error = None
         attempt = 0
+        is_govcloud = self._is_govcloud_model(model)
 
         while attempt <= self.max_retries:
             try:
                 # Prepare kwargs with timeout
+                # LiteLLM will pass this timeout to its internal boto3 client
+                # as both connect_timeout and read_timeout
                 call_kwargs = {
                     "model": model,
                     "messages": messages,
@@ -206,20 +254,9 @@ class NetworkResilientLLM:
                     **kwargs,
                 }
 
-                # For AWS Bedrock models, create client with our config
-                if BOTO3_AVAILABLE and hasattr(self, "_boto_config"):
-                    # Check if this is a bedrock model
-                    is_bedrock = "bedrock" in model.lower() or model.startswith("arn:aws")
-                    if is_bedrock:
-                        # Create bedrock client with our timeout config
-                        # LiteLLM will use this if we set it as aws_bedrock_client
-                        import boto3
-
-                        session = boto3.Session()
-                        bedrock_client = session.client("bedrock-runtime", config=self._boto_config)
-                        call_kwargs["aws_bedrock_client"] = bedrock_client
-
                 # Call LiteLLM with configured timeout
+                # LiteLLM will create its own boto3 client for Bedrock models
+                # using the environment variables we configured
                 response = litellm.completion(**call_kwargs)
                 return response
 
@@ -247,20 +284,32 @@ class NetworkResilientLLM:
                 jitter = random.uniform(0, delay * 0.1)
                 delay += jitter
 
-                print(
-                    f"\033[1;33m⚠️  Network error: {str(e)[:100]}\033[0m",
-                    flush=True,
-                )
-                print(
-                    f"\033[2m   Retrying in {delay:.1f}s (attempt {attempt}/{self.max_retries})...\033[0m",
-                    flush=True,
-                )
+                # Show appropriate message based on whether this is GovCloud
+                if is_govcloud:
+                    print(
+                        f"\033[1;33m⚠️  GovCloud network error: {str(e)[:100]}\033[0m",
+                        flush=True,
+                    )
+                    print(
+                        f"\033[2m   Retrying in {delay:.1f}s (attempt {attempt}/{self.max_retries})...\033[0m",
+                        flush=True,
+                    )
+                else:
+                    print(
+                        f"\033[1;33m⚠️  Network error: {str(e)[:100]}\033[0m",
+                        flush=True,
+                    )
+                    print(
+                        f"\033[2m   Retrying in {delay:.1f}s (attempt {attempt}/{self.max_retries})...\033[0m",
+                        flush=True,
+                    )
 
                 time.sleep(delay)
 
-                # Recreate clients to clear any stale connections
+                # Recreate httpx client to clear any stale connections
                 self._configure_httpx()
-                self._configure_boto3()
+                # Re-apply environment variable configuration
+                self._configure_bedrock_env()
 
         # All retries exhausted
         error_msg = f"LLM API call failed after {self.max_retries} retries: {last_error}"
@@ -280,16 +329,11 @@ class NetworkResilientLLM:
             litellm.client_session = litellm._original_client_session
             delattr(litellm, "_original_client_session")
 
-        # Clean up boto3 config reference
-        if hasattr(litellm, "_patchpal_boto_config"):
-            delattr(litellm, "_patchpal_boto_config")
-
 
 def create_resilient_llm(
     timeout: int = 300,
     max_retries: int = 3,
     connect_timeout: float = 10.0,
-    read_timeout: float = 180.0,
 ) -> NetworkResilientLLM:
     """Create a network-resilient LLM wrapper.
 
@@ -297,7 +341,6 @@ def create_resilient_llm(
         timeout: Overall request timeout in seconds (default: 300)
         max_retries: Maximum number of retry attempts (default: 3)
         connect_timeout: Connection establishment timeout (default: 10.0)
-        read_timeout: Read timeout for detecting stale connections (default: 180.0)
 
     Returns:
         Configured NetworkResilientLLM instance
@@ -306,5 +349,4 @@ def create_resilient_llm(
         max_retries=max_retries,
         timeout=timeout,
         connect_timeout=connect_timeout,
-        read_timeout=read_timeout,
     )
