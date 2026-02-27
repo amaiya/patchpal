@@ -7,6 +7,19 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
+## 0.18.0 (2026-02-27)
+
+### new:
+- N/A
+
+### changed:
+- Refactor config system to be truly dynamic by removing static variables and reading directly from `config` properties throughout codebase. Simplifies testing and enables runtime configuration changes without module reloads.
+
+### fixed:
+- N/A
+
+
+
 ## 0.17.6 (2026-02-26)
 
 ### new:

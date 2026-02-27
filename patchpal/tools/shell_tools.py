@@ -3,11 +3,11 @@
 import subprocess
 from typing import Optional
 
+from patchpal.config import config
 from patchpal.tools import common
 from patchpal.tools.common import (
     DANGEROUS_PATTERNS,
     DANGEROUS_TOKENS,
-    SHELL_TIMEOUT,
     OutputFilter,
     _get_permission_manager,
     _operation_limiter,
@@ -305,7 +305,7 @@ def run_shell(cmd: str) -> str:
         shell=True,
         capture_output=True,
         cwd=common.REPO_ROOT,
-        timeout=SHELL_TIMEOUT,
+        timeout=config.SHELL_TIMEOUT,
     )
 
     # Decode output with error handling for problematic characters

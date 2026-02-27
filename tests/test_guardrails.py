@@ -57,10 +57,8 @@ class TestSensitiveFileProtection:
 
     def test_allows_with_override(self, temp_repo, monkeypatch):
         """Test that ALLOW_SENSITIVE override works."""
-        # Directly patch ALLOW_SENSITIVE instead of reloading
-        import patchpal.tools.common
-
-        monkeypatch.setattr(patchpal.tools.common, "ALLOW_SENSITIVE", True)
+        # Monkeypatch the config property
+        monkeypatch.setenv("PATCHPAL_ALLOW_SENSITIVE", "true")
 
         from patchpal.tools import read_file
 
@@ -137,10 +135,8 @@ class TestReadOnlyMode:
 
     def test_blocks_writes_in_readonly(self, temp_repo, monkeypatch):
         """Test that writes are blocked in read-only mode."""
-        # Patch READ_ONLY_MODE in the file_writing module where it's used
-        import patchpal.tools.file_writing
-
-        monkeypatch.setattr(patchpal.tools.file_writing, "READ_ONLY_MODE", True)
+        # Monkeypatch the config property via environment variable
+        monkeypatch.setenv("PATCHPAL_READ_ONLY", "true")
 
         from patchpal.tools import write_file
 
@@ -149,10 +145,8 @@ class TestReadOnlyMode:
 
     def test_allows_reads_in_readonly(self, temp_repo, monkeypatch):
         """Test that reads work in read-only mode."""
-        # Directly patch READ_ONLY_MODE instead of reloading
-        import patchpal.tools.common
-
-        monkeypatch.setattr(patchpal.tools.common, "READ_ONLY_MODE", True)
+        # Monkeypatch the config property via environment variable
+        monkeypatch.setenv("PATCHPAL_READ_ONLY", "true")
 
         from patchpal.tools import read_file
 
@@ -204,10 +198,8 @@ class TestCommandSafety:
         if sys.platform == "win32":
             pytest.skip("Subprocess timeout with shell=True unreliable on Windows")
 
-        # Directly patch SHELL_TIMEOUT instead of reloading
-        import patchpal.tools.shell_tools
-
-        monkeypatch.setattr(patchpal.tools.shell_tools, "SHELL_TIMEOUT", 2)
+        # Monkeypatch the config property via environment variable
+        monkeypatch.setenv("PATCHPAL_SHELL_TIMEOUT", "2")
 
         import subprocess
 
@@ -271,12 +263,12 @@ class TestPathTraversal:
         import patchpal.permissions
         import patchpal.tools
 
-        # Patch module-level constants directly (since they're read at import time)
-        monkeypatch.setattr(patchpal.tools, "READ_ONLY_MODE", False)
+        # Ensure writes are enabled via environment variable
+        monkeypatch.setenv("PATCHPAL_READ_ONLY", "false")
 
         # Reset cached permission managers
         patchpal.permissions._permission_manager = None
-        patchpal.tools._permission_manager = None
+        patchpal.tools.common._permission_manager = None
 
         # Patch REPO_ROOT
         repo_root = Path(temp_repo).resolve()
@@ -309,12 +301,12 @@ class TestPathTraversal:
         import patchpal.permissions
         import patchpal.tools
 
-        # Patch module-level constants directly (since they're read at import time)
-        monkeypatch.setattr(patchpal.tools, "READ_ONLY_MODE", False)
+        # Ensure writes are enabled via environment variable
+        monkeypatch.setenv("PATCHPAL_READ_ONLY", "false")
 
         # Reset cached permission managers
         patchpal.permissions._permission_manager = None
-        patchpal.tools._permission_manager = None
+        patchpal.tools.common._permission_manager = None
 
         # Patch REPO_ROOT
         repo_root = Path(temp_repo).resolve()
@@ -375,16 +367,16 @@ class TestConfigurability:
 
     def test_custom_max_file_size(self, temp_repo, monkeypatch):
         """Test that MAX_FILE_SIZE can be configured."""
-        # Patch MAX_FILE_SIZE in the file_reading module where it's used
-        import patchpal.tools.file_reading
-
-        monkeypatch.setattr(patchpal.tools.file_reading, "MAX_FILE_SIZE", 1000)
+        # Monkeypatch the config property via environment variable
+        monkeypatch.setenv("PATCHPAL_MAX_FILE_SIZE", "1000")
 
         # Should now block even small files
         (temp_repo / "medium.txt").write_text("x" * 2000)
 
+        from patchpal.tools import read_file
+
         with pytest.raises(ValueError, match="too large"):
-            patchpal.tools.read_file("medium.txt")
+            read_file("medium.txt")
 
 
 # Summary test to demonstrate all guardrails

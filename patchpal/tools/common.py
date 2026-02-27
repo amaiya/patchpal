@@ -53,9 +53,7 @@ from patchpal.config import config  # noqa: E402
 
 # Platform-aware command blocking - minimal list since we have permission system
 # Allow dangerous operations if explicitly enabled via environment variable
-ALLOW_SUDO = config.ALLOW_SUDO
-
-if ALLOW_SUDO:
+if config.ALLOW_SUDO:
     # Dangerous operations allowed - no command blocking
     DANGEROUS_TOKENS = set()
     DANGEROUS_PATTERNS = []
@@ -133,27 +131,10 @@ CRITICAL_FILES = {
 }
 
 # Configuration
-# Reduced from 10MB to 500KB to prevent context window explosions
-# A 3.46MB file = ~1.15M tokens which exceeds most model context limits (128K-200K)
-# 500KB ≈ 166K tokens which is safe for most models
-MAX_FILE_SIZE = config.MAX_FILE_SIZE
-READ_ONLY_MODE = config.READ_ONLY
-ALLOW_SENSITIVE = config.ALLOW_SENSITIVE
-RESTRICT_TO_REPO = config.RESTRICT_TO_REPO
-ENABLE_AUDIT_LOG = config.AUDIT_LOG
-ENABLE_BACKUPS = config.ENABLE_BACKUPS
-MAX_OPERATIONS = config.MAX_OPERATIONS
-
-# Universal tool output limits (applied after tool execution to prevent context explosions)
-# Similar to OpenCode's approach but with more generous limits
-MAX_TOOL_OUTPUT_LINES = config.MAX_TOOL_OUTPUT_LINES
-MAX_TOOL_OUTPUT_CHARS = config.MAX_TOOL_OUTPUT_CHARS
-# Note: Character-based (not bytes) to avoid breaking Unicode during truncation
+# Note: All configuration is now read directly from config module (patchpal.config)
+# This allows dynamic environment variable changes and simpler testing
 
 # Web request configuration
-WEB_REQUEST_TIMEOUT = config.WEB_TIMEOUT
-MAX_WEB_CONTENT_SIZE = config.MAX_WEB_SIZE
-# Note: Web fetch output is handled by universal MAX_TOOL_OUTPUT_CHARS limit
 # Use browser-like User-Agent to avoid bot blocking (e.g., GitHub redirects work with browser UA)
 # Use standard browser UA instead of identifying as AI/bot to avoid blocking by sites like Reddit
 WEB_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
@@ -166,13 +147,6 @@ WEB_HEADERS = {
     "Connection": "keep-alive",
     "Upgrade-Insecure-Requests": "1",
 }
-
-# Shell command configuration
-SHELL_TIMEOUT = config.SHELL_TIMEOUT
-
-# Output filtering configuration - reduce token usage from verbose commands
-ENABLE_OUTPUT_FILTERING = config.FILTER_OUTPUTS
-MAX_OUTPUT_LINES = config.MAX_OUTPUT_LINES
 
 # Global flag for requiring permission on ALL operations (including reads)
 # Set via CLI flag --require-permission-for-all
@@ -273,7 +247,7 @@ def _get_permission_manager() -> PermissionManager:
 
 # Audit logging setup with rotation
 audit_logger = logging.getLogger("patchpal.audit")
-if ENABLE_AUDIT_LOG and not audit_logger.handlers:
+if config.AUDIT_LOG and not audit_logger.handlers:
     from logging.handlers import RotatingFileHandler
 
     audit_logger.setLevel(logging.INFO)
@@ -295,7 +269,7 @@ class OperationLimiter:
 
     def __init__(self):
         self.operations = 0
-        self.max_operations = MAX_OPERATIONS
+        self.max_operations = config.MAX_OPERATIONS
 
     def check_limit(self, operation: str):
         """Check if operation limit has been exceeded."""
@@ -330,7 +304,7 @@ class OutputFilter:
         Returns:
             True if filtering should be applied
         """
-        if not ENABLE_OUTPUT_FILTERING:
+        if not config.FILTER_OUTPUTS:
             return False
 
         # Test runners - show only failures
@@ -375,7 +349,7 @@ class OutputFilter:
         Returns:
             Filtered output with only relevant information
         """
-        if not output or not ENABLE_OUTPUT_FILTERING:
+        if not output or not config.FILTER_OUTPUTS:
             return output
 
         lines = output.split("\n")
@@ -480,14 +454,14 @@ class OutputFilter:
         Returns:
             Truncated output if necessary
         """
-        if original_lines > MAX_OUTPUT_LINES:
+        if original_lines > config.MAX_OUTPUT_LINES:
             # Show first and last portions
-            keep_start = MAX_OUTPUT_LINES // 2
-            keep_end = MAX_OUTPUT_LINES // 2
+            keep_start = config.MAX_OUTPUT_LINES // 2
+            keep_end = config.MAX_OUTPUT_LINES // 2
 
             truncated_lines = (
                 lines[:keep_start]
-                + ["", f"... [truncated {original_lines - MAX_OUTPUT_LINES} lines] ...", ""]
+                + ["", f"... [truncated {original_lines - config.MAX_OUTPUT_LINES} lines] ...", ""]
                 + lines[-keep_end:]
             )
 
@@ -654,7 +628,7 @@ def _check_git_status() -> dict:
 
 def _backup_file(path: Path) -> Optional[Path]:
     """Create backup of file before modification."""
-    if not ENABLE_BACKUPS or not path.exists():
+    if not config.ENABLE_BACKUPS or not path.exists():
         return None
 
     try:
@@ -1023,7 +997,7 @@ def _check_path(path: str, must_exist: bool = True) -> Path:
         p = (REPO_ROOT / expanded_path).resolve()
 
     # Check if access is restricted to repository
-    if RESTRICT_TO_REPO and not _is_inside_repo(p):
+    if config.RESTRICT_TO_REPO and not _is_inside_repo(p):
         raise ValueError(
             f"Access outside repository blocked: {path}\n"
             f"File location: {p}\n"
@@ -1033,7 +1007,7 @@ def _check_path(path: str, must_exist: bool = True) -> Path:
 
     # Check if file is sensitive FIRST (regardless of whether it exists)
     # This prevents attempts to read/write sensitive files
-    if _is_sensitive_file(p) and not ALLOW_SENSITIVE:
+    if _is_sensitive_file(p) and not config.ALLOW_SENSITIVE:
         raise ValueError(
             f"Access to sensitive file blocked: {path}\n"
             f"Set PATCHPAL_ALLOW_SENSITIVE=true to override (not recommended)"

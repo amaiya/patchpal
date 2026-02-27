@@ -1289,34 +1289,34 @@ It's currently empty (just the template). The file is automatically loaded at se
                         total_lines = len(lines)
 
                         # Check if output exceeds universal limits
-                        from patchpal.tools import MAX_TOOL_OUTPUT_CHARS, MAX_TOOL_OUTPUT_LINES
+                        from patchpal.config import config
 
                         if (
-                            total_lines > MAX_TOOL_OUTPUT_LINES
-                            or result_size > MAX_TOOL_OUTPUT_CHARS
+                            total_lines > config.MAX_TOOL_OUTPUT_LINES
+                            or result_size > config.MAX_TOOL_OUTPUT_CHARS
                         ):
-                            truncated_by_lines = total_lines > MAX_TOOL_OUTPUT_LINES
-                            truncated_by_chars = result_size > MAX_TOOL_OUTPUT_CHARS
+                            truncated_by_lines = total_lines > config.MAX_TOOL_OUTPUT_LINES
+                            truncated_by_chars = result_size > config.MAX_TOOL_OUTPUT_CHARS
 
                             # Truncate to limits
-                            truncated_lines = lines[:MAX_TOOL_OUTPUT_LINES]
+                            truncated_lines = lines[: config.MAX_TOOL_OUTPUT_LINES]
                             truncated_str = "\n".join(truncated_lines)
 
                             # Also enforce character limit
-                            if len(truncated_str) > MAX_TOOL_OUTPUT_CHARS:
-                                truncated_str = truncated_str[:MAX_TOOL_OUTPUT_CHARS]
+                            if len(truncated_str) > config.MAX_TOOL_OUTPUT_CHARS:
+                                truncated_str = truncated_str[: config.MAX_TOOL_OUTPUT_CHARS]
 
                             removed_lines = total_lines - len(truncated_str.split("\n"))
 
                             if truncated_by_lines:
                                 truncation_note = f"\n\n... {removed_lines:,} lines truncated ({total_lines:,} total lines) ...\n\n"
                             else:
-                                truncation_note = f"\n\n... output truncated to {MAX_TOOL_OUTPUT_CHARS:,} characters (was {result_size:,}) ...\n\n"
+                                truncation_note = f"\n\n... output truncated to {config.MAX_TOOL_OUTPUT_CHARS:,} characters (was {result_size:,}) ...\n\n"
 
                             # Add helpful hint message
                             hint = (
                                 f"{truncation_note}"
-                                f"Output exceeded limits ({MAX_TOOL_OUTPUT_LINES:,} lines or {MAX_TOOL_OUTPUT_CHARS:,} characters).\n"
+                                f"Output exceeded limits ({config.MAX_TOOL_OUTPUT_LINES:,} lines or {config.MAX_TOOL_OUTPUT_CHARS:,} characters).\n"
                                 f"Consider:\n"
                                 f"- Using read_lines() to read files in chunks\n"
                                 f"- Using shell commands to filter output (e.g., grep, head, tail)\n"
@@ -1326,11 +1326,11 @@ It's currently empty (just the template). The file is automatically loaded at se
                             result_str = truncated_str + hint
                             if truncated_by_lines:
                                 print(
-                                    f"\033[1;33m⚠️  Tool output truncated: {total_lines:,} lines → {MAX_TOOL_OUTPUT_LINES:,} lines\033[0m"
+                                    f"\033[1;33m⚠️  Tool output truncated: {total_lines:,} lines → {config.MAX_TOOL_OUTPUT_LINES:,} lines\033[0m"
                                 )
                             elif truncated_by_chars:
                                 print(
-                                    f"\033[1;33m⚠️  Tool output truncated: {result_size:,} chars → {MAX_TOOL_OUTPUT_CHARS:,} chars\033[0m"
+                                    f"\033[1;33m⚠️  Tool output truncated: {result_size:,} chars → {config.MAX_TOOL_OUTPUT_CHARS:,} chars\033[0m"
                                 )
 
                         # Add truncated/normal text result to messages

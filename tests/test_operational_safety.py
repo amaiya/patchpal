@@ -113,10 +113,10 @@ class TestAutomaticBackups:
 
     def test_backup_created_on_modify(self, temp_repo, monkeypatch):
         """Test that backup is created when modifying file."""
-        # Directly patch ENABLE_BACKUPS instead of reloading
         import patchpal.tools.common
 
-        monkeypatch.setattr(patchpal.tools.common, "ENABLE_BACKUPS", True)
+        # Monkeypatch the config property via environment variable
+        monkeypatch.setenv("PATCHPAL_ENABLE_BACKUPS", "true")
 
         backup_dir = temp_repo / ".patchpal_backups"
         monkeypatch.setattr(patchpal.tools.common, "BACKUP_DIR", backup_dir)
@@ -134,7 +134,7 @@ class TestAutomaticBackups:
         # Directly patch ENABLE_BACKUPS instead of reloading
         import patchpal.tools.common
 
-        monkeypatch.setattr(patchpal.tools.common, "ENABLE_BACKUPS", True)
+        monkeypatch.setenv("PATCHPAL_ENABLE_BACKUPS", "true")
 
         backup_dir = temp_repo / ".patchpal_backups"
         monkeypatch.setattr(patchpal.tools.common, "BACKUP_DIR", backup_dir)
@@ -154,7 +154,7 @@ class TestAutomaticBackups:
         # Directly patch ENABLE_BACKUPS instead of reloading
         import patchpal.tools.common
 
-        monkeypatch.setattr(patchpal.tools.common, "ENABLE_BACKUPS", True)
+        monkeypatch.setenv("PATCHPAL_ENABLE_BACKUPS", "true")
 
         backup_dir = temp_repo / ".patchpal_backups"
         monkeypatch.setattr(patchpal.tools.common, "BACKUP_DIR", backup_dir)
