@@ -19,16 +19,6 @@ from patchpal.tools.definitions import get_tools
 # Can be overridden with PATCHPAL_LLM_TIMEOUT environment variable
 LLM_TIMEOUT = config.LLM_TIMEOUT
 
-# Check if boto3 is available for AWS Bedrock
-try:
-    import boto3
-    from botocore.config import Config as BotoConfig
-
-    BOTO3_AVAILABLE = True
-except ImportError:
-    BOTO3_AVAILABLE = False
-    BotoConfig = None
-
 
 def _is_bedrock_arn(model_id: str) -> bool:
     """Check if a model ID is a Bedrock ARN."""
@@ -37,43 +27,6 @@ def _is_bedrock_arn(model_id: str) -> bool:
         and ":bedrock:" in model_id
         and ":inference-profile/" in model_id
     )
-
-
-def _create_bedrock_client_with_timeout(timeout: int = LLM_TIMEOUT):
-    """Create a boto3 Bedrock client with proper timeout configuration.
-
-    Args:
-        timeout: Timeout in seconds (default: LLM_TIMEOUT)
-
-    Returns:
-        boto3 bedrock-runtime client with timeout config, or None if boto3 unavailable
-    """
-    if not BOTO3_AVAILABLE:
-        return None
-
-    # Create boto3 config with timeouts to prevent indefinite hangs
-    boto_config = BotoConfig(
-        connect_timeout=10,  # 10 seconds to establish connection
-        read_timeout=timeout,  # Use full timeout to allow long responses
-        retries={"max_attempts": 0},  # Disable boto3 retries (litellm handles this)
-    )
-
-    # Create bedrock client with timeout config
-    session = boto3.Session()
-
-    # Explicitly pass region to avoid "You must specify a region" errors
-    # Bedrock region can be set via AWS_BEDROCK_REGION or standard AWS env vars
-    region_name = (
-        os.getenv("AWS_REGION")
-        or os.getenv("AWS_DEFAULT_REGION")
-        or os.getenv("AWS_REGION_NAME")
-        or os.getenv("AWS_BEDROCK_REGION")
-    )
-
-    if region_name:
-        return session.client("bedrock-runtime", region_name=region_name, config=boto_config)
-
-    return session.client("bedrock-runtime", config=boto_config)
 
 
 def _normalize_bedrock_model_id(model_id: str) -> str:
@@ -110,9 +63,24 @@ def _setup_bedrock_env():
     Maps PatchPal's environment variables to LiteLLM's expected format.
     """
     # Set custom region (e.g., us-gov-east-1 for GovCloud)
-    bedrock_region = os.getenv("AWS_BEDROCK_REGION")
-    if bedrock_region and not os.getenv("AWS_REGION_NAME"):
-        os.environ["AWS_REGION_NAME"] = bedrock_region
+    # LiteLLM checks these environment variables in order:
+    # 1. AWS_REGION_NAME (LiteLLM-specific)
+    # 2. AWS_REGION (standard AWS)
+    # 3. AWS_DEFAULT_REGION (standard AWS)
+    bedrock_region = (
+        os.getenv("AWS_BEDROCK_REGION")
+        or os.getenv("AWS_REGION")
+        or os.getenv("AWS_DEFAULT_REGION")
+        or os.getenv("AWS_REGION_NAME")
+    )
+
+    if bedrock_region:
+        # Set AWS_REGION_NAME for LiteLLM (takes precedence)
+        if not os.getenv("AWS_REGION_NAME"):
+            os.environ["AWS_REGION_NAME"] = bedrock_region
+        # Also set AWS_REGION for boto3 compatibility
+        if not os.getenv("AWS_REGION"):
+            os.environ["AWS_REGION"] = bedrock_region
 
     # Set custom endpoint URL (e.g., VPC endpoint or GovCloud endpoint)
     bedrock_endpoint = os.getenv("AWS_BEDROCK_ENDPOINT")
@@ -686,18 +654,10 @@ It's currently empty (just the template). The file is automatically loaded at se
                 # Apply prompt caching for supported models
                 messages = _apply_prompt_caching(messages, self.model_id)
 
-                # For Bedrock models, create client with timeout config
-                bedrock_client = None
-                if BOTO3_AVAILABLE and (
-                    "bedrock" in self.model_id.lower() or self.model_id.startswith("arn:aws")
-                ):
-                    bedrock_client = _create_bedrock_client_with_timeout(LLM_TIMEOUT)
-
                 response = litellm.completion(
                     model=self.model_id,
                     messages=messages,
                     timeout=LLM_TIMEOUT,
-                    aws_bedrock_client=bedrock_client,
                     **self.litellm_kwargs,
                 )
 
@@ -1009,20 +969,12 @@ It's currently empty (just the template). The file is automatically loaded at se
                     for func in self.custom_tools:
                         tools.append(function_to_tool_schema(func))
 
-                # For Bedrock models, create client with timeout config
-                bedrock_client = None
-                if BOTO3_AVAILABLE and (
-                    "bedrock" in self.model_id.lower() or self.model_id.startswith("arn:aws")
-                ):
-                    bedrock_client = _create_bedrock_client_with_timeout(LLM_TIMEOUT)
-
                 response = litellm.completion(
                     model=self.model_id,
                     messages=messages,
                     tools=tools,
                     tool_choice="auto",
                     timeout=LLM_TIMEOUT,
-                    aws_bedrock_client=bedrock_client,
                     **self.litellm_kwargs,
                 )
 

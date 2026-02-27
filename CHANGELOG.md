@@ -7,6 +7,17 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
+## 0.17.6 (2026-02-26)
+
+### new:
+- N/A
+
+### changed:
+- N/A
+
+### fixed:
+- Fixed LiteLLM deprecation warning for `aws_bedrock_client` parameter. Removed deprecated manual boto3 client creation in favor of LiteLLM's recommended authentication via environment variables. Region configuration now properly handled via `AWS_REGION_NAME` and `AWS_REGION` environment variables set by `_setup_bedrock_env()`. Timeout configuration now relies on LiteLLM's built-in `timeout` parameter instead of custom boto3 client config.
+
 ## 0.17.5 (2026-02-26)
 
 ### new:
@@ -16,7 +27,7 @@ Most recent releases are shown at the top. Each release shows:
 - N/A
 
 ### fixed:
-- Fixed AWS Bedrock GovCloud "You must specify a region" errors by passing an explicit region to the boto3 Bedrock client when available.
+- Fixed AWS Bedrock GovCloud "You must specify a region" errors by ensuring region is properly set via environment variables.
 
 
 ## 0.17.4 (2026-02-26)
