@@ -19,6 +19,16 @@ from patchpal.tools.definitions import get_tools
 # Can be overridden with PATCHPAL_LLM_TIMEOUT environment variable
 LLM_TIMEOUT = config.LLM_TIMEOUT
 
+# Check if boto3 is available for AWS Bedrock
+try:
+    import boto3
+    from botocore.config import Config as BotoConfig
+
+    BOTO3_AVAILABLE = True
+except ImportError:
+    BOTO3_AVAILABLE = False
+    BotoConfig = None
+
 
 def _is_bedrock_arn(model_id: str) -> bool:
     """Check if a model ID is a Bedrock ARN."""
@@ -27,6 +37,30 @@ def _is_bedrock_arn(model_id: str) -> bool:
         and ":bedrock:" in model_id
         and ":inference-profile/" in model_id
     )
+
+
+def _create_bedrock_client_with_timeout(timeout: int = LLM_TIMEOUT):
+    """Create a boto3 Bedrock client with proper timeout configuration.
+
+    Args:
+        timeout: Timeout in seconds (default: LLM_TIMEOUT)
+
+    Returns:
+        boto3 bedrock-runtime client with timeout config, or None if boto3 unavailable
+    """
+    if not BOTO3_AVAILABLE:
+        return None
+
+    # Create boto3 config with timeouts to prevent indefinite hangs
+    boto_config = BotoConfig(
+        connect_timeout=10,  # 10 seconds to establish connection
+        read_timeout=timeout,  # Use full timeout to allow long responses
+        retries={"max_attempts": 0},  # Disable boto3 retries (litellm handles this)
+    )
+
+    # Create bedrock client with timeout config
+    session = boto3.Session()
+    return session.client("bedrock-runtime", config=boto_config)
 
 
 def _normalize_bedrock_model_id(model_id: str) -> str:
@@ -638,10 +672,19 @@ It's currently empty (just the template). The file is automatically loaded at se
                 messages = [{"role": "system", "content": SYSTEM_PROMPT}] + msgs
                 # Apply prompt caching for supported models
                 messages = _apply_prompt_caching(messages, self.model_id)
+
+                # For Bedrock models, create client with timeout config
+                bedrock_client = None
+                if BOTO3_AVAILABLE and (
+                    "bedrock" in self.model_id.lower() or self.model_id.startswith("arn:aws")
+                ):
+                    bedrock_client = _create_bedrock_client_with_timeout(LLM_TIMEOUT)
+
                 response = litellm.completion(
                     model=self.model_id,
                     messages=messages,
                     timeout=LLM_TIMEOUT,
+                    aws_bedrock_client=bedrock_client,
                     **self.litellm_kwargs,
                 )
 
@@ -953,12 +996,20 @@ It's currently empty (just the template). The file is automatically loaded at se
                     for func in self.custom_tools:
                         tools.append(function_to_tool_schema(func))
 
+                # For Bedrock models, create client with timeout config
+                bedrock_client = None
+                if BOTO3_AVAILABLE and (
+                    "bedrock" in self.model_id.lower() or self.model_id.startswith("arn:aws")
+                ):
+                    bedrock_client = _create_bedrock_client_with_timeout(LLM_TIMEOUT)
+
                 response = litellm.completion(
                     model=self.model_id,
                     messages=messages,
                     tools=tools,
                     tool_choice="auto",
                     timeout=LLM_TIMEOUT,
+                    aws_bedrock_client=bedrock_client,
                     **self.litellm_kwargs,
                 )
 
