@@ -1,4 +1,5 @@
 import argparse
+import os
 import sys
 import warnings
 from pathlib import Path
@@ -13,7 +14,7 @@ from rich.markdown import Markdown
 
 from patchpal.agent import create_agent
 from patchpal.config import config
-from patchpal.tools import audit_logger
+from patchpal.tools import audit_logger, set_require_permission_for_all
 
 
 def _sanitize_for_logging(text: str) -> str:
@@ -351,12 +352,24 @@ Supported models: Any LiteLLM-supported model
         help="Require permission for ALL operations including read operations (read_file, list_files, etc.). "
         "Use this for maximum security when you want to review every operation the agent performs.",
     )
+    parser.add_argument(
+        "--maximum-security",
+        action="store_true",
+        help="Enable maximum security mode: requires permission for ALL operations (including reads), "
+        "restricts file access to repository only (PATCHPAL_RESTRICT_TO_REPO=true), "
+        "and disables web access (PATCHPAL_ENABLE_WEB=false). "
+        "This is a convenience flag that combines all security restrictions.",
+    )
     args = parser.parse_args()
 
-    # Set the require-permission-for-all flag if specified
-    if args.require_permission_for_all:
-        from patchpal.tools import set_require_permission_for_all
+    # Set environment variables for maximum security mode
+    # With dynamic config, these take effect immediately
+    if args.maximum_security:
+        os.environ["PATCHPAL_RESTRICT_TO_REPO"] = "true"
+        os.environ["PATCHPAL_ENABLE_WEB"] = "false"
 
+    # Set the require-permission-for-all flag if specified
+    if args.require_permission_for_all or args.maximum_security:
         set_require_permission_for_all(True)
 
     # Determine model to use (priority: CLI arg > env var > default)
@@ -431,8 +444,13 @@ Supported models: Any LiteLLM-supported model
         kwargs_str = ", ".join(litellm_kwargs.keys())
         print(f"\033[1;36m⚙️  LiteLLM parameters: {kwargs_str}\033[0m")
 
-    # Show require-permission-for-all indicator if active
-    if args.require_permission_for_all:
+    # Show security mode indicators
+    if args.maximum_security:
+        print("\033[1;33m🔒 Maximum security mode enabled:\033[0m")
+        print("   • Permission required for ALL operations (including reads)")
+        print("   • File access restricted to repository only")
+        print("   • Web access disabled")
+    elif args.require_permission_for_all:
         print("\033[1;33m🔒 Permission required for ALL operations (including reads)\033[0m")
 
     # Show custom prompt indicator if set

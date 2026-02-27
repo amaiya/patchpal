@@ -919,6 +919,8 @@ def require_permission_for_read(tool_name: str, get_description, get_pattern=Non
     """Decorator to optionally require permission for read operations.
 
     This decorator only prompts if --require-permission-for-all mode is active.
+    For file operations, validates path restrictions (RESTRICT_TO_REPO, ALLOW_SENSITIVE)
+    BEFORE prompting for permission to avoid confusing permission prompts for invalid paths.
 
     Args:
         tool_name: Name of the tool (e.g., 'read_file')
@@ -937,6 +939,49 @@ def require_permission_for_read(tool_name: str, get_description, get_pattern=Non
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
+            # For file operations, validate path restrictions FIRST
+            # This prevents confusing permission prompts for paths that will be rejected anyway
+            if tool_name in ("read_file", "read_lines"):
+                # Get path from either positional or keyword arguments
+                # (LLM calls tools with keyword args, so we need to check both)
+                path = None
+                if args:
+                    path = args[0]
+                elif "path" in kwargs:
+                    path = kwargs["path"]
+
+                if path:
+                    try:
+                        # Do early path validation (without must_exist check)
+                        expanded_path = os.path.expanduser(path)
+                        path_obj = Path(expanded_path)
+                        if path_obj.is_absolute():
+                            p = path_obj.resolve()
+                        else:
+                            p = (REPO_ROOT / expanded_path).resolve()
+
+                        # Check repository restriction FIRST (before permission prompt)
+                        if config.RESTRICT_TO_REPO and not _is_inside_repo(p):
+                            raise ValueError(
+                                f"Access outside repository blocked: {path}\n"
+                                f"File location: {p}\n"
+                                f"Repository root: {REPO_ROOT}\n"
+                                f"Set PATCHPAL_RESTRICT_TO_REPO=false to allow external access"
+                            )
+
+                        # Check sensitive file restriction
+                        if _is_sensitive_file(p) and not config.ALLOW_SENSITIVE:
+                            raise ValueError(
+                                f"Access to sensitive file blocked: {path}\n"
+                                f"Set PATCHPAL_ALLOW_SENSITIVE=true to override (not recommended)"
+                            )
+                    except ValueError:
+                        # Re-raise validation errors (they should be shown to user)
+                        raise
+                    except Exception:
+                        # Ignore other errors (e.g., path doesn't exist yet) - will be handled by actual function
+                        pass
+
             # Only check permission if --require-permission-for-all is active
             if not _REQUIRE_PERMISSION_FOR_ALL:
                 return func(*args, **kwargs)
