@@ -60,6 +60,19 @@ def _create_bedrock_client_with_timeout(timeout: int = LLM_TIMEOUT):
 
     # Create bedrock client with timeout config
     session = boto3.Session()
+
+    # Explicitly pass region to avoid "You must specify a region" errors
+    # Bedrock region can be set via AWS_BEDROCK_REGION or standard AWS env vars
+    region_name = (
+        os.getenv("AWS_REGION")
+        or os.getenv("AWS_DEFAULT_REGION")
+        or os.getenv("AWS_REGION_NAME")
+        or os.getenv("AWS_BEDROCK_REGION")
+    )
+
+    if region_name:
+        return session.client("bedrock-runtime", region_name=region_name, config=boto_config)
+
     return session.client("bedrock-runtime", config=boto_config)
 
 

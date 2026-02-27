@@ -7,6 +7,18 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
+## 0.17.5 (2026-02-26)
+
+### new:
+- N/A
+
+### changed:
+- N/A
+
+### fixed:
+- Fixed AWS Bedrock GovCloud "You must specify a region" errors by passing an explicit region to the boto3 Bedrock client when available.
+
+
 ## 0.17.4 (2026-02-26)
 
 ### new:
