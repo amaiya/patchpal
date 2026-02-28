@@ -2,6 +2,7 @@
 
 import inspect
 import json
+import logging
 import os
 import platform
 from datetime import datetime
@@ -11,9 +12,15 @@ import litellm
 from rich.console import Console
 from rich.markdown import Markdown
 
+from patchpal.cli.streaming import stream_completion
 from patchpal.config import config
 from patchpal.context import ContextManager
 from patchpal.tools.definitions import get_tools
+
+# Suppress verbose LiteLLM logging
+litellm.suppress_debug_info = True
+logging.getLogger("LiteLLM").setLevel(logging.WARNING)
+logging.getLogger("litellm").setLevel(logging.WARNING)
 
 # LLM API timeout in seconds (default: 300 seconds = 5 minutes)
 # Can be overridden with PATCHPAL_LLM_TIMEOUT environment variable
@@ -969,14 +976,27 @@ It's currently empty (just the template). The file is automatically loaded at se
                     for func in self.custom_tools:
                         tools.append(function_to_tool_schema(func))
 
-                response = litellm.completion(
-                    model=self.model_id,
-                    messages=messages,
-                    tools=tools,
-                    tool_choice="auto",
-                    timeout=LLM_TIMEOUT,
-                    **self.litellm_kwargs,
+                # Use streaming for better UX (with fallback to blocking)
+                def make_completion_call(stream: bool = False):
+                    return litellm.completion(
+                        model=self.model_id,
+                        messages=messages,
+                        tools=tools,
+                        tool_choice="auto",
+                        timeout=LLM_TIMEOUT,
+                        stream=stream,
+                        **self.litellm_kwargs,
+                    )
+
+                # Check if streaming is enabled (default: True)
+                enable_streaming = (
+                    os.environ.get("PATCHPAL_STREAM_OUTPUT", "true").lower() == "true"
                 )
+
+                if enable_streaming:
+                    response = stream_completion(make_completion_call, show_progress=True)
+                else:
+                    response = make_completion_call(stream=False)
 
                 # Track token usage from this LLM call
                 self.total_llm_calls += 1

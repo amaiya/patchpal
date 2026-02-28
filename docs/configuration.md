@@ -101,6 +101,12 @@ export PATCHPAL_MAX_OUTPUT_LINES=500         # Max lines of shell output (defaul
 export PATCHPAL_AUDIT_LOG=false              # Log operations to ~/.patchpal/repos/<repo-name>/audit.log (default: true)
 export PATCHPAL_ENABLE_BACKUPS=true          # Auto-backup files before modification (default: false)
 
+# Streaming Output
+export PATCHPAL_STREAM_OUTPUT=false          # Disable streaming progress indicator (default: true - enabled)
+                                              # When enabled, shows animated spinner + token counter during LLM API calls
+                                              # Helps detect when LLM is hanging vs. actively generating
+                                              # Disable for cleaner logs in CI/CD or when piping output
+
 # Resource Limits
 export PATCHPAL_MAX_OPERATIONS=10000         # Max operations per session (default: 10000)
 export PATCHPAL_MAX_ITERATIONS=150           # Max agent iterations per task (default: 100)

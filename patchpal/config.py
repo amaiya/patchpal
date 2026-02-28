@@ -260,6 +260,15 @@ class Config:
         return _get_env_bool("PATCHPAL_DISABLE_AUTOCOMPACT", "false")
 
     # ============================================================================
+    # UI/UX Configuration
+    # ============================================================================
+
+    @property
+    def STREAM_OUTPUT(self) -> bool:
+        """Enable streaming output with spinner and token counter (default: true)."""
+        return _get_env_bool("PATCHPAL_STREAM_OUTPUT", "true")
+
+    # ============================================================================
     # Special Modes
     # ============================================================================
 

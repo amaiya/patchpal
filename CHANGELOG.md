@@ -7,6 +7,18 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
+## 0.19.0 (2026-02-27)
+
+### new:
+- Added streaming progress indicator for LLM API calls with animated spinner, real-time token counter, and elapsed time display. Helps users detect when the LLM is hanging vs. actively generating. Control via `PATCHPAL_STREAM_OUTPUT` environment variable (default: enabled).
+
+### changed:
+- N/A
+
+### fixed:
+- Fixed test suite to be environment-independent by clearing pre-existing `PATCHPAL_LLM_TIMEOUT` and `PATCHPAL_STREAM_OUTPUT` environment variables before testing default values.
+
+
 ## 0.18.1 (2026-02-27)
 
 ### new:

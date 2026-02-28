@@ -2,8 +2,9 @@
 
 import os
 
-# Disable MCP tools for tests (must be set before importing patchpal modules)
+# Disable MCP tools and streaming for tests (must be set before importing patchpal modules)
 os.environ["PATCHPAL_ENABLE_MCP"] = "false"
+os.environ["PATCHPAL_STREAM_OUTPUT"] = "false"
 
 from unittest.mock import MagicMock, patch
 
@@ -1008,9 +1009,12 @@ def test_govcloud_pricing_with_cache_tokens(monkeypatch):
         assert abs(cost - expected_cost) < 1e-9
 
 
-def test_llm_timeout_default_value():
+def test_llm_timeout_default_value(monkeypatch):
     """Test that LLM_TIMEOUT has the correct default value."""
     import sys
+
+    # Clear any existing timeout override to test default
+    monkeypatch.delenv("PATCHPAL_LLM_TIMEOUT", raising=False)
 
     # Remove module from cache to get fresh import
     if "patchpal.agent" in sys.modules:
@@ -1046,6 +1050,15 @@ def test_llm_timeout_environment_override(monkeypatch):
 
 def test_llm_timeout_passed_to_completion(monkeypatch):
     """Test that timeout parameter is passed to litellm.completion."""
+    import sys
+
+    # Clear any existing timeout override to test default
+    monkeypatch.delenv("PATCHPAL_LLM_TIMEOUT", raising=False)
+
+    # Remove module from cache to get fresh import with default timeout
+    if "patchpal.agent" in sys.modules:
+        del sys.modules["patchpal.agent"]
+
     from patchpal.agent import create_agent
 
     # Disable permissions for this test
