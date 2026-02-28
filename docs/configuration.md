@@ -105,7 +105,6 @@ export PATCHPAL_ENABLE_BACKUPS=true          # Auto-backup files before modifica
 export PATCHPAL_STREAM_OUTPUT=false          # Disable streaming progress indicator (default: true - enabled)
                                               # When enabled, shows animated spinner + token counter during LLM API calls
                                               # Helps detect when LLM is hanging vs. actively generating
-                                              # Disable for cleaner logs in CI/CD or when piping output
 
 # Resource Limits
 export PATCHPAL_MAX_OPERATIONS=10000         # Max operations per session (default: 10000)
