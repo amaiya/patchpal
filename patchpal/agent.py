@@ -978,15 +978,22 @@ It's currently empty (just the template). The file is automatically loaded at se
 
                 # Use streaming for better UX (with fallback to blocking)
                 def make_completion_call(stream: bool = False):
-                    return litellm.completion(
-                        model=self.model_id,
-                        messages=messages,
-                        tools=tools,
-                        tool_choice="auto",
-                        timeout=LLM_TIMEOUT,
-                        stream=stream,
+                    kwargs = {
+                        "model": self.model_id,
+                        "messages": messages,
+                        "tools": tools,
+                        "tool_choice": "auto",
+                        "timeout": LLM_TIMEOUT,
+                        "stream": stream,
                         **self.litellm_kwargs,
-                    )
+                    }
+
+                    # Request usage info in streaming mode (OpenAI-compatible parameter)
+                    # Some providers (OpenAI, possibly others) require this to get usage in streaming
+                    if stream:
+                        kwargs["stream_options"] = {"include_usage": True}
+
+                    return litellm.completion(**kwargs)
 
                 # Check if streaming is enabled (default: True)
                 enable_streaming = (

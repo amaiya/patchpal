@@ -198,6 +198,16 @@ def stream_completion(completion_call, show_progress: bool = True):
         response_usage = None
         finish_reason = None
 
+        # Manually accumulate usage across chunks (fixes LiteLLM bug #10240)
+        # Different providers send usage in different chunks:
+        # - Anthropic/Bedrock: cache tokens in first chunk, completion tokens in last
+        # - OpenAI: may not send usage at all in streaming without stream_options
+        # We take the maximum value seen for each field across all chunks
+        max_prompt_tokens = 0
+        max_completion_tokens = 0
+        max_cache_creation_tokens = 0
+        max_cache_read_tokens = 0
+
         token_count = 0
 
         try:
@@ -205,6 +215,26 @@ def stream_completion(completion_call, show_progress: bool = True):
                 # Track tokens (approximate - count chunks)
                 token_count += 1
                 renderer.update_tokens(token_count)
+
+                # Accumulate usage from this chunk
+                if hasattr(chunk, "usage") and chunk.usage:
+                    usage = chunk.usage
+
+                    if hasattr(usage, "prompt_tokens") and usage.prompt_tokens:
+                        max_prompt_tokens = max(max_prompt_tokens, usage.prompt_tokens)
+                    if hasattr(usage, "completion_tokens") and usage.completion_tokens:
+                        max_completion_tokens = max(max_completion_tokens, usage.completion_tokens)
+                    if (
+                        hasattr(usage, "cache_creation_input_tokens")
+                        and usage.cache_creation_input_tokens
+                    ):
+                        max_cache_creation_tokens = max(
+                            max_cache_creation_tokens, usage.cache_creation_input_tokens
+                        )
+                    if hasattr(usage, "cache_read_input_tokens") and usage.cache_read_input_tokens:
+                        max_cache_read_tokens = max(
+                            max_cache_read_tokens, usage.cache_read_input_tokens
+                        )
 
                 if not chunk.choices:
                     continue
@@ -249,12 +279,32 @@ def stream_completion(completion_call, show_progress: bool = True):
                 if hasattr(chunk, "model"):
                     response_model = chunk.model
 
-                # Store usage info (usually comes in the last chunk)
-                if hasattr(chunk, "usage") and chunk.usage:
-                    response_usage = chunk.usage
-
         finally:
             renderer.stop()
+
+        # Normalize model name for cost calculation (import from agent.py)
+        from patchpal.agent import _normalize_bedrock_model_id
+
+        normalized_model = (
+            _normalize_bedrock_model_id(response_model) if response_model else "unknown"
+        )
+
+        # Build usage object from accumulated values (fixes LiteLLM bug #10240)
+        # Only create usage if we got any token counts
+        if max_prompt_tokens > 0 or max_completion_tokens > 0:
+            from litellm.utils import Usage
+
+            response_usage = Usage(
+                prompt_tokens=max_prompt_tokens,
+                completion_tokens=max_completion_tokens,
+                total_tokens=max_prompt_tokens + max_completion_tokens,
+            )
+
+            # Add cache tokens if present (Anthropic/Bedrock prompt caching)
+            if max_cache_creation_tokens > 0:
+                response_usage.cache_creation_input_tokens = max_cache_creation_tokens
+            if max_cache_read_tokens > 0:
+                response_usage.cache_read_input_tokens = max_cache_read_tokens
 
         # Build complete response object (mimics litellm.completion format)
         # We need to return something that looks like ModelResponse
@@ -285,12 +335,12 @@ def stream_completion(completion_call, show_progress: bool = True):
         # Create choice object
         choice = Choices(finish_reason=finish_reason or "stop", index=0, message=message)
 
-        # Create response object
+        # Create response object (use normalized model for cost calculation)
         response = ModelResponse(
             id="chatcmpl-streaming",
             choices=[choice],
             created=int(time.time()),
-            model=response_model or "unknown",
+            model=normalized_model,
             object="chat.completion",
             usage=response_usage,
         )

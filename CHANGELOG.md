@@ -7,6 +7,18 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
+## 0.19.1 (2026-02-27)
+
+### new:
+- N/A
+
+### changed:
+- N/A
+
+### fixed:
+- Fixed token usage, prompt caching statistics, and cost tracking not displaying when streaming is enabled (all providers: AWS Bedrock, Anthropic, OpenAI). Added `stream_options={"include_usage": True}` to request usage in streaming mode, manual accumulation of usage across chunks to work around LiteLLM bug #10240, and model name normalization for AWS ARN cost calculation.
+
+
 ## 0.19.0 (2026-02-27)
 
 ### new:
