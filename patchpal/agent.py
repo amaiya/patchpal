@@ -1000,8 +1000,17 @@ It's currently empty (just the template). The file is automatically loaded at se
                     os.environ.get("PATCHPAL_STREAM_OUTPUT", "true").lower() == "true"
                 )
 
+                # Check if content streaming is enabled (default: True)
+                enable_content_streaming = (
+                    os.environ.get("PATCHPAL_STREAM_CONTENT", "true").lower() == "true"
+                )
+
                 if enable_streaming:
-                    response = stream_completion(make_completion_call, show_progress=True)
+                    response = stream_completion(
+                        make_completion_call,
+                        show_progress=True,
+                        show_streaming_content=enable_content_streaming,
+                    )
                 else:
                     response = make_completion_call(stream=False)
 

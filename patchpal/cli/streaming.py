@@ -17,15 +17,17 @@ class StreamRenderer:
     Features:
     - Animated spinner to show activity
     - Real-time token counter (appears after threshold)
+    - Real-time content streaming (optional, displays in gray)
     - Time tracking for slow responses
     - Interrupt hint
 
     Example:
-        renderer = StreamRenderer()
+        renderer = StreamRenderer(show_content=True)
         renderer.start()
 
         for chunk in stream:
-            renderer.update_tokens(token_count)
+            accumulated_content += chunk
+            renderer.update_tokens(token_count, accumulated_content)
             # Process chunk...
 
         renderer.stop()
@@ -39,16 +41,20 @@ class StreamRenderer:
     TOKEN_DISPLAY_THRESHOLD = 20  # Show token count after this many tokens
     SLOW_RESPONSE_THRESHOLD = 5.0  # Mark as "slow" after 5 seconds
 
-    def __init__(self, show_tokens: bool = True, show_interrupt_hint: bool = True):
+    def __init__(
+        self, show_tokens: bool = True, show_interrupt_hint: bool = True, show_content: bool = False
+    ):
         """
         Initialize the stream renderer.
 
         Args:
             show_tokens: Whether to show token counter
             show_interrupt_hint: Whether to show Ctrl+C interrupt hint
+            show_content: Whether to show streaming content in real-time
         """
         self.show_tokens = show_tokens
         self.show_interrupt_hint = show_interrupt_hint
+        self.show_content = show_content
 
         self._running = False
         self._thread: Optional[threading.Thread] = None
@@ -57,6 +63,7 @@ class StreamRenderer:
         self._first_token_time: Optional[float] = None
         self._spinner_index = 0
         self._last_output = ""
+        self._streaming_content = ""
 
     def start(self):
         """Start the streaming renderer."""
@@ -68,6 +75,7 @@ class StreamRenderer:
         self._first_token_time = None
         self._token_count = 0
         self._spinner_index = 0
+        self._streaming_content = ""
 
         # Start background thread for spinner animation
         self._thread = threading.Thread(target=self._render_loop, daemon=True)
@@ -83,17 +91,18 @@ class StreamRenderer:
         if not self._running:
             return
 
+        # Stop rendering first (prevents race condition)
         self._running = False
 
-        # Wait for thread to finish
+        # Wait for thread to finish (give it time to complete last render)
         if self._thread:
             self._thread.join(timeout=0.5)
             self._thread = None
 
-        # Clear the line
-        self._clear_line()
+        # Clear all streaming lines (both generating line and content line if present)
+        self._clear_lines()
 
-        # Optionally show summary
+        # Optionally show summary (on same line after clearing)
         if show_summary and self._token_count > 0:
             elapsed = time.time() - self._start_time
             print(
@@ -101,14 +110,16 @@ class StreamRenderer:
                 flush=True,
             )
 
-    def update_tokens(self, token_count: int):
+    def update_tokens(self, token_count: int, content: str = ""):
         """
-        Update the token counter.
+        Update the token counter and streaming content.
 
         Args:
             token_count: Current total token count
+            content: Current accumulated content to display
         """
         self._token_count = token_count
+        self._streaming_content = content
 
         # Record first token time
         if self._first_token_time is None and token_count > 0:
@@ -121,12 +132,25 @@ class StreamRenderer:
             time.sleep(self.UPDATE_INTERVAL)
 
     def _render(self):
-        """Render the current status line."""
+        """Render the current status line(s)."""
         # Build status message
         spinner = self.SPINNER_FRAMES[self._spinner_index]
         self._spinner_index = (self._spinner_index + 1) % len(self.SPINNER_FRAMES)
 
-        # Base message with spinner
+        message = ""
+
+        # If showing content and we have content, show it FIRST (on top)
+        if self.show_content and self._streaming_content:
+            # Display the streaming content in gray on first line
+            # Replace newlines with spaces to keep it on one line
+            display_content = self._streaming_content.replace("\n", " ").replace("\r", " ")
+
+            # Don't truncate - show all the content that's been streamed
+            # The terminal will wrap naturally if needed
+            # (We'll rely on _clear_lines to handle multi-line clearing)
+            message = f"\033[2m{display_content}\033[0m\n"
+
+        # Always show the spinner/generating message (below the content)
         parts = [f"\033[36m{spinner}\033[0m \033[2mGenerating...\033[0m"]
 
         # Add interrupt hint
@@ -142,21 +166,69 @@ class StreamRenderer:
         if elapsed > self.SLOW_RESPONSE_THRESHOLD:
             parts.append(f"\033[2m({elapsed:.0f}s)\033[0m")
 
-        message = " ".join(parts)
+        message += " ".join(parts)
 
         # Only update if changed (reduces flicker)
         if message != self._last_output:
-            self._clear_line()
+            self._clear_lines()
             print(message, end="", flush=True)
             self._last_output = message
 
     def _clear_line(self):
-        """Clear the current line."""
-        # Move to start of line and clear to end
-        print("\r\033[K", end="", flush=True)
+        """Clear the current line completely."""
+        # Get terminal width to overwrite the entire line
+        try:
+            import shutil
+
+            term_width = shutil.get_terminal_size().columns
+        except Exception:
+            term_width = 80
+
+        # Move to start, print spaces to overwrite, then clear and return to start
+        print("\r" + " " * term_width + "\r", end="", flush=True)
+
+    def _clear_lines(self):
+        """Clear multiple lines (for when we have content that may wrap)."""
+        if not self._last_output:
+            return
+
+        # Calculate how many lines we need to clear
+        # Count newlines in the message + count wrapped lines
+        try:
+            import shutil
+
+            term_width = shutil.get_terminal_size().columns
+        except Exception:
+            term_width = 80
+
+        # Split by explicit newlines
+        lines = self._last_output.split("\n")
+        total_lines = 0
+
+        for line in lines:
+            # Strip ANSI codes to get actual visible length
+            # Simple approach: remove \033[...m sequences
+            import re
+
+            visible_line = re.sub(r"\033\[[0-9;]*m", "", line)
+
+            # Calculate how many terminal lines this will take
+            if len(visible_line) > 0:
+                line_count = (len(visible_line) + term_width - 1) // term_width
+                total_lines += max(1, line_count)
+            else:
+                total_lines += 1
+
+        # Clear all lines by moving up and clearing each one
+        for i in range(total_lines):
+            if i > 0:
+                print("\033[F", end="", flush=True)  # Move cursor up
+            self._clear_line()  # Clear that line
 
 
-def stream_completion(completion_call, show_progress: bool = True):
+def stream_completion(
+    completion_call, show_progress: bool = True, show_streaming_content: bool = True
+):
     """
     Wrapper to add streaming progress indicator to any LiteLLM completion call.
 
@@ -166,6 +238,7 @@ def stream_completion(completion_call, show_progress: bool = True):
     Args:
         completion_call: Callable that makes the litellm.completion() call
         show_progress: Whether to show progress indicator
+        show_streaming_content: Whether to show streaming content in real-time (gray text)
 
     Returns:
         The completion response (same format as litellm.completion)
@@ -188,7 +261,7 @@ def stream_completion(completion_call, show_progress: bool = True):
         # Try streaming mode
         stream = completion_call(stream=True)
 
-        renderer = StreamRenderer()
+        renderer = StreamRenderer(show_content=show_streaming_content)
         renderer.start()
 
         # Accumulate response
@@ -214,7 +287,6 @@ def stream_completion(completion_call, show_progress: bool = True):
             for chunk in stream:
                 # Track tokens (approximate - count chunks)
                 token_count += 1
-                renderer.update_tokens(token_count)
 
                 # Accumulate usage from this chunk
                 if hasattr(chunk, "usage") and chunk.usage:
@@ -244,6 +316,9 @@ def stream_completion(completion_call, show_progress: bool = True):
                 # Accumulate content
                 if hasattr(delta, "content") and delta.content:
                     accumulated_content += delta.content
+
+                # Update renderer with accumulated content
+                renderer.update_tokens(token_count, accumulated_content)
 
                 # Accumulate tool calls
                 if hasattr(delta, "tool_calls") and delta.tool_calls:
