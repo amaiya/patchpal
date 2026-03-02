@@ -7,6 +7,18 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
+## 0.19.2 (2026-03-02)
+
+### new:
+- N/A
+
+### changed:
+- N/A
+
+### fixed:
+- Fixed "Found 5 cache_control blocks" error when reading multiple images on AWS Bedrock. Image tool results contain structured content with text blocks that get cache markers added in-place. These markers persist across iterations, causing accumulation beyond Bedrock's 4-marker limit. Solution: count existing cache markers before adding new ones and enforce the 4-marker limit.
+
+
 ## 0.19.1 (2026-02-27)
 
 ### new:

@@ -264,6 +264,11 @@ def _apply_prompt_caching(messages: List[Dict[str, Any]], model_id: str) -> List
     - System messages (first 1-2 messages with role="system")
     - Last 2 non-system messages (recent context, any role except system)
 
+    IMPORTANT: AWS Bedrock enforces a hard limit of 4 cache control blocks per request.
+    When images are read, tool results contain multimodal content blocks that can have
+    cache markers added. These markers persist across iterations in self.messages.
+    This function counts existing cache markers and ensures we never exceed the 4 marker limit.
+
     Args:
         messages: List of message dictionaries
         model_id: LiteLLM model identifier
@@ -284,6 +289,29 @@ def _apply_prompt_caching(messages: List[Dict[str, Any]], model_id: str) -> List
         # Anthropic models (direct or via Bedrock) use cache_control
         cache_marker = {"cache_control": {"type": "ephemeral"}}
 
+    # Count existing cache markers across all messages
+    def count_cache_markers(msgs):
+        count = 0
+        for msg in msgs:
+            content = msg.get("content")
+            if isinstance(content, list):
+                for block in content:
+                    if isinstance(block, dict) and (
+                        "cache_control" in block or "cachePoint" in block
+                    ):
+                        count += 1
+        return count
+
+    existing_cache_count = count_cache_markers(messages)
+
+    # AWS Bedrock has a hard limit of 4 cache control blocks
+    max_cache_markers = 4
+    available_slots = max_cache_markers - existing_cache_count
+
+    if available_slots <= 0:
+        # Already at or over limit, don't add any more cache markers
+        return messages
+
     # Find system messages (usually at the start)
     system_messages = [i for i, msg in enumerate(messages) if msg.get("role") == "system"]
 
@@ -293,43 +321,46 @@ def _apply_prompt_caching(messages: List[Dict[str, Any]], model_id: str) -> List
         non_system_messages[-2:] if len(non_system_messages) >= 2 else non_system_messages
     )
 
-    # Apply caching to system messages (first 2)
+    # Build list of candidate indices to cache (prioritize system messages)
+    candidates = []
+
+    # Add system messages first (up to 2)
     for idx in system_messages[:2]:
         msg = messages[idx]
-        # Skip if already has cache marker at content block level
+        # Check if this message already has any cache markers
+        has_cache = False
         if isinstance(msg.get("content"), list):
-            # Already structured - check if any block has cache_control/cachePoint
             has_cache = any(
                 "cache_control" in block or "cachePoint" in block
                 for block in msg["content"]
                 if isinstance(block, dict)
             )
-            if not has_cache and msg["content"]:
-                # Add cache marker to the last content block
-                last_block = msg["content"][-1]
-                if isinstance(last_block, dict):
-                    last_block.update(cache_marker)
-        else:
-            # Convert simple string content to structured format with cache marker
-            content_text = msg.get("content", "")
-            messages[idx] = {
-                **msg,
-                "content": [{"type": "text", "text": content_text, **cache_marker}],
-            }
+        if not has_cache:
+            candidates.append(idx)
 
-    # Apply caching to last 2 messages
+    # Add last 2 messages (if not already in candidates)
     for idx in last_two_indices:
+        if idx not in candidates:  # Avoid duplicates if system message is also in last 2
+            msg = messages[idx]
+            # Check if this message already has any cache markers
+            has_cache = False
+            if isinstance(msg.get("content"), list):
+                has_cache = any(
+                    "cache_control" in block or "cachePoint" in block
+                    for block in msg["content"]
+                    if isinstance(block, dict)
+                )
+            if not has_cache:
+                candidates.append(idx)
+
+    # Apply cache markers to candidates, respecting the available slots
+    # This ensures we never exceed the 4 marker limit
+    for idx in candidates[:available_slots]:
         msg = messages[idx]
-        # Skip if already has cache marker at content block level
+
         if isinstance(msg.get("content"), list):
-            # Already structured - check if any block has cache_control/cachePoint
-            has_cache = any(
-                "cache_control" in block or "cachePoint" in block
-                for block in msg["content"]
-                if isinstance(block, dict)
-            )
-            if not has_cache and msg["content"]:
-                # Add cache marker to the last content block
+            # Already structured - add cache marker to the last content block
+            if msg["content"]:
                 last_block = msg["content"][-1]
                 if isinstance(last_block, dict):
                     last_block.update(cache_marker)
