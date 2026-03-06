@@ -75,33 +75,6 @@ Execute shell commands in the repository.
 - Dangerous commands require permission (e.g., `rm`, `pip install`, script execution)
 - Privilege escalation blocked by default (set `PATCHPAL_ALLOW_SUDO=true` to enable)
 
-## Optional Tools (2 tools - disabled by default)
-
-These tools are disabled by default because shell commands provide more flexibility. Enable them via `enabled_tools` parameter when you need search/navigation without shell access.
-
-### grep
-Search for a pattern in files using grep or ripgrep.
-
-- **Example**: `grep("def main", file_glob="*.py")`
-- **Disabled by default** - use `run_shell("grep -r 'pattern' .")` for more flexibility
-- **Enable when**: You need search without shell access (e.g., read-only security agents)
-- Supports case-insensitive search, file globs, and path filtering
-- Uses ripgrep if available (faster), falls back to grep
-- **Requirements**: Requires `rg` (ripgrep) or `grep` command to be installed
-  - macOS/Linux: `grep` usually pre-installed; install `ripgrep` for better performance
-  - Windows: Install ripgrep via `choco install ripgrep` or `scoop install ripgrep`
-- Enable: `agent = create_agent(enabled_tools=["read_file", "grep"])`
-
-### list_files
-List all files in the repository or a specific directory.
-
-- **Example**: `list_files()` - list all files in repository
-- **Example**: `list_files(path="src")` - list files in src directory
-- **Disabled by default** - use `run_shell("find . -type f")` for more flexibility
-- **Enable when**: You need fast file discovery without shell access or expensive code parsing
-- **Faster than** `get_repo_map` when you just need file paths (no structure analysis)
-- Enable: `agent = create_agent(enabled_tools=["read_file", "list_files"])`
-
 ## Web Tools (2 tools)
 
 ### web_search
@@ -200,6 +173,33 @@ Ask the user a question during task execution.
 - **Example**: `ask_user("Which database should I use?", options=["PostgreSQL", "MySQL", "SQLite"])`
 - Useful for clarifying requirements, getting decisions, or gathering additional information
 - Supports multiple choice options or free-form answers
+
+## Optional Tools (2 tools - disabled by default)
+
+These tools are disabled by default because shell commands provide more flexibility. Enable them via `enabled_tools` parameter when you need search/navigation without shell access.
+
+### grep
+Search for a pattern in files using grep or ripgrep.
+
+- **Example**: `grep("def main", file_glob="*.py")`
+- **Disabled by default** - use `run_shell("grep -r 'pattern' .")` for more flexibility
+- **Enable when**: You need search without shell access (e.g., read-only security agents)
+- Supports case-insensitive search, file globs, and path filtering
+- Uses ripgrep if available (faster), falls back to grep
+- **Requirements**: Requires `rg` (ripgrep) or `grep` command to be installed
+  - macOS/Linux: `grep` usually pre-installed; install `ripgrep` for better performance
+  - Windows: Install ripgrep via `choco install ripgrep` or `scoop install ripgrep`
+- Enable: `agent = create_agent(enabled_tools=["read_file", "grep"])`
+
+### list_files
+List all files in the repository or a specific directory.
+
+- **Example**: `list_files()` - list all files in repository
+- **Example**: `list_files(path="src")` - list files in src directory
+- **Disabled by default** - use `run_shell("find . -type f")` for more flexibility
+- **Enable when**: You need fast file discovery without shell access or expensive code parsing
+- **Faster than** `get_repo_map` when you just need file paths (no structure analysis)
+- Enable: `agent = create_agent(enabled_tools=["read_file", "list_files"])`
 
 ## Tool Count by Category
 
