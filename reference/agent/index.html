@@ -1,0 +1,2626 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="An agentic coding and automation assistant, supporting both local and cloud LLMs">
+      
+      
+      
+        <link rel="canonical" href="https://amaiya.github.io/patchpal/reference/agent/">
+      
+      
+        <link rel="prev" href="../../troubleshooting/">
+      
+      
+        <link rel="next" href="../tools/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.4">
+    
+    
+      
+        <title>Agent - PatchPal Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#agent-api" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="PatchPal Documentation" class="md-header__button md-logo" aria-label="PatchPal Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            PatchPal Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Agent
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/amaiya/patchpal" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    amaiya/patchpal
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../getting-started/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Getting Started
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../features/tools/" class="md-tabs__link">
+          
+  
+  
+  Features
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../models/overview/" class="md-tabs__link">
+          
+  
+  
+  Model Configuration
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../usage/interactive/" class="md-tabs__link">
+          
+  
+  
+  Usage
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../configuration/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Configuration
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../safety/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Safety
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../context-management/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Context Management
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../troubleshooting/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Troubleshooting
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="./" class="md-tabs__link">
+          
+  
+  
+  API Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="PatchPal Documentation" class="md-nav__button md-logo" aria-label="PatchPal Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    PatchPal Documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/amaiya/patchpal" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    amaiya/patchpal
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Features
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Features
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../features/tools/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Built-In Tools
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../features/custom-tools/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Custom Tools
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../features/skills/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Skills System
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../features/mcp/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MCP Integration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../features/memory/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Project Memory
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Model Configuration
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Model Configuration
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../models/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../models/local-models/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Local Models
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../models/offline-deployment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Offline Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Usage
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Usage
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../usage/interactive/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Interactive Usage
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../usage/python-api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Python SDK
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../usage/autopilot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Autopilot Mode
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../usage/examples/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Example Tasks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../safety/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Safety
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../context-management/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Context Management
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_10" id="__nav_10_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_10_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_10">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#creating-an-agent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Creating an Agent
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Creating an Agent">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#patchpal.agent.create_agent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-function"></code>&nbsp;create_agent
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label=" create_agent">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#patchpal.agent.create_agent--limit-to-read-only-tools" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Limit to read-only tools
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#patchpal.agent.create_agent--with-reasoning-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        With reasoning model
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#agent-class" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Agent Class
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Agent Class">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#patchpal.agent.PatchPalAgent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-class"></code>&nbsp;PatchPalAgent
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label=" PatchPalAgent">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#patchpal.agent.PatchPalAgent.run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-method"></code>&nbsp;run
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#helper-functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Helper Functions
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Helper Functions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#patchpal.agent._is_bedrock_arn" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-function"></code>&nbsp;_is_bedrock_arn
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#usage-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Usage Example
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#related" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Related
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tools/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tools
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../context/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Context Management
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../skills/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Skills
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../custom-tools/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Custom Tools
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#creating-an-agent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Creating an Agent
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Creating an Agent">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#patchpal.agent.create_agent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-function"></code>&nbsp;create_agent
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label=" create_agent">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#patchpal.agent.create_agent--limit-to-read-only-tools" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Limit to read-only tools
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#patchpal.agent.create_agent--with-reasoning-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        With reasoning model
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#agent-class" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Agent Class
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Agent Class">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#patchpal.agent.PatchPalAgent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-class"></code>&nbsp;PatchPalAgent
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label=" PatchPalAgent">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#patchpal.agent.PatchPalAgent.run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-method"></code>&nbsp;run
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#helper-functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Helper Functions
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Helper Functions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#patchpal.agent._is_bedrock_arn" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-function"></code>&nbsp;_is_bedrock_arn
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#usage-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Usage Example
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#related" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Related
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="agent-api">Agent API<a class="headerlink" href="#agent-api" title="Permanent link">&para;</a></h1>
+<p>The core agent implementation for PatchPal, providing the main interface for interacting with LLMs and executing tools.</p>
+<h2 id="creating-an-agent">Creating an Agent<a class="headerlink" href="#creating-an-agent" title="Permanent link">&para;</a></h2>
+
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="patchpal.agent.create_agent" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">patchpal</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">create_agent</span><span class="p">(</span><span class="n">model_id</span><span class="o">=</span><span class="s1">&#39;anthropic/claude-sonnet-4-5&#39;</span><span class="p">,</span> <span class="n">custom_tools</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">enabled_tools</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">litellm_kwargs</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+
+<a href="#patchpal.agent.create_agent" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents first">
+
+        <p>Create and return a PatchPal agent.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>model_id</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>LiteLLM model identifier (default: anthropic/claude-sonnet-4-5)</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;anthropic/claude-sonnet-4-5&#39;</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>custom_tools</code>
+            </td>
+            <td>
+                  <code><span title="typing.Optional">Optional</span>[<span title="typing.List">List</span>[<span title="typing.Callable">Callable</span>]]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional list of Python functions to use as custom tools.
+         Each function should have type hints and a docstring.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>enabled_tools</code>
+            </td>
+            <td>
+                  <code><span title="typing.Optional">Optional</span>[<span title="typing.List">List</span>[<span title="str">str</span>]]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional list of tool names to enable (whitelist). If provided,
+          only these built-in tools will be available. Custom tools are
+          always added. Takes precedence over PATCHPAL_ENABLED_TOOLS
+          environment variable.
+          Example: ["read_file", "edit_file", "run_shell"]</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>litellm_kwargs</code>
+            </td>
+            <td>
+                  <code><span title="typing.Optional">Optional</span>[<span title="typing.Dict">Dict</span>[<span title="str">str</span>, <span title="typing.Any">Any</span>]]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional dict of extra parameters to pass to litellm.completion()
+           (e.g., {"reasoning_effort": "high"} for reasoning models)</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="              patchpal.agent.PatchPalAgent(model_id='anthropic/claude-sonnet-4-5', custom_tools=None, enabled_tools=None, litellm_kwargs=None) (patchpal.agent.PatchPalAgent)" href="#patchpal.agent.PatchPalAgent">PatchPalAgent</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>A configured PatchPalAgent instance</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<details class="example" open>
+  <summary>Example</summary>
+  <p>def calculator(x: int, y: int) -&gt; str:
+    '''Add two numbers.</p>
+<div class="highlight"><pre><span></span><code>Args:
+    x: First number
+    y: Second number
+&#39;&#39;&#39;
+return str(x + y)
+</code></pre></div>
+<p>agent = create_agent(custom_tools=[calculator])
+response = agent.run("What's 5 + 3?")</p>
+<h4 id="patchpal.agent.create_agent--limit-to-read-only-tools">Limit to read-only tools<a class="headerlink" href="#patchpal.agent.create_agent--limit-to-read-only-tools" title="Permanent link">&para;</a></h4>
+<p>agent = create_agent(
+    enabled_tools=["read_file", "read_lines", "code_structure"]
+)</p>
+<h4 id="patchpal.agent.create_agent--with-reasoning-model">With reasoning model<a class="headerlink" href="#patchpal.agent.create_agent--with-reasoning-model" title="Permanent link">&para;</a></h4>
+<p>agent = create_agent(
+    model_id="ollama_chat/gpt-oss:120b",
+    litellm_kwargs={"reasoning_effort": "high"}
+)</p>
+</details>
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>patchpal/agent.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-1502">1502</a></span>
+<span class="normal"><a href="#__codelineno-0-1503">1503</a></span>
+<span class="normal"><a href="#__codelineno-0-1504">1504</a></span>
+<span class="normal"><a href="#__codelineno-0-1505">1505</a></span>
+<span class="normal"><a href="#__codelineno-0-1506">1506</a></span>
+<span class="normal"><a href="#__codelineno-0-1507">1507</a></span>
+<span class="normal"><a href="#__codelineno-0-1508">1508</a></span>
+<span class="normal"><a href="#__codelineno-0-1509">1509</a></span>
+<span class="normal"><a href="#__codelineno-0-1510">1510</a></span>
+<span class="normal"><a href="#__codelineno-0-1511">1511</a></span>
+<span class="normal"><a href="#__codelineno-0-1512">1512</a></span>
+<span class="normal"><a href="#__codelineno-0-1513">1513</a></span>
+<span class="normal"><a href="#__codelineno-0-1514">1514</a></span>
+<span class="normal"><a href="#__codelineno-0-1515">1515</a></span>
+<span class="normal"><a href="#__codelineno-0-1516">1516</a></span>
+<span class="normal"><a href="#__codelineno-0-1517">1517</a></span>
+<span class="normal"><a href="#__codelineno-0-1518">1518</a></span>
+<span class="normal"><a href="#__codelineno-0-1519">1519</a></span>
+<span class="normal"><a href="#__codelineno-0-1520">1520</a></span>
+<span class="normal"><a href="#__codelineno-0-1521">1521</a></span>
+<span class="normal"><a href="#__codelineno-0-1522">1522</a></span>
+<span class="normal"><a href="#__codelineno-0-1523">1523</a></span>
+<span class="normal"><a href="#__codelineno-0-1524">1524</a></span>
+<span class="normal"><a href="#__codelineno-0-1525">1525</a></span>
+<span class="normal"><a href="#__codelineno-0-1526">1526</a></span>
+<span class="normal"><a href="#__codelineno-0-1527">1527</a></span>
+<span class="normal"><a href="#__codelineno-0-1528">1528</a></span>
+<span class="normal"><a href="#__codelineno-0-1529">1529</a></span>
+<span class="normal"><a href="#__codelineno-0-1530">1530</a></span>
+<span class="normal"><a href="#__codelineno-0-1531">1531</a></span>
+<span class="normal"><a href="#__codelineno-0-1532">1532</a></span>
+<span class="normal"><a href="#__codelineno-0-1533">1533</a></span>
+<span class="normal"><a href="#__codelineno-0-1534">1534</a></span>
+<span class="normal"><a href="#__codelineno-0-1535">1535</a></span>
+<span class="normal"><a href="#__codelineno-0-1536">1536</a></span>
+<span class="normal"><a href="#__codelineno-0-1537">1537</a></span>
+<span class="normal"><a href="#__codelineno-0-1538">1538</a></span>
+<span class="normal"><a href="#__codelineno-0-1539">1539</a></span>
+<span class="normal"><a href="#__codelineno-0-1540">1540</a></span>
+<span class="normal"><a href="#__codelineno-0-1541">1541</a></span>
+<span class="normal"><a href="#__codelineno-0-1542">1542</a></span>
+<span class="normal"><a href="#__codelineno-0-1543">1543</a></span>
+<span class="normal"><a href="#__codelineno-0-1544">1544</a></span>
+<span class="normal"><a href="#__codelineno-0-1545">1545</a></span>
+<span class="normal"><a href="#__codelineno-0-1546">1546</a></span>
+<span class="normal"><a href="#__codelineno-0-1547">1547</a></span>
+<span class="normal"><a href="#__codelineno-0-1548">1548</a></span>
+<span class="normal"><a href="#__codelineno-0-1549">1549</a></span>
+<span class="normal"><a href="#__codelineno-0-1550">1550</a></span>
+<span class="normal"><a href="#__codelineno-0-1551">1551</a></span>
+<span class="normal"><a href="#__codelineno-0-1552">1552</a></span>
+<span class="normal"><a href="#__codelineno-0-1553">1553</a></span>
+<span class="normal"><a href="#__codelineno-0-1554">1554</a></span>
+<span class="normal"><a href="#__codelineno-0-1555">1555</a></span>
+<span class="normal"><a href="#__codelineno-0-1556">1556</a></span>
+<span class="normal"><a href="#__codelineno-0-1557">1557</a></span>
+<span class="normal"><a href="#__codelineno-0-1558">1558</a></span>
+<span class="normal"><a href="#__codelineno-0-1559">1559</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-1502" name="__codelineno-0-1502"></a><span class="k">def</span><span class="w"> </span><span class="nf">create_agent</span><span class="p">(</span>
+<a id="__codelineno-0-1503" name="__codelineno-0-1503"></a>    <span class="n">model_id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;anthropic/claude-sonnet-4-5&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-1504" name="__codelineno-0-1504"></a>    <span class="n">custom_tools</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="n">Callable</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-0-1505" name="__codelineno-0-1505"></a>    <span class="n">enabled_tools</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-0-1506" name="__codelineno-0-1506"></a>    <span class="n">litellm_kwargs</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-0-1507" name="__codelineno-0-1507"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">PatchPalAgent</span><span class="p">:</span>
+<a id="__codelineno-0-1508" name="__codelineno-0-1508"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Create and return a PatchPal agent.</span>
+<a id="__codelineno-0-1509" name="__codelineno-0-1509"></a>
+<a id="__codelineno-0-1510" name="__codelineno-0-1510"></a><span class="sd">    Args:</span>
+<a id="__codelineno-0-1511" name="__codelineno-0-1511"></a><span class="sd">        model_id: LiteLLM model identifier (default: anthropic/claude-sonnet-4-5)</span>
+<a id="__codelineno-0-1512" name="__codelineno-0-1512"></a><span class="sd">        custom_tools: Optional list of Python functions to use as custom tools.</span>
+<a id="__codelineno-0-1513" name="__codelineno-0-1513"></a><span class="sd">                     Each function should have type hints and a docstring.</span>
+<a id="__codelineno-0-1514" name="__codelineno-0-1514"></a><span class="sd">        enabled_tools: Optional list of tool names to enable (whitelist). If provided,</span>
+<a id="__codelineno-0-1515" name="__codelineno-0-1515"></a><span class="sd">                      only these built-in tools will be available. Custom tools are</span>
+<a id="__codelineno-0-1516" name="__codelineno-0-1516"></a><span class="sd">                      always added. Takes precedence over PATCHPAL_ENABLED_TOOLS</span>
+<a id="__codelineno-0-1517" name="__codelineno-0-1517"></a><span class="sd">                      environment variable.</span>
+<a id="__codelineno-0-1518" name="__codelineno-0-1518"></a><span class="sd">                      Example: [&quot;read_file&quot;, &quot;edit_file&quot;, &quot;run_shell&quot;]</span>
+<a id="__codelineno-0-1519" name="__codelineno-0-1519"></a><span class="sd">        litellm_kwargs: Optional dict of extra parameters to pass to litellm.completion()</span>
+<a id="__codelineno-0-1520" name="__codelineno-0-1520"></a><span class="sd">                       (e.g., {&quot;reasoning_effort&quot;: &quot;high&quot;} for reasoning models)</span>
+<a id="__codelineno-0-1521" name="__codelineno-0-1521"></a>
+<a id="__codelineno-0-1522" name="__codelineno-0-1522"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-1523" name="__codelineno-0-1523"></a><span class="sd">        A configured PatchPalAgent instance</span>
+<a id="__codelineno-0-1524" name="__codelineno-0-1524"></a>
+<a id="__codelineno-0-1525" name="__codelineno-0-1525"></a><span class="sd">    Example:</span>
+<a id="__codelineno-0-1526" name="__codelineno-0-1526"></a><span class="sd">        def calculator(x: int, y: int) -&gt; str:</span>
+<a id="__codelineno-0-1527" name="__codelineno-0-1527"></a><span class="sd">            &#39;&#39;&#39;Add two numbers.</span>
+<a id="__codelineno-0-1528" name="__codelineno-0-1528"></a>
+<a id="__codelineno-0-1529" name="__codelineno-0-1529"></a><span class="sd">            Args:</span>
+<a id="__codelineno-0-1530" name="__codelineno-0-1530"></a><span class="sd">                x: First number</span>
+<a id="__codelineno-0-1531" name="__codelineno-0-1531"></a><span class="sd">                y: Second number</span>
+<a id="__codelineno-0-1532" name="__codelineno-0-1532"></a><span class="sd">            &#39;&#39;&#39;</span>
+<a id="__codelineno-0-1533" name="__codelineno-0-1533"></a><span class="sd">            return str(x + y)</span>
+<a id="__codelineno-0-1534" name="__codelineno-0-1534"></a>
+<a id="__codelineno-0-1535" name="__codelineno-0-1535"></a><span class="sd">        agent = create_agent(custom_tools=[calculator])</span>
+<a id="__codelineno-0-1536" name="__codelineno-0-1536"></a><span class="sd">        response = agent.run(&quot;What&#39;s 5 + 3?&quot;)</span>
+<a id="__codelineno-0-1537" name="__codelineno-0-1537"></a>
+<a id="__codelineno-0-1538" name="__codelineno-0-1538"></a><span class="sd">        # Limit to read-only tools</span>
+<a id="__codelineno-0-1539" name="__codelineno-0-1539"></a><span class="sd">        agent = create_agent(</span>
+<a id="__codelineno-0-1540" name="__codelineno-0-1540"></a><span class="sd">            enabled_tools=[&quot;read_file&quot;, &quot;read_lines&quot;, &quot;code_structure&quot;]</span>
+<a id="__codelineno-0-1541" name="__codelineno-0-1541"></a><span class="sd">        )</span>
+<a id="__codelineno-0-1542" name="__codelineno-0-1542"></a>
+<a id="__codelineno-0-1543" name="__codelineno-0-1543"></a><span class="sd">        # With reasoning model</span>
+<a id="__codelineno-0-1544" name="__codelineno-0-1544"></a><span class="sd">        agent = create_agent(</span>
+<a id="__codelineno-0-1545" name="__codelineno-0-1545"></a><span class="sd">            model_id=&quot;ollama_chat/gpt-oss:120b&quot;,</span>
+<a id="__codelineno-0-1546" name="__codelineno-0-1546"></a><span class="sd">            litellm_kwargs={&quot;reasoning_effort&quot;: &quot;high&quot;}</span>
+<a id="__codelineno-0-1547" name="__codelineno-0-1547"></a><span class="sd">        )</span>
+<a id="__codelineno-0-1548" name="__codelineno-0-1548"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-1549" name="__codelineno-0-1549"></a>    <span class="c1"># Reset session todos for new session</span>
+<a id="__codelineno-0-1550" name="__codelineno-0-1550"></a>    <span class="kn">from</span><span class="w"> </span><span class="nn">patchpal.tools</span><span class="w"> </span><span class="kn">import</span> <span class="n">reset_session_todos</span>
+<a id="__codelineno-0-1551" name="__codelineno-0-1551"></a>
+<a id="__codelineno-0-1552" name="__codelineno-0-1552"></a>    <span class="n">reset_session_todos</span><span class="p">()</span>
+<a id="__codelineno-0-1553" name="__codelineno-0-1553"></a>
+<a id="__codelineno-0-1554" name="__codelineno-0-1554"></a>    <span class="k">return</span> <span class="n">PatchPalAgent</span><span class="p">(</span>
+<a id="__codelineno-0-1555" name="__codelineno-0-1555"></a>        <span class="n">model_id</span><span class="o">=</span><span class="n">model_id</span><span class="p">,</span>
+<a id="__codelineno-0-1556" name="__codelineno-0-1556"></a>        <span class="n">custom_tools</span><span class="o">=</span><span class="n">custom_tools</span><span class="p">,</span>
+<a id="__codelineno-0-1557" name="__codelineno-0-1557"></a>        <span class="n">enabled_tools</span><span class="o">=</span><span class="n">enabled_tools</span><span class="p">,</span>
+<a id="__codelineno-0-1558" name="__codelineno-0-1558"></a>        <span class="n">litellm_kwargs</span><span class="o">=</span><span class="n">litellm_kwargs</span><span class="p">,</span>
+<a id="__codelineno-0-1559" name="__codelineno-0-1559"></a>    <span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div><h2 id="agent-class">Agent Class<a class="headerlink" href="#agent-class" title="Permanent link">&para;</a></h2>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="patchpal.agent.PatchPalAgent" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>              <code class="highlight language-python"><span class="n">patchpal</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">PatchPalAgent</span><span class="p">(</span><span class="n">model_id</span><span class="o">=</span><span class="s1">&#39;anthropic/claude-sonnet-4-5&#39;</span><span class="p">,</span> <span class="n">custom_tools</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">enabled_tools</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">litellm_kwargs</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+
+<a href="#patchpal.agent.PatchPalAgent" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents first">
+
+
+
+        <p>Simple agent that uses LiteLLM for tool calling.</p>
+
+        <p>Initialize the agent.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>model_id</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>LiteLLM model identifier</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;anthropic/claude-sonnet-4-5&#39;</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>custom_tools</code>
+            </td>
+            <td>
+                  <code><span title="typing.Optional">Optional</span>[<span title="typing.List">List</span>[<span title="typing.Callable">Callable</span>]]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional list of Python functions to add as tools</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>enabled_tools</code>
+            </td>
+            <td>
+                  <code><span title="typing.Optional">Optional</span>[<span title="typing.List">List</span>[<span title="str">str</span>]]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional list of tool names to enable (whitelist). If provided,
+          only these tools will be available. Takes precedence over
+          PATCHPAL_ENABLED_TOOLS environment variable.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>litellm_kwargs</code>
+            </td>
+            <td>
+                  <code><span title="typing.Optional">Optional</span>[<span title="typing.Dict">Dict</span>[<span title="str">str</span>, <span title="typing.Any">Any</span>]]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional dict of extra parameters to pass to litellm.completion()
+          (e.g., {"reasoning_effort": "high"} for reasoning models)</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+
+
+
+
+
+
+                  <details class="mkdocstrings-source">
+                    <summary>Source code in <code>patchpal/agent.py</code></summary>
+                    <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-382">382</a></span>
+<span class="normal"><a href="#__codelineno-0-383">383</a></span>
+<span class="normal"><a href="#__codelineno-0-384">384</a></span>
+<span class="normal"><a href="#__codelineno-0-385">385</a></span>
+<span class="normal"><a href="#__codelineno-0-386">386</a></span>
+<span class="normal"><a href="#__codelineno-0-387">387</a></span>
+<span class="normal"><a href="#__codelineno-0-388">388</a></span>
+<span class="normal"><a href="#__codelineno-0-389">389</a></span>
+<span class="normal"><a href="#__codelineno-0-390">390</a></span>
+<span class="normal"><a href="#__codelineno-0-391">391</a></span>
+<span class="normal"><a href="#__codelineno-0-392">392</a></span>
+<span class="normal"><a href="#__codelineno-0-393">393</a></span>
+<span class="normal"><a href="#__codelineno-0-394">394</a></span>
+<span class="normal"><a href="#__codelineno-0-395">395</a></span>
+<span class="normal"><a href="#__codelineno-0-396">396</a></span>
+<span class="normal"><a href="#__codelineno-0-397">397</a></span>
+<span class="normal"><a href="#__codelineno-0-398">398</a></span>
+<span class="normal"><a href="#__codelineno-0-399">399</a></span>
+<span class="normal"><a href="#__codelineno-0-400">400</a></span>
+<span class="normal"><a href="#__codelineno-0-401">401</a></span>
+<span class="normal"><a href="#__codelineno-0-402">402</a></span>
+<span class="normal"><a href="#__codelineno-0-403">403</a></span>
+<span class="normal"><a href="#__codelineno-0-404">404</a></span>
+<span class="normal"><a href="#__codelineno-0-405">405</a></span>
+<span class="normal"><a href="#__codelineno-0-406">406</a></span>
+<span class="normal"><a href="#__codelineno-0-407">407</a></span>
+<span class="normal"><a href="#__codelineno-0-408">408</a></span>
+<span class="normal"><a href="#__codelineno-0-409">409</a></span>
+<span class="normal"><a href="#__codelineno-0-410">410</a></span>
+<span class="normal"><a href="#__codelineno-0-411">411</a></span>
+<span class="normal"><a href="#__codelineno-0-412">412</a></span>
+<span class="normal"><a href="#__codelineno-0-413">413</a></span>
+<span class="normal"><a href="#__codelineno-0-414">414</a></span>
+<span class="normal"><a href="#__codelineno-0-415">415</a></span>
+<span class="normal"><a href="#__codelineno-0-416">416</a></span>
+<span class="normal"><a href="#__codelineno-0-417">417</a></span>
+<span class="normal"><a href="#__codelineno-0-418">418</a></span>
+<span class="normal"><a href="#__codelineno-0-419">419</a></span>
+<span class="normal"><a href="#__codelineno-0-420">420</a></span>
+<span class="normal"><a href="#__codelineno-0-421">421</a></span>
+<span class="normal"><a href="#__codelineno-0-422">422</a></span>
+<span class="normal"><a href="#__codelineno-0-423">423</a></span>
+<span class="normal"><a href="#__codelineno-0-424">424</a></span>
+<span class="normal"><a href="#__codelineno-0-425">425</a></span>
+<span class="normal"><a href="#__codelineno-0-426">426</a></span>
+<span class="normal"><a href="#__codelineno-0-427">427</a></span>
+<span class="normal"><a href="#__codelineno-0-428">428</a></span>
+<span class="normal"><a href="#__codelineno-0-429">429</a></span>
+<span class="normal"><a href="#__codelineno-0-430">430</a></span>
+<span class="normal"><a href="#__codelineno-0-431">431</a></span>
+<span class="normal"><a href="#__codelineno-0-432">432</a></span>
+<span class="normal"><a href="#__codelineno-0-433">433</a></span>
+<span class="normal"><a href="#__codelineno-0-434">434</a></span>
+<span class="normal"><a href="#__codelineno-0-435">435</a></span>
+<span class="normal"><a href="#__codelineno-0-436">436</a></span>
+<span class="normal"><a href="#__codelineno-0-437">437</a></span>
+<span class="normal"><a href="#__codelineno-0-438">438</a></span>
+<span class="normal"><a href="#__codelineno-0-439">439</a></span>
+<span class="normal"><a href="#__codelineno-0-440">440</a></span>
+<span class="normal"><a href="#__codelineno-0-441">441</a></span>
+<span class="normal"><a href="#__codelineno-0-442">442</a></span>
+<span class="normal"><a href="#__codelineno-0-443">443</a></span>
+<span class="normal"><a href="#__codelineno-0-444">444</a></span>
+<span class="normal"><a href="#__codelineno-0-445">445</a></span>
+<span class="normal"><a href="#__codelineno-0-446">446</a></span>
+<span class="normal"><a href="#__codelineno-0-447">447</a></span>
+<span class="normal"><a href="#__codelineno-0-448">448</a></span>
+<span class="normal"><a href="#__codelineno-0-449">449</a></span>
+<span class="normal"><a href="#__codelineno-0-450">450</a></span>
+<span class="normal"><a href="#__codelineno-0-451">451</a></span>
+<span class="normal"><a href="#__codelineno-0-452">452</a></span>
+<span class="normal"><a href="#__codelineno-0-453">453</a></span>
+<span class="normal"><a href="#__codelineno-0-454">454</a></span>
+<span class="normal"><a href="#__codelineno-0-455">455</a></span>
+<span class="normal"><a href="#__codelineno-0-456">456</a></span>
+<span class="normal"><a href="#__codelineno-0-457">457</a></span>
+<span class="normal"><a href="#__codelineno-0-458">458</a></span>
+<span class="normal"><a href="#__codelineno-0-459">459</a></span>
+<span class="normal"><a href="#__codelineno-0-460">460</a></span>
+<span class="normal"><a href="#__codelineno-0-461">461</a></span>
+<span class="normal"><a href="#__codelineno-0-462">462</a></span>
+<span class="normal"><a href="#__codelineno-0-463">463</a></span>
+<span class="normal"><a href="#__codelineno-0-464">464</a></span>
+<span class="normal"><a href="#__codelineno-0-465">465</a></span>
+<span class="normal"><a href="#__codelineno-0-466">466</a></span>
+<span class="normal"><a href="#__codelineno-0-467">467</a></span>
+<span class="normal"><a href="#__codelineno-0-468">468</a></span>
+<span class="normal"><a href="#__codelineno-0-469">469</a></span>
+<span class="normal"><a href="#__codelineno-0-470">470</a></span>
+<span class="normal"><a href="#__codelineno-0-471">471</a></span>
+<span class="normal"><a href="#__codelineno-0-472">472</a></span>
+<span class="normal"><a href="#__codelineno-0-473">473</a></span>
+<span class="normal"><a href="#__codelineno-0-474">474</a></span>
+<span class="normal"><a href="#__codelineno-0-475">475</a></span>
+<span class="normal"><a href="#__codelineno-0-476">476</a></span>
+<span class="normal"><a href="#__codelineno-0-477">477</a></span>
+<span class="normal"><a href="#__codelineno-0-478">478</a></span>
+<span class="normal"><a href="#__codelineno-0-479">479</a></span>
+<span class="normal"><a href="#__codelineno-0-480">480</a></span>
+<span class="normal"><a href="#__codelineno-0-481">481</a></span>
+<span class="normal"><a href="#__codelineno-0-482">482</a></span>
+<span class="normal"><a href="#__codelineno-0-483">483</a></span>
+<span class="normal"><a href="#__codelineno-0-484">484</a></span>
+<span class="normal"><a href="#__codelineno-0-485">485</a></span>
+<span class="normal"><a href="#__codelineno-0-486">486</a></span>
+<span class="normal"><a href="#__codelineno-0-487">487</a></span>
+<span class="normal"><a href="#__codelineno-0-488">488</a></span>
+<span class="normal"><a href="#__codelineno-0-489">489</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-382" name="__codelineno-0-382"></a><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+<a id="__codelineno-0-383" name="__codelineno-0-383"></a>    <span class="bp">self</span><span class="p">,</span>
+<a id="__codelineno-0-384" name="__codelineno-0-384"></a>    <span class="n">model_id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;anthropic/claude-sonnet-4-5&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-385" name="__codelineno-0-385"></a>    <span class="n">custom_tools</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="n">Callable</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-0-386" name="__codelineno-0-386"></a>    <span class="n">enabled_tools</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-0-387" name="__codelineno-0-387"></a>    <span class="n">litellm_kwargs</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-0-388" name="__codelineno-0-388"></a><span class="p">):</span>
+<a id="__codelineno-0-389" name="__codelineno-0-389"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Initialize the agent.</span>
+<a id="__codelineno-0-390" name="__codelineno-0-390"></a>
+<a id="__codelineno-0-391" name="__codelineno-0-391"></a><span class="sd">    Args:</span>
+<a id="__codelineno-0-392" name="__codelineno-0-392"></a><span class="sd">        model_id: LiteLLM model identifier</span>
+<a id="__codelineno-0-393" name="__codelineno-0-393"></a><span class="sd">        custom_tools: Optional list of Python functions to add as tools</span>
+<a id="__codelineno-0-394" name="__codelineno-0-394"></a><span class="sd">        enabled_tools: Optional list of tool names to enable (whitelist). If provided,</span>
+<a id="__codelineno-0-395" name="__codelineno-0-395"></a><span class="sd">                      only these tools will be available. Takes precedence over</span>
+<a id="__codelineno-0-396" name="__codelineno-0-396"></a><span class="sd">                      PATCHPAL_ENABLED_TOOLS environment variable.</span>
+<a id="__codelineno-0-397" name="__codelineno-0-397"></a><span class="sd">        litellm_kwargs: Optional dict of extra parameters to pass to litellm.completion()</span>
+<a id="__codelineno-0-398" name="__codelineno-0-398"></a><span class="sd">                      (e.g., {&quot;reasoning_effort&quot;: &quot;high&quot;} for reasoning models)</span>
+<a id="__codelineno-0-399" name="__codelineno-0-399"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-400" name="__codelineno-0-400"></a>    <span class="c1"># Store custom tools</span>
+<a id="__codelineno-0-401" name="__codelineno-0-401"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">custom_tools</span> <span class="o">=</span> <span class="n">custom_tools</span> <span class="ow">or</span> <span class="p">[]</span>
+<a id="__codelineno-0-402" name="__codelineno-0-402"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">custom_tool_funcs</span> <span class="o">=</span> <span class="p">{</span><span class="n">func</span><span class="o">.</span><span class="vm">__name__</span><span class="p">:</span> <span class="n">func</span> <span class="k">for</span> <span class="n">func</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">custom_tools</span><span class="p">}</span>
+<a id="__codelineno-0-403" name="__codelineno-0-403"></a>
+<a id="__codelineno-0-404" name="__codelineno-0-404"></a>    <span class="c1"># Configure enabled tools (parameter takes precedence over environment variable)</span>
+<a id="__codelineno-0-405" name="__codelineno-0-405"></a>    <span class="k">if</span> <span class="n">enabled_tools</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-406" name="__codelineno-0-406"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">enabled_tools</span> <span class="o">=</span> <span class="n">enabled_tools</span>
+<a id="__codelineno-0-407" name="__codelineno-0-407"></a>    <span class="k">else</span><span class="p">:</span>
+<a id="__codelineno-0-408" name="__codelineno-0-408"></a>        <span class="n">env_enabled</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;PATCHPAL_ENABLED_TOOLS&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-409" name="__codelineno-0-409"></a>        <span class="k">if</span> <span class="n">env_enabled</span><span class="p">:</span>
+<a id="__codelineno-0-410" name="__codelineno-0-410"></a>            <span class="bp">self</span><span class="o">.</span><span class="n">enabled_tools</span> <span class="o">=</span> <span class="p">[</span><span class="n">t</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">env_enabled</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;,&quot;</span><span class="p">)]</span>
+<a id="__codelineno-0-411" name="__codelineno-0-411"></a>        <span class="k">else</span><span class="p">:</span>
+<a id="__codelineno-0-412" name="__codelineno-0-412"></a>            <span class="bp">self</span><span class="o">.</span><span class="n">enabled_tools</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># No filtering - all tools available</span>
+<a id="__codelineno-0-413" name="__codelineno-0-413"></a>
+<a id="__codelineno-0-414" name="__codelineno-0-414"></a>    <span class="c1"># Convert ollama/ to ollama_chat/ for LiteLLM compatibility</span>
+<a id="__codelineno-0-415" name="__codelineno-0-415"></a>    <span class="k">if</span> <span class="n">model_id</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;ollama/&quot;</span><span class="p">):</span>
+<a id="__codelineno-0-416" name="__codelineno-0-416"></a>        <span class="n">model_id</span> <span class="o">=</span> <span class="n">model_id</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;ollama/&quot;</span><span class="p">,</span> <span class="s2">&quot;ollama_chat/&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+<a id="__codelineno-0-417" name="__codelineno-0-417"></a>
+<a id="__codelineno-0-418" name="__codelineno-0-418"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">model_id</span> <span class="o">=</span> <span class="n">_normalize_bedrock_model_id</span><span class="p">(</span><span class="n">model_id</span><span class="p">)</span>
+<a id="__codelineno-0-419" name="__codelineno-0-419"></a>
+<a id="__codelineno-0-420" name="__codelineno-0-420"></a>    <span class="c1"># Initialize image handler for vision model support</span>
+<a id="__codelineno-0-421" name="__codelineno-0-421"></a>    <span class="kn">from</span><span class="w"> </span><span class="nn">patchpal.tools.image_handler</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImageHandler</span>
+<a id="__codelineno-0-422" name="__codelineno-0-422"></a>
+<a id="__codelineno-0-423" name="__codelineno-0-423"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">image_handler</span> <span class="o">=</span> <span class="n">ImageHandler</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model_id</span><span class="p">)</span>
+<a id="__codelineno-0-424" name="__codelineno-0-424"></a>
+<a id="__codelineno-0-425" name="__codelineno-0-425"></a>    <span class="c1"># Register Ollama models as supporting native function calling</span>
+<a id="__codelineno-0-426" name="__codelineno-0-426"></a>    <span class="c1"># LiteLLM defaults to JSON mode if not explicitly registered</span>
+<a id="__codelineno-0-427" name="__codelineno-0-427"></a>    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_id</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;ollama_chat/&quot;</span><span class="p">):</span>
+<a id="__codelineno-0-428" name="__codelineno-0-428"></a>        <span class="c1"># Suppress verbose output from register_model</span>
+<a id="__codelineno-0-429" name="__codelineno-0-429"></a>        <span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+<a id="__codelineno-0-430" name="__codelineno-0-430"></a>        <span class="kn">from</span><span class="w"> </span><span class="nn">io</span><span class="w"> </span><span class="kn">import</span> <span class="n">StringIO</span>
+<a id="__codelineno-0-431" name="__codelineno-0-431"></a>
+<a id="__codelineno-0-432" name="__codelineno-0-432"></a>        <span class="n">old_stdout</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span>
+<a id="__codelineno-0-433" name="__codelineno-0-433"></a>        <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span> <span class="o">=</span> <span class="n">StringIO</span><span class="p">()</span>
+<a id="__codelineno-0-434" name="__codelineno-0-434"></a>        <span class="k">try</span><span class="p">:</span>
+<a id="__codelineno-0-435" name="__codelineno-0-435"></a>            <span class="n">litellm</span><span class="o">.</span><span class="n">register_model</span><span class="p">(</span>
+<a id="__codelineno-0-436" name="__codelineno-0-436"></a>                <span class="p">{</span><span class="s2">&quot;model_cost&quot;</span><span class="p">:</span> <span class="p">{</span><span class="bp">self</span><span class="o">.</span><span class="n">model_id</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;supports_function_calling&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">}}}</span>
+<a id="__codelineno-0-437" name="__codelineno-0-437"></a>            <span class="p">)</span>
+<a id="__codelineno-0-438" name="__codelineno-0-438"></a>        <span class="k">finally</span><span class="p">:</span>
+<a id="__codelineno-0-439" name="__codelineno-0-439"></a>            <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span> <span class="o">=</span> <span class="n">old_stdout</span>
+<a id="__codelineno-0-440" name="__codelineno-0-440"></a>
+<a id="__codelineno-0-441" name="__codelineno-0-441"></a>    <span class="c1"># Set up Bedrock environment if needed</span>
+<a id="__codelineno-0-442" name="__codelineno-0-442"></a>    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_id</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;bedrock/&quot;</span><span class="p">):</span>
+<a id="__codelineno-0-443" name="__codelineno-0-443"></a>        <span class="n">_setup_bedrock_env</span><span class="p">()</span>
+<a id="__codelineno-0-444" name="__codelineno-0-444"></a>
+<a id="__codelineno-0-445" name="__codelineno-0-445"></a>    <span class="c1"># Conversation history (list of message dicts)</span>
+<a id="__codelineno-0-446" name="__codelineno-0-446"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">messages</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+<a id="__codelineno-0-447" name="__codelineno-0-447"></a>
+<a id="__codelineno-0-448" name="__codelineno-0-448"></a>    <span class="c1"># Initialize context manager</span>
+<a id="__codelineno-0-449" name="__codelineno-0-449"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">context_manager</span> <span class="o">=</span> <span class="n">ContextManager</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model_id</span><span class="p">,</span> <span class="n">SYSTEM_PROMPT</span><span class="p">)</span>
+<a id="__codelineno-0-450" name="__codelineno-0-450"></a>
+<a id="__codelineno-0-451" name="__codelineno-0-451"></a>    <span class="c1"># Check if auto-compaction is enabled (default: True)</span>
+<a id="__codelineno-0-452" name="__codelineno-0-452"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">enable_auto_compact</span> <span class="o">=</span> <span class="ow">not</span> <span class="n">config</span><span class="o">.</span><span class="n">DISABLE_AUTOCOMPACT</span>
+<a id="__codelineno-0-453" name="__codelineno-0-453"></a>
+<a id="__codelineno-0-454" name="__codelineno-0-454"></a>    <span class="c1"># Track last compaction to prevent compaction loops</span>
+<a id="__codelineno-0-455" name="__codelineno-0-455"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">_last_compaction_message_count</span> <span class="o">=</span> <span class="mi">0</span>
+<a id="__codelineno-0-456" name="__codelineno-0-456"></a>
+<a id="__codelineno-0-457" name="__codelineno-0-457"></a>    <span class="c1"># Track cumulative token usage across all LLM calls</span>
+<a id="__codelineno-0-458" name="__codelineno-0-458"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">total_llm_calls</span> <span class="o">=</span> <span class="mi">0</span>
+<a id="__codelineno-0-459" name="__codelineno-0-459"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">cumulative_input_tokens</span> <span class="o">=</span> <span class="mi">0</span>
+<a id="__codelineno-0-460" name="__codelineno-0-460"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">cumulative_output_tokens</span> <span class="o">=</span> <span class="mi">0</span>
+<a id="__codelineno-0-461" name="__codelineno-0-461"></a>
+<a id="__codelineno-0-462" name="__codelineno-0-462"></a>    <span class="c1"># Track cache-related tokens (for Anthropic/Bedrock models with prompt caching)</span>
+<a id="__codelineno-0-463" name="__codelineno-0-463"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">cumulative_cache_creation_tokens</span> <span class="o">=</span> <span class="mi">0</span>
+<a id="__codelineno-0-464" name="__codelineno-0-464"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">cumulative_cache_read_tokens</span> <span class="o">=</span> <span class="mi">0</span>
+<a id="__codelineno-0-465" name="__codelineno-0-465"></a>
+<a id="__codelineno-0-466" name="__codelineno-0-466"></a>    <span class="c1"># Track OpenAI cache tokens (prompt_tokens_details.cached_tokens)</span>
+<a id="__codelineno-0-467" name="__codelineno-0-467"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">cumulative_openai_cached_tokens</span> <span class="o">=</span> <span class="mi">0</span>
+<a id="__codelineno-0-468" name="__codelineno-0-468"></a>
+<a id="__codelineno-0-469" name="__codelineno-0-469"></a>    <span class="c1"># Track cumulative costs across all LLM calls</span>
+<a id="__codelineno-0-470" name="__codelineno-0-470"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">cumulative_cost</span> <span class="o">=</span> <span class="mf">0.0</span>
+<a id="__codelineno-0-471" name="__codelineno-0-471"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">last_message_cost</span> <span class="o">=</span> <span class="mf">0.0</span>
+<a id="__codelineno-0-472" name="__codelineno-0-472"></a>
+<a id="__codelineno-0-473" name="__codelineno-0-473"></a>    <span class="c1"># LiteLLM settings for models that need parameter dropping</span>
+<a id="__codelineno-0-474" name="__codelineno-0-474"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">litellm_kwargs</span> <span class="o">=</span> <span class="p">{}</span>
+<a id="__codelineno-0-475" name="__codelineno-0-475"></a>    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_id</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;bedrock/&quot;</span><span class="p">):</span>
+<a id="__codelineno-0-476" name="__codelineno-0-476"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">litellm_kwargs</span><span class="p">[</span><span class="s2">&quot;drop_params&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+<a id="__codelineno-0-477" name="__codelineno-0-477"></a>        <span class="c1"># Configure LiteLLM to handle Bedrock&#39;s strict message alternation requirement</span>
+<a id="__codelineno-0-478" name="__codelineno-0-478"></a>        <span class="c1"># This must be set globally, not as a completion parameter</span>
+<a id="__codelineno-0-479" name="__codelineno-0-479"></a>        <span class="n">litellm</span><span class="o">.</span><span class="n">modify_params</span> <span class="o">=</span> <span class="kc">True</span>
+<a id="__codelineno-0-480" name="__codelineno-0-480"></a>    <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_id</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;openai/&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;OPENAI_API_BASE&quot;</span><span class="p">):</span>
+<a id="__codelineno-0-481" name="__codelineno-0-481"></a>        <span class="c1"># Custom OpenAI-compatible servers (vLLM, etc.) often don&#39;t support all parameters</span>
+<a id="__codelineno-0-482" name="__codelineno-0-482"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">litellm_kwargs</span><span class="p">[</span><span class="s2">&quot;drop_params&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+<a id="__codelineno-0-483" name="__codelineno-0-483"></a>
+<a id="__codelineno-0-484" name="__codelineno-0-484"></a>    <span class="c1"># Merge in any user-provided litellm_kwargs</span>
+<a id="__codelineno-0-485" name="__codelineno-0-485"></a>    <span class="k">if</span> <span class="n">litellm_kwargs</span><span class="p">:</span>
+<a id="__codelineno-0-486" name="__codelineno-0-486"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">litellm_kwargs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">litellm_kwargs</span><span class="p">)</span>
+<a id="__codelineno-0-487" name="__codelineno-0-487"></a>
+<a id="__codelineno-0-488" name="__codelineno-0-488"></a>    <span class="c1"># Load MEMORY.md if it exists and has non-template content</span>
+<a id="__codelineno-0-489" name="__codelineno-0-489"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">_load_project_memory</span><span class="p">()</span>
+</code></pre></div></td></tr></table></div>
+                  </details>
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="patchpal.agent.PatchPalAgent.run" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">run</span><span class="p">(</span><span class="n">user_message</span><span class="p">,</span> <span class="n">max_iterations</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span></code>
+
+<a href="#patchpal.agent.PatchPalAgent.run" class="headerlink" title="Permanent link">&para;</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Run the agent on a user message.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>user_message</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The user's request</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>max_iterations</code>
+            </td>
+            <td>
+                  <code><span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Maximum number of agent iterations (default: 100)</p>
+              </div>
+            </td>
+            <td>
+                  <code>100</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The agent's final response</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>patchpal/agent.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-907">907</a></span>
+<span class="normal"><a href="#__codelineno-0-908">908</a></span>
+<span class="normal"><a href="#__codelineno-0-909">909</a></span>
+<span class="normal"><a href="#__codelineno-0-910">910</a></span>
+<span class="normal"><a href="#__codelineno-0-911">911</a></span>
+<span class="normal"><a href="#__codelineno-0-912">912</a></span>
+<span class="normal"><a href="#__codelineno-0-913">913</a></span>
+<span class="normal"><a href="#__codelineno-0-914">914</a></span>
+<span class="normal"><a href="#__codelineno-0-915">915</a></span>
+<span class="normal"><a href="#__codelineno-0-916">916</a></span>
+<span class="normal"><a href="#__codelineno-0-917">917</a></span>
+<span class="normal"><a href="#__codelineno-0-918">918</a></span>
+<span class="normal"><a href="#__codelineno-0-919">919</a></span>
+<span class="normal"><a href="#__codelineno-0-920">920</a></span>
+<span class="normal"><a href="#__codelineno-0-921">921</a></span>
+<span class="normal"><a href="#__codelineno-0-922">922</a></span>
+<span class="normal"><a href="#__codelineno-0-923">923</a></span>
+<span class="normal"><a href="#__codelineno-0-924">924</a></span>
+<span class="normal"><a href="#__codelineno-0-925">925</a></span>
+<span class="normal"><a href="#__codelineno-0-926">926</a></span>
+<span class="normal"><a href="#__codelineno-0-927">927</a></span>
+<span class="normal"><a href="#__codelineno-0-928">928</a></span>
+<span class="normal"><a href="#__codelineno-0-929">929</a></span>
+<span class="normal"><a href="#__codelineno-0-930">930</a></span>
+<span class="normal"><a href="#__codelineno-0-931">931</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-907" name="__codelineno-0-907"></a><span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">user_message</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">max_iterations</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<a id="__codelineno-0-908" name="__codelineno-0-908"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Run the agent on a user message.</span>
+<a id="__codelineno-0-909" name="__codelineno-0-909"></a>
+<a id="__codelineno-0-910" name="__codelineno-0-910"></a><span class="sd">    Args:</span>
+<a id="__codelineno-0-911" name="__codelineno-0-911"></a><span class="sd">        user_message: The user&#39;s request</span>
+<a id="__codelineno-0-912" name="__codelineno-0-912"></a><span class="sd">        max_iterations: Maximum number of agent iterations (default: 100)</span>
+<a id="__codelineno-0-913" name="__codelineno-0-913"></a>
+<a id="__codelineno-0-914" name="__codelineno-0-914"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-915" name="__codelineno-0-915"></a><span class="sd">        The agent&#39;s final response</span>
+<a id="__codelineno-0-916" name="__codelineno-0-916"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-917" name="__codelineno-0-917"></a>    <span class="c1"># Add user message to history</span>
+<a id="__codelineno-0-918" name="__codelineno-0-918"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">messages</span><span class="o">.</span><span class="n">append</span><span class="p">({</span><span class="s2">&quot;role&quot;</span><span class="p">:</span> <span class="s2">&quot;user&quot;</span><span class="p">,</span> <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="n">user_message</span><span class="p">})</span>
+<a id="__codelineno-0-919" name="__codelineno-0-919"></a>
+<a id="__codelineno-0-920" name="__codelineno-0-920"></a>    <span class="c1"># Check for compaction BEFORE starting work</span>
+<a id="__codelineno-0-921" name="__codelineno-0-921"></a>    <span class="c1"># This ensures we never compact mid-execution and lose tool results</span>
+<a id="__codelineno-0-922" name="__codelineno-0-922"></a>    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">enable_auto_compact</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">context_manager</span><span class="o">.</span><span class="n">needs_compaction</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">messages</span><span class="p">):</span>
+<a id="__codelineno-0-923" name="__codelineno-0-923"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_perform_auto_compaction</span><span class="p">()</span>
+<a id="__codelineno-0-924" name="__codelineno-0-924"></a>
+<a id="__codelineno-0-925" name="__codelineno-0-925"></a>    <span class="c1"># Agent loop with interrupt handling</span>
+<a id="__codelineno-0-926" name="__codelineno-0-926"></a>    <span class="k">try</span><span class="p">:</span>
+<a id="__codelineno-0-927" name="__codelineno-0-927"></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_agent_loop</span><span class="p">(</span><span class="n">max_iterations</span><span class="p">)</span>
+<a id="__codelineno-0-928" name="__codelineno-0-928"></a>    <span class="k">except</span> <span class="ne">KeyboardInterrupt</span><span class="p">:</span>
+<a id="__codelineno-0-929" name="__codelineno-0-929"></a>        <span class="c1"># Clean up conversation state if interrupted mid-execution</span>
+<a id="__codelineno-0-930" name="__codelineno-0-930"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_cleanup_interrupted_state</span><span class="p">()</span>
+<a id="__codelineno-0-931" name="__codelineno-0-931"></a>        <span class="k">raise</span>  <span class="c1"># Re-raise so CLI can handle it</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div><h2 id="helper-functions">Helper Functions<a class="headerlink" href="#helper-functions" title="Permanent link">&para;</a></h2>
+
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="patchpal.agent._is_bedrock_arn" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <code class="highlight language-python"><span class="n">patchpal</span><span class="o">.</span><span class="n">agent</span><span class="o">.</span><span class="n">_is_bedrock_arn</span><span class="p">(</span><span class="n">model_id</span><span class="p">)</span></code>
+
+<a href="#patchpal.agent._is_bedrock_arn" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents first">
+
+        <p>Check if a model ID is a Bedrock ARN.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>patchpal/agent.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-30">30</a></span>
+<span class="normal"><a href="#__codelineno-0-31">31</a></span>
+<span class="normal"><a href="#__codelineno-0-32">32</a></span>
+<span class="normal"><a href="#__codelineno-0-33">33</a></span>
+<span class="normal"><a href="#__codelineno-0-34">34</a></span>
+<span class="normal"><a href="#__codelineno-0-35">35</a></span>
+<span class="normal"><a href="#__codelineno-0-36">36</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-30" name="__codelineno-0-30"></a><span class="k">def</span><span class="w"> </span><span class="nf">_is_bedrock_arn</span><span class="p">(</span><span class="n">model_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<a id="__codelineno-0-31" name="__codelineno-0-31"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Check if a model ID is a Bedrock ARN.&quot;&quot;&quot;</span>
+<a id="__codelineno-0-32" name="__codelineno-0-32"></a>    <span class="k">return</span> <span class="p">(</span>
+<a id="__codelineno-0-33" name="__codelineno-0-33"></a>        <span class="n">model_id</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;arn:aws&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-34" name="__codelineno-0-34"></a>        <span class="ow">and</span> <span class="s2">&quot;:bedrock:&quot;</span> <span class="ow">in</span> <span class="n">model_id</span>
+<a id="__codelineno-0-35" name="__codelineno-0-35"></a>        <span class="ow">and</span> <span class="s2">&quot;:inference-profile/&quot;</span> <span class="ow">in</span> <span class="n">model_id</span>
+<a id="__codelineno-0-36" name="__codelineno-0-36"></a>    <span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div><h2 id="usage-example">Usage Example<a class="headerlink" href="#usage-example" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">patchpal.agent</span><span class="w"> </span><span class="kn">import</span> <span class="n">create_agent</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="c1"># Create agent with default model</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="n">agent</span> <span class="o">=</span> <span class="n">create_agent</span><span class="p">()</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="c1"># Or specify a model</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="n">agent</span> <span class="o">=</span> <span class="n">create_agent</span><span class="p">(</span><span class="n">model_id</span><span class="o">=</span><span class="s2">&quot;anthropic/claude-sonnet-4-5&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="c1"># Run a task</span>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="n">response</span> <span class="o">=</span> <span class="n">agent</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="s2">&quot;List all Python files&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="nb">print</span><span class="p">(</span><span class="n">response</span><span class="p">)</span>
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="c1"># Check token usage</span>
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Total tokens: </span><span class="si">{</span><span class="n">agent</span><span class="o">.</span><span class="n">cumulative_input_tokens</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">agent</span><span class="o">.</span><span class="n">cumulative_output_tokens</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</code></pre></div>
+<h2 id="related">Related<a class="headerlink" href="#related" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="../../usage/python-api/">Python API Guide</a> - Comprehensive guide to using the Python API</li>
+<li><a href="../context/">Context Management</a> - How context windows are managed</li>
+<li><a href="../custom-tools/">Custom Tools</a> - Adding your own tools to the agent</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.tabs", "navigation.sections", "navigation.expand", "navigation.top", "search.suggest", "search.highlight", "content.code.copy", "content.code.annotate"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
