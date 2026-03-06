@@ -141,7 +141,9 @@ export PATCHPAL_ENABLE_MCP=false             # Disable MCP tool loading (default
                                               # Note: MCP tools are loaded dynamically from ~/.patchpal/config.json
 ```
 
-### Minimal Tools Mode
+### Tool Selection
+
+#### Minimal Tools Mode
 
 ```bash
 # Limit to Essential Tools Only
@@ -151,6 +153,100 @@ export PATCHPAL_MINIMAL_TOOLS=true           # Enable minimal tools mode (defaul
                                               # Improves: decision speed (2-3s vs 10-30s), tool accuracy (~95% vs ~60%)
                                               # Trade-off: No code_structure, web tools, TODO tools, etc.
 ```
+
+#### Custom Tool Selection (enabled_tools)
+
+For fine-grained control over which tools are available to the agent, use `enabled_tools`:
+
+**Via Environment Variable (for CLI usage):**
+```bash
+# Limit to specific tools (whitelist)
+export PATCHPAL_ENABLED_TOOLS="read_file,read_lines,code_structure,get_repo_map"
+patchpal
+
+# Read-only agent (no modifications)
+export PATCHPAL_ENABLED_TOOLS="read_file,read_lines,code_structure"
+patchpal
+
+# Lightweight read-only with search (uses optional tools)
+export PATCHPAL_ENABLED_TOOLS="read_file,read_lines,list_files,grep"
+patchpal
+
+# Code editor (no shell access)
+export PATCHPAL_ENABLED_TOOLS="read_file,edit_file,write_file"
+patchpal
+
+# Research assistant (web + reading)
+export PATCHPAL_ENABLED_TOOLS="read_file,web_search,web_fetch"
+patchpal
+```
+
+**Via Python API (for programmatic use):**
+```python
+from patchpal import create_agent
+
+# Read-only analysis agent
+agent = create_agent(
+    enabled_tools=["read_file", "read_lines", "code_structure", "get_repo_map"]
+)
+
+# Lightweight read-only with search (uses optional tools)
+agent = create_agent(
+    enabled_tools=["read_file", "read_lines", "list_files", "grep"]
+)
+
+# Code editor agent (no shell commands)
+agent = create_agent(
+    enabled_tools=["read_file", "read_lines", "edit_file", "write_file"]
+)
+
+# Research assistant
+agent = create_agent(
+    enabled_tools=["read_file", "web_search", "web_fetch"]
+)
+
+# Custom tools are always added on top of enabled_tools
+def my_calculator(x: int, y: int) -> str:
+    """Add two numbers."""
+    return str(x + y)
+
+agent = create_agent(
+    enabled_tools=["read_file"],  # Only this built-in tool
+    custom_tools=[my_calculator]   # Plus custom tool
+)
+```
+
+**Available Built-in Tools:**
+- `read_file` - Read file contents (text, images, PDFs, etc.)
+- `read_lines` - Read specific lines from a file
+- `write_file` - Write complete file contents
+- `edit_file` - Edit files using find/replace
+- `code_structure` - Analyze code structure (AST parsing)
+- `get_repo_map` - Generate repository overview
+- `run_shell` - Execute shell commands
+- `grep` - Pattern search in files (disabled by default; shell commands preferred for most cases)
+- `list_files` - List files in repository (disabled by default; faster than get_repo_map for simple file listing)
+- `web_search` - Search the web
+- `web_fetch` - Fetch content from URLs
+- `list_skills` - List available skills
+- `use_skill` - Invoke a skill
+- `todo_add`, `todo_list`, `todo_complete`, `todo_update`, `todo_remove`, `todo_clear` - Task management
+- `ask_user` - Ask user for input/clarification
+
+**Note:** The `grep` and `list_files` tools are disabled by default but can be explicitly enabled via `enabled_tools`. They provide lightweight search and navigation without requiring `run_shell` access or expensive code parsing (`get_repo_map`), making them ideal for read-only agents exploring codebases.
+
+**Precedence:**
+1. `enabled_tools` parameter (Python API - highest priority)
+2. `PATCHPAL_ENABLED_TOOLS` environment variable (CLI)
+3. `PATCHPAL_ENABLE_WEB` / `PATCHPAL_MINIMAL_TOOLS` (broader filters)
+
+**Use Cases:**
+- **Security**: Limit agent capabilities in production environments
+- **Specialization**: Create focused agents for specific tasks (read-only, editor-only, etc.)
+- **Testing**: Control agent behavior in test environments
+- **User Control**: Let end-users configure agent permissions
+
+**Note:** The `enabled_tools` parameter/variable overrides `PATCHPAL_ENABLE_WEB` and `PATCHPAL_MINIMAL_TOOLS`. If you specify `enabled_tools`, you get exactly those tools (plus any custom tools).
 
 ### Web Tools
 

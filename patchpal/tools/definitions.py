@@ -10,6 +10,8 @@ from patchpal.tools import (
     code_structure,
     edit_file,
     get_repo_map,
+    grep,
+    list_files,
     list_skills,
     read_file,
     read_lines,
@@ -406,6 +408,60 @@ Tip: Read README first for context when exploring repositories.""",
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "grep",
+            "description": "Search for a pattern in files using grep or ripgrep. Useful for read-only agents that need search capabilities without run_shell access. Supports case-insensitive search, file globs, and path filtering.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "pattern": {
+                        "type": "string",
+                        "description": "Regular expression pattern to search for",
+                    },
+                    "file_glob": {
+                        "type": "string",
+                        "description": "Optional glob pattern to filter files (e.g., '*.py', 'src/**/*.js')",
+                    },
+                    "case_sensitive": {
+                        "type": "boolean",
+                        "description": "Whether the search should be case-sensitive (default: True)",
+                    },
+                    "max_results": {
+                        "type": "integer",
+                        "description": "Maximum number of results to return (default: 100)",
+                    },
+                    "path": {
+                        "type": "string",
+                        "description": "Optional file or directory path to search in (relative to repo root or absolute). Defaults to repository root.",
+                    },
+                },
+                "required": ["pattern"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "list_files",
+            "description": "List all files in the repository or a specific directory. Fast file listing without shell access or code parsing. Useful for read-only agents that need to explore repository structure.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "Optional directory path to list (relative to repo root or absolute). Defaults to repository root.",
+                    },
+                    "include_hidden": {
+                        "type": "boolean",
+                        "description": "Whether to include hidden files/directories (default: False)",
+                    },
+                },
+                "required": [],
+            },
+        },
+    },
 ]
 
 # Map tool names to functions
@@ -428,6 +484,8 @@ TOOL_FUNCTIONS = {
     "todo_clear": todo_clear,
     "ask_user": ask_user,
     "run_shell": run_shell,
+    "grep": grep,  # Optional tool
+    "list_files": list_files,  # Optional tool
 }
 
 
@@ -440,6 +498,10 @@ def get_tools(web_tools_enabled: bool = True):
     Returns:
         Tuple of (tools_list, tool_functions_dict)
     """
+    # Tools that are available but disabled by default
+    # They can be enabled via enabled_tools parameter/env var
+    disabled_by_default = ["grep", "list_files"]
+
     # Check if minimal tools mode is enabled (for local models with tool confusion)
     minimal_mode = config.MINIMAL_TOOLS
 
@@ -461,6 +523,10 @@ def get_tools(web_tools_enabled: bool = True):
     # Start with built-in tools
     tools = TOOLS.copy()
     functions = TOOL_FUNCTIONS.copy()
+
+    # Filter out disabled-by-default tools (can be enabled via enabled_tools)
+    tools = [tool for tool in tools if tool["function"]["name"] not in disabled_by_default]
+    # Note: Keep functions dict complete so enabled_tools can access them
 
     # Filter out web tools if disabled
     if not web_tools_enabled:

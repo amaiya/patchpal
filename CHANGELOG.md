@@ -7,6 +7,19 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
+## 0.20.0 (2026-03-05)
+
+### new:
+- **Tool selection control (`enabled_tools`)**: Added `enabled_tools` parameter to `create_agent()` and `PATCHPAL_ENABLED_TOOLS` environment variable to limit which built-in tools are available to agents. Enables creation of specialized agents (e.g., read-only, editor-only) for security and performance. Parameter takes precedence over environment variable.
+- **Optional tools (`grep`, `list_files`)**: Re-added `grep` and `list_files` tools as optional, disabled-by-default tools. Provide lightweight search and navigation for read-only agents without requiring `run_shell` access or expensive code parsing. Enable via `enabled_tools` parameter when needed. Shell commands remain preferred for most use cases.
+
+### changed:
+- N/A
+
+### fixed:
+- N/A
+
+
 ## 0.19.2 (2026-03-02)
 
 ### new:

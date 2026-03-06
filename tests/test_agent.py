@@ -62,48 +62,51 @@ def test_create_agent_ollama_model():
 def test_agent_has_correct_tools():
     """Test that the agent has the correct tools defined."""
     from patchpal.agent import TOOL_FUNCTIONS, TOOLS
+    from patchpal.tools.definitions import TOOLS as ALL_TOOLS
 
-    # Verify we have 18 built-in tools (removed grep and get_file_info as they have shell equivalents)
-    assert len(TOOLS) == 18
-    assert len(TOOL_FUNCTIONS) == 18
+    # Verify we have 20 built-in tools total (in definitions)
+    assert len(ALL_TOOLS) == 20
+    assert len(TOOL_FUNCTIONS) == 20
 
-    # Verify tool names
-    tool_names = [tool["function"]["name"] for tool in TOOLS]
+    # The TOOLS imported from agent is filtered (optional tools removed by get_tools())
+    assert len(TOOLS) == 18  # grep and list_files are filtered out by default
+
+    # Verify tool names in the full tool list
+    all_tool_names = [tool["function"]["name"] for tool in ALL_TOOLS]
     # File operations
-    assert "read_file" in tool_names
-    assert "read_lines" in tool_names
+    assert "read_file" in all_tool_names
+    assert "read_lines" in all_tool_names
     # Code analysis
-    assert "code_structure" in tool_names
-    assert "get_repo_map" in tool_names
+    assert "code_structure" in all_tool_names
+    assert "get_repo_map" in all_tool_names
     # File editing
-    assert "edit_file" in tool_names
-    assert "write_file" in tool_names
+    assert "edit_file" in all_tool_names
+    assert "write_file" in all_tool_names
     # Skills
-    assert "list_skills" in tool_names
-    assert "use_skill" in tool_names
+    assert "list_skills" in all_tool_names
+    assert "use_skill" in all_tool_names
     # Web tools
-    assert "web_search" in tool_names
-    assert "web_fetch" in tool_names
+    assert "web_search" in all_tool_names
+    assert "web_fetch" in all_tool_names
     # Shell
-    assert "run_shell" in tool_names
+    assert "run_shell" in all_tool_names
+    # Optional tools (disabled by default but available)
+    assert "grep" in all_tool_names
+    assert "list_files" in all_tool_names
     # TODO tools (6)
-    assert "todo_add" in tool_names
-    assert "todo_list" in tool_names
-    assert "todo_complete" in tool_names
-    assert "todo_update" in tool_names
-    assert "todo_remove" in tool_names
-    assert "todo_clear" in tool_names
+    assert "todo_add" in all_tool_names
+    assert "todo_list" in all_tool_names
+    assert "todo_complete" in all_tool_names
+    assert "todo_update" in all_tool_names
+    assert "todo_remove" in all_tool_names
+    assert "todo_clear" in all_tool_names
     # User interaction
-    assert "ask_user" in tool_names
-    # New TODO tools
-    assert "todo_add" in tool_names
-    assert "todo_list" in tool_names
-    assert "todo_complete" in tool_names
-    assert "todo_update" in tool_names
-    assert "todo_remove" in tool_names
-    assert "todo_clear" in tool_names
-    # New ask_user tool
-    assert "ask_user" in tool_names
+    assert "ask_user" in all_tool_names
+
+    # Verify optional tools are NOT in the default filtered list
+    default_tool_names = [tool["function"]["name"] for tool in TOOLS]
+    assert "grep" not in default_tool_names
+    assert "list_files" not in default_tool_names
 
 
 def test_agent_system_prompt():

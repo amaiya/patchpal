@@ -383,6 +383,7 @@ class PatchPalAgent:
         self,
         model_id: str = "anthropic/claude-sonnet-4-5",
         custom_tools: Optional[List[Callable]] = None,
+        enabled_tools: Optional[List[str]] = None,
         litellm_kwargs: Optional[Dict[str, Any]] = None,
     ):
         """Initialize the agent.
@@ -390,12 +391,25 @@ class PatchPalAgent:
         Args:
             model_id: LiteLLM model identifier
             custom_tools: Optional list of Python functions to add as tools
+            enabled_tools: Optional list of tool names to enable (whitelist). If provided,
+                          only these tools will be available. Takes precedence over
+                          PATCHPAL_ENABLED_TOOLS environment variable.
             litellm_kwargs: Optional dict of extra parameters to pass to litellm.completion()
                           (e.g., {"reasoning_effort": "high"} for reasoning models)
         """
         # Store custom tools
         self.custom_tools = custom_tools or []
         self.custom_tool_funcs = {func.__name__: func for func in self.custom_tools}
+
+        # Configure enabled tools (parameter takes precedence over environment variable)
+        if enabled_tools is not None:
+            self.enabled_tools = enabled_tools
+        else:
+            env_enabled = os.getenv("PATCHPAL_ENABLED_TOOLS")
+            if env_enabled:
+                self.enabled_tools = [t.strip() for t in env_enabled.split(",")]
+            else:
+                self.enabled_tools = None  # No filtering - all tools available
 
         # Convert ollama/ to ollama_chat/ for LiteLLM compatibility
         if model_id.startswith("ollama/"):
@@ -1001,6 +1015,11 @@ It's currently empty (just the template). The file is automatically loaded at se
             try:
                 # Build tool list (built-in + custom)
                 tools = list(TOOLS)
+
+                # Filter tools if enabled_tools is specified
+                if self.enabled_tools is not None:
+                    tools = [t for t in tools if t["function"]["name"] in self.enabled_tools]
+
                 if self.custom_tools:
                     from patchpal.tools.tool_schema import function_to_tool_schema
 
@@ -1186,6 +1205,12 @@ It's currently empty (just the template). The file is automatically loaded at se
                             elif tool_name == "grep":
                                 print(
                                     f"\033[2m🔍 Searching: {tool_args.get('pattern', '')}\033[0m",
+                                    flush=True,
+                                )
+                            elif tool_name == "list_files":
+                                path_desc = tool_args.get("path", "repository")
+                                print(
+                                    f"\033[2m📂 Listing files in: {path_desc}\033[0m",
                                     flush=True,
                                 )
                             elif tool_name == "list_skills":
@@ -1477,6 +1502,7 @@ It's currently empty (just the template). The file is automatically loaded at se
 def create_agent(
     model_id: str = "anthropic/claude-sonnet-4-5",
     custom_tools: Optional[List[Callable]] = None,
+    enabled_tools: Optional[List[str]] = None,
     litellm_kwargs: Optional[Dict[str, Any]] = None,
 ) -> PatchPalAgent:
     """Create and return a PatchPal agent.
@@ -1485,6 +1511,11 @@ def create_agent(
         model_id: LiteLLM model identifier (default: anthropic/claude-sonnet-4-5)
         custom_tools: Optional list of Python functions to use as custom tools.
                      Each function should have type hints and a docstring.
+        enabled_tools: Optional list of tool names to enable (whitelist). If provided,
+                      only these built-in tools will be available. Custom tools are
+                      always added. Takes precedence over PATCHPAL_ENABLED_TOOLS
+                      environment variable.
+                      Example: ["read_file", "edit_file", "run_shell"]
         litellm_kwargs: Optional dict of extra parameters to pass to litellm.completion()
                        (e.g., {"reasoning_effort": "high"} for reasoning models)
 
@@ -1504,6 +1535,11 @@ def create_agent(
         agent = create_agent(custom_tools=[calculator])
         response = agent.run("What's 5 + 3?")
 
+        # Limit to read-only tools
+        agent = create_agent(
+            enabled_tools=["read_file", "read_lines", "code_structure"]
+        )
+
         # With reasoning model
         agent = create_agent(
             model_id="ollama_chat/gpt-oss:120b",
@@ -1516,5 +1552,8 @@ def create_agent(
     reset_session_todos()
 
     return PatchPalAgent(
-        model_id=model_id, custom_tools=custom_tools, litellm_kwargs=litellm_kwargs
+        model_id=model_id,
+        custom_tools=custom_tools,
+        enabled_tools=enabled_tools,
+        litellm_kwargs=litellm_kwargs,
     )
