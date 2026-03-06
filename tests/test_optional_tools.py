@@ -73,6 +73,49 @@ def test_list_files_only():
     print("✓ list_files can be enabled independently")
 
 
+def test_optional_tools_actually_passed_to_llm():
+    """Test that optional tools are actually passed to litellm.completion() when enabled."""
+    from unittest.mock import MagicMock, patch
+
+    with patch("patchpal.agent.litellm.completion") as mock_completion:
+        # Setup mock response
+        mock_response = MagicMock()
+        mock_response.choices = [MagicMock()]
+        mock_response.choices[0].message.content = "Test response"
+        mock_response.choices[0].message.tool_calls = None
+        mock_response.usage = MagicMock(prompt_tokens=10, completion_tokens=5, total_tokens=15)
+        mock_completion.return_value = mock_response
+
+        # Create agent with optional tools enabled
+        agent = create_agent(enabled_tools=["read_file", "grep", "list_files"])
+
+        # Run the agent
+        agent.run("Test message")
+
+        # Verify completion was called
+        assert mock_completion.called
+
+        # Get the tools that were passed to litellm.completion
+        call_kwargs = mock_completion.call_args[1]
+        tools_passed = call_kwargs["tools"]
+
+        # Extract tool names
+        tool_names = [t["function"]["name"] for t in tools_passed]
+
+        # Verify optional tools are actually in the tools passed to LLM
+        assert "grep" in tool_names, "grep should be passed to LLM when enabled"
+        assert "list_files" in tool_names, "list_files should be passed to LLM when enabled"
+        assert "read_file" in tool_names
+
+        # Verify other tools are NOT present
+        assert "run_shell" not in tool_names
+        assert "web_search" not in tool_names
+
+        # Verify we only have the 3 enabled tools
+        assert len(tool_names) == 3
+        print("✓ Optional tools are actually passed to LLM when enabled")
+
+
 if __name__ == "__main__":
     print("Testing optional tools (grep, list_files)\n" + "=" * 60)
 

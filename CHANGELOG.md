@@ -7,6 +7,18 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
+## 0.20.1 (2026-03-05)
+
+### new:
+- N/A
+
+### changed:
+- N/A
+
+### fixed:
+- **Critical fix**: Optional tools (`grep`, `list_files`) weren't actually passed to LLM when specified in `enabled_tools`. The agent was filtering from a pre-filtered tools list that already excluded optional tools. Now imports complete tool list when `enabled_tools` is used.
+
+
 ## 0.20.0 (2026-03-05)
 
 ### new:

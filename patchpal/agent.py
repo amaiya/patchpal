@@ -1014,11 +1014,17 @@ It's currently empty (just the template). The file is automatically loaded at se
             # Use LiteLLM for all providers
             try:
                 # Build tool list (built-in + custom)
-                tools = list(TOOLS)
+                # Import from definitions to get ALL tools (including optional ones)
+                from patchpal.tools.definitions import TOOLS as ALL_TOOLS
+
+                tools = list(ALL_TOOLS)
 
                 # Filter tools if enabled_tools is specified
                 if self.enabled_tools is not None:
                     tools = [t for t in tools if t["function"]["name"] in self.enabled_tools]
+                else:
+                    # Use the default filtered list (excludes optional tools)
+                    tools = list(TOOLS)
 
                 if self.custom_tools:
                     from patchpal.tools.tool_schema import function_to_tool_schema
