@@ -87,6 +87,9 @@ Search for a pattern in files using grep or ripgrep.
 - **Enable when**: You need search without shell access (e.g., read-only security agents)
 - Supports case-insensitive search, file globs, and path filtering
 - Uses ripgrep if available (faster), falls back to grep
+- **Requirements**: Requires `rg` (ripgrep) or `grep` command to be installed
+  - macOS/Linux: `grep` usually pre-installed; install `ripgrep` for better performance
+  - Windows: Install ripgrep via `choco install ripgrep` or `scoop install ripgrep`
 - Enable: `agent = create_agent(enabled_tools=["read_file", "grep"])`
 
 ### list_files

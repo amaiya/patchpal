@@ -87,6 +87,18 @@ def grep(
 
     # Try ripgrep first (faster), fall back to grep
     use_rg = shutil.which("rg") is not None
+    use_grep = shutil.which("grep") is not None
+
+    if not use_rg and not use_grep:
+        raise ValueError(
+            "Neither 'rg' (ripgrep) nor 'grep' command found.\n"
+            "Install ripgrep (recommended) or use run_shell for search:\n"
+            "  - macOS: brew install ripgrep\n"
+            "  - Ubuntu: sudo apt install ripgrep\n"
+            "  - Windows: choco install ripgrep or scoop install ripgrep\n"
+            "  - Or use: run_shell('findstr /s /i \"pattern\" *.py')  (Windows)\n"
+            "  - Or use: run_shell('grep -r \"pattern\" .')  (Unix)"
+        )
 
     try:
         if use_rg:
