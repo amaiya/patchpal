@@ -154,9 +154,9 @@ export PATCHPAL_MINIMAL_TOOLS=true           # Enable minimal tools mode (defaul
                                               # Trade-off: No code_structure, web tools, TODO tools, etc.
 ```
 
-#### Custom Tool Selection (enabled_tools)
+#### Limiting Available Tools (enabled_tools)
 
-For fine-grained control over which tools are available to the agent, use `enabled_tools`:
+For fine-grained control over which built-in tools are available to the agent, use `enabled_tools`:
 
 **Via Environment Variable (for CLI usage):**
 ```bash
