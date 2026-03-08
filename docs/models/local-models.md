@@ -83,6 +83,28 @@ Ollama v0.14+ supports tool calling for agentic workflows. However, proper confi
 1. **Ollama v0.14.0 or later** - Required for tool calling support
 2. **Sufficient context window** - Default 4096 tokens is too small; increase to at least 32K
 
+**Recommended Settings for Local Models:**
+
+For better performance with local models (both Ollama and vLLM), especially smaller models (<20B params):
+
+```bash
+# Reduce tool confusion by limiting to 5 essential tools
+export PATCHPAL_MINIMAL_TOOLS=true
+
+# Disable web tools for offline/faster operation
+export PATCHPAL_ENABLE_WEB=false
+
+# Disable streaming (fixes Ollama tool call bug - see ollama/ollama#9632, openclaw/openclaw#5769)
+export PATCHPAL_STREAM_OUTPUT=false
+
+# Use with Ollama
+patchpal --model ollama_chat/glm-4.7-flash:q4_K_M
+```
+
+**Benefits:**
+- **Fewer tools** - Reduces tool confusion with smaller models
+- **Fixes tool calls** - Ollama's streaming drops tool calls; disabling fixes this
+
 **Setup Instructions:**
 
 **For Native Ollama Installation:**
