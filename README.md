@@ -90,6 +90,15 @@ While originally designed for software development, PatchPal is also a general-p
 
 <img src="https://raw.githubusercontent.com/amaiya/patchpal/refs/heads/main/assets/patchpal_assistant.png" alt="PatchPal as General Assistant" width="650"/>
 
+## FAQ
+
+> There are so many coding agent harnesses. Why build yet another one?
+
+1. Most agent harnesses are in TypeScript. We wanted something in Python that we could easily extend for our custom workflows.
+2. PatchPal includes a [unique guardrails system](https://amaiya.github.io/patchpal/configuration/#security-permissions) that is better suited to privacy-conscious use cases involving sensitive data.
+3. We needed an agent harness that seamlessly works with both local and cloud models, including AWS GovCloud Bedrock models.
+
+
 ## Documentation
 
 Full documentation is [available here](https://amaiya.github.io/patchpal/).

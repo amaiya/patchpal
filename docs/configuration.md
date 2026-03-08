@@ -48,6 +48,8 @@ export PATCHPAL_ENABLE_WEB=false       # Disable web access
 patchpal
 ```
 
+In addition, the `run_shell` tool also includes [built-in guardrails](https://amaiya.github.io/patchpal/features/tools/#run_shell).
+
 #### Environment Variables
 
 ```bash
