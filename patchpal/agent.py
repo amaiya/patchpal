@@ -488,6 +488,57 @@ class PatchPalAgent:
         # Load MEMORY.md if it exists and has non-template content
         self._load_project_memory()
 
+    async def _get_oauth_api_key(self) -> Optional[str]:
+        """Get OAuth token if using GitHub Copilot or OpenAI OAuth.
+
+        Returns:
+            OAuth token if available and needed, None otherwise
+        """
+        # Check if model uses GitHub Copilot
+        if "copilot" in self.model_id.lower() or self.model_id.startswith("github/"):
+            try:
+                from patchpal.oauth import get_valid_copilot_token
+
+                return await get_valid_copilot_token()
+            except Exception:
+                return None
+
+        # Check if model uses OpenAI OAuth (not regular API key)
+        # Only use OAuth for specific codex models or when explicitly using OAuth
+        if "codex" in self.model_id.lower() and not os.getenv("OPENAI_API_KEY"):
+            try:
+                from patchpal.oauth import get_valid_openai_token
+
+                return await get_valid_openai_token()
+            except Exception:
+                return None
+
+        return None
+
+    def _get_oauth_api_key_sync(self) -> Optional[str]:
+        """Synchronous wrapper for OAuth token retrieval.
+
+        Returns:
+            OAuth token if available and needed, None otherwise
+        """
+        import asyncio
+
+        try:
+            # Try to get existing event loop
+            try:
+                asyncio.get_running_loop()
+                # We're already in an async context, create a new thread
+                import concurrent.futures
+
+                with concurrent.futures.ThreadPoolExecutor() as executor:
+                    future = executor.submit(asyncio.run, self._get_oauth_api_key())
+                    return future.result(timeout=5)
+            except RuntimeError:
+                # No running loop, we can use asyncio.run safely
+                return asyncio.run(self._get_oauth_api_key())
+        except Exception:
+            return None
+
     def _load_project_memory(self):
         """Load MEMORY.md file at session start if it has non-template content."""
         try:
@@ -699,6 +750,9 @@ It's currently empty (just the template). The file is automatically loaded at se
         print("\033[2m   Generating conversation summary...\033[0m", flush=True)
 
         try:
+            # Get OAuth token if needed
+            oauth_token = self._get_oauth_api_key_sync()
+
             # Create compaction using the LLM
             def compaction_completion(msgs):
                 # Prepare messages with system prompt
@@ -706,12 +760,17 @@ It's currently empty (just the template). The file is automatically loaded at se
                 # Apply prompt caching for supported models
                 messages = _apply_prompt_caching(messages, self.model_id)
 
-                response = litellm.completion(
-                    model=self.model_id,
-                    messages=messages,
-                    timeout=LLM_TIMEOUT,
+                # Prepare kwargs with OAuth token if available
+                completion_kwargs = {
+                    "model": self.model_id,
+                    "messages": messages,
+                    "timeout": LLM_TIMEOUT,
                     **self.litellm_kwargs,
-                )
+                }
+                if oauth_token:
+                    completion_kwargs["api_key"] = oauth_token
+
+                response = litellm.completion(**completion_kwargs)
 
                 # Track token usage from compaction call
                 self.total_llm_calls += 1
@@ -1013,6 +1072,9 @@ It's currently empty (just the template). The file is automatically loaded at se
 
             # Use LiteLLM for all providers
             try:
+                # Get OAuth token if needed
+                oauth_token = self._get_oauth_api_key_sync()
+
                 # Build tool list (built-in + custom)
                 # Import from definitions to get ALL tools (including optional ones)
                 from patchpal.tools.definitions import TOOLS as ALL_TOOLS
@@ -1043,6 +1105,10 @@ It's currently empty (just the template). The file is automatically loaded at se
                         "stream": stream,
                         **self.litellm_kwargs,
                     }
+
+                    # Add OAuth token if available
+                    if oauth_token:
+                        kwargs["api_key"] = oauth_token
 
                     # Request usage info in streaming mode (OpenAI-compatible parameter)
                     # Some providers (OpenAI, possibly others) require this to get usage in streaming

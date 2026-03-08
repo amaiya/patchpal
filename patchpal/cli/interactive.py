@@ -557,6 +557,12 @@ Supported models: Any LiteLLM-supported model
                 print("    exit, quit, q               Exit the session")
                 print("    /help                       Show this help message")
                 print()
+                print("  \033[1;33mAuthentication:\033[0m")
+                print(
+                    "    /login                      Log in to OAuth providers (GitHub Copilot, OpenAI)"
+                )
+                print("    /logout                     Log out from OAuth providers")
+                print()
                 print("  \033[1;33mContext Management:\033[0m")
                 print(
                     "    /status                     Show context window usage and token statistics"
@@ -637,6 +643,136 @@ Supported models: Any LiteLLM-supported model
                 print("naturally and I'll use the appropriate skill.")
                 print()
                 print("=" * 84 + "\n")
+                continue
+
+            # Handle /login command - OAuth login for providers
+            if user_input.lower() in ["login", "/login"]:
+                import asyncio
+                import webbrowser
+
+                from patchpal.oauth import (
+                    copilot_login,
+                    is_copilot_logged_in,
+                    is_openai_logged_in,
+                    openai_login,
+                )
+
+                print("\n" + "=" * 70)
+                print("\033[1;36mOAuth Login\033[0m")
+                print("=" * 70)
+                print()
+                print("Select a provider to log in:")
+                copilot_status = "\033[32m✓ logged in\033[0m" if is_copilot_logged_in() else ""
+                openai_status = "\033[32m✓ logged in\033[0m" if is_openai_logged_in() else ""
+                print(f"  1. GitHub Copilot {copilot_status}")
+                print(f"  2. OpenAI (ChatGPT/Codex) {openai_status}")
+                print()
+
+                try:
+                    choice = pt_prompt("Enter choice (1 or 2): ")
+                    if choice == "1":
+                        if is_copilot_logged_in():
+                            print("\033[33mAlready logged in to GitHub Copilot.\033[0m\n")
+                            continue
+
+                        print("\nStarting GitHub Copilot login...")
+
+                        def on_user_code(url: str, code: str) -> None:
+                            webbrowser.open(url)
+                            print(f"\nOpening browser to: {url}")
+                            print(f"Enter this code: \033[1;32m{code}\033[0m\n")
+                            print("Waiting for authorization...")
+
+                        async def do_copilot_login():
+                            return await copilot_login(on_user_code=on_user_code)
+
+                        try:
+                            asyncio.run(do_copilot_login())
+                            print("\n\033[32mSuccessfully logged in to GitHub Copilot!\033[0m")
+                            print("You can now use Copilot models by setting:")
+                            print("  export PATCHPAL_MODEL=<copilot-model-id>\n")
+                        except Exception as e:
+                            print(f"\n\033[31mLogin failed: {e}\033[0m\n")
+
+                    elif choice == "2":
+                        if is_openai_logged_in():
+                            print("\033[33mAlready logged in to OpenAI.\033[0m\n")
+                            continue
+
+                        print("\nStarting OpenAI login...")
+
+                        def on_auth_url(url: str) -> None:
+                            webbrowser.open(url)
+                            print("\nOpening browser for OpenAI OAuth...")
+                            print(f"If browser does not open, visit:\n{url}\n")
+                            print(
+                                "Waiting for authorization callback on http://localhost:1455/auth/callback ..."
+                            )
+
+                        async def on_manual_input() -> str:
+                            loop = asyncio.get_running_loop()
+                            return await loop.run_in_executor(
+                                None, pt_prompt, "Paste OpenAI callback URL (or just code): "
+                            )
+
+                        async def do_openai_login():
+                            return await openai_login(
+                                on_auth_url=on_auth_url, on_manual_input=on_manual_input
+                            )
+
+                        try:
+                            asyncio.run(do_openai_login())
+                            print("\n\033[32mSuccessfully logged in to OpenAI!\033[0m")
+                            print("You can now use OpenAI Codex models by setting:")
+                            print("  export PATCHPAL_MODEL=<openai-codex-model-id>\n")
+                        except Exception as e:
+                            print(f"\n\033[31mLogin failed: {e}\033[0m\n")
+                    else:
+                        print("\033[31mInvalid choice.\033[0m\n")
+                except (KeyboardInterrupt, EOFError):
+                    print("\n\033[33mLogin cancelled.\033[0m\n")
+                continue
+
+            # Handle /logout command - OAuth logout for providers
+            if user_input.lower() in ["logout", "/logout"]:
+                from patchpal.oauth import (
+                    clear_copilot_credentials,
+                    clear_openai_credentials,
+                    is_copilot_logged_in,
+                    is_openai_logged_in,
+                )
+
+                logged_in_providers = []
+                if is_copilot_logged_in():
+                    logged_in_providers.append(("1", "GitHub Copilot"))
+                if is_openai_logged_in():
+                    logged_in_providers.append(("2", "OpenAI (ChatGPT/Codex)"))
+
+                if not logged_in_providers:
+                    print("\n\033[33mNo providers logged in.\033[0m\n")
+                    continue
+
+                print("\n" + "=" * 70)
+                print("\033[1;36mOAuth Logout\033[0m")
+                print("=" * 70)
+                print()
+                print("Select a provider to log out:")
+                for num, name in logged_in_providers:
+                    print(f"  {num}. {name}")
+                print()
+
+                try:
+                    choice = pt_prompt("Enter choice: ")
+                    if choice == "1" and is_copilot_logged_in():
+                        clear_copilot_credentials()
+                        print("\n\033[32mLogged out of GitHub Copilot.\033[0m\n")
+                    elif choice == "2" and is_openai_logged_in():
+                        clear_openai_credentials()
+                        print("\n\033[32mLogged out of OpenAI.\033[0m\n")
+                    else:
+                        print("\033[31mInvalid choice or provider not logged in.\033[0m\n")
+                except (KeyboardInterrupt, EOFError):
+                    print("\n\033[33mLogout cancelled.\033[0m\n")
                 continue
 
             # Handle /status command - show context window usage
