@@ -94,9 +94,9 @@ While originally designed for software development, PatchPal is also a general-p
 
 > There are so many coding agent harnesses. Why build yet another one?
 
-1. Most agent harnesses are in TypeScript. We wanted something in Python that we could easily extend for our custom workflows.
+1. Most agent harnesses are in TypeScript. We wanted [something in Python](https://amaiya.github.io/patchpal/usage/python-api/) that we could easily extend for our custom workflows.
 2. PatchPal includes a [unique guardrails system](https://amaiya.github.io/patchpal/configuration/#security-permissions) that is better suited to privacy-conscious use cases involving sensitive data.
-3. We needed an agent harness that seamlessly works with both local and cloud models, including AWS GovCloud Bedrock models.
+3. We needed an agent harness that seamlessly works with [both local and cloud models](https://amaiya.github.io/patchpal/models/overview/#supported-models), including AWS GovCloud Bedrock models.
 
 
 ## Documentation
