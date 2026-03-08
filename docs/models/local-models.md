@@ -94,7 +94,7 @@ export PATCHPAL_MINIMAL_TOOLS=true
 # Disable web tools for offline/faster operation
 export PATCHPAL_ENABLE_WEB=false
 
-# Disable streaming (fixes Ollama tool call bug - see ollama/ollama#9632, openclaw/openclaw#5769)
+# Disable streaming (fixes Ollama tool call bug - see openclaw/openclaw#5769)
 export PATCHPAL_STREAM_OUTPUT=false
 
 # Use with Ollama
