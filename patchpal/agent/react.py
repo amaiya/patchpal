@@ -21,7 +21,6 @@ from rich.markdown import Markdown
 from patchpal.cli.streaming import stream_completion
 from patchpal.config import config
 from patchpal.context import ContextManager
-from patchpal.tools.definitions import get_tools
 
 # Suppress verbose LiteLLM logging
 litellm.suppress_debug_info = True
@@ -82,25 +81,25 @@ class ReActAgent:
         self.litellm_kwargs = litellm_kwargs or {}
         self.messages = []
 
+        # Store custom tools and enabled_tools for later use
+        self.custom_tools = custom_tools or []
+        self.enabled_tools = enabled_tools
+
         # Token and cost tracking
         self.total_llm_calls = 0
         self.cumulative_input_tokens = 0
         self.cumulative_output_tokens = 0
         self.cumulative_cost = 0.0
 
-        # Get tools
-        tools_list, tool_functions = get_tools(
-            custom_tools=custom_tools,
-            enabled_tools=enabled_tools,
-        )
-        self.tools = tools_list
-        self.tool_functions = tool_functions
+        # Build system prompt (tools will be added dynamically in _build_system_prompt)
+        self.custom_instructions = custom_instructions
+        self.system_prompt = None  # Built on first run
 
-        # Build system prompt with ReAct pattern
-        self.system_prompt = self._build_system_prompt(custom_instructions)
+        # Context manager for token estimation (will use placeholder until system_prompt is built)
+        self.context_manager = ContextManager(model_id=model_id, system_prompt="")
 
-        # Context manager for token estimation
-        self.context_manager = ContextManager(model_id=model_id)
+        # Auto-compaction is not implemented for ReAct agent (simple message history)
+        self.enable_auto_compact = False
 
         # Load project memory
         self._load_project_memory()
@@ -130,12 +129,33 @@ class ReActAgent:
             except Exception:
                 pass  # Silently skip if can't read
 
-    def _build_system_prompt(self, custom_instructions: str) -> str:
+    def _build_system_prompt(self) -> str:
         """Build the ReAct system prompt with tool descriptions."""
+
+        # Get tools (similar to function_calling.py agent)
+        from patchpal.tools.definitions import TOOLS as ALL_TOOLS
+
+        tools = list(ALL_TOOLS)
+
+        # Filter tools if enabled_tools is specified
+        if self.enabled_tools is not None:
+            tools = [t for t in tools if t["function"]["name"] in self.enabled_tools]
+        else:
+            # Use the default filtered list (excludes optional tools)
+            from patchpal.tools.definitions import TOOLS
+
+            tools = list(TOOLS)
+
+        # Add custom tools
+        if self.custom_tools:
+            from patchpal.tools.tool_schema import function_to_tool_schema
+
+            for func in self.custom_tools:
+                tools.append(function_to_tool_schema(func))
 
         # Build tool descriptions
         tool_descriptions = []
-        for tool in self.tools:
+        for tool in tools:
             tool_name = tool["function"]["name"]
             tool_desc = tool["function"].get("description", "")
             params = tool["function"].get("parameters", {}).get("properties", {})
@@ -162,7 +182,7 @@ class ReActAgent:
 
 {datetime_info}
 
-{custom_instructions}
+{self.custom_instructions}
 
 ## Available Tools
 
@@ -258,6 +278,24 @@ PAUSE
         except Exception:
             return 0.0
 
+    def _get_tool_functions(self) -> Dict[str, Callable]:
+        """Get the mapping of tool names to functions."""
+        # Get built-in tool functions
+        from patchpal.tools.definitions import TOOL_FUNCTIONS as ALL_TOOL_FUNCTIONS
+
+        tool_functions = dict(ALL_TOOL_FUNCTIONS)
+
+        # Filter if enabled_tools is specified
+        if self.enabled_tools is not None:
+            tool_functions = {k: v for k, v in tool_functions.items() if k in self.enabled_tools}
+
+        # Add custom tools
+        if self.custom_tools:
+            for func in self.custom_tools:
+                tool_functions[func.__name__] = func
+
+        return tool_functions
+
     def run(self, user_message: str, max_iterations: int = 100) -> str:
         """Run the agent on a user message.
 
@@ -268,6 +306,13 @@ PAUSE
         Returns:
             The agent's final answer
         """
+        # Build system prompt on first run
+        if self.system_prompt is None:
+            self.system_prompt = self._build_system_prompt()
+
+        # Get tool functions (needs to be done each run in case tools changed)
+        tool_functions = self._get_tool_functions()
+
         # Add system prompt as first message if this is the start
         if not self.messages or self.messages[0]["role"] != "system":
             self.messages.insert(0, {"role": "system", "content": self.system_prompt})
@@ -325,37 +370,30 @@ PAUSE
             # Add to messages
             self.messages.append({"role": "assistant", "content": result})
 
-            # Check if this is a final answer (must contain "Answer:" and should be after "Thought:")
-            # This indicates the agent is providing its final response
-            if "Answer:" in result:
-                # Extract the answer part
-                answer_parts = result.split("Answer:", 1)
-                if len(answer_parts) > 1:
-                    answer = answer_parts[1].strip()
-                    # Print the thinking part as markdown (before Answer:)
-                    thinking_part = answer_parts[0].strip()
-                    if thinking_part:
-                        console = Console()
-                        print()
-                        console.print(Markdown(thinking_part))
-                        print()
-
-                    # Check if there's also an Action in the response (agent is confused)
-                    # If so, ignore the action and just return the answer
-                    if "Action:" in result and "PAUSE" in result:
-                        # Agent tried to do both - prioritize the answer
-                        print("\033[2m⚠️  Agent provided answer and action - using answer\033[0m")
-
-                    return answer
-                else:
-                    # "Answer:" found but nothing after it - unusual, return full result
-                    return result
-
-            # Look for actions
+            # Look for actions FIRST (before checking for Answer)
+            # This ensures we execute tools even if the model hallucinates an answer
             actions = action_pattern.findall(result)
 
             if not actions:
-                # No action found, but also no answer - print what we got and provide guidance
+                # No action found - check if there's an answer instead
+                if "Answer:" in result:
+                    # Extract the answer part
+                    answer_parts = result.split("Answer:", 1)
+                    if len(answer_parts) > 1:
+                        answer = answer_parts[1].strip()
+                        # Print the thinking part as markdown (before Answer:)
+                        thinking_part = answer_parts[0].strip()
+                        if thinking_part:
+                            console = Console()
+                            print()
+                            console.print(Markdown(thinking_part))
+                            print()
+                        return answer
+                    else:
+                        # "Answer:" found but nothing after it - unusual, return full result
+                        return result
+
+                # No action and no answer - print what we got and provide guidance
                 console = Console()
                 print()
                 console.print(Markdown(result))
@@ -390,6 +428,13 @@ PAUSE
 
             # Process the first action (only one action per turn)
             tool_name, tool_args_str = actions[0]
+
+            # Warn if model also provided an Answer (hallucination/confusion)
+            # We'll execute the action anyway since the model explicitly requested it
+            if "Answer:" in result:
+                print(
+                    "\033[2m⚠️  Agent provided both action and answer - executing action first\033[0m"
+                )
 
             # Check for action loops (same action repeated)
             action_signature = f"{tool_name}:{tool_args_str[:50]}"
@@ -428,7 +473,7 @@ PAUSE
                 continue
 
             # Get the tool function
-            tool_func = self.tool_functions.get(tool_name)
+            tool_func = tool_functions.get(tool_name)
             if tool_func is None:
                 error_msg = f"Error: Unknown tool '{tool_name}'"
                 print(f"\033[1;31m✗ {error_msg}\033[0m")
