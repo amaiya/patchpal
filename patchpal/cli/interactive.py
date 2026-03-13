@@ -409,15 +409,27 @@ Supported models: Any LiteLLM-supported model
     # Check if ReAct mode is enabled (for models without native function calling)
     use_react_mode = os.getenv("PATCHPAL_REACT_MODE", "false").lower() == "true"
 
+    # Get enabled tools from environment variable (comma-separated list)
+    enabled_tools_env = os.getenv("PATCHPAL_ENABLED_TOOLS")
+    enabled_tools = None
+    if enabled_tools_env:
+        enabled_tools = [t.strip() for t in enabled_tools_env.split(",")]
+
     # Create the agent with the specified model and custom tools
     # LiteLLM will handle API key validation and provide appropriate error messages
     if use_react_mode:
         agent = create_react_agent(
-            model_id=model_id, custom_tools=custom_tools, litellm_kwargs=litellm_kwargs
+            model_id=model_id,
+            custom_tools=custom_tools,
+            enabled_tools=enabled_tools,
+            litellm_kwargs=litellm_kwargs,
         )
     else:
         agent = create_agent(
-            model_id=model_id, custom_tools=custom_tools, litellm_kwargs=litellm_kwargs
+            model_id=model_id,
+            custom_tools=custom_tools,
+            enabled_tools=enabled_tools,
+            litellm_kwargs=litellm_kwargs,
         )
 
     # Get max iterations from environment variable or use default

@@ -20,7 +20,6 @@ from rich.markdown import Markdown
 from patchpal.cli.streaming import stream_completion
 from patchpal.config import config
 from patchpal.context import ContextManager
-from patchpal.tools.definitions import get_tools
 
 # Suppress verbose LiteLLM logging
 litellm.suppress_debug_info = True
@@ -95,11 +94,31 @@ class ReActAgent:
         # Track OpenAI cache tokens (prompt_tokens_details.cached_tokens)
         self.cumulative_openai_cached_tokens = 0
 
-        # Get built-in tools
-        tools_list, tool_functions = get_tools(web_tools_enabled=config.ENABLE_WEB)
+        # Get ALL built-in tools (including optional ones like grep and list_files)
+        from patchpal.tools.definitions import TOOL_FUNCTIONS as ALL_TOOL_FUNCTIONS
+        from patchpal.tools.definitions import TOOLS as ALL_TOOLS
 
-        # Filter tools if enabled_tools is specified
-        if enabled_tools is not None:
+        tools_list = list(ALL_TOOLS)
+        tool_functions = dict(ALL_TOOL_FUNCTIONS)
+
+        # ReAct mode uses a curated default set optimized for local models
+        # (includes grep/list_files as alternatives to run_shell, but keeps run_shell too)
+        if enabled_tools is None:
+            react_default_tools = [
+                "read_file",
+                "read_lines",
+                "write_file",
+                "edit_file",
+                "web_search",
+                "web_fetch",
+                "grep",
+                "list_files",
+                "run_shell",
+            ]
+            tools_list = [t for t in tools_list if t["function"]["name"] in react_default_tools]
+            tool_functions = {k: v for k, v in tool_functions.items() if k in react_default_tools}
+        else:
+            # User specified tools via enabled_tools parameter or PATCHPAL_ENABLED_TOOLS env var
             tools_list = [t for t in tools_list if t["function"]["name"] in enabled_tools]
             tool_functions = {k: v for k, v in tool_functions.items() if k in enabled_tools}
 

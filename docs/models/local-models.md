@@ -209,6 +209,29 @@ Use ReAct mode when:
 - You're using smaller models (<20B parameters) that struggle with function calling
 - You want text-based tool invocation for debugging/transparency
 
+### Available Tools
+
+ReAct mode includes these tools by default:
+
+- `read_file` - Read file contents
+- `read_lines` - Read specific lines from a file
+- `write_file` - Create or overwrite files
+- `edit_file` - Find and replace in files
+- `run_shell` - Execute shell commands
+- `grep` - Search for patterns in files
+- `list_files` - List directory contents
+- `web_search` - Search the web
+- `web_fetch` - Fetch webpage content
+
+You can limit tools if needed:
+
+```python
+agent = create_react_agent(
+    model_id="ollama_chat/your_model",
+    enabled_tools=["read_file", "write_file", "edit_file"]
+)
+```
+
 ### Enabling ReAct Mode
 
 **CLI:**
@@ -219,6 +242,11 @@ patchpal --model ollama_chat/llama3.2
 
 # Or inline
 PATCHPAL_REACT_MODE=true patchpal --model ollama_chat/qwen2.5
+
+# Limit tools using environment variable
+export PATCHPAL_REACT_MODE=true
+export PATCHPAL_ENABLED_TOOLS="read_file,write_file,edit_file"
+patchpal --model ollama_chat/llama3.2
 ```
 
 **Python API:**
@@ -253,23 +281,23 @@ These Ollama models work well with ReAct mode:
 
 ### Best Practices
 
-1. **Use PATCHPAL_MINIMAL_TOOLS** - Reduce tool count for better reliability:
+1. **Start with defaults** - These tools are available by default:
    ```bash
-   PATCHPAL_MINIMAL_TOOLS=true PATCHPAL_REACT_MODE=true patchpal
+   PATCHPAL_REACT_MODE=true patchpal --model ollama_chat/llama3.1:8b
    ```
 
-2. **Limit tools explicitly** - Fewer tools = less confusion:
+2. **Limit tools for simpler tasks** - Fewer tools can improve focus:
    ```python
    agent = create_react_agent(
-       model_id="ollama_chat/llama3.2",
-       enabled_tools=["read_file", "read_lines", "edit_file", "write_file"]
+       model_id="ollama_chat/your_model",
+       enabled_tools=["read_file", "write_file", "edit_file"]
    )
    ```
 
 3. **Add custom instructions** - Guide the model's behavior:
    ```python
    agent = create_react_agent(
-       model_id="ollama_chat/llama3.2",
+       model_id="ollama_chat/your_model",
        custom_instructions="""
        - Answer general questions directly without tools
        - Only use tools for file/code operations
