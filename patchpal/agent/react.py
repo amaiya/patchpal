@@ -160,44 +160,103 @@ class ReActAgent:
                 pass  # Silently skip if can't read
 
     def _build_system_prompt(self, custom_instructions: str) -> str:
-        """Build the ReAct system prompt with tool descriptions."""
-        from pathlib import Path
+        """Build the ReAct system prompt with tool descriptions.
 
-        # Load the ReAct prompt template
-        prompt_file = Path(__file__).parent.parent / "prompts" / "react_prompt.md"
-        with open(prompt_file, "r", encoding="utf-8") as f:
-            template = f.read()
-
-        # Build tool descriptions
+        This matches the original react_agent.py format with per-tool examples.
+        """
+        # Build tool descriptions with examples (like original)
         tool_descriptions = []
         for tool in self.tools:
-            tool_name = tool["function"]["name"]
-            tool_desc = tool["function"].get("description", "")
+            name = tool["function"]["name"]
+            desc = tool["function"].get("description", "")
             params = tool["function"].get("parameters", {}).get("properties", {})
 
-            param_list = []
+            param_parts = []
+            required = tool["function"].get("parameters", {}).get("required", [])
+
             for param_name, param_info in params.items():
                 param_type = param_info.get("type", "string")
                 param_desc = param_info.get("description", "")
-                param_list.append(f"  - {param_name} ({param_type}): {param_desc}")
+                req_marker = " (required)" if param_name in required else " (optional)"
+                param_parts.append(f"  - {param_name} ({param_type}){req_marker}: {param_desc}")
 
-            tool_str = f"**{tool_name}**: {tool_desc}"
-            if param_list:
-                tool_str += "\n" + "\n".join(param_list)
-            tool_descriptions.append(tool_str)
+            param_text = "\n".join(param_parts) if param_parts else "  No parameters"
 
-        tools_section = "\n\n".join(tool_descriptions)
+            # Add per-tool example (KEY DIFFERENCE from .md version!)
+            tool_descriptions.append(
+                f'{name}:\n{desc}\nParameters:\n{param_text}\nExample: {name}: {{"param1": "value1", "param2": "value2"}}'
+            )
+
+        tools_text = "\n\n".join(tool_descriptions)
 
         platform_info = _get_platform_info()
         datetime_info = _get_current_datetime_message()
 
-        # Fill in the template
-        prompt = template.format(
-            platform_info=platform_info,
-            datetime_info=datetime_info,
-            custom_instructions=custom_instructions,
-            tools_section=tools_section,
-        )
+        # Build prompt (same as original _build_react_prompt)
+        prompt = f"""You are an expert software engineer assistant that solves tasks step-by-step.
+
+{platform_info}
+
+{datetime_info}
+
+{custom_instructions}
+
+## ReAct Loop
+
+You run in a loop of Thought, Action, PAUSE, Observation.
+At the end of the loop you output an Answer.
+
+Use Thought to describe your reasoning about the task.
+Use Action to invoke one of the available tools - then return PAUSE.
+Observation will be the result of running that action.
+
+Your available actions are:
+
+{tools_text}
+
+## Action Format
+
+Actions must be formatted as:
+Action: tool_name: {{"param1": "value1", "param2": "value2"}}
+PAUSE
+
+The JSON must be valid. Use double quotes for strings.
+
+## Example Session
+
+Question: What files are in the src directory?
+Thought: I need to list the files in the src directory
+Action: list_files: {{"path": "src"}}
+PAUSE
+
+You will be called again with this:
+
+Observation: file1.py, file2.py, file3.py
+
+You then output:
+
+Answer: The src directory contains file1.py, file2.py, and file3.py
+
+## Important Guidelines
+
+1. **Answer directly if you can** - If you already know the answer, just output it. Don't use tools unnecessarily.
+2. **Use tools for code/files** - Only use tools when you need to read, edit, or analyze code/files.
+3. **One action per turn** - Always output "PAUSE" after an Action line.
+4. **Stop after answering** - Once you output an Answer, you're done. Don't try to update memory or do additional actions.
+5. **Be efficient** - Use read_lines for specific sections, grep for searching.
+6. **General knowledge** - For questions about facts, history, geography, etc., just answer directly without web search.
+
+## Examples of Direct Answers
+
+Question: What is the capital of France?
+Thought: This is general knowledge, I can answer directly.
+Answer: The capital of France is Paris.
+
+Question: How do I fix this error?
+Thought: I need to see the error and the code to help. Let me read the file first.
+Action: read_file: {{"path": "error.log"}}
+PAUSE
+"""
 
         return prompt
 
