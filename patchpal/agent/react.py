@@ -7,7 +7,6 @@ https://til.simonwillison.net/llms/python-react-pattern
 """
 
 import inspect
-import json
 import logging
 import platform
 import re
@@ -494,18 +493,23 @@ class ReActAgent:
                 print()
 
             # Parse tool arguments
-            try:
-                tool_args_str = tool_args_str.strip()
-                if tool_args_str.startswith("{"):
-                    tool_args = json.loads(tool_args_str)
-                else:
-                    # Handle simple string arguments
-                    tool_args = {"query": tool_args_str} if tool_args_str else {}
-            except json.JSONDecodeError as e:
-                error_msg = f"Error: Invalid JSON in action arguments: {e}"
-                print(f"\033[1;31m✗ {error_msg}\033[0m")
-                self.messages.append({"role": "user", "content": f"Observation: {error_msg}"})
-                continue
+            tool_args = {}
+            tool_args_str = tool_args_str.strip()
+
+            # Try to extract key-value pairs using regex (more forgiving than JSON)
+            # Matches various formats: "key": "value", 'key': 'value', key: value, "key": value
+            param_pattern = re.compile(r'["\']?(\w+)["\']?\s*:\s*["\']?([^,"\'}\]]+)["\']?')
+            matches = param_pattern.findall(tool_args_str)
+
+            if matches:
+                # Found key-value pairs - clean up values
+                for key, value in matches:
+                    value = value.strip()
+                    tool_args[key] = value
+            elif tool_args_str and not tool_args_str.startswith("{"):
+                # No key-value pairs, treat as a simple string argument
+                tool_args = {"query": tool_args_str}
+            # else: empty args
 
             # Get the tool function
             tool_func = self.tool_functions.get(tool_name)
