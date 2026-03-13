@@ -8,6 +8,7 @@ https://til.simonwillison.net/llms/python-react-pattern
 
 import inspect
 import logging
+import os
 import platform
 import re
 from datetime import datetime
@@ -101,26 +102,36 @@ class ReActAgent:
         tools_list = list(ALL_TOOLS)
         tool_functions = dict(ALL_TOOL_FUNCTIONS)
 
-        # ReAct mode uses a curated default set optimized for local models
-        # (includes grep/list_files as alternatives to run_shell, but keeps run_shell too)
-        if enabled_tools is None:
-            react_default_tools = [
-                "read_file",
-                "read_lines",
-                "write_file",
-                "edit_file",
-                "web_search",
-                "web_fetch",
-                "grep",
-                "list_files",
-                "run_shell",
-            ]
-            tools_list = [t for t in tools_list if t["function"]["name"] in react_default_tools]
-            tool_functions = {k: v for k, v in tool_functions.items() if k in react_default_tools}
-        else:
-            # User specified tools via enabled_tools parameter or PATCHPAL_ENABLED_TOOLS env var
+        # Configure enabled tools (parameter takes precedence over environment variable)
+        if enabled_tools is not None:
+            # User specified tools via parameter - use exactly what they asked for
             tools_list = [t for t in tools_list if t["function"]["name"] in enabled_tools]
             tool_functions = {k: v for k, v in tool_functions.items() if k in enabled_tools}
+        else:
+            # Check environment variable
+            env_enabled = os.getenv("PATCHPAL_ENABLED_TOOLS")
+            if env_enabled:
+                # Environment variable specified - use it
+                enabled_from_env = [t.strip() for t in env_enabled.split(",")]
+                tools_list = [t for t in tools_list if t["function"]["name"] in enabled_from_env]
+                tool_functions = {k: v for k, v in tool_functions.items() if k in enabled_from_env}
+            else:
+                # No parameter, no env var - use ReAct default curated set
+                react_default_tools = [
+                    "read_file",
+                    "read_lines",
+                    "write_file",
+                    "edit_file",
+                    "web_search",
+                    "web_fetch",
+                    "grep",
+                    "list_files",
+                    "run_shell",
+                ]
+                tools_list = [t for t in tools_list if t["function"]["name"] in react_default_tools]
+                tool_functions = {
+                    k: v for k, v in tool_functions.items() if k in react_default_tools
+                }
 
         # Add custom tools
         if custom_tools:

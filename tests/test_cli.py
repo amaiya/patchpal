@@ -23,7 +23,10 @@ def test_main_uses_default_model(monkeypatch):
 
         # Verify create_agent was called with default model (custom_tools can be anything)
         mock_create.assert_called_once_with(
-            model_id="anthropic/claude-sonnet-4-5", custom_tools=ANY, litellm_kwargs=None
+            model_id="anthropic/claude-sonnet-4-5",
+            custom_tools=ANY,
+            enabled_tools=None,
+            litellm_kwargs=None,
         )
 
 
@@ -46,7 +49,10 @@ def test_main_uses_cli_model_arg(monkeypatch):
 
         # Verify create_agent was called with CLI model (custom_tools can be anything)
         mock_create.assert_called_once_with(
-            model_id="openai/gpt-4o", custom_tools=ANY, litellm_kwargs=None
+            model_id="openai/gpt-4o",
+            custom_tools=ANY,
+            enabled_tools=None,
+            litellm_kwargs=None,
         )
 
 
@@ -70,7 +76,10 @@ def test_main_uses_env_var_model(monkeypatch):
 
         # Verify create_agent was called with env var model (custom_tools can be anything)
         mock_create.assert_called_once_with(
-            model_id="ollama_chat/llama3.1", custom_tools=ANY, litellm_kwargs=None
+            model_id="ollama_chat/llama3.1",
+            custom_tools=ANY,
+            enabled_tools=None,
+            litellm_kwargs=None,
         )
 
 
@@ -94,7 +103,10 @@ def test_main_cli_arg_overrides_env_var(monkeypatch):
 
         # Verify CLI arg takes precedence (custom_tools can be anything)
         mock_create.assert_called_once_with(
-            model_id="openai/gpt-4o", custom_tools=ANY, litellm_kwargs=None
+            model_id="openai/gpt-4o",
+            custom_tools=ANY,
+            enabled_tools=None,
+            litellm_kwargs=None,
         )
 
 
