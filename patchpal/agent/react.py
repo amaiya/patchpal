@@ -21,6 +21,7 @@ from rich.markdown import Markdown
 from patchpal.cli.streaming import stream_completion
 from patchpal.config import config
 from patchpal.context import ContextManager
+from patchpal.tools.definitions import get_tools
 
 # Suppress verbose LiteLLM logging
 litellm.suppress_debug_info = True
@@ -81,25 +82,55 @@ class ReActAgent:
         self.litellm_kwargs = litellm_kwargs or {}
         self.messages = []
 
-        # Store custom tools and enabled_tools for later use
-        self.custom_tools = custom_tools or []
-        self.enabled_tools = enabled_tools
-
         # Token and cost tracking
         self.total_llm_calls = 0
         self.cumulative_input_tokens = 0
         self.cumulative_output_tokens = 0
         self.cumulative_cost = 0.0
+        self.last_message_cost = 0.0
 
-        # Build system prompt (tools will be added dynamically in _build_system_prompt)
-        self.custom_instructions = custom_instructions
-        self.system_prompt = None  # Built on first run
+        # Track cache-related tokens (for Anthropic/Bedrock models with prompt caching)
+        self.cumulative_cache_creation_tokens = 0
+        self.cumulative_cache_read_tokens = 0
 
-        # Context manager for token estimation (will use placeholder until system_prompt is built)
-        self.context_manager = ContextManager(model_id=model_id, system_prompt="")
+        # Track OpenAI cache tokens (prompt_tokens_details.cached_tokens)
+        self.cumulative_openai_cached_tokens = 0
 
-        # Auto-compaction is not implemented for ReAct agent (simple message history)
-        self.enable_auto_compact = False
+        # Get built-in tools
+        tools_list, tool_functions = get_tools(web_tools_enabled=config.ENABLE_WEB)
+
+        # Filter tools if enabled_tools is specified
+        if enabled_tools is not None:
+            tools_list = [t for t in tools_list if t["function"]["name"] in enabled_tools]
+            tool_functions = {k: v for k, v in tool_functions.items() if k in enabled_tools}
+
+        # Add custom tools
+        if custom_tools:
+            from patchpal.tools.tool_schema import function_to_tool_schema
+
+            for func in custom_tools:
+                tools_list.append(function_to_tool_schema(func))
+                tool_functions[func.__name__] = func
+
+        self.tools = tools_list
+        self.tool_functions = tool_functions
+
+        # Build system prompt with ReAct pattern
+        self.system_prompt = self._build_system_prompt(custom_instructions)
+
+        # Context manager for token estimation
+        self.context_manager = ContextManager(model_id=model_id, system_prompt=self.system_prompt)
+
+        # Check if auto-compaction is enabled (default: True)
+        self.enable_auto_compact = not config.DISABLE_AUTOCOMPACT
+
+        # Track last compaction to prevent compaction loops
+        self._last_compaction_message_count = 0
+
+        # Initialize image handler for vision model support
+        from patchpal.tools.image_handler import ImageHandler
+
+        self.image_handler = ImageHandler(self.model_id)
 
         # Load project memory
         self._load_project_memory()
@@ -129,33 +160,18 @@ class ReActAgent:
             except Exception:
                 pass  # Silently skip if can't read
 
-    def _build_system_prompt(self) -> str:
+    def _build_system_prompt(self, custom_instructions: str) -> str:
         """Build the ReAct system prompt with tool descriptions."""
+        from pathlib import Path
 
-        # Get tools (similar to function_calling.py agent)
-        from patchpal.tools.definitions import TOOLS as ALL_TOOLS
-
-        tools = list(ALL_TOOLS)
-
-        # Filter tools if enabled_tools is specified
-        if self.enabled_tools is not None:
-            tools = [t for t in tools if t["function"]["name"] in self.enabled_tools]
-        else:
-            # Use the default filtered list (excludes optional tools)
-            from patchpal.tools.definitions import TOOLS
-
-            tools = list(TOOLS)
-
-        # Add custom tools
-        if self.custom_tools:
-            from patchpal.tools.tool_schema import function_to_tool_schema
-
-            for func in self.custom_tools:
-                tools.append(function_to_tool_schema(func))
+        # Load the ReAct prompt template
+        prompt_file = Path(__file__).parent.parent / "prompts" / "react_prompt.md"
+        with open(prompt_file, "r", encoding="utf-8") as f:
+            template = f.read()
 
         # Build tool descriptions
         tool_descriptions = []
-        for tool in tools:
+        for tool in self.tools:
             tool_name = tool["function"]["name"]
             tool_desc = tool["function"].get("description", "")
             params = tool["function"].get("parameters", {}).get("properties", {})
@@ -176,86 +192,14 @@ class ReActAgent:
         platform_info = _get_platform_info()
         datetime_info = _get_current_datetime_message()
 
-        prompt = f"""You are an expert software engineer assistant that solves tasks step-by-step.
+        # Fill in the template
+        prompt = template.format(
+            platform_info=platform_info,
+            datetime_info=datetime_info,
+            custom_instructions=custom_instructions,
+            tools_section=tools_section,
+        )
 
-{platform_info}
-
-{datetime_info}
-
-{self.custom_instructions}
-
-## Available Tools
-
-{tools_section}
-
-## ReAct Pattern
-
-You follow the ReAct (Reason + Act) pattern to solve tasks:
-
-1. **Thought**: Think about what you need to do
-2. **Action**: Call a tool using this exact format:
-   Action: tool_name: {{"param1": "value1", "param2": "value2"}}
-   PAUSE
-3. **Observation**: You'll receive the tool's output
-4. **Repeat** steps 1-3 as needed, OR
-5. **Answer**: Provide your final response when done
-
-## Action Format
-
-When you want to use a tool, output EXACTLY this format:
-```
-Action: tool_name: {{"param": "value"}}
-PAUSE
-```
-
-After PAUSE, you'll receive:
-```
-Observation: <tool output>
-```
-
-Then you can either:
-- Perform another Action (if you need more information)
-- Output an Answer (if you're done)
-
-## Answer Format
-
-When you're ready to give your final response:
-```
-Answer: <your response>
-```
-
-## Example Session
-
-Question: What Python files are in the src directory?
-Thought: I need to list files in the src directory.
-Action: list_files: {{"path": "src"}}
-PAUSE
-
-Observation: file1.py, file2.py, file3.py
-
-Thought: I have the list of files. I can now provide the answer.
-Answer: The src directory contains file1.py, file2.py, and file3.py
-
-## Important Guidelines
-
-1. **Answer directly if you can** - If you already know the answer, just output it. Don't use tools unnecessarily.
-2. **Use tools for code/files** - Only use tools when you need to read, edit, or analyze code/files.
-3. **One action per turn** - Always output "PAUSE" after an Action line.
-4. **Stop after answering** - Once you output an Answer, you're done. Don't try to update memory or do additional actions.
-5. **Be efficient** - Use read_lines for specific sections, grep for searching.
-6. **General knowledge** - For questions about facts, history, geography, etc., just answer directly without web search.
-
-## Examples of Direct Answers
-
-Question: What is the capital of France?
-Thought: This is general knowledge, I can answer directly.
-Answer: The capital of France is Paris.
-
-Question: How do I fix this error?
-Thought: I need to see the error and the code to help. Let me read the file first.
-Action: read_file: {{"path": "error.log"}}
-PAUSE
-"""
         return prompt
 
     def _calculate_cost(self, response):
@@ -278,23 +222,121 @@ PAUSE
         except Exception:
             return 0.0
 
-    def _get_tool_functions(self) -> Dict[str, Callable]:
-        """Get the mapping of tool names to functions."""
-        # Get built-in tool functions
-        from patchpal.tools.definitions import TOOL_FUNCTIONS as ALL_TOOL_FUNCTIONS
+    def _prune_tool_outputs_inline(self, max_chars: int, truncation_message: str) -> int:
+        """Truncate large tool outputs inline.
 
-        tool_functions = dict(ALL_TOOL_FUNCTIONS)
+        Args:
+            max_chars: Maximum characters to keep per output
+            truncation_message: Message to append after truncation
 
-        # Filter if enabled_tools is specified
-        if self.enabled_tools is not None:
-            tool_functions = {k: v for k, v in tool_functions.items() if k in self.enabled_tools}
+        Returns:
+            Number of characters pruned
+        """
+        pruned_chars = 0
+        for msg in self.messages:
+            if msg.get("role") == "user" and msg.get("content"):
+                content = msg["content"]
 
-        # Add custom tools
-        if self.custom_tools:
-            for func in self.custom_tools:
-                tool_functions[func.__name__] = func
+                # Only prune observations (starts with "Observation:")
+                if not content.startswith("Observation:"):
+                    continue
 
-        return tool_functions
+                # Skip multimodal content containing images
+                if self.image_handler.should_skip_pruning(content):
+                    continue
+
+                content_size = len(str(content))
+                if content_size > max_chars:
+                    original_size = content_size
+                    msg["content"] = str(content)[:max_chars] + truncation_message
+                    pruned_chars += original_size - len(msg["content"])
+        return pruned_chars
+
+    def _is_openai_model(self) -> bool:
+        """Check if the current model is an OpenAI model."""
+        model_lower = self.model_id.lower()
+        return (
+            "openai" in model_lower or "gpt" in model_lower or self.model_id.startswith("openai/")
+        )
+
+    def _perform_auto_compaction(self):
+        """Perform automatic context window compaction using sliding window.
+
+        For ReAct agents (typically small local models), we use a simple sliding
+        window approach: keep system prompt + last N messages. This is more
+        reliable than LLM-based summarization for smaller models.
+        """
+        stats_before = self.context_manager.get_usage_stats(self.messages)
+
+        print(
+            f"\n\033[1;33m⚠️  Context window at {stats_before['usage_percent']}% capacity. Compacting...\033[0m"
+        )
+
+        # Keep system message + last N conversation messages
+        # Adjust N based on context size (more for larger contexts)
+        context_limit = stats_before["context_limit"]
+        if context_limit >= 32000:
+            keep_last = 20  # ~32K+ context
+        elif context_limit >= 8000:
+            keep_last = 12  # 8K-32K context
+        else:
+            keep_last = 8  # Small context (4K-8K)
+
+        # Find system message (first message)
+        system_msg = None
+        conversation_msgs = []
+
+        for msg in self.messages:
+            if msg.get("role") == "system":
+                system_msg = msg
+            else:
+                conversation_msgs.append(msg)
+
+        # Keep last N conversation messages
+        if len(conversation_msgs) > keep_last:
+            kept_msgs = conversation_msgs[-keep_last:]
+            messages_dropped = len(conversation_msgs) - keep_last
+
+            # Rebuild message list
+            if system_msg:
+                self.messages = [system_msg] + kept_msgs
+            else:
+                self.messages = kept_msgs
+
+            stats_after = self.context_manager.get_usage_stats(self.messages)
+            print(
+                f"\033[1;32m✓ Dropped {messages_dropped} old messages. "
+                f"Context: {stats_before['usage_percent']}% → {stats_after['usage_percent']}%\033[0m\n"
+            )
+        else:
+            # Not many messages - try pruning large outputs instead
+            print(
+                "\033[2m   Not enough messages to drop. Pruning large outputs...\033[0m", flush=True
+            )
+
+            pruned_chars = self._prune_tool_outputs_inline(
+                max_chars=5_000,
+                truncation_message="\n\n[... truncated ...]",
+            )
+
+            if pruned_chars > 0:
+                stats_after = self.context_manager.get_usage_stats(self.messages)
+                print(
+                    f"\033[1;32m✓ Pruned {pruned_chars:,} chars. "
+                    f"Context: {stats_before['usage_percent']}% → {stats_after['usage_percent']}%\033[0m\n"
+                )
+            else:
+                print(
+                    "\033[1;33m⚠️  Unable to reduce context. Consider '/clear' to start fresh.\033[0m\n"
+                )
+
+        # Update tracker
+        self._last_compaction_message_count = len(self.messages)
+
+    def _cleanup_interrupted_state(self):
+        """Clean up state after KeyboardInterrupt during agent execution."""
+        # For ReAct agent, no special cleanup needed
+        pass
 
     def run(self, user_message: str, max_iterations: int = 100) -> str:
         """Run the agent on a user message.
@@ -306,13 +348,6 @@ PAUSE
         Returns:
             The agent's final answer
         """
-        # Build system prompt on first run
-        if self.system_prompt is None:
-            self.system_prompt = self._build_system_prompt()
-
-        # Get tool functions (needs to be done each run in case tools changed)
-        tool_functions = self._get_tool_functions()
-
         # Add system prompt as first message if this is the start
         if not self.messages or self.messages[0]["role"] != "system":
             self.messages.insert(0, {"role": "system", "content": self.system_prompt})
@@ -473,7 +508,7 @@ PAUSE
                 continue
 
             # Get the tool function
-            tool_func = tool_functions.get(tool_name)
+            tool_func = self.tool_functions.get(tool_name)
             if tool_func is None:
                 error_msg = f"Error: Unknown tool '{tool_name}'"
                 print(f"\033[1;31m✗ {error_msg}\033[0m")
