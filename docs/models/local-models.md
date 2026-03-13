@@ -189,6 +189,8 @@ patchpal --model hosted_vllm/openai/gpt-oss-120b
 
 Some local models (especially smaller ones) struggle with native function calling. For these models, PatchPal provides a **ReAct (Reason + Act)** agent mode that uses text-based tool invocation instead of function calling APIs.
 
+**Why ReAct Mode?** Many smaller local models (<20B parameters) either don't support native function calling or perform poorly with it. Even models that technically support function calling may generate malformed JSON, skip required parameters, or fail to invoke tools reliably. ReAct mode sidesteps these issues by using simple text-based patterns that are easier for such models to follow.
+
 ### What is ReAct?
 
 ReAct is a prompting pattern where the LLM follows this loop:
