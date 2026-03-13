@@ -25,6 +25,16 @@ response = agent.run("Now read the main agent file")
 print(response)
 ```
 
+!!! tip "Using Local Models Without Function Calling"
+    For local models that struggle with native function calling (especially smaller Ollama models), use `create_react_agent()` instead:
+    ```python
+    from patchpal import create_react_agent
+
+    agent = create_react_agent(model_id="ollama_chat/llama3.2")
+    response = agent.run("List Python files")
+    ```
+    See [Local Models - ReAct Mode](../models/local-models.md#react-mode-for-models-without-function-calling) for more details.
+
 ## Adding Custom Tools
 
 Custom tools can be used in three ways:

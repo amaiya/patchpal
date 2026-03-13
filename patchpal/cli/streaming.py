@@ -283,7 +283,7 @@ def stream_completion(completion_call, show_progress: bool = True):
             renderer.stop()
 
         # Normalize model name for cost calculation (import from agent.py)
-        from patchpal.agent import _normalize_bedrock_model_id
+        from patchpal.agent.function_calling import _normalize_bedrock_model_id
 
         normalized_model = (
             _normalize_bedrock_model_id(response_model) if response_model else "unknown"

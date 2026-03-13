@@ -77,7 +77,10 @@ def test_optional_tools_actually_passed_to_llm():
     """Test that optional tools are actually passed to litellm.completion() when enabled."""
     from unittest.mock import MagicMock, patch
 
-    with patch("patchpal.agent.litellm.completion") as mock_completion:
+    # Import litellm directly and patch it there
+    import litellm
+
+    with patch.object(litellm, "completion") as mock_completion:
         # Setup mock response
         mock_response = MagicMock()
         mock_response.choices = [MagicMock()]

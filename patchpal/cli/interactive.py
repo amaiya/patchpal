@@ -12,7 +12,7 @@ from prompt_toolkit.history import InMemoryHistory
 from rich.console import Console
 from rich.markdown import Markdown
 
-from patchpal.agent import create_agent
+from patchpal.agent import create_agent, create_react_agent
 from patchpal.config import config
 from patchpal.tools import audit_logger, set_require_permission_for_all
 
@@ -79,7 +79,7 @@ def _print_cost_statistics(
         print(f"  Session cost: ${_format_cost(agent.cumulative_cost)} (estimated)")
 
         # Check if using GovCloud pricing
-        from patchpal.agent import _is_govcloud_bedrock
+        from patchpal.agent.function_calling import _is_govcloud_bedrock
 
         if agent.model_id.startswith("bedrock/") and _is_govcloud_bedrock(agent.model_id):
             print("  \033[2m(Using AWS GovCloud pricing: ~1.2x commercial rates)\033[0m")
@@ -406,11 +406,19 @@ Supported models: Any LiteLLM-supported model
     else:
         custom_tools_message = None
 
+    # Check if ReAct mode is enabled (for models without native function calling)
+    use_react_mode = os.getenv("PATCHPAL_REACT_MODE", "false").lower() == "true"
+
     # Create the agent with the specified model and custom tools
     # LiteLLM will handle API key validation and provide appropriate error messages
-    agent = create_agent(
-        model_id=model_id, custom_tools=custom_tools, litellm_kwargs=litellm_kwargs
-    )
+    if use_react_mode:
+        agent = create_react_agent(
+            model_id=model_id, custom_tools=custom_tools, litellm_kwargs=litellm_kwargs
+        )
+    else:
+        agent = create_agent(
+            model_id=model_id, custom_tools=custom_tools, litellm_kwargs=litellm_kwargs
+        )
 
     # Get max iterations from environment variable or use default
     max_iterations = config.MAX_ITERATIONS
@@ -924,7 +932,7 @@ Supported models: Any LiteLLM-supported model
                 print("=" * 70)
 
                 # Import SYSTEM_PROMPT to prepend as message 0
-                from patchpal.agent import SYSTEM_PROMPT
+                from patchpal.agent.function_calling import SYSTEM_PROMPT
 
                 # If specific message requested, show only that message
                 if specific_msg_num is not None:
@@ -1023,7 +1031,7 @@ Supported models: Any LiteLLM-supported model
                 print()
 
                 # Display message 0 - base system prompt
-                from patchpal.agent import SYSTEM_PROMPT
+                from patchpal.agent.function_calling import SYSTEM_PROMPT
 
                 base_system_msg = {"role": "system", "content": SYSTEM_PROMPT}
                 base_tokens = agent.context_manager.estimator.estimate_messages_tokens(

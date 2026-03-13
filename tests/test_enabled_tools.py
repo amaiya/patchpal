@@ -70,7 +70,7 @@ def test_with_custom_tools():
 def test_tool_filtering_in_run():
     """Test that tools are actually filtered during agent.run()."""
     # Mock litellm.completion to capture the tools passed to it
-    with patch("patchpal.agent.litellm.completion") as mock_completion:
+    with patch("patchpal.agent.function_calling.litellm.completion") as mock_completion:
         # Setup mock response
         mock_response = MagicMock()
         mock_response.choices = [MagicMock()]
@@ -116,7 +116,7 @@ def test_tool_filtering_with_custom_tools():
         """Add two numbers."""
         return str(x + y)
 
-    with patch("patchpal.agent.litellm.completion") as mock_completion:
+    with patch("patchpal.agent.function_calling.litellm.completion") as mock_completion:
         # Setup mock response
         mock_response = MagicMock()
         mock_response.choices = [MagicMock()]

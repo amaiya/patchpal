@@ -106,7 +106,7 @@ def test_stream_renderer_double_stop():
 
 def test_agent_has_streaming_integration():
     """Test that agent module has streaming integration."""
-    import patchpal.agent as agent_module
+    import patchpal.agent.function_calling as agent_module
 
     # Check that stream_completion is imported in agent module
     assert hasattr(agent_module, "stream_completion")
