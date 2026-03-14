@@ -115,6 +115,30 @@ def build_container_args(sandbox_args, patchpal_args):
 
     ensure_podman_machine(runtime)
 
+    # Detect model from patchpal args to set appropriate context length
+    model_name = None
+    for i, arg in enumerate(patchpal_args):
+        if arg == "--model" and i + 1 < len(patchpal_args):
+            model_name = patchpal_args[i + 1]
+            break
+
+    # Set OLLAMA_CONTEXT_LENGTH if using Ollama and not already set
+    if (
+        model_name
+        and ("ollama" in model_name.lower())
+        and "OLLAMA_CONTEXT_LENGTH" not in os.environ
+    ):
+        # Check if it's a reasoning model
+        reasoning_models = ["gpt-oss", "deepseek-r1", "qwq", "qwen"]
+        is_reasoning = any(rm in model_name.lower() for rm in reasoning_models)
+
+        if is_reasoning:
+            os.environ["OLLAMA_CONTEXT_LENGTH"] = "32768"
+            print("ℹ️  Auto-setting OLLAMA_CONTEXT_LENGTH=32768 for reasoning model")
+        else:
+            os.environ["OLLAMA_CONTEXT_LENGTH"] = "8192"
+            print("ℹ️  Auto-setting OLLAMA_CONTEXT_LENGTH=8192 for Ollama model")
+
     # Base container arguments
     is_interactive = is_interactive_command(patchpal_args)
     container_args = [runtime, "run"]
@@ -162,6 +186,11 @@ def build_container_args(sandbox_args, patchpal_args):
     ]
     for key, value in os.environ.items():
         if any(key.startswith(prefix + "_") for prefix in provider_prefixes):
+            container_args.extend(["-e", f"{key}={value}"])
+
+    # Pass through OLLAMA_* environment variables (including OLLAMA_CONTEXT_LENGTH)
+    for key, value in os.environ.items():
+        if key.startswith("OLLAMA_"):
             container_args.extend(["-e", f"{key}={value}"])
 
     # Track mounted paths to avoid duplicates
@@ -230,6 +259,9 @@ DESCRIPTION:
     - No resource limits by default (uses Docker/Podman defaults)
     - Current directory mounted as /workspace
     - Auto-installs patchpal in container
+    - Auto-sets OLLAMA_CONTEXT_LENGTH for Ollama models:
+      * 8192 for regular models (agents)
+      * 32768 for reasoning models (gpt-oss, deepseek-r1, qwq, qwen)
 
     Recommended for autopilot mode and high-risk operations.
 
@@ -256,6 +288,7 @@ ENVIRONMENT VARIABLES:
     - All HUGGINGFACE_* variables (e.g., HUGGINGFACE_API_KEY)
     - All REPLICATE_* variables (e.g., REPLICATE_API_TOKEN)
     - All TOGETHER_* variables (e.g., TOGETHER_API_KEY)
+    - All OLLAMA_* variables (e.g., OLLAMA_CONTEXT_LENGTH - auto-set if not specified)
     - SSL_CERT_FILE and REQUESTS_CA_BUNDLE (auto-mounted if paths exist)
 
     You can load these from a .env file using --env-file:
