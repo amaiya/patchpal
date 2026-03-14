@@ -67,6 +67,7 @@ Issues = "https://github.com/amaiya/patchpal/issues"
 patchpal = "patchpal.cli.interactive:main"
 patchpal-autopilot = "patchpal.cli.autopilot:main"
 patchpal-mcp = "patchpal.cli.mcp:main"
+patchpal-sandbox = "patchpal.cli.sandbox:main"
 
 [tool.setuptools.packages.find]
 include = ["patchpal*"]
