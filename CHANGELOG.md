@@ -14,7 +14,7 @@ Most recent releases are shown at the top. Each release shows:
 - **ReAct agent mode for models without native function calling**: Added `PATCHPAL_REACT_MODE` environment variable and `create_react_agent()` API to enable text-based tool calling for models that don't support native function calling (e.g., smaller Ollama models like llama3.2, qwen2.5). ReAct agent uses chain-of-thought reasoning with text-based action/observation loops, making PatchPal compatible with a wider range of local models. See docs/models/local-models.md for usage examples.
 
 ### changed:
-- N/A
+- In AutoPilot mode, completion promises are automatically added to supplied prompts when missing.
 
 ### fixed:
 - N/A

@@ -259,6 +259,15 @@ Related Resources (Ralph Wiggum Technique):
     else:
         parser.error("Either --prompt or --prompt-file is required")
 
+    # Auto-append completion instruction if not already present
+    completion_tag = f"<promise>{args.completion_promise}</promise>"
+    if completion_tag not in prompt:
+        prompt = (
+            f"{prompt}\n\n"
+            f"When you have successfully completed the task, output the following exactly:\n"
+            f"{completion_tag}"
+        )
+
     # Run autopilot loop
     try:
         result = autopilot_loop(

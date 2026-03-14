@@ -26,4 +26,4 @@ Create a simple Python module with a hello function and comprehensive tests.
 - All pytest tests pass (exit code 0)
 - No errors or warnings
 
-When all tests pass, output: <promise>COMPLETE</promise>
+When all tests pass, output:

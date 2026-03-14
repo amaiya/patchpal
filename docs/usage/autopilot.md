@@ -11,6 +11,7 @@
 # After pip install patchpal, autopilot is available immediately
 
 # RECOMMENDED: Use patchpal-sandbox for safe isolation
+# Note: Completion instruction is automatically added to prompts
 patchpal-sandbox --env-file .env -- autopilot \
   --prompt-file task.md \
   --completion-promise "DONE" \
@@ -26,12 +27,14 @@ patchpal-autopilot \
 python -c "
 from patchpal.cli.autopilot import autopilot_loop
 autopilot_loop(
-    prompt='Build a calculator with tests. When complete, output: <promise>COMPLETE</promise>',
+    prompt='Build a calculator with tests',
     completion_promise='COMPLETE',
     max_iterations=20
 )
 "
 ```
+
+**Note**: The completion instruction is automatically appended to your prompts. You only need to specify what to check for via `--completion-promise`. No need to include "Output: <promise>COMPLETE</promise>" in your task description.
 
 **Custom Tools**: Autopilot automatically loads custom tools from both `~/.patchpal/tools/` (global) and `.patchpal/tools/` (repository-specific), same as the interactive CLI. See [Custom Tools](../features/custom-tools.md) for details.
 
@@ -69,9 +72,9 @@ Good autopilot prompts have:
 - Coverage >80%
 - No linter errors
 - README with API documentation
-
-When complete, output: <promise>COMPLETE</promise>
 ```
+
+Note: You don't need to include the completion promise in your prompt - it's automatically added.
 
 **2. Self-Correction Pattern**
 ```markdown
@@ -128,8 +131,6 @@ Process:
 2. Write tests in test_app.py
 3. Run: run_shell("pytest test_app.py -v")
 4. Fix failures and retry
-
-Output: <promise>COMPLETE</promise> when done.
     """,
     completion_promise="COMPLETE",
     max_iterations=30,

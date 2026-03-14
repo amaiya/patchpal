@@ -156,7 +156,7 @@ Prompt Best Practices:
   - Incremental goals (break into phases)
   - Self-correction patterns (run tests, debug, fix, repeat)
   - Escape hatches (document blocking issues after N failures)
-  - Output the completion promise when done: "Output: <promise>COMPLETE</promise>"
+  - Note: Completion instruction is automatically added to prompts
 
 Related Resources:
   - https://www.humanlayer.dev/blog/brief-history-of-ralph

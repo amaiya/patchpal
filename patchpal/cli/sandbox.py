@@ -354,7 +354,7 @@ EXAMPLES:
     patchpal-sandbox --host-network -- --model ollama_chat/llama3.1
 
     # Run AUTOPILOT mode (non-interactive, permissions automatically disabled)
-    patchpal-sandbox --env-file .env -- autopilot --model openai/gpt-5.2-codex --prompt "Add error handling to auth.py. Output: <promise>COMPLETE</promise> when done." --completion-promise "COMPLETE"
+    patchpal-sandbox --env-file .env -- autopilot --model openai/gpt-5.2-codex --prompt "Add error handling to auth.py" --completion-promise "COMPLETE"
 
     # AUTOPILOT with prompt from file
     patchpal-sandbox --env-file .env -- autopilot --model openai/gpt-5.2-codex --prompt-file task.md --completion-promise "DONE"

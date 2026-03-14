@@ -46,5 +46,3 @@ Build a Python calculator module with tests.
 - Use descriptive error messages for ValueError
 - Test edge cases (0, negative numbers, decimals)
 - Ensure functions work with both integers and floats
-
-When all tests pass, output: <promise>COMPLETE</promise>
