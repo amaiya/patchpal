@@ -15,8 +15,6 @@ from datetime import datetime
 from typing import Any, Callable, Dict, List, Optional
 
 import litellm
-from rich.console import Console
-from rich.markdown import Markdown
 
 from patchpal.cli.streaming import stream_completion
 from patchpal.config import config
@@ -395,8 +393,13 @@ class ReActAgent:
         # Add user message
         self.messages.append({"role": "user", "content": user_message})
 
-        # Pattern to match actions
-        action_pattern = re.compile(r"^Action:\s*(\w+):\s*(.*)$", re.MULTILINE)
+        # Pattern to match actions: "Action: tool_name" followed by "Action Input: {...}"
+        action_pattern = re.compile(
+            r"Action:\s*(\w+)\s*\nAction Input:\s*(.+?)(?=\n\n|$)", re.MULTILINE | re.DOTALL
+        )
+
+        # Pattern for final answer
+        final_answer_pattern = re.compile(r"Final Answer:\s*(.+)", re.DOTALL | re.IGNORECASE)
 
         # Track recent actions to detect loops
         recent_actions = []
@@ -445,70 +448,46 @@ class ReActAgent:
             # Add to messages
             self.messages.append({"role": "assistant", "content": result})
 
-            # Look for actions FIRST (before checking for Answer)
+            # Look for actions FIRST (before checking for Final Answer)
             # This ensures we execute tools even if the model hallucinates an answer
             actions = action_pattern.findall(result)
 
             if not actions:
-                # No action found - check if there's an answer instead
-                if "Answer:" in result:
-                    # Extract the answer part
-                    answer_parts = result.split("Answer:", 1)
-                    if len(answer_parts) > 1:
-                        answer = answer_parts[1].strip()
-                        # Print the thinking part as markdown (before Answer:)
-                        thinking_part = answer_parts[0].strip()
-                        if thinking_part:
-                            console = Console()
-                            print()
-                            console.print(Markdown(thinking_part))
-                            print()
-                        return answer
-                    else:
-                        # "Answer:" found but nothing after it - unusual, return full result
-                        return result
+                # No action found - check if there's a final answer instead
+                final_answer_match = final_answer_pattern.search(result)
+                if final_answer_match:
+                    answer = final_answer_match.group(1).strip()
+                    # Print the thinking part (dimmed)
+                    thinking_part = result[: final_answer_match.start()].strip()
+                    if thinking_part:
+                        print()
+                        print(f"\033[2m{thinking_part}\033[0m")
+                        print()
+                    return answer
 
-                # No action and no answer - print what we got and provide guidance
-                console = Console()
+                # No action and no final answer - treat the response as final answer
+                # Don't loop asking for format corrections
                 print()
-                console.print(Markdown(result))
+                print(f"\033[2m{result}\033[0m")
                 print()
-
-                # Provide helpful guidance based on iteration count
-                if iteration == 1:
-                    # First iteration with no action/answer - encourage direct answer or action
-                    self.messages.append(
-                        {
-                            "role": "user",
-                            "content": "Please either:\n1. Output 'Answer: <your answer>' if you can answer directly, OR\n2. Use an Action to gather information",
-                        }
-                    )
-                elif iteration <= 3:
-                    # Early iterations - simple prompt
-                    self.messages.append(
-                        {
-                            "role": "user",
-                            "content": "Please continue. Either perform an Action or provide an Answer.",
-                        }
-                    )
-                else:
-                    # Later iterations - stronger guidance
-                    self.messages.append(
-                        {
-                            "role": "user",
-                            "content": "You must either:\n- Perform ONE Action (format: Action: tool_name: {...}\\nPAUSE), OR\n- Provide your final Answer (format: Answer: ...)",
-                        }
-                    )
-                continue
+                return result
 
             # Process the first action (only one action per turn)
             tool_name, tool_args_str = actions[0]
 
-            # Warn if model also provided an Answer (hallucination/confusion)
+            # Print the thinking part (dimmed)
+            action_index = result.find("Action:")
+            thinking_part = result[:action_index].strip()
+            if thinking_part:
+                print()
+                print(f"\033[2m{thinking_part}\033[0m")
+                print()
+
+            # Warn if model also provided a Final Answer (hallucination/confusion)
             # We'll execute the action anyway since the model explicitly requested it
-            if "Answer:" in result:
+            if final_answer_pattern.search(result):
                 print(
-                    "\033[2m⚠️  Agent provided both action and answer - executing action first\033[0m"
+                    "\033[2m⚠️  Agent provided both action and final answer - executing action first\033[0m"
                 )
 
             # Check for action loops (same action repeated)
@@ -524,15 +503,6 @@ class ReActAgent:
                 self.messages.append({"role": "user", "content": f"Observation: {error_msg}"})
                 continue
 
-            # Print the thinking part before the action
-            action_index = result.find("Action:")
-            thinking_part = result[:action_index].strip()
-            if thinking_part:
-                console = Console()
-                print()
-                console.print(Markdown(thinking_part))
-                print()
-
             # Parse tool arguments
             tool_args = {}
             tool_args_str = tool_args_str.strip()
@@ -543,9 +513,14 @@ class ReActAgent:
             matches = param_pattern.findall(tool_args_str)
 
             if matches:
-                # Found key-value pairs - clean up values
+                # Found key-value pairs - clean up values and remove surrounding quotes
                 for key, value in matches:
                     value = value.strip()
+                    # Remove surrounding quotes if present
+                    if (value.startswith('"') and value.endswith('"')) or (
+                        value.startswith("'") and value.endswith("'")
+                    ):
+                        value = value[1:-1]
                     tool_args[key] = value
             elif tool_args_str and not tool_args_str.startswith("{"):
                 # No key-value pairs, treat as a simple string argument

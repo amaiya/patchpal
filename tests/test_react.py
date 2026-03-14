@@ -33,7 +33,7 @@ def test_react_agent_basic_text_response():
     mock_response = MagicMock()
     mock_response.choices = [MagicMock()]
     mock_response.choices[0].message = MagicMock()
-    mock_response.choices[0].message.content = "Answer: The capital of France is Paris."
+    mock_response.choices[0].message.content = "Final Answer: The capital of France is Paris."
     mock_response.usage = MagicMock()
     mock_response.usage.prompt_tokens = 100
     mock_response.usage.completion_tokens = 20
@@ -60,8 +60,8 @@ def test_react_agent_tool_call_with_grep(monkeypatch):
     mock_response_1.choices[
         0
     ].message.content = """Thought: I need to search for files containing "test"
-Action: grep: {"pattern": "test", "path": "."}
-PAUSE"""
+Action: grep
+Action Input: {"pattern": "test", "path": "."}"""
     mock_response_1.usage = MagicMock()
     mock_response_1.usage.prompt_tokens = 100
     mock_response_1.usage.completion_tokens = 30
@@ -70,7 +70,7 @@ PAUSE"""
     mock_response_2 = MagicMock()
     mock_response_2.choices = [MagicMock()]
     mock_response_2.choices[0].message = MagicMock()
-    mock_response_2.choices[0].message.content = "Answer: Found 3 files containing 'test'"
+    mock_response_2.choices[0].message.content = "Final Answer: Found 3 files containing 'test'"
     mock_response_2.usage = MagicMock()
     mock_response_2.usage.prompt_tokens = 150
     mock_response_2.usage.completion_tokens = 20
@@ -107,7 +107,7 @@ PAUSE"""
     mock_response_2 = MagicMock()
     mock_response_2.choices = [MagicMock()]
     mock_response_2.choices[0].message = MagicMock()
-    mock_response_2.choices[0].message.content = "Answer: I cannot complete this task."
+    mock_response_2.choices[0].message.content = "Final Answer: I cannot complete this task."
     mock_response_2.usage = MagicMock()
     mock_response_2.usage.prompt_tokens = 120
     mock_response_2.usage.completion_tokens = 15
@@ -130,8 +130,8 @@ def test_react_agent_regex_parameter_parsing():
     mock_response.choices[0].message = MagicMock()
     # Test loose JSON format (should still work with regex parsing)
     mock_response.choices[0].message.content = """Thought: Read a file
-Action: read_file: {path: test.txt}
-PAUSE"""
+Action: read_file
+Action Input: {path: test.txt}"""
     mock_response.usage = MagicMock()
     mock_response.usage.prompt_tokens = 100
     mock_response.usage.completion_tokens = 20
@@ -139,7 +139,7 @@ PAUSE"""
     mock_response_2 = MagicMock()
     mock_response_2.choices = [MagicMock()]
     mock_response_2.choices[0].message = MagicMock()
-    mock_response_2.choices[0].message.content = "Answer: File contains test data"
+    mock_response_2.choices[0].message.content = "Final Answer: File contains test data"
     mock_response_2.usage = MagicMock()
     mock_response_2.usage.prompt_tokens = 120
     mock_response_2.usage.completion_tokens = 15
@@ -193,20 +193,21 @@ def test_react_agent_system_prompt_structure():
 
     agent = create_react_agent()
 
-    # Verify ReAct-specific elements
-    assert "ReAct Loop" in agent.system_prompt
+    # Verify ReAct-specific elements (new format)
+    assert "ReAct agent" in agent.system_prompt
     assert "Thought" in agent.system_prompt
     assert "Action:" in agent.system_prompt
-    assert "PAUSE" in agent.system_prompt
-    assert "Observation" in agent.system_prompt
-    assert "Answer:" in agent.system_prompt
+    assert "Action Input:" in agent.system_prompt
+    assert "Final Answer:" in agent.system_prompt
+    assert "1. To think and act" in agent.system_prompt
+    assert "2. To give a final answer" in agent.system_prompt
 
     # Verify tool descriptions with examples
     assert "Parameters:" in agent.system_prompt
     assert "Example:" in agent.system_prompt
 
-    # Verify guidelines
-    assert "Important Guidelines" in agent.system_prompt
+    # Verify examples section exists
+    assert "## Examples" in agent.system_prompt
 
 
 def test_react_agent_action_answer_priority():
@@ -218,9 +219,9 @@ def test_react_agent_action_answer_priority():
     mock_response_1.choices = [MagicMock()]
     mock_response_1.choices[0].message = MagicMock()
     mock_response_1.choices[0].message.content = """Thought: Let me read the file
-Action: read_file: {"path": "test.txt"}
-PAUSE
-Answer: The file probably contains data"""  # Premature answer
+Action: read_file
+Action Input: {"path": "test.txt"}
+Final Answer: The file probably contains data"""  # Premature answer
     mock_response_1.usage = MagicMock()
     mock_response_1.usage.prompt_tokens = 100
     mock_response_1.usage.completion_tokens = 40
@@ -228,7 +229,7 @@ Answer: The file probably contains data"""  # Premature answer
     mock_response_2 = MagicMock()
     mock_response_2.choices = [MagicMock()]
     mock_response_2.choices[0].message = MagicMock()
-    mock_response_2.choices[0].message.content = "Answer: The file contains: actual content"
+    mock_response_2.choices[0].message.content = "Final Answer: The file contains: actual content"
     mock_response_2.usage = MagicMock()
     mock_response_2.usage.prompt_tokens = 150
     mock_response_2.usage.completion_tokens = 20
@@ -251,8 +252,8 @@ def test_react_agent_max_iterations():
     mock_response.choices = [MagicMock()]
     mock_response.choices[0].message = MagicMock()
     mock_response.choices[0].message.content = """Thought: Keep thinking
-Action: list_files: {"path": "."}
-PAUSE"""
+Action: list_files
+Action Input: {"path": "."}"""
     mock_response.usage = MagicMock()
     mock_response.usage.prompt_tokens = 100
     mock_response.usage.completion_tokens = 20
