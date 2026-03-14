@@ -74,35 +74,6 @@ SCRIPT OPTIONS:
       --env-file FILE     Load environment variables from .env file
       -h, --help          Show this help message
 
-EXAMPLES:
-      # Load API keys from .env file
-      ./scripts/sandbox-patchpal.sh --env-file .env -- --model openai/gpt-5.2-codex
-      ./scripts/sandbox-patchpal.sh --env-file ~/.config/patchpal/.env -- --model anthropic/claude-sonnet-4-5
-
-      # Basic usage with cloud LLM (network enabled by default)
-      ./scripts/sandbox-patchpal.sh -- --model openai/gpt-5.2-codex
-
-    # With local model (Ollama) - requires host network to reach Ollama on localhost
-    ./scripts/sandbox-patchpal.sh --host-network -- --model ollama_chat/llama3.1
-
-    # With Anthropic Claude
-    ./scripts/sandbox-patchpal.sh -- --model anthropic/claude-sonnet-4-5
-
-    # Disable network for maximum isolation (not usable for any LLMs)
-    ./scripts/sandbox-patchpal.sh --no-network -- --model local_only_model
-
-    # Use different Python version
-    ./scripts/sandbox-patchpal.sh --image python:3.12 -- --model openai/gpt-5.2-codex
-
-    # More resources for larger models
-    ./scripts/sandbox-patchpal.sh --memory 8g --cpus 4 -- --model ollama_chat/gpt-oss:120b
-
-    # Limit resources if needed
-    ./scripts/sandbox-patchpal.sh --memory 2g --cpus 2 -- --model ollama_chat/llama3.1
-
-    # Autopilot mode (disable permissions via environment variable)
-    PATCHPAL_REQUIRE_PERMISSION=false ./scripts/sandbox-patchpal.sh -- --model openai/gpt-5.2-codex
-
 ENVIRONMENT VARIABLES:
       The following environment variables are automatically passed to the container:
 
@@ -168,9 +139,41 @@ CORPORATE NETWORKS (Linux/WSL):
     On macOS/Windows: Docker Desktop handles certificates differently.
     You may need to add certificates to Docker Desktop's trusted CAs.
 
+EXAMPLES:
+    # Load API keys from .env file
+    ./scripts/sandbox-patchpal.sh --env-file .env -- --model openai/gpt-5.2-codex
+    ./scripts/sandbox-patchpal.sh --env-file ~/.config/patchpal/.env -- --model anthropic/claude-sonnet-4-5
+
+    # Interactive mode with cloud LLM (network enabled by default)
+    ./scripts/sandbox-patchpal.sh -- --model openai/gpt-5.2-codex
+
+    # Run autopilot mode (non-interactive, permissions automatically disabled)
+    ./scripts/sandbox-patchpal.sh --env-file .env -- autopilot --model openai/gpt-5.2-codex --prompt "Add error handling to auth.py" --completion-promise "COMPLETE"
+    ./scripts/sandbox-patchpal.sh -- patchpal-autopilot --model anthropic/claude-sonnet-4-5 --prompt "Fix the bug in utils.py" --completion-promise "DONE"
+
+    # With local model (Ollama) - requires host network to reach Ollama on localhost
+    ./scripts/sandbox-patchpal.sh --host-network -- --model ollama_chat/llama3.1
+
+    # With Anthropic Claude
+    ./scripts/sandbox-patchpal.sh -- --model anthropic/claude-sonnet-4-5
+
+    # Disable network for maximum isolation (not usable for any LLMs)
+    ./scripts/sandbox-patchpal.sh --no-network -- --model local_only_model
+
+    # Use different Python version
+    ./scripts/sandbox-patchpal.sh --image python:3.12 -- --model openai/gpt-5.2-codex
+
+    # More resources for larger models
+    ./scripts/sandbox-patchpal.sh --memory 8g --cpus 4 -- --model ollama_chat/gpt-oss:120b
+
+    # Limit resources if needed
+    ./scripts/sandbox-patchpal.sh --memory 2g --cpus 2 -- --model ollama_chat/llama3.1
+
+    # Check version
+    ./scripts/sandbox-patchpal.sh -- --version
+
 SEE ALSO:
-    - docs/usage/autopilot.md - Autopilot safety guidelines
-    - docs/sandboxing.md - Full sandboxing strategy
+    - Full Documentation: https://amaiya.github.io/patchpal/
 EOF
 }
 
@@ -354,7 +357,48 @@ if [ -n "$SANDBOX_CPUS" ]; then
     CONTAINER_ARGS+=("--cpus" "$SANDBOX_CPUS")
 fi
 
-# Run PatchPal in container
-exec $RUNTIME run "${CONTAINER_ARGS[@]}" \
-    "$SANDBOX_IMAGE" \
-    bash -c "pip install -q patchpal && patchpal $*"
+# Detect if we're running a non-interactive command (autopilot, version, help)
+# by checking if any of the patchpal args look non-interactive
+IS_INTERACTIVE=true
+for arg in "$@"; do
+    case "$arg" in
+        --version|-v|--help|-h)
+            IS_INTERACTIVE=false
+            break
+            ;;
+    esac
+done
+
+# Check if we're running autopilot by looking at the command name
+PATCHPAL_CMD="patchpal"
+if [ $# -gt 0 ]; then
+    # If first arg doesn't start with -, it might be a subcommand
+    if [[ ! "$1" =~ ^- ]]; then
+        case "$1" in
+            autopilot|patchpal-autopilot)
+                PATCHPAL_CMD="patchpal-autopilot"
+                IS_INTERACTIVE=false
+                shift  # Remove the subcommand from args
+                ;;
+        esac
+    fi
+fi
+
+# Build the final container run command
+if [ "$IS_INTERACTIVE" = true ]; then
+    # Interactive mode - keep -it flags that were added earlier
+    exec $RUNTIME run "${CONTAINER_ARGS[@]}" \
+        "$SANDBOX_IMAGE" \
+        bash -c "pip install -q patchpal && $PATCHPAL_CMD $*"
+else
+    # Non-interactive mode - remove -it flags and add -i only
+    NONINTERACTIVE_ARGS=()
+    for arg in "${CONTAINER_ARGS[@]}"; do
+        if [ "$arg" != "-it" ]; then
+            NONINTERACTIVE_ARGS+=("$arg")
+        fi
+    done
+    exec $RUNTIME run -i --rm "${NONINTERACTIVE_ARGS[@]}" \
+        "$SANDBOX_IMAGE" \
+        bash -c "pip install -q patchpal && $PATCHPAL_CMD $*"
+fi
