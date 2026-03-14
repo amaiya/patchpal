@@ -81,7 +81,10 @@ export PATCHPAL_MODEL=openai/gpt-5.2
 patchpal
 ```
 
-**Tip for Local Models:** Local models (i.e., models served by Ollama or vLLM) may work better with the environment variable settings, `PATCHPAL_MINIMAL_TOOLS=true` and `PATCHPAL_ENABLE_WEB=false`, which provides only essential tools (`read_file`, `read_lines`, `write_file`, `edit_file`, `run_shell`), reducing tool confusion with smaller models. For Ollama, additionally setting `PATCHPAL_STREAM_OUTPUT=false` [may also help](https://github.com/openclaw/openclaw/issues/5769).
+**Tip for Local Models:** Local models (i.e., models served by Ollama or vLLM) may work better with these settings:
+- `PATCHPAL_MINIMAL_TOOLS=true` and `PATCHPAL_ENABLE_WEB=false` - For models **with** function calling: Provides only essential tools (`read_file`, `read_lines`, `write_file`, `edit_file`, `run_shell`), reducing tool confusion
+- `PATCHPAL_REACT_MODE=true` - For models **without** function calling: Enables text-based tool invocation (see [ReAct mode docs](https://amaiya.github.io/patchpal/models/local-models/#react-mode-for-models-without-function-calling))
+- For Ollama, additionally setting `PATCHPAL_STREAM_OUTPUT=false` [may help with tool call reliability](https://github.com/openclaw/openclaw/issues/5769)
 
 
 ## Beyond Coding: General Problem-Solving

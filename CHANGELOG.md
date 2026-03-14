@@ -7,6 +7,19 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
+## 0.21.0 (TBD)
+
+### new:
+- **`patchpal-sandbox` command**: Added built-in sandboxed execution for interactive and autopilot modes using Docker/Podman containers. Auto-detects runtime, auto-sets `OLLAMA_CONTEXT_LENGTH` (8192 for agents, 32768 for reasoning models like gpt-oss/deepseek-r1/qwq/qwen), loads API keys from `.env` files, mounts current directory and `~/.patchpal`, auto-mounts SSL certificates for corporate networks, and provides clean isolated environment with `--rm` flag. See `patchpal-sandbox --help` for full options.
+- **ReAct agent mode for models without native function calling**: Added `PATCHPAL_REACT_MODE` environment variable and `create_react_agent()` API to enable text-based tool calling for models that don't support native function calling (e.g., smaller Ollama models like llama3.2, qwen2.5). ReAct agent uses chain-of-thought reasoning with text-based action/observation loops, making PatchPal compatible with a wider range of local models. See docs/models/local-models.md for usage examples.
+
+### changed:
+- N/A
+
+### fixed:
+- N/A
+
+
 ## 0.20.1 (2026-03-05)
 
 ### new:
