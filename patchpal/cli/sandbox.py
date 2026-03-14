@@ -270,7 +270,7 @@ DESCRIPTION:
 SCRIPT OPTIONS:
     --image IMAGE       Container image to use (default: python:3.11-slim)
     --no-network        Disable network access (incompatible with cloud LLMs)
-    --host-network      Use host network (required for local Ollama/vLLM servers)
+    --host-network      Use host network (for local Ollama/vLLM servers on localhost)
     --memory LIMIT      Memory limit (e.g., 2g, 4g) - optional, no limit by default
     --cpus NUM          CPU limit (e.g., 2, 4) - optional, no limit by default
     --env-file FILE     Load environment variables from .env file
@@ -328,6 +328,8 @@ NOTES:
     - Files in /workspace persist on host, other files are lost on exit
     - Container ~ = /root (not your host home directory)
     - Use --no-network for maximum isolation with local models only
+    - For Ollama on Windows with WSL: Enable mirrored networking in .wslconfig
+      (Add networkingMode=mirrored under [wsl2] to use localhost)
 
 CORPORATE NETWORKS (Linux/WSL):
     If you get SSL certificate errors behind a corporate proxy/firewall:
