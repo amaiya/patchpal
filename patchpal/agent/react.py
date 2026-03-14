@@ -192,7 +192,7 @@ class ReActAgent:
     def _build_system_prompt(self, custom_instructions: str) -> str:
         """Build the ReAct system prompt with tool descriptions.
 
-        This matches the original react_agent.py format with per-tool examples.
+        Loads the base prompt from react_prompt.md and fills in tool descriptions.
         """
         # Build tool descriptions with examples (like original)
         tool_descriptions = []
@@ -212,7 +212,7 @@ class ReActAgent:
 
             param_text = "\n".join(param_parts) if param_parts else "  No parameters"
 
-            # Add per-tool example (KEY DIFFERENCE from .md version!)
+            # Add per-tool example
             tool_descriptions.append(
                 f'{name}:\n{desc}\nParameters:\n{param_text}\nExample: {name}: {{"param1": "value1", "param2": "value2"}}'
             )
@@ -222,71 +222,23 @@ class ReActAgent:
         platform_info = _get_platform_info()
         datetime_info = _get_current_datetime_message()
 
-        # Build prompt (same as original _build_react_prompt)
-        prompt = f"""You are an expert software engineer assistant that solves tasks step-by-step.
+        # Load prompt template from file
+        from pathlib import Path
 
-{platform_info}
+        prompt_file = Path(__file__).parent.parent / "prompts" / "react_prompt.md"
+        if prompt_file.exists():
+            prompt_template = prompt_file.read_text()
+        else:
+            # Fallback if file doesn't exist (shouldn't happen)
+            prompt_template = "You are an expert software engineer assistant that solves tasks step-by-step.\n\n{platform_info}\n\n{datetime_info}\n\n{custom_instructions}\n\n{tools_section}"
 
-{datetime_info}
-
-{custom_instructions}
-
-## ReAct Loop
-
-You run in a loop of Thought, Action, PAUSE, Observation.
-At the end of the loop you output an Answer.
-
-Use Thought to describe your reasoning about the task.
-Use Action to invoke one of the available tools - then return PAUSE.
-Observation will be the result of running that action.
-
-Your available actions are:
-
-{tools_text}
-
-## Action Format
-
-Actions must be formatted as:
-Action: tool_name: {{"param1": "value1", "param2": "value2"}}
-PAUSE
-
-The JSON must be valid. Use double quotes for strings.
-
-## Example Session
-
-Question: What files are in the src directory?
-Thought: I need to list the files in the src directory
-Action: list_files: {{"path": "src"}}
-PAUSE
-
-You will be called again with this:
-
-Observation: file1.py, file2.py, file3.py
-
-You then output:
-
-Answer: The src directory contains file1.py, file2.py, and file3.py
-
-## Important Guidelines
-
-1. **Answer directly if you can** - If you already know the answer, just output it. Don't use tools unnecessarily.
-2. **Use tools for code/files** - Only use tools when you need to read, edit, or analyze code/files.
-3. **One action per turn** - Always output "PAUSE" after an Action line.
-4. **Stop after answering** - Once you output an Answer, you're done. Don't try to update memory or do additional actions.
-5. **Be efficient** - Use read_lines for specific sections, grep for searching.
-6. **General knowledge** - For questions about facts, history, geography, etc., just answer directly without web search.
-
-## Examples of Direct Answers
-
-Question: What is the capital of France?
-Thought: This is general knowledge, I can answer directly.
-Answer: The capital of France is Paris.
-
-Question: How do I fix this error?
-Thought: I need to see the error and the code to help. Let me read the file first.
-Action: read_file: {{"path": "error.log"}}
-PAUSE
-"""
+        # Replace placeholders
+        prompt = prompt_template.format(
+            platform_info=platform_info,
+            datetime_info=datetime_info,
+            custom_instructions=custom_instructions,
+            tools_section=tools_text,
+        )
 
         return prompt
 
@@ -448,7 +400,7 @@ PAUSE
 
         # Track recent actions to detect loops
         recent_actions = []
-        max_recent = 3
+        max_recent = 8
 
         iteration = 0
         while iteration < max_iterations:
@@ -565,9 +517,9 @@ PAUSE
             if len(recent_actions) > max_recent:
                 recent_actions.pop(0)
 
-            # Detect if we're looping (same action repeated 2+ times recently)
-            if len(recent_actions) >= 2 and len(set(recent_actions[-2:])) == 1:
-                error_msg = f"Loop detected: {tool_name} called repeatedly with same arguments. Try a different approach or provide an Answer."
+            # Detect if we're looping (same action repeated max_recent times consecutively)
+            if len(recent_actions) >= max_recent and len(set(recent_actions[-max_recent:])) == 1:
+                error_msg = f"Loop detected: {tool_name} called {max_recent}+ times with same arguments. Try a different approach or provide an Answer."
                 print(f"\033[1;33m⚠️  {error_msg}\033[0m")
                 self.messages.append({"role": "user", "content": f"Observation: {error_msg}"})
                 continue

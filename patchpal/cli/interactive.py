@@ -943,14 +943,23 @@ Supported models: Any LiteLLM-supported model
                 print("\033[1;36mCurrent Context\033[0m")
                 print("=" * 70)
 
-                # Import SYSTEM_PROMPT to prepend as message 0
-                from patchpal.agent.function_calling import SYSTEM_PROMPT
+                # Get the actual system prompt from the agent
+                from patchpal.agent.react import ReActAgent
+
+                if isinstance(agent, ReActAgent):
+                    # ReAct agent stores system prompt
+                    actual_system_prompt = agent.system_prompt
+                else:
+                    # Function calling agent - import SYSTEM_PROMPT
+                    from patchpal.agent.function_calling import SYSTEM_PROMPT
+
+                    actual_system_prompt = SYSTEM_PROMPT
 
                 # If specific message requested, show only that message
                 if specific_msg_num is not None:
                     # Message 0 is the base system prompt
                     if specific_msg_num == 0:
-                        base_system_msg = {"role": "system", "content": SYSTEM_PROMPT}
+                        base_system_msg = {"role": "system", "content": actual_system_prompt}
                         msg_tokens = agent.context_manager.estimator.estimate_messages_tokens(
                             [base_system_msg]
                         )
@@ -958,7 +967,7 @@ Supported models: Any LiteLLM-supported model
                         role_display = "\033[1;33mSystem (Base Prompt)\033[0m"
                         print(f"  Message [0] {role_display} ({msg_tokens:,} tokens):")
                         print()
-                        print(f"  {SYSTEM_PROMPT}")
+                        print(f"  {actual_system_prompt}")
                         print("=" * 70 + "\n")
                         continue
 
@@ -1043,15 +1052,14 @@ Supported models: Any LiteLLM-supported model
                 print()
 
                 # Display message 0 - base system prompt
-                from patchpal.agent.function_calling import SYSTEM_PROMPT
-
-                base_system_msg = {"role": "system", "content": SYSTEM_PROMPT}
+                # (actual_system_prompt was already set above based on agent type)
+                base_system_msg = {"role": "system", "content": actual_system_prompt}
                 base_tokens = agent.context_manager.estimator.estimate_messages_tokens(
                     [base_system_msg]
                 )
                 print(f"  [0] \033[1;33mSystem (Base Prompt)\033[0m ({base_tokens:,} tokens):")
-                preview = SYSTEM_PROMPT[:200]
-                if len(SYSTEM_PROMPT) > 200:
+                preview = actual_system_prompt[:200]
+                if len(actual_system_prompt) > 200:
                     preview += "..."
                 print(f"      {preview}")
                 print()

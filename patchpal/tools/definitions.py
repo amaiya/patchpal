@@ -194,7 +194,7 @@ Tip: Read README first for context when exploring repositories.""",
         "type": "function",
         "function": {
             "name": "web_search",
-            "description": "Search the web for information. Requires permission to prevent information leakage about your codebase.",
+            "description": "Search the web for information.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -212,7 +212,7 @@ Tip: Read README first for context when exploring repositories.""",
         "type": "function",
         "function": {
             "name": "web_fetch",
-            "description": "Fetch and read content from a URL. Supports text extraction from HTML, PDF, DOCX (Word), PPTX (PowerPoint), and plain text files. Requires permission to prevent information leakage about your codebase.",
+            "description": "Fetch and read content from a URL. Supports text extraction from HTML, PDF, DOCX (Word), PPTX (PowerPoint), and plain text files.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -398,7 +398,7 @@ Tip: Read README first for context when exploring repositories.""",
         "type": "function",
         "function": {
             "name": "run_shell",
-            "description": "Run a safe shell command in the repository. Commands execute from repository root automatically (no need for 'cd'). Privilege escalation (sudo, su) and destructive patterns (rm -rf /, piping to dd, writing to /dev/) blocked by default unless PATCHPAL_ALLOW_SUDO=true.",
+            "description": "Run a shell command in the repository. Commands execute from repository root automatically (no need for 'cd'). Privilege escalation (sudo, su) and destructive patterns (rm -rf /, piping to dd, writing to /dev/) blocked by default unless PATCHPAL_ALLOW_SUDO=true.",
             "parameters": {
                 "type": "object",
                 "properties": {
