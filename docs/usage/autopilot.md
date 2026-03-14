@@ -181,6 +181,7 @@ patchpal-sandbox --host-network -- autopilot \
 - ✅ Loads API keys from `.env` file
 - ✅ Mounts current directory as `/workspace`
 - ✅ Auto-mounts `~/.patchpal` for custom tools and config
+- ✅ Custom tools work automatically (from `~/.patchpal/tools/` and `<repo>/.patchpal/tools/`)
 - ✅ Auto-mounts SSL certificates for corporate networks
 - ✅ Clean environment on each run (`--rm` flag)
 

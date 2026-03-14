@@ -259,6 +259,8 @@ DESCRIPTION:
     - No resource limits by default (uses Docker/Podman defaults)
     - Current directory mounted as /workspace
     - Auto-installs patchpal in container
+    - Auto-mounts ~/.patchpal for custom tools, config, and memory
+    - Custom tools work automatically (from ~/.patchpal/tools/ and <repo>/.patchpal/tools/)
     - Auto-sets OLLAMA_CONTEXT_LENGTH for Ollama models:
       * 8192 for regular models (agents)
       * 32768 for reasoning models (gpt-oss, deepseek-r1, qwq, qwen)
