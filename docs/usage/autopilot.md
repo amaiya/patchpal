@@ -10,7 +10,13 @@
 ```bash
 # After pip install patchpal, autopilot is available immediately
 
-# Option 1: Direct command
+# RECOMMENDED: Use patchpal-sandbox for safe isolation
+patchpal-sandbox --env-file .env -- autopilot \
+  --prompt-file task.md \
+  --completion-promise "DONE" \
+  --max-iterations 50
+
+# Option 1: Direct command (⚠️ use only in safe/isolated environments)
 patchpal-autopilot \
   --prompt-file task.md \
   --completion-promise "DONE" \
@@ -148,7 +154,39 @@ Autopilot runs with `PATCHPAL_REQUIRE_PERMISSION=false`:
 
 **Recommended Isolation:**
 
-**Option 1: Docker/Podman Container** (Good)
+**Option 1: Use patchpal-sandbox (Easiest - Recommended)**
+
+PatchPal includes `patchpal-sandbox`, a built-in command that automatically runs PatchPal in an isolated Docker/Podman container:
+
+```bash
+# Interactive mode with API keys from .env file
+patchpal-sandbox --env-file .env -- --model openai/gpt-5.2-codex
+
+# Autopilot mode (automatically disables permissions)
+patchpal-sandbox --env-file .env -- autopilot \
+  --model openai/gpt-5.2-codex \
+  --prompt-file task.md \
+  --completion-promise "COMPLETE"
+
+# With local Ollama model (requires --host-network)
+patchpal-sandbox --host-network -- autopilot \
+  --model ollama_chat/llama3.1 \
+  --prompt "Build a calculator with tests" \
+  --completion-promise "DONE"
+```
+
+**Features:**
+- ✅ Auto-detects Docker/Podman (prefers Podman for rootless)
+- ✅ Auto-sets `OLLAMA_CONTEXT_LENGTH` for Ollama models (8192 for agents, 32768 for reasoning models)
+- ✅ Loads API keys from `.env` file
+- ✅ Mounts current directory as `/workspace`
+- ✅ Auto-mounts `~/.patchpal` for custom tools and config
+- ✅ Auto-mounts SSL certificates for corporate networks
+- ✅ Clean environment on each run (`--rm` flag)
+
+See `patchpal-sandbox --help` for all options and examples.
+
+**Option 2: Manual Docker/Podman Container** (More Control)
 ```bash
 # Create and run in isolated container
 docker run -it --rm \
@@ -161,7 +199,7 @@ pip install patchpal
 patchpal-autopilot --prompt-file task.md --completion-promise "DONE"
 ```
 
-**Option 2: Dedicated VM/Server** (Best)
+**Option 3: Dedicated VM/Server** (Best for Production Automation)
 ```bash
 # Use a separate machine/VM with no access to production
 ssh autopilot-sandbox
