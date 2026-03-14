@@ -38,6 +38,7 @@ Commands execute in Windows shell (CMD-compatible commands work in both CMD and 
 - Search: `findstr` (grep), `dir /s` (find), `where` (which)
 - Path format: Use backslashes `C:\\path\\to\\file.txt`
 - Chain commands: `&&` or `&`
+Note: Use built-in tools like read_file instead of shell commands where possible.
 """
     else:
         return f"""## Platform: {os_name} (Unix-like)
@@ -46,6 +47,7 @@ When using run_shell, use Unix commands:
 - Search: `grep`, `find`, `which`
 - Path format: Forward slashes `/path/to/file.txt`
 - Chain commands with `&&` or `;`
+Note: Use built-in tools like read_file instead of shell commands where possible.
 """
 
 
