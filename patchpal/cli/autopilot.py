@@ -48,6 +48,10 @@ def autopilot_loop(
     This is the key insight: The agent sees its previous work in the conversation
     history and can adjust its approach, notice what's broken, see failing tests, etc.
 
+    Safety: Autopilot automatically restricts file access to the current directory
+    (PATCHPAL_RESTRICT_TO_REPO=true) to prevent PII leakage and limit scope.
+    Override with PATCHPAL_RESTRICT_TO_REPO=false if needed.
+
     Args:
         prompt: Task description for the agent
         completion_promise: String that signals task completion (e.g., "COMPLETE", "DONE")
@@ -61,6 +65,11 @@ def autopilot_loop(
     """
     # Disable permissions for autonomous operation
     os.environ["PATCHPAL_REQUIRE_PERMISSION"] = "false"
+
+    # Restrict to current directory for safety (prevent PII leakage, limit scope)
+    # This ensures the agent only works within the project directory
+    if "PATCHPAL_RESTRICT_TO_REPO" not in os.environ:
+        os.environ["PATCHPAL_RESTRICT_TO_REPO"] = "true"
 
     # Discover custom tools from ~/.patchpal/tools/ and <repo>/.patchpal/tools/
     from pathlib import Path
@@ -84,6 +93,9 @@ def autopilot_loop(
     print(f"Completion promise: '{completion_promise}'")
     print(f"Max iterations: {max_iterations}")
     print(f"Model: {agent.model_id}")
+    print(f"Working directory: {repo_root}")
+    if config.RESTRICT_TO_REPO:
+        print("🔒 File access restricted to working directory")
 
     # Show custom tools info if any were loaded
     custom_tool_info = list_custom_tools(repo_root=repo_root)
@@ -165,7 +177,69 @@ def main():
     # Suppress warnings to keep CLI clean (e.g., Pydantic, deprecation warnings from dependencies)
     warnings.simplefilter("ignore")
 
-    # Show safety warning only if not already confirmed
+    # Set up argument parser FIRST so --help works before confirmation prompt
+    parser = argparse.ArgumentParser(
+        description="PatchPal Autopilot - Autonomous iterative development",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Build a calculator with tests
+  patchpal-autopilot --prompt "Create calculator.py with add, subtract, multiply, divide functions. Create test_calculator.py with pytest tests. Run tests to verify." --completion-promise "COMPLETE" --max-iterations 20
+
+  # Refactor code with specific completion criteria
+  patchpal-autopilot --prompt "Refactor auth.py to use async/await. Update all tests. Run tests to verify." --completion-promise "COMPLETE"
+
+  # Use prompt from file
+  patchpal-autopilot --prompt-file task.md --completion-promise "DONE" --max-iterations 50
+
+  # With local Ollama model (zero API cost)
+  patchpal-autopilot --model ollama_chat/qwen2.5-coder:7b --prompt "..." --completion-promise "COMPLETE"
+
+  # Skip confirmation prompt (for automation/scripts)
+  PATCHPAL_AUTOPILOT_CONFIRMED=true patchpal-autopilot --prompt-file task.md --completion-promise "DONE"
+
+Prompt Best Practices:
+  - Include the completion promise in your prompt (agent sees this as the goal)
+  - Clear completion criteria (specific tests, checks, deliverables)
+  - Incremental goals (break into phases if complex)
+  - Self-correction patterns (run tests, debug, fix, repeat)
+  - Example: "Create X. Test X. Fix any errors. Output <promise>COMPLETE</promise>"
+
+Safety:
+  - File access restricted to current directory (PATCHPAL_RESTRICT_TO_REPO=true)
+  - Permissions disabled for autonomous operation
+  - Recommended: Run in containers or throwaway projects
+  - See examples/ralph/README.md for detailed safety guidelines
+
+Related Resources (Ralph Wiggum Technique):
+  - https://www.humanlayer.dev/blog/brief-history-of-ralph
+  - https://awesomeclaude.ai/ralph-wiggum
+  - https://github.com/ghuntley/ralph
+        """,
+    )
+    parser.add_argument("--prompt", type=str, help="Task prompt (or use --prompt-file)")
+    parser.add_argument("--prompt-file", type=str, help="Path to file containing prompt")
+    parser.add_argument(
+        "--completion-promise",
+        type=str,
+        required=True,
+        help='String that signals completion (e.g., "COMPLETE", "DONE")',
+    )
+    parser.add_argument(
+        "--max-iterations",
+        type=int,
+        default=50,
+        help="Maximum autopilot iterations (default: 50)",
+    )
+    parser.add_argument(
+        "--model",
+        type=str,
+        help="Model to use (overrides PATCHPAL_MODEL env var)",
+    )
+
+    args = parser.parse_args()
+
+    # Show safety warning only if not already confirmed (after argparse so --help works)
     if not config.AUTOPILOT_CONFIRMED:
         print("\n" + "⚠️" * 40)
         print("  PATCHPAL AUTOPILOT MODE - AUTONOMOUS OPERATION")
@@ -195,56 +269,6 @@ def main():
             sys.exit(1)
 
     print()
-
-    parser = argparse.ArgumentParser(
-        description="PatchPal Autopilot - Autonomous iterative development",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
-Examples:
-  python -m patchpal autopilot --prompt "Build a REST API with tests" --completion-promise "COMPLETE"
-  python -m patchpal autopilot --prompt-file task.md --completion-promise "DONE" --max-iterations 50
-
-  # With local model (zero API cost)
-  python -m patchpal autopilot --model hosted_vllm/openai/gpt-oss-120b --prompt "..." --completion-promise "DONE"
-
-  # Skip confirmation prompt (for automation)
-  PATCHPAL_AUTOPILOT_CONFIRMED=true python -m patchpal autopilot --prompt-file task.md --completion-promise "DONE"
-
-Prompt Best Practices:
-  - Clear completion criteria (specific tests, checks, deliverables)
-  - Incremental goals (break into phases)
-  - Self-correction patterns (run tests, debug, fix, repeat)
-  - Escape hatches (document blocking issues after N failures)
-  - Output the completion promise when done: "Output: <promise>COMPLETE</promise>"
-
-Related Resources (Ralph Wiggum Technique):
-  - https://www.humanlayer.dev/blog/brief-history-of-ralph
-  - https://awesomeclaude.ai/ralph-wiggum
-  - https://github.com/ghuntley/ralph
-  - examples/ralph/README.md (comprehensive guide)
-        """,
-    )
-    parser.add_argument("--prompt", type=str, help="Task prompt (or use --prompt-file)")
-    parser.add_argument("--prompt-file", type=str, help="Path to file containing prompt")
-    parser.add_argument(
-        "--completion-promise",
-        type=str,
-        required=True,
-        help='String that signals completion (e.g., "COMPLETE", "DONE")',
-    )
-    parser.add_argument(
-        "--max-iterations",
-        type=int,
-        default=50,
-        help="Maximum autopilot iterations (default: 50)",
-    )
-    parser.add_argument(
-        "--model",
-        type=str,
-        help="Model to use (default: PATCHPAL_MODEL env var or claude-sonnet-4-5)",
-    )
-
-    args = parser.parse_args()
 
     # Get prompt from file or argument
     if args.prompt_file:

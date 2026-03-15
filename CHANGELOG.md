@@ -15,6 +15,7 @@ Most recent releases are shown at the top. Each release shows:
 
 ### changed:
 - In AutoPilot mode, completion promises are automatically added to supplied prompts when missing.
+- AutoPilot mode now sets `PATCHPAL_RESTRICT_TO_REPO` by default.
 
 ### fixed:
 - Fixed bug with prompts beginning with word "context" (#77)
