@@ -189,6 +189,17 @@ def build_container_args(sandbox_args, patchpal_args):
             container_args.extend(["-e", f"{key}={value}"])
 
     # Pass through OLLAMA_* environment variables (including OLLAMA_CONTEXT_LENGTH)
+    # This allows you to set OLLAMA_API_BASE on the host to point to Ollama:
+    #
+    # For LOCAL Ollama on host machine:
+    #   - Linux/WSL2 with mirrored networking: Use --host-network (container shares host network)
+    #   - macOS/Windows Docker Desktop: export OLLAMA_API_BASE=http://host.docker.internal:11434
+    #   - Podman: export OLLAMA_API_BASE=http://host.containers.internal:11434
+    #
+    # For REMOTE Ollama:
+    #   export OLLAMA_API_BASE=http://192.168.1.100:11434
+    #
+    # The container will automatically receive OLLAMA_API_BASE environment variable.
     for key, value in os.environ.items():
         if key.startswith("OLLAMA_"):
             container_args.extend(["-e", f"{key}={value}"])
