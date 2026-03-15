@@ -356,21 +356,27 @@ CORPORATE NETWORKS (Linux/WSL):
     You may need to add certificates to Docker Desktop's trusted CAs.
 
 EXAMPLES:
-    # Load API keys from .env file
+    # Cloud LLM: Load API keys from .env file
     patchpal-sandbox --env-file .env -- --model openai/gpt-5.2-codex
     patchpal-sandbox --env-file ~/.config/patchpal/.env -- --model anthropic/claude-sonnet-4-5
 
-    # Interactive mode with cloud LLM (network enabled by default)
+    #Cloud LLM: Interactive mode with cloud LLM (network enabled by default)
     patchpal-sandbox -- --model anthropic/claude-sonnet-4-5
 
-    # With local model (Ollama) - requires host network to reach Ollama on localhost
-    patchpal-sandbox --host-network -- --model ollama_chat/llama3.1
-
-    # Run AUTOPILOT mode (non-interactive, permissions automatically disabled)
+    # AutoPilot Mode: non-interactive, permissions automatically disabled
     patchpal-sandbox --env-file .env -- autopilot --model openai/gpt-5.2-codex --prompt "Add error handling to auth.py" --completion-promise "COMPLETE"
 
-    # AUTOPILOT with prompt from file
+    # AutoPilot Mode: read file containing prompt
     patchpal-sandbox --env-file .env -- autopilot --model openai/gpt-5.2-codex --prompt-file task.md --completion-promise "DONE"
+
+    # Ollama: Linux/WSL requires host network to reach Ollama on localhost
+    patchpal-sandbox --host-network -- --model ollama_chat/qwen3:8b # interactive
+    patchpal-sandbox --host-network -- autopilot --model ollama_chat/qwen3:8b # autopilot
+
+    # Ollama: Windows/macOS requires setting OLLAMA_API_BASE
+    # Docker: export OLLAMA_API_BASE=http://host.docker.internal:11434
+    # PodMan: export OLLAMA_API_BASE=http://host.containers.internal:11434
+    patchpal-sandbox --host-network -- --model ollama_chat/qwen3:8b
 
 
 SEE ALSO:
