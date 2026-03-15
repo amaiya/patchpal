@@ -162,8 +162,8 @@ docker exec -it ollama ollama run glm-4.7-flash:q4_K_M
 
 - `gpt-oss:120b` - OpenAI's open-source model
 - `glm-4.7-flash:q4_K_M` - Z.ai's GLM model, excellent tool calling
-- `qwen3:32b` - Qwen3 model with good agentic capabilities
-- `qwen3-coder` - Specialized for coding tasks
+- `qwen3.5` - Qwen3.5 model with good agentic capabilities
+- `qwen3-coder-next` - Specialized for coding tasks
 
 **Performance Note:**
 
@@ -272,14 +272,6 @@ agent = create_react_agent(
 response = agent.run("What is 42 plus 58?")
 ```
 
-### Recommended Models for ReAct
-
-These Ollama models work well with ReAct mode:
-- **`qwen2.5:7b`** ⭐ - Excellent instruction following
-- **`llama3.1:8b`** ⭐ - Good reliability
-- **`llama3.2:3b`** - Fast, good for simple tasks
-- **`deepseek-coder-v2`** - Great for code tasks
-- **`mistral:7b`** - Solid general-purpose
 
 ### Best Practices
 
