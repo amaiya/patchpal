@@ -922,11 +922,7 @@ Supported models: Any LiteLLM-supported model
                 continue
 
             # Handle /context command - view current context
-            if (
-                user_input.lower() == "context"
-                or user_input.lower().startswith("context ")
-                or user_input.lower().startswith("/context")
-            ):
+            if user_input.lower().startswith("/context"):
                 # Parse optional message number
                 parts = user_input.split()
                 specific_msg_num = None

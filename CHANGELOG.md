@@ -17,7 +17,7 @@ Most recent releases are shown at the top. Each release shows:
 - In AutoPilot mode, completion promises are automatically added to supplied prompts when missing.
 
 ### fixed:
-- N/A
+- Fixed bug with prompts beginning with word "context" (#77)
 
 
 ## 0.20.1 (2026-03-05)
