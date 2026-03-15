@@ -25,6 +25,7 @@ Usage:
 import argparse
 import os
 import sys
+import warnings
 
 from patchpal.agent import create_agent
 from patchpal.config import config
@@ -160,6 +161,9 @@ def autopilot_loop(
 
 def main():
     """Autopilot mode CLI entry point."""
+
+    # Suppress warnings to keep CLI clean (e.g., Pydantic, deprecation warnings from dependencies)
+    warnings.simplefilter("ignore")
 
     # Show safety warning only if not already confirmed
     if not config.AUTOPILOT_CONFIRMED:
