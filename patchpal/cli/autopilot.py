@@ -161,22 +161,23 @@ def autopilot_loop(
 def main():
     """Autopilot mode CLI entry point."""
 
-    # Show safety warning
-    print("\n" + "⚠️" * 40)
-    print("  PATCHPAL AUTOPILOT MODE - AUTONOMOUS OPERATION")
-    print("⚠️" * 40)
-    print()
-    print("Autopilot disables PatchPal's permission system for autonomous operation.")
-    print()
-    print("🔒 RECOMMENDED: Run in isolated environments only:")
-    print("   • Docker/Podman containers (see examples/ralph/PODMAN_GUIDE.md)")
-    print("   • Dedicated VMs or test machines")
-    print("   • Throwaway projects with version control")
-    print()
-    print("❌ DO NOT RUN on production systems.")
-    print()
-    print("This implements the 'Ralph Wiggum technique' - see examples/ralph/README.md")
-    print()
+    # Show safety warning only if not already confirmed
+    if not config.AUTOPILOT_CONFIRMED:
+        print("\n" + "⚠️" * 40)
+        print("  PATCHPAL AUTOPILOT MODE - AUTONOMOUS OPERATION")
+        print("⚠️" * 40)
+        print()
+        print("Autopilot disables PatchPal's permission system for autonomous operation.")
+        print()
+        print("🔒 RECOMMENDED: Run in isolated environments only:")
+        print("   • Docker/Podman containers (see examples/ralph/PODMAN_GUIDE.md)")
+        print("   • Dedicated VMs or test machines")
+        print("   • Throwaway projects with version control")
+        print()
+        print("❌ DO NOT RUN on production systems.")
+        print()
+        print("This implements the 'Ralph Wiggum technique' - see examples/ralph/README.md")
+        print()
 
     # Check for environment variable to skip prompt (for automation)
     if not config.AUTOPILOT_CONFIRMED:
