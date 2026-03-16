@@ -120,7 +120,7 @@ read_only_agent = create_agent(
 
 # Lightweight read-only agent with search (uses optional tools)
 lightweight_agent = create_agent(
-    enabled_tools=["read_file", "read_lines", "list_files", "grep"]
+    enabled_tools=["read_file", "read_lines", "find", "grep"]
 )
 
 # Code editor agent (no shell access)
@@ -149,13 +149,13 @@ minimal_agent = create_agent(
 - `code_structure`, `get_repo_map` - Code analysis
 - `run_shell` - Shell command execution
 - `grep` - Pattern search in files (disabled by default; shell commands preferred for most cases)
-- `list_files` - List files in repository (disabled by default; faster than get_repo_map for simple file listing)
+- `find` - Find files by glob pattern (disabled by default; faster than get_repo_map for simple file finding)
 - `web_search`, `web_fetch` - Web access (if `ENABLE_WEB=true`)
 - `list_skills`, `use_skill` - Skills system
 - `todo_add`, `todo_list`, `todo_complete`, etc. - Task management
 - `ask_user` - User interaction
 
-**Note:** The `grep` and `list_files` tools are disabled by default (not included in the agent's tool list) but can be enabled via `enabled_tools`. They're useful for lightweight read-only agents that need search and navigation without `run_shell` access or expensive code parsing (`get_repo_map`).
+**Note:** The `grep` and `find` tools are disabled by default (not included in the agent's tool list) but can be enabled via `enabled_tools`. They're useful for lightweight read-only agents that need search and navigation without `run_shell` access or expensive code parsing (`get_repo_map`).
 
 See [Configuration](../configuration.md#custom-tool-selection-enabled_tools) for the complete list and CLI usage via `PATCHPAL_ENABLED_TOOLS` environment variable.
 

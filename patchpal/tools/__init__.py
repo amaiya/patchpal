@@ -33,11 +33,11 @@ from patchpal.tools.file_writing import (
     edit_file,
     write_file,
 )
+from patchpal.tools.find_tool import (
+    find,
+)
 from patchpal.tools.grep_tool import (
     grep,
-)
-from patchpal.tools.list_files_tool import (
-    list_files,
 )
 from patchpal.tools.repo_map import (
     clear_repo_map_cache,
@@ -82,7 +82,7 @@ __all__ = [
     # Search
     "grep",
     # Directory navigation
-    "list_files",
+    "find",
     # TODO tools
     "reset_session_todos",
     "todo_add",

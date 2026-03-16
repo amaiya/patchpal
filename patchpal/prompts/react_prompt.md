@@ -25,7 +25,7 @@ Final Answer: <your answer>
 
 Question: What files are in the src directory?
 Thought: I need to list the files in the src directory.
-Action: list_files
+Action: find
 Action Input: {{"path": "src"}}
 
 [After receiving observation]

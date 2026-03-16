@@ -69,7 +69,7 @@ def test_agent_has_correct_tools():
     assert len(TOOL_FUNCTIONS) == 20
 
     # The TOOLS imported from agent is filtered (optional tools removed by get_tools())
-    assert len(TOOLS) == 18  # grep and list_files are filtered out by default
+    assert len(TOOLS) == 18  # grep and find are filtered out by default
 
     # Verify tool names in the full tool list
     all_tool_names = [tool["function"]["name"] for tool in ALL_TOOLS]
@@ -92,7 +92,7 @@ def test_agent_has_correct_tools():
     assert "run_shell" in all_tool_names
     # Optional tools (disabled by default but available)
     assert "grep" in all_tool_names
-    assert "list_files" in all_tool_names
+    assert "find" in all_tool_names
     # TODO tools (6)
     assert "todo_add" in all_tool_names
     assert "todo_list" in all_tool_names
@@ -106,7 +106,7 @@ def test_agent_has_correct_tools():
     # Verify optional tools are NOT in the default filtered list
     default_tool_names = [tool["function"]["name"] for tool in TOOLS]
     assert "grep" not in default_tool_names
-    assert "list_files" not in default_tool_names
+    assert "find" not in default_tool_names
 
 
 def test_agent_system_prompt():

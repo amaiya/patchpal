@@ -1215,10 +1215,10 @@ It's currently empty (just the template). The file is automatically loaded at se
                                     f"\033[2m🔍 Searching: {tool_args.get('pattern', '')}\033[0m",
                                     flush=True,
                                 )
-                            elif tool_name == "list_files":
-                                path_desc = tool_args.get("path", "repository")
+                            elif tool_name == "find":
+                                pattern_desc = tool_args.get("pattern", "*")
                                 print(
-                                    f"\033[2m📂 Listing files in: {path_desc}\033[0m",
+                                    f"\033[2m📂 Finding files: {pattern_desc}\033[0m",
                                     flush=True,
                                 )
                             elif tool_name == "list_skills":

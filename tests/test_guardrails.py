@@ -571,7 +571,7 @@ def test_comprehensive_security_demo(temp_repo, monkeypatch):
 # patchpal.permissions.PermissionManager, "request_permission", mock_request_permission
 # )
 
-# from patchpal.tools import write_file, list_files, read_file, run_shell
+# from patchpal.tools import write_file, find, read_file, run_shell
 
 ## 1. Normal operations work
 # content = read_file("normal.txt")
@@ -588,7 +588,7 @@ def test_comprehensive_security_demo(temp_repo, monkeypatch):
 # )
 # assert "normal.txt" in output
 
-# files = list_files()
+# files = find()
 # assert "normal.txt" in files
 
 ## 2. Sensitive files blocked

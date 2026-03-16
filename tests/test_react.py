@@ -167,7 +167,7 @@ def test_react_agent_default_tools():
     assert "write_file" in tool_names
     assert "edit_file" in tool_names
     assert "grep" in tool_names  # Optional tool included in ReAct defaults
-    assert "list_files" in tool_names  # Optional tool included in ReAct defaults
+    assert "find" in tool_names  # Optional tool included in ReAct defaults
     assert "run_shell" in tool_names  # Still available but alternatives provided
 
     # Should have exactly 9 default tools
@@ -252,14 +252,14 @@ def test_react_agent_max_iterations():
     mock_response.choices = [MagicMock()]
     mock_response.choices[0].message = MagicMock()
     mock_response.choices[0].message.content = """Thought: Keep thinking
-Action: list_files
-Action Input: {"path": "."}"""
+Action: find
+Action Input: {"pattern": "*.txt"}"""
     mock_response.usage = MagicMock()
     mock_response.usage.prompt_tokens = 100
     mock_response.usage.completion_tokens = 20
 
     with patch("litellm.completion", return_value=mock_response):
-        with patch("patchpal.tools.list_files", return_value="file1.txt"):
+        with patch("patchpal.tools.find", return_value="file1.txt"):
             agent = create_react_agent()
 
             # Run with very low max_iterations

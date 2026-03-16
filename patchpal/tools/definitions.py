@@ -9,9 +9,9 @@ from patchpal.tools import (
     ask_user,
     code_structure,
     edit_file,
+    find,
     get_repo_map,
     grep,
-    list_files,
     list_skills,
     read_file,
     read_lines,
@@ -444,18 +444,18 @@ Tip: Read README first for context when exploring repositories.""",
     {
         "type": "function",
         "function": {
-            "name": "list_files",
-            "description": "List all files in the repository or a specific directory. Fast file listing without shell access or code parsing. Useful for read-only agents that need to explore repository structure.",
+            "name": "find",
+            "description": "Find files by glob pattern or list all files in a directory. Without pattern, lists all files (like ls). With pattern, searches by glob (e.g., '*.py', '**/*.json'). Returns file paths sorted by modification time (most recent first). Respects .gitignore automatically.",
             "parameters": {
                 "type": "object",
                 "properties": {
+                    "pattern": {
+                        "type": "string",
+                        "description": "Glob pattern to match files (default: '**/*' lists all files). Examples: '*.py', '**/*.test.js', 'src/**/*.ts'",
+                    },
                     "path": {
                         "type": "string",
-                        "description": "Optional directory path to list (relative to repo root or absolute). Defaults to repository root.",
-                    },
-                    "include_hidden": {
-                        "type": "boolean",
-                        "description": "Whether to include hidden files/directories (default: False)",
+                        "description": "Directory to search in (default: repository root). Can be relative to repo root or absolute.",
                     },
                 },
                 "required": [],
@@ -485,7 +485,7 @@ TOOL_FUNCTIONS = {
     "ask_user": ask_user,
     "run_shell": run_shell,
     "grep": grep,  # Optional tool
-    "list_files": list_files,  # Optional tool
+    "find": find,  # Optional tool
 }
 
 
@@ -500,7 +500,7 @@ def get_tools(web_tools_enabled: bool = True):
     """
     # Tools that are available but disabled by default
     # They can be enabled via enabled_tools parameter/env var
-    disabled_by_default = ["grep", "list_files"]
+    disabled_by_default = ["grep", "find"]
 
     # Check if minimal tools mode is enabled (for local models with tool confusion)
     minimal_mode = config.MINIMAL_TOOLS

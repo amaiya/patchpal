@@ -349,7 +349,7 @@ Supported models: Any LiteLLM-supported model
     parser.add_argument(
         "--require-permission-for-all",
         action="store_true",
-        help="Require permission for ALL operations including read operations (read_file, list_files, etc.). "
+        help="Require permission for ALL operations including read operations (read_file, find, etc.). "
         "Use this for maximum security when you want to review every operation the agent performs.",
     )
     parser.add_argument(

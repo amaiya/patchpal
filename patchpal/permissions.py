@@ -27,7 +27,7 @@ class PermissionManager:
         self.enabled = config.REQUIRE_PERMISSION
 
         # Auto-grant harmless read-only commands in all modes EXCEPT maximum security
-        # Since these replace dedicated tools that were removed (list_files, tree, etc.),
+        # Since these replace dedicated tools that were removed (replaced by find tool, etc.),
         # they should work seamlessly. However, in maximum security mode (--maximum-security),
         # we require explicit permission for ALL operations including harmless commands.
         from patchpal.tools.common import get_require_permission_for_all
@@ -64,9 +64,9 @@ class PermissionManager:
     def _grant_harmless_commands(self):
         """Auto-grant harmless read-only commands in all modes.
 
-        These commands replace dedicated tools that were removed (list_files, tree,
-        find_files, count_lines) to reduce redundancy. Since those tools didn't
-        require permissions, their shell equivalents shouldn't either.
+        These commands replace dedicated tools that were removed (replaced by find tool)
+        to reduce redundancy. Since those tools didn't require permissions, their shell
+        equivalents shouldn't either.
         """
         # Check if web tools are enabled
         web_tools_enabled = config.ENABLE_WEB

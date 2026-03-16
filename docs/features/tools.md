@@ -4,7 +4,7 @@ PatchPal provides 20 built-in tools for file operations, code analysis, web acce
 
 > **For Local Models:** Set `PATCHPAL_MINIMAL_TOOLS=true` and `PATCHPAL_ENABLE_WEB=false` to use only 5 essential tools (`read_file`, `read_lines`, `write_file`, `edit_file`, `run_shell`), reducing tool confusion with smaller models.
 
-> **Optional Tools:** Some tools (`grep`, `list_files`) are disabled by default because shell commands are preferred for flexibility. They can be enabled via `enabled_tools` parameter or `PATCHPAL_ENABLED_TOOLS` environment variable for scenarios where you need search/navigation without shell access.
+> **Optional Tools:** Some tools (`grep`, `find`) are disabled by default because shell commands are preferred for flexibility. They can be enabled via `enabled_tools` parameter or `PATCHPAL_ENABLED_TOOLS` environment variable for scenarios where you need search/navigation without shell access.
 
 ## File Reading (2 tools)
 
@@ -191,15 +191,19 @@ Search for a pattern in files using grep or ripgrep.
   - Windows: Install ripgrep via `choco install ripgrep` or `scoop install ripgrep`
 - Enable: `agent = create_agent(enabled_tools=["read_file", "grep"])`
 
-### list_files
-List all files in the repository or a specific directory.
+### find
+Search for files by glob pattern.
 
-- **Example**: `list_files()` - list all files in repository
-- **Example**: `list_files(path="src")` - list files in src directory
-- **Disabled by default** - use `run_shell("find . -type f")` for more flexibility
+- **Example**: `find()` - list all files in repository (sorted by modification time)
+- **Example**: `find(path="src")` - list all files in src directory
+- **Example**: `find("*.py")` - find all Python files
+- **Example**: `find("**/*.test.js", path="src")` - find all test files in src directory
+- **Disabled by default** - use `run_shell("find . -name '*.py'")` for more flexibility
 - **Enable when**: You need fast file discovery without shell access or expensive code parsing
+- Returns file paths sorted by modification time (most recent first)
+- Respects .gitignore patterns automatically
 - **Faster than** `get_repo_map` when you just need file paths (no structure analysis)
-- Enable: `agent = create_agent(enabled_tools=["read_file", "list_files"])`
+- Enable: `agent = create_agent(enabled_tools=["read_file", "find"])`
 
 ## Tool Count by Category
 
@@ -208,7 +212,7 @@ List all files in the repository or a specific directory.
 | File Reading | read_file, read_lines | 2 |
 | File Writing | write_file, edit_file | 2 |
 | Shell | run_shell | 1 |
-| Optional Tools* | grep, list_files | 2 |
+| Optional Tools* | grep, find | 2 |
 | Code Analysis | code_structure, get_repo_map | 2 |
 | Web | web_search, web_fetch | 2 |
 | Task Planning | todo_add, todo_list, todo_complete, todo_update, todo_remove, todo_clear | 6 |

@@ -95,7 +95,7 @@ class ReActAgent:
         # Track OpenAI cache tokens (prompt_tokens_details.cached_tokens)
         self.cumulative_openai_cached_tokens = 0
 
-        # Get ALL built-in tools (including optional ones like grep and list_files)
+        # Get ALL built-in tools (including optional ones like grep and find)
         from patchpal.tools.definitions import TOOL_FUNCTIONS as ALL_TOOL_FUNCTIONS
         from patchpal.tools.definitions import TOOLS as ALL_TOOLS
 
@@ -125,7 +125,7 @@ class ReActAgent:
                     "web_search",
                     "web_fetch",
                     "grep",
-                    "list_files",
+                    "find",
                     "run_shell",
                 ]
                 tools_list = [t for t in tools_list if t["function"]["name"] in react_default_tools]

@@ -25,7 +25,7 @@ patchpal --maximum-security
 ```
 
 This single flag enables **all** security restrictions:
-- **Permission for all operations**: Requires approval for ALL operations including read operations (`read_file`, `list_files`, etc.)
+- **Permission for all operations**: Requires approval for ALL operations including read operations (`read_file`, `find`, etc.)
 - **Repository-only access**: Blocks reading/writing files outside the repository directory (`PATCHPAL_RESTRICT_TO_REPO=true`)
 - **Web access disabled**: Disables web search and fetch tools to prevent data spillage (`PATCHPAL_ENABLE_WEB=false`)
 
@@ -171,7 +171,7 @@ export PATCHPAL_ENABLED_TOOLS="read_file,read_lines,code_structure"
 patchpal
 
 # Lightweight read-only with search (uses optional tools)
-export PATCHPAL_ENABLED_TOOLS="read_file,read_lines,list_files,grep"
+export PATCHPAL_ENABLED_TOOLS="read_file,read_lines,find,grep"
 patchpal
 
 # Code editor (no shell access)
@@ -194,7 +194,7 @@ agent = create_agent(
 
 # Lightweight read-only with search (uses optional tools)
 agent = create_agent(
-    enabled_tools=["read_file", "read_lines", "list_files", "grep"]
+    enabled_tools=["read_file", "read_lines", "find", "grep"]
 )
 
 # Code editor agent (no shell commands)
@@ -227,7 +227,7 @@ agent = create_agent(
 - `get_repo_map` - Generate repository overview
 - `run_shell` - Execute shell commands
 - `grep` - Pattern search in files (disabled by default; shell commands preferred for most cases)
-- `list_files` - List files in repository (disabled by default; faster than get_repo_map for simple file listing)
+- `find` - Find files by pattern or list directory contents (disabled by default; faster than get_repo_map for simple file listing)
 - `web_search` - Search the web
 - `web_fetch` - Fetch content from URLs
 - `list_skills` - List available skills
@@ -235,7 +235,7 @@ agent = create_agent(
 - `todo_add`, `todo_list`, `todo_complete`, `todo_update`, `todo_remove`, `todo_clear` - Task management
 - `ask_user` - Ask user for input/clarification
 
-**Note:** The `grep` and `list_files` tools are disabled by default but can be explicitly enabled via `enabled_tools`. They provide lightweight search and navigation without requiring `run_shell` access or expensive code parsing (`get_repo_map`), making them ideal for read-only agents exploring codebases.
+**Note:** The `grep` and `find` tools are disabled by default but can be explicitly enabled via `enabled_tools`. They provide lightweight search and navigation without requiring `run_shell` access or expensive code parsing (`get_repo_map`), making them ideal for read-only agents exploring codebases.
 
 **Precedence:**
 1. `enabled_tools` parameter (Python API - highest priority)

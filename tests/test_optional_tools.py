@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Test optional tools (grep and list_files) that are disabled by default."""
+"""Test optional tools (grep and find) that are disabled by default."""
 
 from patchpal import create_agent
 from patchpal.tools.definitions import TOOL_FUNCTIONS, get_tools
@@ -13,22 +13,22 @@ def test_optional_tools_disabled_by_default():
 
     # Optional tools should NOT be in default tools
     assert "grep" not in tool_names
-    assert "list_files" not in tool_names
-    print("✓ grep and list_files not in default tools")
+    assert "find" not in tool_names
+    print("✓ grep and find not in default tools")
 
     # But they SHOULD be in TOOL_FUNCTIONS (so they can be enabled)
     assert "grep" in TOOL_FUNCTIONS
-    assert "list_files" in TOOL_FUNCTIONS
+    assert "find" in TOOL_FUNCTIONS
     assert "grep" in functions
-    assert "list_files" in functions
-    print("✓ grep and list_files are in TOOL_FUNCTIONS (available for enabled_tools)")
+    assert "find" in functions
+    print("✓ grep and find are in TOOL_FUNCTIONS (available for enabled_tools)")
 
 
 def test_optional_tools_can_be_enabled():
     """Optional tools should be usable when explicitly enabled."""
-    agent = create_agent(enabled_tools=["read_file", "grep", "list_files"])
+    agent = create_agent(enabled_tools=["read_file", "grep", "find"])
 
-    assert agent.enabled_tools == ["read_file", "grep", "list_files"]
+    assert agent.enabled_tools == ["read_file", "grep", "find"]
     print(f"✓ Agent created with optional tools enabled: {agent.enabled_tools}")
 
 
@@ -42,9 +42,9 @@ def test_default_agent_no_optional_tools():
 
 def test_lightweight_readonly_agent():
     """Test the lightweight read-only + navigation use case."""
-    agent = create_agent(enabled_tools=["read_file", "read_lines", "list_files", "grep"])
+    agent = create_agent(enabled_tools=["read_file", "read_lines", "find", "grep"])
 
-    assert "list_files" in agent.enabled_tools
+    assert "find" in agent.enabled_tools
     assert "grep" in agent.enabled_tools
     assert "read_file" in agent.enabled_tools
 
@@ -60,17 +60,17 @@ def test_grep_only():
     agent = create_agent(enabled_tools=["read_file", "grep"])
 
     assert "grep" in agent.enabled_tools
-    assert "list_files" not in agent.enabled_tools
+    assert "find" not in agent.enabled_tools
     print("✓ grep can be enabled independently")
 
 
-def test_list_files_only():
-    """Test enabling just list_files."""
-    agent = create_agent(enabled_tools=["read_file", "list_files"])
+def test_find_only():
+    """Test enabling just find."""
+    agent = create_agent(enabled_tools=["read_file", "find"])
 
-    assert "list_files" in agent.enabled_tools
+    assert "find" in agent.enabled_tools
     assert "grep" not in agent.enabled_tools
-    print("✓ list_files can be enabled independently")
+    print("✓ find can be enabled independently")
 
 
 def test_optional_tools_actually_passed_to_llm():
@@ -90,7 +90,7 @@ def test_optional_tools_actually_passed_to_llm():
         mock_completion.return_value = mock_response
 
         # Create agent with optional tools enabled
-        agent = create_agent(enabled_tools=["read_file", "grep", "list_files"])
+        agent = create_agent(enabled_tools=["read_file", "grep", "find"])
 
         # Run the agent
         agent.run("Test message")
@@ -107,7 +107,7 @@ def test_optional_tools_actually_passed_to_llm():
 
         # Verify optional tools are actually in the tools passed to LLM
         assert "grep" in tool_names, "grep should be passed to LLM when enabled"
-        assert "list_files" in tool_names, "list_files should be passed to LLM when enabled"
+        assert "find" in tool_names, "find should be passed to LLM when enabled"
         assert "read_file" in tool_names
 
         # Verify other tools are NOT present
@@ -120,14 +120,14 @@ def test_optional_tools_actually_passed_to_llm():
 
 
 if __name__ == "__main__":
-    print("Testing optional tools (grep, list_files)\n" + "=" * 60)
+    print("Testing optional tools (grep, find)\n" + "=" * 60)
 
     test_optional_tools_disabled_by_default()
     test_optional_tools_can_be_enabled()
     test_default_agent_no_optional_tools()
     test_lightweight_readonly_agent()
     test_grep_only()
-    test_list_files_only()
+    test_find_only()
 
     print("\n" + "=" * 60)
     print("✓ All tests passed! Optional tools work correctly.")

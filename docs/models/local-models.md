@@ -221,7 +221,7 @@ ReAct mode includes these tools by default:
 - `edit_file` - Find and replace in files
 - `run_shell` - Execute shell commands
 - `grep` - Search for patterns in files
-- `list_files` - List directory contents
+- `find` - Find files by pattern or list directory contents
 - `web_search` - Search the web
 - `web_fetch` - Fetch webpage content
 
