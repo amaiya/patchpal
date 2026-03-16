@@ -7,6 +7,18 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
+## 0.21.2 (2026-03-16)
+
+### new:
+- N/A
+
+### changed:
+- N/A
+
+### fixed:
+- Fixed issue with readint `MEMORY.md` when `RESTRICT_TO_REPO` is true.
+
+
 ## 0.21.1 (2026-03-16)
 
 ### new:

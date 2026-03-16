@@ -881,6 +881,16 @@ def _is_inside_repo(path: Path) -> bool:
         return False
 
 
+def _is_inside_patchpal_dir(path: Path) -> bool:
+    """Check if a path is inside the ~/.patchpal directory."""
+    try:
+        patchpal_root = Path.home() / ".patchpal"
+        path.relative_to(patchpal_root)
+        return True
+    except ValueError:
+        return False
+
+
 def _get_permission_pattern_for_path(path: str, resolved_path: Path) -> str:
     """Get permission pattern for a file path (matches Claude Code's behavior).
 
@@ -961,7 +971,12 @@ def require_permission_for_read(tool_name: str, get_description, get_pattern=Non
                             p = (REPO_ROOT / expanded_path).resolve()
 
                         # Check repository restriction FIRST (before permission prompt)
-                        if config.RESTRICT_TO_REPO and not _is_inside_repo(p):
+                        # Exception: ~/.patchpal directory is always accessible (for MEMORY.md, etc.)
+                        if (
+                            config.RESTRICT_TO_REPO
+                            and not _is_inside_repo(p)
+                            and not _is_inside_patchpal_dir(p)
+                        ):
                             raise ValueError(
                                 f"Access outside repository blocked: {path}\n"
                                 f"File location: {p}\n"
@@ -1043,7 +1058,8 @@ def _check_path(path: str, must_exist: bool = True) -> Path:
         p = (REPO_ROOT / expanded_path).resolve()
 
     # Check if access is restricted to repository
-    if config.RESTRICT_TO_REPO and not _is_inside_repo(p):
+    # Exception: ~/.patchpal directory is always accessible (for MEMORY.md, etc.)
+    if config.RESTRICT_TO_REPO and not _is_inside_repo(p) and not _is_inside_patchpal_dir(p):
         raise ValueError(
             f"Access outside repository blocked: {path}\n"
             f"File location: {p}\n"
