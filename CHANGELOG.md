@@ -440,7 +440,7 @@ Most recent releases are shown at the top. Each release shows:
 ## 0.11.0 (2026-02-07)
 
 ### new:
-- **Autopilot mode (Ralph Wiggum technique)**: Added autonomous iterative development mode where the agent repeatedly works on a task until completion. Based on the methodology pioneered by Geoffrey Huntley, it embodies persistent iteration over perfection. Available via `python -m patchpal autopilot` CLI command, `patchpal-autopilot` console script, or `autopilot_loop()` Python API. Supports configurable completion detection via `--completion-promise` keyword, max iterations limit, and Python library usage for multi-phase builds. Includes comprehensive safety warnings and examples in `examples/ralph/`. Disables permission system for autonomous operation - intended for isolated environments only (Docker containers, VMs, throwaway projects). (fixes #53)
+- **Autopilot mode (Ralph Wiggum technique)**: Added autonomous iterative development mode where the agent repeatedly works on a task until completion. Based on the methodology pioneered by Geoffrey Huntley, it embodies persistent iteration over perfection. Available via `patchpal-autopilot` console script or `autopilot_loop()` Python API. Supports configurable completion detection via `--completion-promise` keyword, max iterations limit, and Python library usage for multi-phase builds. Includes comprehensive safety warnings and examples in `examples/ralph/`. Disables permission system for autonomous operation - intended for isolated environments only (Docker containers, VMs, throwaway projects). (fixes #53)
 
 ### changed:
 - N/A

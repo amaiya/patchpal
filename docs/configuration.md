@@ -329,7 +329,7 @@ patchpal
 export PATCHPAL_AUTOPILOT_CONFIRMED=true     # Skip autopilot safety confirmation (default: false)
                                               # ⚠️  Only use in CI/CD or automation contexts
                                               # Autopilot mode allows continuous iterative execution
-patchpal autopilot "Implement feature X"
+patchpal-autopilot --prompt "Implement feature X" --completion-promise "COMPLETE"
 ```
 
 **Image Analysis with Vision Models:**

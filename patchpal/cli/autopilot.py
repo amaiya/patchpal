@@ -18,8 +18,8 @@ ONLY use in isolated environments (Docker containers, VMs, throwaway projects).
 See examples/ralph/README.md for detailed safety guidelines.
 
 Usage:
-    python -m patchpal autopilot --prompt "Build a REST API with tests" --completion-promise "COMPLETE"
-    python -m patchpal autopilot --prompt-file task.md --completion-promise "DONE" --max-iterations 50
+    patchpal-autopilot --prompt "Build a REST API with tests" --completion-promise "COMPLETE"
+    patchpal-autopilot --prompt-file task.md --completion-promise "DONE" --max-iterations 50
 """
 
 import argparse
