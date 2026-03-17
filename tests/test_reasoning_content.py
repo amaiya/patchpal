@@ -106,7 +106,7 @@ def test_reasoning_field_captured():
             # Run agent
             agent.run("Hello")
 
-            # Check that reasoning was mapped to reasoning_content
+            # Check that reasoning was kept with original field name (not normalized)
             assistant_msg = None
             for msg in agent.messages:
                 if msg.get("role") == "assistant":
@@ -114,10 +114,8 @@ def test_reasoning_field_captured():
                     break
 
             assert assistant_msg is not None
-            assert "reasoning_content" in assistant_msg
-            assert (
-                assistant_msg["reasoning_content"] == "I should consider the following approach..."
-            )
+            assert "reasoning" in assistant_msg  # Should use original field name
+            assert assistant_msg["reasoning"] == "I should consider the following approach..."
     finally:
         # Restore original value
         if old_stream is None:
@@ -451,7 +449,7 @@ def test_reasoning_text_field_captured():
             # Run agent
             agent.run("Hello")
 
-            # Check that reasoning_text was mapped to reasoning_content
+            # Check that reasoning_text was kept with original field name
             assistant_msg = None
             for msg in agent.messages:
                 if msg.get("role") == "assistant":
@@ -459,8 +457,8 @@ def test_reasoning_text_field_captured():
                     break
 
             assert assistant_msg is not None
-            assert "reasoning_content" in assistant_msg
-            assert assistant_msg["reasoning_content"] == "Third field variant to check..."
+            assert "reasoning_text" in assistant_msg  # Should use original field name
+            assert assistant_msg["reasoning_text"] == "Third field variant to check..."
     finally:
         # Restore original values
         if old_stream is None:

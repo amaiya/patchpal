@@ -1121,18 +1121,23 @@ It's currently empty (just the template). The file is automatically loaded at se
                 # Check multiple reasoning field names (different providers use different names)
                 # llama.cpp uses reasoning_content, others use reasoning or reasoning_text
                 # Use the first non-empty field to avoid duplication (some providers return multiple)
+                # Store which field was used so we can pass it back with the same name (pi-mono approach)
                 reasoning_fields = ["reasoning_content", "reasoning", "reasoning_text"]
                 captured_reasoning = None
+                reasoning_field_name = None
 
                 for field in reasoning_fields:
                     if hasattr(assistant_message, field):
                         value = getattr(assistant_message, field)
                         if value and (isinstance(value, str) and value.strip()):
                             captured_reasoning = value
+                            reasoning_field_name = field
                             break
 
-                if captured_reasoning:
-                    assistant_msg["reasoning_content"] = captured_reasoning
+                # Store reasoning content using the original field name (pi-mono approach)
+                # This ensures providers that expect specific field names get them back correctly
+                if captured_reasoning and reasoning_field_name:
+                    assistant_msg[reasoning_field_name] = captured_reasoning
 
                 # For Anthropic extended thinking models: capture thinking_blocks
                 # Required for multi-turn tool calling with Anthropic's extended thinking
