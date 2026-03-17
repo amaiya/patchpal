@@ -16,7 +16,8 @@ Most recent releases are shown at the top. Each release shows:
 - N/A
 
 ### fixed:
-- Fixed issue with readint `MEMORY.md` when `RESTRICT_TO_REPO` is true.
+- Fixed issue with reading `MEMORY.md` when `RESTRICT_TO_REPO` is true.
+- **gpt-oss support**: Added automatic support for multi-turn tool calling with gpt-oss models (20B/120B) by capturing and passing back `reasoning_content` from LLM responses. Enabled by default (disable with `PATCHPAL_CAPTURE_REASONING=false` if needed). This prevents the model from losing focus after 15-20 steps and ensures reliable task completion across many turns. Also captures `thinking_blocks` for Anthropic extended thinking models.
 
 
 ## 0.21.1 (2026-03-16)

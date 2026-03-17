@@ -72,6 +72,56 @@ patchpal --model hosted_vllm/openai/gpt-oss-120b
 
 **Recommended models for vLLM:**
 - `openai/gpt-oss-120b` - OpenAI's open-source model (use parser: `openai`)
+- `openai/gpt-oss-20b` - Smaller variant, good for lower-resource setups (use parser: `openai`)
+
+### Special Notes for gpt-oss Models
+
+The gpt-oss models (20B and 120B) are reasoning models that use chain-of-thought (CoT) to solve complex tasks. **PatchPal automatically captures and passes back the reasoning content** (enabled by default), which is critical for these models to maintain focus across multiple turns.
+
+**Key requirements for gpt-oss:**
+
+1. **Use the OpenAI tool call parser** - Required for proper function calling
+2. **Use Unsloth template** (if using llama.cpp) - Contains fixes for proper reasoning handling
+3. **Reasoning content is automatic** - PatchPal captures `reasoning_content` from responses and passes it back in subsequent turns (enabled by default, disable with `PATCHPAL_CAPTURE_REASONING=false` if needed)
+
+**Example with vLLM:**
+```bash
+# Start vLLM with gpt-oss-20b
+vllm serve openai/gpt-oss-20b \
+  --dtype auto \
+  --api-key token-abc123 \
+  --tool-call-parser openai \
+  --enable-auto-tool-choice
+
+# Use with PatchPal (reasoning content capture is automatic)
+export HOSTED_VLLM_API_BASE=http://localhost:8000
+export HOSTED_VLLM_API_KEY=token-abc123
+patchpal --model hosted_vllm/openai/gpt-oss-20b
+```
+
+**Example with llama.cpp:**
+```bash
+# Start llama.cpp server with Unsloth template
+llama-server \
+  --model gpt-oss-20b-Q4_K_M.gguf \
+  --chat-template unsloth \
+  --port 8080
+
+# Use with PatchPal via OpenAI-compatible endpoint (reasoning content capture is automatic)
+export OPENAI_API_BASE=http://localhost:8080/v1
+export OPENAI_API_KEY=dummy
+patchpal --model openai/gpt-oss-20b
+```
+
+**Performance characteristics:**
+- **Focus maintenance**: Without reasoning content pass-back (`PATCHPAL_CAPTURE_REASONING=false`), the model loses focus after 15-20 steps
+- **Multi-turn reliability**: With reasoning content enabled (default), the model maintains context across many turns
+- **Task completion**: The reasoning content allows the model to track what it's done and what remains
+
+**Resources:**
+- [Blog: Proper tool calling with gpt-oss](https://alde.dev/blog/proper-tool-calling-with-gpt-oss/)
+- [Notebook: gpt-oss tool calling examples](https://github.com/aldehir/gpt-oss-tool-calling-notebook/blob/main/tool-calling.ipynb)
+- [Reddit: Discussion on gpt-oss setup](https://www.reddit.com/r/LocalLLaMA/comments/1rc6c8m/)
 
 **Tool Call Parser Reference:**
 Different models require different parsers. Common parsers include: `qwen3_xml`, `openai`, `deepseek_v3`, `llama3_json`, `mistral`, `hermes`, `pythonic`, `xlam`. See [vLLM Tool Calling docs](https://docs.vllm.ai/en/latest/features/tool_calling/) for the complete list.

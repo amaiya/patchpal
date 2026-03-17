@@ -1105,16 +1105,45 @@ It's currently empty (just the template). The file is automatically loaded at se
             # Get the assistant's response
             assistant_message = response.choices[0].message
 
+            # Build assistant message dict
+            assistant_msg = {
+                "role": "assistant",
+                "content": assistant_message.content or "",
+                "tool_calls": assistant_message.tool_calls
+                if hasattr(assistant_message, "tool_calls") and assistant_message.tool_calls
+                else None,
+            }
+
+            # For gpt-oss and similar reasoning models: capture reasoning_content
+            # This is critical for maintaining focus across multiple turns
+            # Only capture if PATCHPAL_CAPTURE_REASONING=true (default: true)
+            if config.CAPTURE_REASONING:
+                # Check multiple reasoning field names (different providers use different names)
+                # llama.cpp uses reasoning_content, others use reasoning or reasoning_text
+                # Use the first non-empty field to avoid duplication (some providers return multiple)
+                reasoning_fields = ["reasoning_content", "reasoning", "reasoning_text"]
+                captured_reasoning = None
+
+                for field in reasoning_fields:
+                    if hasattr(assistant_message, field):
+                        value = getattr(assistant_message, field)
+                        if value and (isinstance(value, str) and value.strip()):
+                            captured_reasoning = value
+                            break
+
+                if captured_reasoning:
+                    assistant_msg["reasoning_content"] = captured_reasoning
+
+                # For Anthropic extended thinking models: capture thinking_blocks
+                # Required for multi-turn tool calling with Anthropic's extended thinking
+                if (
+                    hasattr(assistant_message, "thinking_blocks")
+                    and assistant_message.thinking_blocks
+                ):
+                    assistant_msg["thinking_blocks"] = assistant_message.thinking_blocks
+
             # Add assistant message to history
-            self.messages.append(
-                {
-                    "role": "assistant",
-                    "content": assistant_message.content or "",
-                    "tool_calls": assistant_message.tool_calls
-                    if hasattr(assistant_message, "tool_calls") and assistant_message.tool_calls
-                    else None,
-                }
-            )
+            self.messages.append(assistant_msg)
 
             # For OpenAI: Inject any pending images as a user message
             # OpenAI doesn't support images in tool results, so we collected them and inject here
@@ -1380,8 +1409,6 @@ It's currently empty (just the template). The file is automatically loaded at se
                         total_lines = len(lines)
 
                         # Check if output exceeds universal limits
-                        from patchpal.config import config
-
                         if (
                             total_lines > config.MAX_TOOL_OUTPUT_LINES
                             or result_size > config.MAX_TOOL_OUTPUT_CHARS

@@ -269,6 +269,24 @@ class Config:
         return _get_env_bool("PATCHPAL_STREAM_OUTPUT", "true")
 
     # ============================================================================
+    # Reasoning Models Support
+    # ============================================================================
+
+    @property
+    def CAPTURE_REASONING(self) -> bool:
+        """Capture and pass back reasoning_content for reasoning models like gpt-oss (default: true).
+
+        When enabled, captures reasoning_content/reasoning/reasoning_text fields from LLM responses and passes
+        them back in subsequent requests. This is critical for multi-turn tool calling with
+        reasoning models (gpt-oss, deepseek-reasoner, etc.) to maintain focus across many turns.
+
+        Checks multiple field names in priority order: reasoning_content, reasoning, reasoning_text.
+
+        Set to false to disable if needed for compatibility or testing.
+        """
+        return _get_env_bool("PATCHPAL_CAPTURE_REASONING", "true")
+
+    # ============================================================================
     # Special Modes
     # ============================================================================
 
