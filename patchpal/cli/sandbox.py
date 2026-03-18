@@ -247,7 +247,14 @@ def build_container_args(sandbox_args, patchpal_args):
     import shlex
 
     quoted_args = " ".join(shlex.quote(arg) for arg in patchpal_cmd_args)
-    shell_cmd = f"pip install -q patchpal && {patchpal_cmd} {quoted_args}"
+
+    # If using pre-built patchpal-sandbox image, skip pip install
+    # Otherwise, install patchpal first (fallback for custom images)
+    if "patchpal-sandbox" in sandbox_args.image:
+        shell_cmd = f"{patchpal_cmd} {quoted_args}"
+    else:
+        shell_cmd = f"pip install -q patchpal && {patchpal_cmd} {quoted_args}"
+
     container_args.extend(["bash", "-c", shell_cmd])
 
     return container_args, runtime
@@ -269,7 +276,7 @@ DESCRIPTION:
     - Network access (required for cloud LLMs like OpenAI, Anthropic)
     - No resource limits by default (uses Docker/Podman defaults)
     - Current directory mounted as /workspace
-    - Auto-installs patchpal in container
+    - Pre-built image with patchpal installed (fast startup)
     - Auto-mounts ~/.patchpal for custom tools, config, and memory
     - Custom tools work automatically (from ~/.patchpal/tools/ and <repo>/.patchpal/tools/)
     - Auto-sets OLLAMA_CONTEXT_LENGTH for Ollama models:
@@ -279,7 +286,8 @@ DESCRIPTION:
     Recommended for autopilot mode and high-risk operations.
 
 SCRIPT OPTIONS:
-    --image IMAGE       Container image to use (default: python:3.11-slim)
+    --image IMAGE       Container image to use (default: ghcr.io/amaiya/patchpal-sandbox:latest)
+                        Use python:3.11-slim to get latest patchpal from PyPI (slower startup)
     --no-network        Disable network access (incompatible with cloud LLMs)
     --host-network      Use host network (for local Ollama/vLLM servers on localhost)
     --memory LIMIT      Memory limit (e.g., 2g, 4g) - optional, no limit by default
@@ -331,8 +339,10 @@ SECURITY:
     - Workspace files visible but container has limited privileges
 
 NOTES:
-    - First run downloads the Python image (~130MB)
-    - Each run reinstalls patchpal (takes ~10s)
+    - Default image (ghcr.io/amaiya/patchpal-sandbox:latest) has patchpal pre-installed for fast startup
+    - First run downloads the image (~150MB, one-time)
+    - Subsequent runs start instantly (no pip install needed)
+    - For latest patchpal from PyPI use: --image python:3.11-slim (slower, ~10-30s pip install)
     - Current directory mounted at /workspace (read-write)
     - ~/.patchpal mounted at /root/.patchpal if it exists
     - SSL certificates auto-mounted from /etc/ssl/certs if present
@@ -411,7 +421,7 @@ def main():
 
     # Parse sandbox arguments
     parser = argparse.ArgumentParser(add_help=False)  # We handle help manually
-    parser.add_argument("--image", default="python:3.11-slim")
+    parser.add_argument("--image", default="ghcr.io/amaiya/patchpal-sandbox:latest")
     parser.add_argument("--network", default="bridge")
     parser.add_argument("--no-network", action="store_true")
     parser.add_argument("--host-network", action="store_true")
