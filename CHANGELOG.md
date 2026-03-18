@@ -7,6 +7,18 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
+## 0.21.3 (2026-03-18)
+
+### new:
+- N/A
+
+### changed:
+- `patchpal-sandbox` now uses this [ghcr image](https://ghcr.io/amaiya/patchpal-sandbox:latest)
+
+### fixed:
+- /N/A
+
+
 ## 0.21.2 (2026-03-17)
 
 ### new:

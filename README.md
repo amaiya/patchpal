@@ -28,6 +28,22 @@ $ pip install patchpal  # install
 $ patchpal              # start
 ```
 
+**Alternative: Run with Docker/Podman (no installation required)**
+
+```bash
+# Using pre-built image with patchpal installed
+docker run -it --rm \
+  -v $(pwd):/workspace \
+  -e ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY \
+  ghcr.io/amaiya/patchpal-sandbox:latest
+
+# Or with Podman
+podman run -it --rm \
+  -v $(pwd):/workspace \
+  -e ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY \
+  ghcr.io/amaiya/patchpal-sandbox:latest
+```
+
 > Platform support: Linux, macOS, and Windows are all supported
 
 ## Setup

@@ -177,6 +177,7 @@ patchpal-sandbox --host-network -- autopilot \
 ```
 
 **Features:**
+- ✅ Pre-built image with patchpal installed (fast startup - no pip install delay)
 - ✅ Auto-detects Docker/Podman (prefers Podman for rootless)
 - ✅ Auto-sets `OLLAMA_CONTEXT_LENGTH` for Ollama models (8192 for agents, 32768 for reasoning models)
 - ✅ Loads API keys from `.env` file
@@ -186,13 +187,32 @@ patchpal-sandbox --host-network -- autopilot \
 - ✅ Auto-mounts SSL certificates for corporate networks
 - ✅ Clean environment on each run (`--rm` flag)
 
+**Performance:**
+- First run: Downloads pre-built image (~150MB, one-time)
+- Subsequent runs: Start instantly (no pip install needed)
+- For latest PyPI version: Use `--image python:3.11-slim` (10-30s slower startup)
+
 See `patchpal-sandbox --help` for all options and examples.
 
-**Option 2: Manual Docker/Podman Container** (More Control)
+**Option 2: Docker/Podman Command** (More Control)
+
+Using the pre-built patchpal-sandbox image (recommended - fast startup):
 ```bash
-# Create and run in isolated container
+# Using pre-built image (no pip install needed)
 docker run -it --rm \
   -v $(pwd):/workspace \
+  -e ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY \
+  --memory="2g" --cpus="2" \
+  ghcr.io/amaiya/patchpal-sandbox:latest \
+  bash -c "patchpal-autopilot --prompt-file task.md --completion-promise 'DONE'"
+```
+
+Using standard Python image (installs latest patchpal from PyPI):
+```bash
+# Using python:3.11-slim (slower - requires pip install)
+docker run -it --rm \
+  -v $(pwd):/workspace \
+  -e ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY \
   --memory="2g" --cpus="2" \
   python:3.11-slim bash
 

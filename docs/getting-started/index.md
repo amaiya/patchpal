@@ -8,6 +8,30 @@ Install PatchPal from PyPI:
 pip install patchpal
 ```
 
+**Alternative: Run with Docker/Podman (no installation required)**
+
+If you prefer to use containers instead of installing PatchPal locally:
+
+```bash
+# Using Docker with pre-built image
+docker run -it --rm \
+  -v $(pwd):/workspace \
+  -e ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY \
+  ghcr.io/amaiya/patchpal-sandbox:latest
+
+# Or with Podman
+podman run -it --rm \
+  -v $(pwd):/workspace \
+  -e ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY \
+  ghcr.io/amaiya/patchpal-sandbox:latest
+```
+
+This runs PatchPal in an isolated container with:
+- PatchPal pre-installed (no pip install needed)
+- Current directory mounted at `/workspace`
+- Your API key passed through environment variable
+- For other models, pass additional `-e` flags (e.g., `-e OPENAI_API_KEY=$OPENAI_API_KEY`)
+
 **Supported Operating Systems:**  Linux, MacOS, MS Windows.
 
 ## Setup
