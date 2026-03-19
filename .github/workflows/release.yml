@@ -18,6 +18,7 @@ jobs:
     permissions:
       contents: read
       id-token: write  # Required for trusted publishing
+      actions: write   # Required to trigger other workflows
 
     steps:
       - uses: actions/checkout@v4
