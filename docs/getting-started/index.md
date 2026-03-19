@@ -20,17 +20,14 @@ If you prefer to use containers instead of installing PatchPal locally:
 After installing PatchPal (`pip install patchpal`), use the `patchpal-sandbox` command for automatic container setup:
 
 ```bash
-# Interactive mode
-patchpal-sandbox
-
-# Specify a different model (pass arguments after --)
+# Interactive mode (any [LiteLLM-supported model](https://models.litellm.ai/) can be used)
 patchpal-sandbox -- --model openai/gpt-5-mini
 
 # With environment file
-patchpal-sandbox --env-file .env -- --model openai/gpt-5-mini
+patchpal-sandbox --env-file .env -- --model anthropic/claude-sonnet-4-5
 
 # Autopilot mode (for autonomous iterative development - see Autopilot docs)
-patchpal-sandbox --env-file .env -- autopilot --prompt "..." --completion-promise "DONE"
+patchpal-sandbox --env-file .env -- autopilot --prompt "..." --model anthropic/claude-sonnet-4-5
 ```
 
 The `patchpal-sandbox` command automatically:
@@ -48,16 +45,16 @@ docker run -it --rm \
   -v $(pwd):/workspace \
   -e ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY \
   ghcr.io/amaiya/patchpal-sandbox:latest \
-  patchpal
+  patchpal --model anthropic/claude-sonnet-4-5
 
 # Or with Podman
 podman run -it --rm \
   -v $(pwd):/workspace \
   -e ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY \
   ghcr.io/amaiya/patchpal-sandbox:latest \
-  patchpal
+  patchpal --model anthropic/claude-sonnet-4-5
 
-# Specify a different model with --model
+# Specify a different model
 docker run -it --rm \
   -v $(pwd):/workspace \
   -e OPENAI_API_KEY=$OPENAI_API_KEY \

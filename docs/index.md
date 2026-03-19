@@ -22,10 +22,11 @@ PatchPal prioritizes customizability: custom tools, custom skills, a flexible Py
 ## Quick Start
 
 ```bash
-$ pip install patchpal  # install
-$ patchpal              # start
+$ pip install patchpal         # install
+$ patchpal --model <model_id>  # start
 ```
 
+> Model support: Any [LiteLLM-supported model](https://models.litellm.ai/) is can be used.
 > Platform support: Linux, macOS, and Windows are all supported
 
 ## Beyond Coding: General Problem-Solving

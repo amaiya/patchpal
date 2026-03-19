@@ -11,16 +11,13 @@
 # After pip install patchpal, autopilot is available immediately
 
 # RECOMMENDED: Use patchpal-sandbox for safe isolation
-# Note: Completion instruction is automatically added to prompts
 patchpal-sandbox --env-file .env -- autopilot \
   --prompt-file task.md \
-  --completion-promise "DONE" \
   --max-iterations 50
 
 # Option 1: Direct command (⚠️ use only in safe/isolated environments)
 patchpal-autopilot \
   --prompt-file task.md \
-  --completion-promise "DONE" \
   --max-iterations 50
 
 # Option 2: Use as a Python library
@@ -34,7 +31,7 @@ autopilot_loop(
 "
 ```
 
-**Note**: The completion instruction is automatically appended to your prompts. You only need to specify what to check for via `--completion-promise`. No need to include "Output: <promise>COMPLETE</promise>" in your task description.
+**Note**: The completion promise defaults to "COMPLETE" and is automatically appended to your prompts. You can customize it with `--completion-promise "DONE"` if needed. No need to include "Output: <promise>COMPLETE</promise>" in your task description.
 
 **Custom Tools**: Autopilot automatically loads custom tools from both `~/.patchpal/tools/` (global) and `.patchpal/tools/` (repository-specific), same as the interactive CLI. See [Custom Tools](../features/custom-tools.md) for details.
 
@@ -168,14 +165,12 @@ patchpal-sandbox --env-file .env -- --model anthropic/claude-sonnet-4-5
 # Autopilot mode (permissions disabled automatically)
 patchpal-sandbox --env-file .env -- autopilot \
   --model anthropic/claude-sonnet-4-5 \
-  --prompt-file task.md \
-  --completion-promise "COMPLETE"
+  --prompt-file task.md
 
 # With local Ollama model (requires --host-network)
 patchpal-sandbox --host-network -- autopilot \
   --model ollama_chat/gpt-oss:120b \
-  --prompt "Build a calculator with tests" \
-  --completion-promise "DONE"
+  --prompt "Build a calculator with tests"
 ```
 
 **Features:**
@@ -206,7 +201,7 @@ docker run -it --rm \
   -e ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY \
   --memory="2g" --cpus="2" \
   ghcr.io/amaiya/patchpal-sandbox:latest \
-  bash -c "patchpal-autopilot --prompt-file task.md --completion-promise 'DONE'"
+  bash -c "patchpal-autopilot --prompt-file task.md"
 ```
 
 Using standard Python image (installs latest patchpal from PyPI):
@@ -220,7 +215,7 @@ docker run -it --rm \
 
 # Inside container
 pip install patchpal
-patchpal-autopilot --prompt-file task.md --completion-promise "DONE"
+patchpal-autopilot --prompt-file task.md
 ```
 
 **Option 3: Dedicated VM/Server** (Best for Production Automation)
@@ -228,7 +223,7 @@ patchpal-autopilot --prompt-file task.md --completion-promise "DONE"
 # Use a separate machine/VM with no access to production
 ssh autopilot-sandbox
 cd /workspace/throwaway-project
-patchpal-autopilot --prompt-file task.md --completion-promise "DONE"
+patchpal-autopilot --prompt-file task.md
 ```
 
 ### Best Practices

@@ -24,10 +24,11 @@ Full documentation is [here](https://amaiya.github.io/patchpal).
 ## Quick Start
 
 ```bash
-$ pip install patchpal  # install
-$ patchpal              # start
+$ pip install patchpal          # install
+$ patchpal --model <model_id>   # start
 ```
 
+> Model support: Any [LiteLLM-supported model](https://models.litellm.ai/) is can be used.
 > Platform support: Linux, macOS, and Windows are all supported
 
 **Alternative: Run with Docker/Podman (no installation required)**
@@ -38,16 +39,16 @@ docker run -it --rm \
   -v $(pwd):/workspace \
   -e ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY \
   ghcr.io/amaiya/patchpal-sandbox:latest \
-  patchpal
+  patchpal --model anthropic/claude-sonnet-4-5
 
 # Or with Podman
 podman run -it --rm \
   -v $(pwd):/workspace \
   -e ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY \
   ghcr.io/amaiya/patchpal-sandbox:latest \
-  patchpal
+  patchpal --model anthropic/claude-sonnet-4-5
 
-# Specify a different model with --model
+# Specify a different model
 docker run -it --rm \
   -v $(pwd):/workspace \
   -e OPENAI_API_KEY=$OPENAI_API_KEY \

@@ -18,8 +18,8 @@ ONLY use in isolated environments (Docker containers, VMs, throwaway projects).
 See examples/ralph/README.md for detailed safety guidelines.
 
 Usage:
-    patchpal-autopilot --prompt "Build a REST API with tests" --completion-promise "COMPLETE"
-    patchpal-autopilot --prompt-file task.md --completion-promise "DONE" --max-iterations 50
+    patchpal-autopilot --prompt "Build a REST API with tests"
+    patchpal-autopilot --prompt-file task.md --max-iterations 50
 """
 
 import argparse
@@ -184,19 +184,22 @@ def main():
         epilog="""
 Examples:
   # Build a calculator with tests
-  patchpal-autopilot --prompt "Create calculator.py with add, subtract, multiply, divide functions. Create test_calculator.py with pytest tests. Run tests to verify." --completion-promise "COMPLETE" --max-iterations 20
+  patchpal-autopilot --prompt "Create calculator.py with add, subtract, multiply, divide functions. Create test_calculator.py with pytest tests. Run tests to verify." --max-iterations 20
 
   # Refactor code with specific completion criteria
-  patchpal-autopilot --prompt "Refactor auth.py to use async/await. Update all tests. Run tests to verify." --completion-promise "COMPLETE"
+  patchpal-autopilot --model openai/gpt-5-mini --prompt "Refactor auth.py to use async/await. Update all tests. Run tests to verify."
 
   # Use prompt from file
-  patchpal-autopilot --prompt-file task.md --completion-promise "DONE" --max-iterations 50
+  patchpal-autopilot --prompt-file task.md --max-iterations 50
 
   # With local Ollama model (zero API cost)
-  patchpal-autopilot --model ollama_chat/qwen2.5-coder:7b --prompt "..." --completion-promise "COMPLETE"
+  patchpal-autopilot --model ollama_chat/qwen2.5-coder:7b --prompt "..."
+
+  # Custom completion promise (optional, defaults to "COMPLETE")
+  patchpal-autopilot --prompt-file task.md --completion-promise "DONE"
 
   # Skip confirmation prompt (for automation/scripts)
-  PATCHPAL_AUTOPILOT_CONFIRMED=true patchpal-autopilot --prompt-file task.md --completion-promise "DONE"
+  PATCHPAL_AUTOPILOT_CONFIRMED=true patchpal-autopilot --prompt-file task.md
 
 Prompt Best Practices:
   - Include the completion promise in your prompt (agent sees this as the goal)
@@ -222,8 +225,8 @@ Related Resources (Ralph Wiggum Technique):
     parser.add_argument(
         "--completion-promise",
         type=str,
-        required=True,
-        help='String that signals completion (e.g., "COMPLETE", "DONE")',
+        default="COMPLETE",
+        help='String that signals completion (default: "COMPLETE")',
     )
     parser.add_argument(
         "--max-iterations",

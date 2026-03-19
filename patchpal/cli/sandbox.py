@@ -6,7 +6,7 @@ Provides sandboxed execution for both interactive and autopilot modes.
 
 Usage:
     patchpal-sandbox --model openai/gpt-5.2-codex
-    patchpal-sandbox --env-file .env -- autopilot --prompt "Fix the bug" --completion-promise "DONE"
+    patchpal-sandbox --env-file .env -- autopilot --prompt "Fix the bug"
     patchpal-sandbox --host-network -- --model ollama_chat/llama3.1
 """
 
@@ -379,10 +379,10 @@ EXAMPLES:
     patchpal-sandbox --env-file ~/.config/patchpal/.env -- --model anthropic/claude-sonnet-4-5
 
     # AutoPilot mode - permissions automatically DISABLED
-    patchpal-sandbox  -- autopilot --model openai/gpt-5-mini --prompt "Add error handling to auth.py" --completion-promise "COMPLETE"
+    patchpal-sandbox  -- autopilot --model openai/gpt-5-mini --prompt "Add error handling to auth.py"
 
     # AutoPilot mode - read file containing prompt and and .env file
-    patchpal-sandbox --env-file .env -- autopilot --model openai/gpt-5.2-codex --prompt-file task.md --completion-promise "DONE"
+    patchpal-sandbox --env-file .env -- autopilot --model openai/gpt-5.2-codex --prompt-file task.md
 
     # Ollama: Linux/WSL requires host network to reach Ollama on localhost
     patchpal-sandbox --host-network -- --model ollama_chat/qwen3:8b # interactive

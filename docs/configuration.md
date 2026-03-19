@@ -60,7 +60,7 @@ patchpal-sandbox
 patchpal-sandbox -- --model <litellm_model_id>
 
 # Autopilot mode (permissions disabled automatically)
-patchpal-sandbox -- autopilot --prompt "..." --completion-promise "DONE"
+patchpal-sandbox -- autopilot --prompt "..."
 ```
 
 This provides a fully isolated environment with restricted access to your host system. Permissions remain enabled in interactive mode but are automatically disabled when using the `autopilot` subcommand.
@@ -348,7 +348,7 @@ patchpal
 export PATCHPAL_AUTOPILOT_CONFIRMED=true     # Skip autopilot safety confirmation (default: false)
                                               # ⚠️  Only use in CI/CD or automation contexts
                                               # Autopilot mode allows continuous iterative execution
-patchpal-autopilot --prompt "Implement feature X" --completion-promise "COMPLETE"
+patchpal-autopilot --prompt "Implement feature X"
 ```
 
 **Image Analysis with Vision Models:**
