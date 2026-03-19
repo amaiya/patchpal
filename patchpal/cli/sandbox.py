@@ -366,12 +366,13 @@ CORPORATE NETWORKS (Linux/WSL):
     You may need to add certificates to Docker Desktop's trusted CAs.
 
 EXAMPLES:
+
+    # Cloud LLM: Interactive mode with cloud LLM -- read API keys from host (e.g., .bashrc)
+    patchpal-sandbox -- --model anthropic/claude-sonnet-4-5
+
     # Cloud LLM: Load API keys from .env file
     patchpal-sandbox --env-file .env -- --model openai/gpt-5.2-codex
     patchpal-sandbox --env-file ~/.config/patchpal/.env -- --model anthropic/claude-sonnet-4-5
-
-    #Cloud LLM: Interactive mode with cloud LLM (network enabled by default)
-    patchpal-sandbox -- --model anthropic/claude-sonnet-4-5
 
     # AutoPilot Mode: non-interactive, permissions automatically disabled
     patchpal-sandbox --env-file .env -- autopilot --model openai/gpt-5.2-codex --prompt "Add error handling to auth.py" --completion-promise "COMPLETE"
