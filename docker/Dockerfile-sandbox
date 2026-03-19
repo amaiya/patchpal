@@ -7,7 +7,7 @@ RUN apt-get update && apt-get install -y \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# Install patchpal
+# Install patchpal (force rebuild: 2026-03-19)
 RUN pip install --no-cache-dir patchpal
 
 # Set working directory
