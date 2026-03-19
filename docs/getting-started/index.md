@@ -13,17 +13,26 @@ pip install patchpal
 If you prefer to use containers instead of installing PatchPal locally:
 
 ```bash
-# Using Docker with pre-built image
+# Using Docker with pre-built image (default model)
 docker run -it --rm \
   -v $(pwd):/workspace \
   -e ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY \
-  ghcr.io/amaiya/patchpal-sandbox:latest
+  ghcr.io/amaiya/patchpal-sandbox:latest \
+  patchpal
 
 # Or with Podman
 podman run -it --rm \
   -v $(pwd):/workspace \
   -e ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY \
-  ghcr.io/amaiya/patchpal-sandbox:latest
+  ghcr.io/amaiya/patchpal-sandbox:latest \
+  patchpal
+
+# Specify a different model with --model
+docker run -it --rm \
+  -v $(pwd):/workspace \
+  -e OPENAI_API_KEY=$OPENAI_API_KEY \
+  ghcr.io/amaiya/patchpal-sandbox:latest \
+  patchpal --model openai/gpt-5-mini
 ```
 
 This runs PatchPal in an isolated container with:
@@ -31,6 +40,7 @@ This runs PatchPal in an isolated container with:
 - Current directory mounted at `/workspace`
 - Your API key passed through environment variable
 - For other models, pass additional `-e` flags (e.g., `-e OPENAI_API_KEY=$OPENAI_API_KEY`)
+- Pass patchpal arguments after `patchpal` command (e.g., `patchpal --model openai/gpt-4o-mini`, `patchpal --autopilot`)
 
 **Supported Operating Systems:**  Linux, MacOS, MS Windows.
 

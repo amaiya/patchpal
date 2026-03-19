@@ -31,17 +31,26 @@ $ patchpal              # start
 **Alternative: Run with Docker/Podman (no installation required)**
 
 ```bash
-# Using pre-built image with patchpal installed
+# Using pre-built image with patchpal installed (default model)
 docker run -it --rm \
   -v $(pwd):/workspace \
   -e ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY \
-  ghcr.io/amaiya/patchpal-sandbox:latest
+  ghcr.io/amaiya/patchpal-sandbox:latest \
+  patchpal
 
 # Or with Podman
 podman run -it --rm \
   -v $(pwd):/workspace \
   -e ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY \
-  ghcr.io/amaiya/patchpal-sandbox:latest
+  ghcr.io/amaiya/patchpal-sandbox:latest \
+  patchpal
+
+# Specify a different model with --model
+docker run -it --rm \
+  -v $(pwd):/workspace \
+  -e OPENAI_API_KEY=$OPENAI_API_KEY \
+  ghcr.io/amaiya/patchpal-sandbox:latest \
+  patchpal --model openai/gpt-5-mini
 ```
 
 > Platform support: Linux, macOS, and Windows are all supported

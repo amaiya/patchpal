@@ -13,5 +13,8 @@ RUN pip install --no-cache-dir patchpal
 # Set working directory
 WORKDIR /workspace
 
-# Default command (can be overridden)
-CMD ["patchpal", "--help"]
+# Set entrypoint to patchpal so arguments can be passed
+ENTRYPOINT ["patchpal"]
+
+# Default to help if no arguments provided
+CMD ["--help"]
