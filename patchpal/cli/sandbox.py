@@ -213,11 +213,33 @@ def build_container_args(sandbox_args, patchpal_args):
         container_args.extend(["-v", f"{patchpal_dir}:/root/.patchpal"])
         mounted_paths.add(patchpal_dir)
 
+    # Development mode: mount local patchpal source code
+    dev_mode = False
+    if sandbox_args.dev:
+        # Check if we're in the patchpal repo (look for pyproject.toml or setup.py)
+        repo_root = os.getcwd()
+        if os.path.isfile(os.path.join(repo_root, "pyproject.toml")) or os.path.isfile(
+            os.path.join(repo_root, "setup.py")
+        ):
+            # Mount the patchpal source directory
+            container_args.extend(["-v", f"{repo_root}:/patchpal-dev"])
+            dev_mode = True
+            print("ℹ️  Development mode: Mounting local patchpal code from", repo_root)
+        else:
+            print(
+                "⚠️  Warning: --dev flag used but not in patchpal repo root (no pyproject.toml or setup.py found)"
+            )
+
     # Mount SSL certificates if they exist (Linux/WSL)
     ssl_cert_file = "/etc/ssl/certs/ca-certificates.crt"
     if os.path.isfile(ssl_cert_file):
         container_args.extend(["-v", f"{ssl_cert_file}:{ssl_cert_file}:ro"])
         mounted_paths.add(ssl_cert_file)
+        # Set environment variables so Python's requests library uses the mounted cert
+        if "SSL_CERT_FILE" not in os.environ:
+            container_args.extend(["-e", f"SSL_CERT_FILE={ssl_cert_file}"])
+        if "REQUESTS_CA_BUNDLE" not in os.environ:
+            container_args.extend(["-e", f"REQUESTS_CA_BUNDLE={ssl_cert_file}"])
 
     ssl_cert_dir = "/usr/local/share/ca-certificates"
     if os.path.isdir(ssl_cert_dir) and os.listdir(ssl_cert_dir):
@@ -225,12 +247,20 @@ def build_container_args(sandbox_args, patchpal_args):
         mounted_paths.add(ssl_cert_dir)
 
     # Mount SSL_CERT_FILE and REQUESTS_CA_BUNDLE if set
+    # Map host cert files to /tmp inside container since parent dirs may not exist
+    cert_mapping = {}  # Track host path -> container path mappings
     for env_var in ["SSL_CERT_FILE", "REQUESTS_CA_BUNDLE"]:
         cert_path = os.environ.get(env_var)
-        if cert_path and os.path.isfile(cert_path) and cert_path not in mounted_paths:
-            container_args.extend(["-v", f"{cert_path}:{cert_path}:ro"])
-            container_args.extend(["-e", f"{env_var}={cert_path}"])
-            mounted_paths.add(cert_path)
+        if cert_path and os.path.isfile(cert_path):
+            if cert_path not in cert_mapping:
+                # First time seeing this cert file - mount it
+                container_cert_path = f"/tmp/{os.path.basename(cert_path)}"
+                container_args.extend(["-v", f"{cert_path}:{container_cert_path}:ro"])
+                cert_mapping[cert_path] = container_cert_path
+                mounted_paths.add(cert_path)
+
+            # Always set the environment variable to point to the container path
+            container_args.extend(["-e", f"{env_var}={cert_mapping[cert_path]}"])
 
     # Add image
     container_args.append(sandbox_args.image)
@@ -248,11 +278,16 @@ def build_container_args(sandbox_args, patchpal_args):
 
     quoted_args = " ".join(shlex.quote(arg) for arg in patchpal_cmd_args)
 
-    # If using pre-built patchpal-sandbox image, skip pip install
-    # Otherwise, install patchpal first (fallback for custom images)
-    if "patchpal-sandbox" in sandbox_args.image:
+    # Build the shell command
+    if dev_mode:
+        # Development mode: reinstall patchpal from mounted source
+        # Show pip output in case of errors, but suppress normal installation messages
+        shell_cmd = f"pip install -e /patchpal-dev 2>&1 | grep -i error || true && {patchpal_cmd} {quoted_args}"
+    elif "patchpal-sandbox" in sandbox_args.image:
+        # Using pre-built image, skip pip install
         shell_cmd = f"{patchpal_cmd} {quoted_args}"
     else:
+        # Custom image, install patchpal from PyPI
         shell_cmd = f"pip install -q patchpal && {patchpal_cmd} {quoted_args}"
 
     container_args.extend(["bash", "-c", shell_cmd])
@@ -433,6 +468,11 @@ def main():
     parser.add_argument("--memory", default=None)
     parser.add_argument("--cpus", type=float, default=None)
     parser.add_argument("--env-file", default=None)
+    parser.add_argument(
+        "--dev",
+        action="store_true",
+        help="Mount local patchpal code for development (requires being run from patchpal repo root)",
+    )
 
     try:
         sandbox_args = parser.parse_args(sandbox_argv)
@@ -459,6 +499,16 @@ def main():
     print(f"Image: {sandbox_args.image}")
     print(f"Network: {sandbox_args.network}")
     print(f"Workspace: {os.getcwd()}")
+
+    # Debug: Show SSL cert files being mounted (if any)
+    ssl_env_vars = {
+        k: v for k, v in os.environ.items() if "SSL" in k or "CERT" in k or "CA_BUNDLE" in k
+    }
+    if ssl_env_vars and sandbox_args.dev:
+        print("\n🔒 SSL environment variables (dev mode debug):")
+        for k, v in ssl_env_vars.items():
+            print(f"  {k}={v}")
+
     print()
 
     # Run container

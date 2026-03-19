@@ -6,12 +6,25 @@ Most recent releases are shown at the top. Each release shows:
 - **Changed**: Additional parameters, changes to inputs or outputs, etc
 - **Fixed**: Bug fixes that don't change documented behaviour
 
+## 0.21.6 (2026-03-19)
+
+### new:
+- N/A
+
+### changed:
+- N/A
+
+### fixed:
+- Fix for corporate firewalls interfering with `web_fetch`.
+
+
 ## 0.21.5 (2026-03-19)
 
 ### new:
 - N/A
 
 ### changed:
+- N/A
 
 ### fixed:
 - Make completion promise argument in autopilot mode optional

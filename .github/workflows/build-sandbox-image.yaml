@@ -6,8 +6,6 @@ on:
     paths:
       - 'docker/Dockerfile-sandbox'
       - '.github/workflows/build-sandbox-image.yaml'
-  release:
-    types: [published]
   workflow_dispatch:
 
 env:
@@ -47,6 +45,13 @@ jobs:
             type=semver,pattern={{major}}.{{minor}}
             type=raw,value=latest,enable={{is_default_branch}}
 
+      - name: Get latest patchpal version from PyPI
+        id: pypi-version
+        run: |
+          VERSION=$(curl -s https://pypi.org/pypi/patchpal/json | jq -r '.info.version')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Latest patchpal version on PyPI: $VERSION"
+
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
@@ -55,6 +60,8 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            CACHEBUST=${{ steps.pypi-version.outputs.version }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           platforms: linux/amd64,linux/arm64

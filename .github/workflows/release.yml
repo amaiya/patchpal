@@ -48,3 +48,23 @@ jobs:
       - name: Publish to PyPI
         if: github.event_name == 'release' && github.event.action == 'published'
         uses: pypa/gh-action-pypi-publish@release/v1
+
+      - name: Wait for PyPI to index new version
+        if: github.event_name == 'release' && github.event.action == 'published'
+        run: |
+          echo "Waiting 60 seconds for PyPI to index the new version..."
+          sleep 60
+
+      - name: Trigger sandbox image rebuild
+        if: github.event_name == 'release' && github.event.action == 'published'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'build-sandbox-image.yaml',
+              ref: 'main'
+            });
+            console.log('Triggered sandbox image rebuild workflow');

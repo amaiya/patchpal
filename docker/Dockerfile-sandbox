@@ -7,8 +7,11 @@ RUN apt-get update && apt-get install -y \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# Install patchpal
-RUN pip install --no-cache-dir patchpal
+# Build arg to force cache invalidation on new releases
+ARG CACHEBUST=1
+
+# Install patchpal (always get latest from PyPI)
+RUN pip install --no-cache-dir --upgrade patchpal
 
 # Set working directory
 WORKDIR /workspace
