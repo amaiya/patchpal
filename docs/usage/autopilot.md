@@ -147,11 +147,13 @@ else:
 
 **Why Isolation Is Critical:**
 
-Autopilot runs with `PATCHPAL_REQUIRE_PERMISSION=false`:
+Autopilot mode automatically disables PatchPal's permission system (`PATCHPAL_REQUIRE_PERMISSION=false`):
 - No permission prompts for file modifications
 - No permission prompts for shell commands
 - Multiple iterations without human oversight
 - Potential for catastrophic mistakes
+
+**Note:** When using `patchpal-sandbox` in **interactive mode** (without the `autopilot` subcommand), permissions remain **ENABLED** by default. Permissions are only automatically disabled when you explicitly use the `autopilot` subcommand or `patchpal-autopilot` command.
 
 **Recommended Isolation:**
 
@@ -160,18 +162,18 @@ Autopilot runs with `PATCHPAL_REQUIRE_PERMISSION=false`:
 PatchPal includes `patchpal-sandbox`, a built-in command that automatically runs PatchPal in an isolated Docker/Podman container:
 
 ```bash
-# Interactive mode with API keys from .env file
-patchpal-sandbox --env-file .env -- --model openai/gpt-5.2-codex
+# Interactive mode (permissions enabled)
+patchpal-sandbox --env-file .env -- --model anthropic/claude-sonnet-4-5
 
-# Autopilot mode (automatically disables permissions)
+# Autopilot mode (permissions disabled automatically)
 patchpal-sandbox --env-file .env -- autopilot \
-  --model openai/gpt-5.2-codex \
+  --model anthropic/claude-sonnet-4-5 \
   --prompt-file task.md \
   --completion-promise "COMPLETE"
 
 # With local Ollama model (requires --host-network)
 patchpal-sandbox --host-network -- autopilot \
-  --model ollama_chat/llama3.1 \
+  --model ollama_chat/gpt-oss:120b \
   --prompt "Build a calculator with tests" \
   --completion-promise "DONE"
 ```

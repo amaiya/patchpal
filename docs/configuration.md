@@ -50,16 +50,20 @@ patchpal
 
 In addition, the `run_shell` tool also includes [built-in guardrails](https://amaiya.github.io/patchpal/features/tools/#run_shell).
 
-For maximum isolation, you can run PatchPal inside a sandboxed container using `patchpal-sandbox`. Start an interactive session with:
+For maximum isolation, you can run PatchPal inside a sandboxed container using `patchpal-sandbox`:
 
 ```bash
+# Interactive mode (permissions enabled by default)
 patchpal-sandbox
 
 # Or specify a model (pass arguments after --)
 patchpal-sandbox -- --model <litellm_model_id>
+
+# Autopilot mode (permissions disabled automatically)
+patchpal-sandbox -- autopilot --prompt "..." --completion-promise "DONE"
 ```
 
-This provides a fully isolated environment with restricted access to your host system.
+This provides a fully isolated environment with restricted access to your host system. Permissions remain enabled in interactive mode but are automatically disabled when using the `autopilot` subcommand.
 
 #### Environment Variables
 
@@ -67,6 +71,10 @@ This provides a fully isolated environment with restricted access to your host s
 # Permission System
 export PATCHPAL_REQUIRE_PERMISSION=true      # Prompt before executing commands/modifying files (default: true)
                                               # ⚠️  WARNING: Setting to false disables prompts - only use in trusted environments
+                                              # Note: Automatically set to false by autopilot mode (patchpal-autopilot command)
+                                              # When using patchpal-sandbox:
+                                              #   - Interactive mode (default): permissions ENABLED
+                                              #   - Autopilot mode (autopilot subcommand): permissions DISABLED automatically
 
 # File Safety
 export PATCHPAL_MAX_FILE_SIZE=512000         # Maximum file size in bytes for read/write (default: 500KB)

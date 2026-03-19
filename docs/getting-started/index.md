@@ -20,7 +20,7 @@ If you prefer to use containers instead of installing PatchPal locally:
 After installing PatchPal (`pip install patchpal`), use the `patchpal-sandbox` command for automatic container setup:
 
 ```bash
-# Interactive mode (loads API keys from .env file or environment)
+# Interactive mode
 patchpal-sandbox
 
 # Specify a different model (pass arguments after --)
@@ -28,6 +28,9 @@ patchpal-sandbox -- --model openai/gpt-5-mini
 
 # With environment file
 patchpal-sandbox --env-file .env -- --model openai/gpt-5-mini
+
+# Autopilot mode (for autonomous iterative development - see Autopilot docs)
+patchpal-sandbox --env-file .env -- autopilot --prompt "..." --completion-promise "DONE"
 ```
 
 The `patchpal-sandbox` command automatically:
@@ -35,6 +38,7 @@ The `patchpal-sandbox` command automatically:
 - Mounts current directory and `~/.patchpal`
 - Loads API keys from `.env` file or environment
 - Uses pre-built image (fast startup)
+- Default: permissions enabled for interactive mode; disabled for autopilot mode
 
 **Option 2: Manual Docker/Podman Commands**
 

@@ -322,8 +322,9 @@ ENVIRONMENT VARIABLES:
         # Custom endpoints (optional)
         OPENAI_BASE_URL=https://your-proxy.com/v1
 
-        # Disable permissions for autopilot
-        PATCHPAL_REQUIRE_PERMISSION=false
+        # Optional: Disable permissions for interactive mode
+        # (Not needed for autopilot - it disables permissions automatically)
+        # PATCHPAL_REQUIRE_PERMISSION=false
 
     Note: SSL_CERT_FILE and REQUESTS_CA_BUNDLE paths are auto-mounted if they exist.
 
@@ -337,6 +338,9 @@ SECURITY:
     - No resource limits by default (trust Docker/Podman and OS limits)
     - Clean environment on each run (--rm flag)
     - Workspace files visible but container has limited privileges
+    - Permissions behavior:
+      * Interactive mode (default): Permissions ENABLED (prompts before operations)
+      * Autopilot mode: Permissions DISABLED automatically (autonomous operation)
 
 NOTES:
     - Default image (ghcr.io/amaiya/patchpal-sandbox:latest) has patchpal pre-installed for fast startup
@@ -367,17 +371,17 @@ CORPORATE NETWORKS (Linux/WSL):
 
 EXAMPLES:
 
-    # Cloud LLM: Interactive mode with cloud LLM -- read API keys from host (e.g., .bashrc)
+    # Interactive mode - permissions ENABLED (prompts before operations)
     patchpal-sandbox -- --model anthropic/claude-sonnet-4-5
 
-    # Cloud LLM: Load API keys from .env file
+    # Interactive mode - load API keys from .env file
     patchpal-sandbox --env-file .env -- --model openai/gpt-5.2-codex
     patchpal-sandbox --env-file ~/.config/patchpal/.env -- --model anthropic/claude-sonnet-4-5
 
-    # AutoPilot Mode: non-interactive, permissions automatically disabled
-    patchpal-sandbox --env-file .env -- autopilot --model openai/gpt-5.2-codex --prompt "Add error handling to auth.py" --completion-promise "COMPLETE"
+    # AutoPilot mode - permissions automatically DISABLED
+    patchpal-sandbox  -- autopilot --model openai/gpt-5-mini --prompt "Add error handling to auth.py" --completion-promise "COMPLETE"
 
-    # AutoPilot Mode: read file containing prompt
+    # AutoPilot mode - read file containing prompt and and .env file
     patchpal-sandbox --env-file .env -- autopilot --model openai/gpt-5.2-codex --prompt-file task.md --completion-promise "DONE"
 
     # Ollama: Linux/WSL requires host network to reach Ollama on localhost

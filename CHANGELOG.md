@@ -7,6 +7,17 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
+## 0.21.4 (2026-03-19)
+
+### new:
+- N/A
+
+### changed:
+
+### fixed:
+- Fix `patchpal-sandbox` interactive usage
+
+
 ## 0.21.3 (2026-03-18)
 
 ### new:
