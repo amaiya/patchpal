@@ -7,14 +7,8 @@ RUN apt-get update && apt-get install -y \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# Install patchpal - force latest version
-RUN pip install --no-cache-dir --upgrade patchpal
+# Install patchpal
+RUN pip install --no-cache-dir patchpal
 
 # Set working directory
 WORKDIR /workspace
-
-# Use bash as entrypoint so sandbox script can pass commands
-ENTRYPOINT ["/bin/bash", "-c"]
-
-# Default to patchpal help if no command provided
-CMD ["patchpal --help"]
