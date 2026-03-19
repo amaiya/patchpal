@@ -50,6 +50,17 @@ patchpal
 
 In addition, the `run_shell` tool also includes [built-in guardrails](https://amaiya.github.io/patchpal/features/tools/#run_shell).
 
+For maximum isolation, you can run PatchPal inside a sandboxed container using `patchpal-sandbox`. Start an interactive session with:
+
+```bash
+patchpal-sandbox
+
+# Or specify a model (pass arguments after --)
+patchpal-sandbox -- --model <litellm_model_id>
+```
+
+This provides a fully isolated environment with restricted access to your host system.
+
 #### Environment Variables
 
 ```bash

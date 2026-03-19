@@ -15,6 +15,29 @@ pip install patchpal
 
 If you prefer to use containers instead of installing PatchPal locally:
 
+**Option 1: Using patchpal-sandbox (Easiest)**
+
+After installing PatchPal (`pip install patchpal`), use the `patchpal-sandbox` command for automatic container setup:
+
+```bash
+# Interactive mode (loads API keys from .env file or environment)
+patchpal-sandbox
+
+# Specify a different model (pass arguments after --)
+patchpal-sandbox -- --model openai/gpt-5-mini
+
+# With environment file
+patchpal-sandbox --env-file .env -- --model openai/gpt-5-mini
+```
+
+The `patchpal-sandbox` command automatically:
+- Auto-detects Docker/Podman
+- Mounts current directory and `~/.patchpal`
+- Loads API keys from `.env` file or environment
+- Uses pre-built image (fast startup)
+
+**Option 2: Manual Docker/Podman Commands**
+
 ```bash
 # Using Docker with pre-built image (default model)
 docker run -it --rm \
