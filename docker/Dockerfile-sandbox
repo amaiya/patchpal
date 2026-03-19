@@ -7,8 +7,8 @@ RUN apt-get update && apt-get install -y \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# Install patchpal (force rebuild: 2026-03-19)
-RUN pip install --no-cache-dir patchpal
+# Install patchpal - force latest version
+RUN pip install --no-cache-dir --upgrade patchpal
 
 # Set working directory
 WORKDIR /workspace
