@@ -13,8 +13,8 @@ RUN pip install --no-cache-dir patchpal
 # Set working directory
 WORKDIR /workspace
 
-# Set entrypoint to patchpal so arguments can be passed
-ENTRYPOINT ["patchpal"]
+# Use bash as entrypoint so sandbox script can pass commands
+ENTRYPOINT ["/bin/bash", "-c"]
 
-# Default to help if no arguments provided
-CMD ["--help"]
+# Default to patchpal help if no command provided
+CMD ["patchpal --help"]
