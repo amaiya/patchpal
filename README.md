@@ -28,6 +28,8 @@ $ pip install patchpal  # install
 $ patchpal              # start
 ```
 
+> Platform support: Linux, macOS, and Windows are all supported
+
 **Alternative: Run with Docker/Podman (no installation required)**
 
 ```bash
@@ -53,7 +55,6 @@ docker run -it --rm \
   patchpal --model openai/gpt-5-mini
 ```
 
-> Platform support: Linux, macOS, and Windows are all supported
 
 ## Setup
 0. **Install**: `pip install patchpal`

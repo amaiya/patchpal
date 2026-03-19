@@ -8,6 +8,9 @@ Install PatchPal from PyPI:
 pip install patchpal
 ```
 
+**Supported Operating Systems:**  Linux, MacOS, MS Windows.
+
+
 **Alternative: Run with Docker/Podman (no installation required)**
 
 If you prefer to use containers instead of installing PatchPal locally:
@@ -42,7 +45,6 @@ This runs PatchPal in an isolated container with:
 - For other models, pass additional `-e` flags (e.g., `-e OPENAI_API_KEY=$OPENAI_API_KEY`)
 - Pass patchpal arguments after `patchpal` command (e.g., `patchpal --model openai/gpt-4o-mini`, `patchpal --autopilot`)
 
-**Supported Operating Systems:**  Linux, MacOS, MS Windows.
 
 ## Setup
 
