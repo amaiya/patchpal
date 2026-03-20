@@ -12,7 +12,7 @@ Most recent releases are shown at the top. Each release shows:
 - N/A
 
 ### changed:
-- N/A
+- Removed tiktoken as dependency. Rely on actual usage statistics with simple fallback.
 
 ### fixed:
 - Added security checks for web fetch

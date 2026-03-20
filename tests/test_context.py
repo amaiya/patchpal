@@ -739,9 +739,6 @@ class TestAutoCompaction:
 
     def test_prune_tool_outputs_sanitizes_invalid_tool_names(self, monkeypatch):
         """Test that pruning removes tool calls with invalid names and their corresponding tool responses."""
-        # Disable tiktoken to avoid slow encoding
-        monkeypatch.setattr("patchpal.context.TIKTOKEN_AVAILABLE", False)
-
         manager = ContextManager("test-model", "test-system-prompt")
 
         # Mock tool call objects with invalid names

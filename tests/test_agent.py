@@ -195,6 +195,10 @@ def test_agent_run_simple_response(monkeypatch):
     mock_response.choices[0].message = MagicMock()
     mock_response.choices[0].message.content = "Hello! I can help you."
     mock_response.choices[0].message.tool_calls = None
+    # Add usage data for reactive context management
+    mock_response.usage = MagicMock()
+    mock_response.usage.prompt_tokens = 100
+    mock_response.usage.completion_tokens = 20
 
     with patch("patchpal.agent.function_calling.litellm.completion", return_value=mock_response):
         agent = create_agent()
@@ -219,6 +223,10 @@ def test_agent_run_with_tool_call(monkeypatch):
     mock_response1.choices[0].message = MagicMock()
     mock_response1.choices[0].message.content = ""
     mock_response1.choices[0].message.tool_calls = [tool_call]
+    # Add usage data
+    mock_response1.usage = MagicMock()
+    mock_response1.usage.prompt_tokens = 150
+    mock_response1.usage.completion_tokens = 30
 
     # Second response: agent responds after tool execution
     mock_response2 = MagicMock()
@@ -226,6 +234,10 @@ def test_agent_run_with_tool_call(monkeypatch):
     mock_response2.choices[0].message = MagicMock()
     mock_response2.choices[0].message.content = "The file contains Python code"
     mock_response2.choices[0].message.tool_calls = None
+    # Add usage data
+    mock_response2.usage = MagicMock()
+    mock_response2.usage.prompt_tokens = 200
+    mock_response2.usage.completion_tokens = 25
 
     with patch(
         "patchpal.agent.function_calling.litellm.completion",
@@ -407,6 +419,9 @@ def test_agent_doesnt_trigger_on_file_containing_cancellation_text(monkeypatch):
             mock_response.choices[0].message = MagicMock()
             mock_response.choices[0].message.content = ""
             mock_response.choices[0].message.tool_calls = [tool_call]
+            mock_response.usage = MagicMock()
+            mock_response.usage.prompt_tokens = 150
+            mock_response.usage.completion_tokens = 30
 
             return mock_response
         else:
@@ -418,6 +433,9 @@ def test_agent_doesnt_trigger_on_file_containing_cancellation_text(monkeypatch):
                 0
             ].message.content = "The file contains documentation about cancellation."
             mock_response.choices[0].message.tool_calls = None
+            mock_response.usage = MagicMock()
+            mock_response.usage.prompt_tokens = 200
+            mock_response.usage.completion_tokens = 25
 
             return mock_response
 
@@ -751,6 +769,9 @@ def test_agent_keyboard_interrupt_after_successful_retry(monkeypatch):
     mock_response_1.choices[0].message = MagicMock()
     mock_response_1.choices[0].message.content = ""
     mock_response_1.choices[0].message.tool_calls = [tool_call]
+    mock_response_1.usage = MagicMock()
+    mock_response_1.usage.prompt_tokens = 150
+    mock_response_1.usage.completion_tokens = 30
 
     # Second call: return success response (after interrupt and retry)
     mock_response_2 = MagicMock()
@@ -758,6 +779,9 @@ def test_agent_keyboard_interrupt_after_successful_retry(monkeypatch):
     mock_response_2.choices[0].message = MagicMock()
     mock_response_2.choices[0].message.content = "I found the Python code."
     mock_response_2.choices[0].message.tool_calls = None
+    mock_response_2.usage = MagicMock()
+    mock_response_2.usage.prompt_tokens = 200
+    mock_response_2.usage.completion_tokens = 25
 
     # Mock read_file to raise interrupt first, then succeed
     from patchpal.agent.function_calling import TOOL_FUNCTIONS
@@ -1104,6 +1128,9 @@ def test_llm_timeout_passed_to_completion(monkeypatch):
         mock_response.choices[0].message = MagicMock()
         mock_response.choices[0].message.content = "Test response"
         mock_response.choices[0].message.tool_calls = None
+        mock_response.usage = MagicMock()
+        mock_response.usage.prompt_tokens = 100
+        mock_response.usage.completion_tokens = 20
 
         return mock_response
 

@@ -5,43 +5,33 @@ from typing import Any, Callable, Dict, List, Tuple
 
 from patchpal.config import config
 
-try:
-    import tiktoken
-
-    TIKTOKEN_AVAILABLE = True
-except ImportError:
-    TIKTOKEN_AVAILABLE = False
-
 
 class TokenEstimator:
-    """Estimate tokens in messages for context management."""
+    """Estimate tokens in messages for context management.
+
+    Uses character-based estimation (~3 chars per token) as a fallback when
+    actual token counts from API responses are not available. This works reliably
+    for all models without requiring network access or external dependencies.
+    """
 
     def __init__(self, model_id: str):
         self.model_id = model_id
-        self._encoder = self._get_encoder()
+        # Character-based estimation is used as fallback (primary: actual API token counts)
+        self._encoder = None
 
     def _get_encoder(self):
-        """Get appropriate tokenizer based on model."""
-        if not TIKTOKEN_AVAILABLE:
-            return None
+        """Get appropriate tokenizer based on model.
 
-        try:
-            # Map model families to encoders
-            model_lower = self.model_id.lower()
-
-            if "gpt-4" in model_lower or "gpt-3.5" in model_lower:
-                return tiktoken.encoding_for_model("gpt-4")
-            elif "claude" in model_lower or "anthropic" in model_lower:
-                # Anthropic uses similar tokenization to GPT-4
-                return tiktoken.encoding_for_model("gpt-4")
-            else:
-                # Default fallback
-                return tiktoken.get_encoding("cl100k_base")
-        except Exception:
-            return None
+        NOTE: This method is deprecated and always returns None.
+        Character-based estimation is used as fallback when actual API token counts unavailable.
+        """
+        return None
 
     def estimate_tokens(self, text: str) -> int:
-        """Estimate tokens in text.
+        """Estimate tokens in text using character-based heuristic.
+
+        Uses ~3 chars per token which is accurate for code-heavy content
+        and works reliably without requiring network access for tokenizer data.
 
         Args:
             text: Text to estimate tokens for
@@ -52,14 +42,9 @@ class TokenEstimator:
         if not text:
             return 0
 
-        if self._encoder:
-            try:
-                return len(self._encoder.encode(str(text)))
-            except Exception:
-                pass
-
-        # Fallback: ~3 chars per token (conservative for code-heavy content)
+        # Character-based estimation: ~3 chars per token
         # This is more accurate than 4 chars/token for technical content
+        # and works reliably for all models without network dependencies
         return len(str(text)) // 3
 
     def estimate_message_tokens(self, message: Dict[str, Any]) -> int:
@@ -331,16 +316,35 @@ Be comprehensive but concise. The goal is to continue work seamlessly without lo
         # Default conservative limit for unknown models
         return 128_000
 
-    def needs_compaction(self, messages: List[Dict[str, Any]]) -> bool:
+    def needs_compaction(
+        self, messages: List[Dict[str, Any]], actual_prompt_tokens: int = None
+    ) -> bool:
         """Check if context window needs compaction.
+
+        Supports both reactive (preferred) and proactive (fallback) approaches:
+        - Reactive: Use actual_prompt_tokens from latest API response
+        - Proactive: Estimate tokens if actual_prompt_tokens not available
+
+        The reactive approach is preferred as it uses actual token counts from the LLM,
+        avoiding the need for tiktoken or other estimation methods.
 
         Args:
             messages: Current message history
+            actual_prompt_tokens: Optional actual prompt token count from latest API response
 
         Returns:
             True if compaction is needed
         """
-        # Estimate total tokens
+        # Reactive approach (preferred): use actual token counts from API response
+        if actual_prompt_tokens is not None:
+            # Add output reserve to account for response tokens
+            total_tokens = actual_prompt_tokens + self.output_reserve
+            usage_ratio = total_tokens / self.context_limit
+            return usage_ratio >= self.COMPACT_THRESHOLD
+
+        # Proactive approach (fallback): estimate tokens when API data not available
+        # This uses character-based estimation (3 chars per token) which works
+        # reliably without requiring tiktoken or network access
         # Note: Dynamic date/time message adds ~30 tokens on each LLM call
         system_tokens = self.estimator.estimate_tokens(self.system_prompt)
         datetime_tokens = 30  # Approximate size of dynamic date/time message

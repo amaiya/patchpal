@@ -1071,8 +1071,10 @@ It's currently empty (just the template). The file is automatically loaded at se
 
                 # Track token usage from this LLM call
                 self.total_llm_calls += 1
+                last_prompt_tokens = None  # Track for reactive context management
                 if hasattr(response, "usage") and response.usage:
                     if hasattr(response.usage, "prompt_tokens"):
+                        last_prompt_tokens = response.usage.prompt_tokens
                         self.cumulative_input_tokens += response.usage.prompt_tokens
                     if hasattr(response.usage, "completion_tokens"):
                         self.cumulative_output_tokens += response.usage.completion_tokens
@@ -1526,8 +1528,9 @@ It's currently empty (just the template). The file is automatically loaded at se
 
                 # Check if context window needs compaction after tool results are added
                 # This prevents context from ballooning within a single turn (e.g., reading large files)
+                # Use reactive approach (actual token count) if available, fallback to estimation
                 if self.enable_auto_compact and self.context_manager.needs_compaction(
-                    self.messages
+                    self.messages, actual_prompt_tokens=last_prompt_tokens
                 ):
                     self._perform_auto_compaction()
 
@@ -1536,8 +1539,9 @@ It's currently empty (just the template). The file is automatically loaded at se
             else:
                 # No tool calls, agent is done
                 # Check if we need compaction before returning (final response might be large)
+                # Use reactive approach (actual token count) if available, fallback to estimation
                 if self.enable_auto_compact and self.context_manager.needs_compaction(
-                    self.messages
+                    self.messages, actual_prompt_tokens=last_prompt_tokens
                 ):
                     self._perform_auto_compaction()
 
