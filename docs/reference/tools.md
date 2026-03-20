@@ -91,6 +91,13 @@ PatchPal includes a comprehensive set of built-in tools for file operations, git
       show_root_heading: true
       heading_level: 4
 
+### get_url_tracker
+
+::: patchpal.tools.web_tools.get_url_tracker
+    options:
+      show_root_heading: true
+      heading_level: 4
+
 ## TODO Management
 
 ### todo_add

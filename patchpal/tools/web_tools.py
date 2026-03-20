@@ -275,7 +275,28 @@ _url_tracker = URLContextTracker()
 def get_url_tracker() -> URLContextTracker:
     """Get the global URL tracker instance.
 
-    This is used by the agent to track URLs from user messages and tool results.
+    The URL tracker is used by the agent to track URLs from user messages and tool results.
+    This prevents data exfiltration by ensuring web_fetch can only access URLs that were
+    explicitly provided by the user or returned by trusted tools (like web_search).
+
+    For direct Python API usage (calling web_fetch without an agent), you have two options:
+
+    1. Set PATCHPAL_ALLOW_DYNAMIC_URLS=true to disable URL tracking
+    2. Use this function to manually add URLs before calling web_fetch
+
+    Example:
+        ```python
+        from patchpal.tools import web_fetch, get_url_tracker
+
+        # Add URL to tracker before fetching
+        get_url_tracker().add_urls_from_text("https://example.com")
+        result = web_fetch("https://example.com")
+
+        # Or disable tracking entirely
+        import os
+        os.environ['PATCHPAL_ALLOW_DYNAMIC_URLS'] = 'true'
+        result = web_fetch("https://example.com")  # Works without tracking
+        ```
 
     Returns:
         The global URLContextTracker instance

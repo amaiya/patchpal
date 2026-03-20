@@ -62,6 +62,7 @@ from patchpal.tools.user_interaction import (
     use_skill,
 )
 from patchpal.tools.web_tools import (
+    get_url_tracker,
     web_fetch,
     web_search,
 )
@@ -94,6 +95,7 @@ __all__ = [
     # Web tools
     "web_fetch",
     "web_search",
+    "get_url_tracker",
     # Shell tools
     "run_shell",
     # User interaction
