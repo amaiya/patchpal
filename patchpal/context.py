@@ -118,6 +118,20 @@ class TokenEstimator:
         if message.get("name"):
             tokens += self.estimate_tokens(message["name"])
 
+        # Reasoning fields (for reasoning models like gpt-oss)
+        # These are passed back to the API by LiteLLM and count as input tokens
+        reasoning_fields = ["reasoning_content", "reasoning", "reasoning_text"]
+        for field in reasoning_fields:
+            if message.get(field):
+                tokens += self.estimate_tokens(str(message[field]))
+
+        # Thinking blocks (for Anthropic extended thinking)
+        # These are also passed back to the API and count as input tokens
+        if message.get("thinking_blocks"):
+            for block in message["thinking_blocks"]:
+                if isinstance(block, dict) and block.get("thinking"):
+                    tokens += self.estimate_tokens(str(block["thinking"]))
+
         return tokens
 
     def estimate_messages_tokens(self, messages: List[Dict[str, Any]]) -> int:
@@ -140,7 +154,7 @@ class ContextManager:
     PRUNE_MINIMUM = config.PRUNE_MINIMUM  # Minimum tokens to prune to make it worthwhile
     COMPACT_THRESHOLD = (
         config.COMPACT_THRESHOLD
-    )  # Compact at 75% capacity (lower due to estimation inaccuracy)
+    )  # Compact at PATCHPAL_COMPACT_THRESHOLD (default: 80% capacity)
     ENABLE_PROACTIVE_PRUNING = (
         config.PROACTIVE_PRUNING
     )  # Proactively prune after tool calls when outputs exceed PRUNE_PROTECT (default: true)

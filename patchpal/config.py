@@ -246,8 +246,8 @@ class Config:
 
     @property
     def COMPACT_THRESHOLD(self) -> float:
-        """Compact at N% of context capacity (default: 0.75 = 75%)."""
-        return float(os.getenv("PATCHPAL_COMPACT_THRESHOLD", "0.75"))
+        """Compact at N% of context capacity (default: 0.80 = 80%)."""
+        return float(os.getenv("PATCHPAL_COMPACT_THRESHOLD", "0.80"))
 
     @property
     def PROACTIVE_PRUNING(self) -> bool:

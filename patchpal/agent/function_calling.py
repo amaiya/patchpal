@@ -582,8 +582,8 @@ It's currently empty (just the template). The file is automatically loaded at se
     def _perform_auto_compaction(self):
         """Perform automatic context window compaction.
 
-        This method is called when the context window reaches 75% capacity.
-        It attempts pruning first, then full compaction if needed.
+        This method is called when the context window reaches COMPACT_THRESHOLD
+        (default: 80% capacity). It attempts pruning first, then full compaction if needed.
         """
         # Don't compact if we have very few messages - compaction summary
         # could be longer than the messages being removed
@@ -1492,7 +1492,7 @@ It's currently empty (just the template). The file is automatically loaded at se
                     return "Operation cancelled by user."
 
                 # Proactive pruning: If enabled and tool outputs exceed PRUNE_PROTECT threshold,
-                # summarize old outputs now (before hitting 75% compaction threshold)
+                # summarize old outputs now (before hitting COMPACT_THRESHOLD, default 80%)
                 # This keeps context lean and reduces tokens in subsequent API calls
                 if self.context_manager.ENABLE_PROACTIVE_PRUNING:
                     tool_output_tokens = sum(
