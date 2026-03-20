@@ -916,6 +916,12 @@ It's currently empty (just the template). The file is automatically loaded at se
         Returns:
             The agent's final response
         """
+        # Track URLs from user message (for web_fetch security)
+        if not config.ALLOW_DYNAMIC_URLS:
+            from patchpal.tools.web_tools import get_url_tracker
+
+            get_url_tracker().add_urls_from_text(user_message)
+
         # Add user message to history
         self.messages.append({"role": "user", "content": user_message})
 
@@ -1390,6 +1396,12 @@ It's currently empty (just the template). The file is automatically loaded at se
                     # Add tool result to messages
                     result_str = str(tool_result)
                     result_size = len(result_str)
+
+                    # Track URLs from tool results (for web_fetch security)
+                    if not config.ALLOW_DYNAMIC_URLS:
+                        from patchpal.tools.web_tools import get_url_tracker
+
+                        get_url_tracker().add_urls_from_text(result_str)
 
                     # Check if result contains an image (IMAGE_DATA format)
                     # Images bypass truncation and are formatted as multimodal content
