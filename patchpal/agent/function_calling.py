@@ -67,13 +67,21 @@ def _setup_bedrock_env():
     """Set up Bedrock-specific environment variables for LiteLLM.
 
     Configures custom region and endpoint URL for AWS Bedrock (including GovCloud and VPC endpoints).
-    Maps PatchPal's environment variables to LiteLLM's expected format.
+    Maps AWS SDK standard variables and PatchPal-specific variables to LiteLLM's expected format.
+
+    Region precedence:
+    1. AWS_BEDROCK_REGION (PatchPal-specific)
+    2. AWS_REGION (AWS SDK standard)
+    3. AWS_DEFAULT_REGION (AWS SDK standard)
+    4. AWS_REGION_NAME (LiteLLM-specific)
+
+    Endpoint precedence:
+    1. AWS_BEDROCK_ENDPOINT (PatchPal-specific)
+    2. AWS_ENDPOINT_URL_BEDROCK_RUNTIME (AWS SDK standard, boto3 1.28.0+)
+    3. AWS_ENDPOINT_URL (AWS SDK global, boto3 1.28.0+)
+    4. AWS_BEDROCK_RUNTIME_ENDPOINT (LiteLLM-specific)
     """
     # Set custom region (e.g., us-gov-east-1 for GovCloud)
-    # LiteLLM checks these environment variables in order:
-    # 1. AWS_REGION_NAME (LiteLLM-specific)
-    # 2. AWS_REGION (standard AWS)
-    # 3. AWS_DEFAULT_REGION (standard AWS)
     bedrock_region = (
         os.getenv("AWS_BEDROCK_REGION")
         or os.getenv("AWS_REGION")
@@ -90,7 +98,17 @@ def _setup_bedrock_env():
             os.environ["AWS_REGION"] = bedrock_region
 
     # Set custom endpoint URL (e.g., VPC endpoint or GovCloud endpoint)
-    bedrock_endpoint = os.getenv("AWS_BEDROCK_ENDPOINT")
+    # Check for custom endpoint in order of precedence:
+    # 1. AWS_BEDROCK_ENDPOINT (PatchPal-specific)
+    # 2. AWS_ENDPOINT_URL_BEDROCK_RUNTIME (AWS SDK standard, boto3 1.28.0+)
+    # 3. AWS_ENDPOINT_URL (AWS SDK global endpoint, boto3 1.28.0+)
+    # 4. AWS_BEDROCK_RUNTIME_ENDPOINT (LiteLLM-specific)
+    bedrock_endpoint = (
+        os.getenv("AWS_BEDROCK_ENDPOINT")
+        or os.getenv("AWS_ENDPOINT_URL_BEDROCK_RUNTIME")
+        or os.getenv("AWS_ENDPOINT_URL")
+        or os.getenv("AWS_BEDROCK_RUNTIME_ENDPOINT")
+    )
     if bedrock_endpoint and not os.getenv("AWS_BEDROCK_RUNTIME_ENDPOINT"):
         os.environ["AWS_BEDROCK_RUNTIME_ENDPOINT"] = bedrock_endpoint
 
