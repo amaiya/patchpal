@@ -276,16 +276,6 @@ patchpal-sandbox \
   -- autopilot --prompt-file task.md
 ```
 
-### Keep Container Running
-
-```bash
-# Drop into shell instead of running patchpal
-patchpal-sandbox --shell
-
-# Inside container
-$ patchpal --model anthropic/claude-sonnet-4-5
-```
-
 ## Custom Tools
 
 Custom tools work automatically in sandbox mode:
@@ -458,25 +448,6 @@ docker run -it --rm \
 
 ## Examples
 
-### Basic Interactive Session
-
-```bash
-cd ~/my-project
-patchpal-sandbox --env-file .env -- --model anthropic/claude-sonnet-4-5
-```
-
-### Autopilot with Network Restrictions
-
-```bash
-patchpal-sandbox \
-  --restrict-network \
-  --env-file .env \
-  -- autopilot \
-  --model anthropic/claude-sonnet-4-5 \
-  --prompt-file task.md \
-  --max-iterations 50
-```
-
 ### Multi-Phase Project
 
 ```bash
@@ -496,42 +467,11 @@ patchpal-sandbox --env-file .env -- autopilot \
   --prompt-file phase3.md
 ```
 
-### AWS Bedrock (Standard Regions)
-
-```bash
-# .env file:
-# AWS_ACCESS_KEY_ID=...
-# AWS_SECRET_ACCESS_KEY=...
-# AWS_REGION=us-east-1
-
-patchpal-sandbox \
-  --restrict-network \
-  --env-file .env \
-  -- autopilot \
-  --model bedrock/anthropic.claude-sonnet-4-5-20250929-v1:0 \
-  --prompt-file task.md
-```
-
-### OpenAI with Custom Base URL
-
-```bash
-# .env file:
-# OPENAI_API_KEY=sk-...
-# OPENAI_BASE_URL=https://custom-proxy.example.com/v1
-
-patchpal-sandbox \
-  --restrict-network \
-  --env-file .env \
-  -- autopilot \
-  --model openai/gpt-5-mini \
-  --prompt-file task.md
-```
-
 ### Debugging Inside Container
 
 ```bash
-# Start shell inside container
-patchpal-sandbox --env-file .env --shell
+# Start shell inside container with model pre-configured
+patchpal-sandbox --env-file .env --shell -- --model anthropic/claude-sonnet-4-5
 
 # Inside container
 $ pwd
@@ -540,9 +480,14 @@ $ pwd
 $ ls -la ~/.patchpal/tools/
 # Your custom tools are here
 
-$ patchpal --model anthropic/claude-sonnet-4-5
-# Run patchpal manually
+$ echo $PATCHPAL_MODEL
+anthropic/claude-sonnet-4-5
+
+$ patchpal
+# Runs with the pre-configured model automatically
 ```
+
+**Tip**: When you provide `--model` after `--`, it's automatically set as the `PATCHPAL_MODEL` environment variable, so you can run `patchpal` without specifying the model again.
 
 ## Learn More
 

@@ -552,6 +552,23 @@ def build_container_args(sandbox_args, patchpal_args):
     # Add image
     container_args.append(sandbox_args.image)
 
+    # If --shell flag is set, just run bash and return early
+    if sandbox_args.shell:
+        # Extract --model from patchpal args if provided and set as PATCHPAL_MODEL env var
+        if patchpal_args:
+            i = 0
+            while i < len(patchpal_args):
+                if patchpal_args[i] == "--model" and i + 1 < len(patchpal_args):
+                    model = patchpal_args[i + 1]
+                    # Insert env var before image
+                    image_index = len(container_args) - 1
+                    container_args.insert(image_index, f"PATCHPAL_MODEL={model}")
+                    container_args.insert(image_index, "-e")
+                    break
+                i += 1
+        container_args.append("bash")
+        return container_args, runtime
+
     # Build patchpal command
     patchpal_cmd = "patchpal"
     patchpal_cmd_args = list(patchpal_args)
@@ -695,6 +712,8 @@ SCRIPT OPTIONS:
                           --allow-url https://pypi.org (for pip install)
                           --allow-url https://github.com (for git operations)
     --test-restrictions Test network restrictions and exit (requires --restrict-network)
+    --shell             Drop into bash shell instead of running patchpal (for debugging)
+                        If --model is provided after --, sets PATCHPAL_MODEL env var automatically
     -h, --help          Show this help message
 
 ENVIRONMENT VARIABLES:
@@ -857,6 +876,13 @@ EXAMPLES:
     # PodMan: export OLLAMA_API_BASE=http://host.containers.internal:11434
     patchpal-sandbox --host-network -- --model ollama_chat/qwen3:8b
 
+    # Debugging: Drop into shell inside container
+    patchpal-sandbox --env-file .env --shell
+
+    # Debugging: Drop into shell with model pre-configured
+    patchpal-sandbox --env-file .env --shell -- --model anthropic/claude-sonnet-4-5
+    # Inside container: just run 'patchpal' (uses PATCHPAL_MODEL automatically)
+
 
 SEE ALSO:
     - docs/usage/autopilot.md - Autopilot safety guidelines
@@ -918,6 +944,11 @@ def main():
         "--test-restrictions",
         action="store_true",
         help="Test network restrictions and exit (requires --restrict-network)",
+    )
+    parser.add_argument(
+        "--shell",
+        action="store_true",
+        help="Drop into bash shell instead of running patchpal (for debugging)",
     )
 
     try:
