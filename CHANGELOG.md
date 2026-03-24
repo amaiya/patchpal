@@ -7,6 +7,18 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
+## 0.22.0 (TBD)
+
+### new:
+- `patchpal-sandbox` now supports network-isolated containers for maximal security.
+
+### changed:
+- N/A
+
+### fixed:
+- N/A
+
+
 ## 0.21.8 (2026-03-23)
 
 ### new:

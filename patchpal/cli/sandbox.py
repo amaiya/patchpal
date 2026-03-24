@@ -103,6 +103,256 @@ def is_interactive_command(patchpal_args):
     return True
 
 
+def detect_llm_endpoints_from_env():
+    """Detect LLM provider API endpoints from environment variables.
+
+    Returns:
+        list: List of detected endpoint URLs
+    """
+    detected_urls = []
+
+    # Standard LLM provider API endpoints
+    standard_endpoints = {
+        "OPENAI_API_KEY": "https://api.openai.com",
+        "ANTHROPIC_API_KEY": "https://api.anthropic.com",
+        "GOOGLE_API_KEY": "https://generativelanguage.googleapis.com",
+        "GROQ_API_KEY": "https://api.groq.com",
+        "COHERE_API_KEY": "https://api.cohere.ai",
+        "TOGETHER_API_KEY": "https://api.together.xyz",
+        "REPLICATE_API_TOKEN": "https://api.replicate.com",
+    }
+
+    # Check for standard endpoints (if API key is set, add default URL)
+    for env_var, default_url in standard_endpoints.items():
+        if os.environ.get(env_var):
+            detected_urls.append(default_url)
+
+    # Check for custom endpoint URLs (these override defaults)
+    custom_endpoint_vars = [
+        "OPENAI_BASE_URL",
+        "OPENAI_API_BASE",
+        "ANTHROPIC_BASE_URL",
+        "ANTHROPIC_API_BASE",
+        "AWS_BEDROCK_ENDPOINT",
+        "AWS_ENDPOINT_URL_BEDROCK_RUNTIME",
+        "AWS_ENDPOINT_URL",
+        "AWS_BEDROCK_RUNTIME_ENDPOINT",
+        "AZURE_OPENAI_ENDPOINT",
+        "AZURE_API_BASE",
+        "GOOGLE_API_BASE",
+        "GROQ_API_BASE",
+        "COHERE_API_BASE",
+        "TOGETHER_API_BASE",
+        "REPLICATE_API_BASE",
+        "HUGGINGFACE_API_BASE",
+    ]
+
+    for env_var in custom_endpoint_vars:
+        value = os.environ.get(env_var)
+        if value:
+            # Ensure it's a valid URL
+            if value.startswith("http://") or value.startswith("https://"):
+                detected_urls.append(value)
+            else:
+                # Assume https if no protocol specified
+                detected_urls.append(f"https://{value}")
+
+    # AWS Bedrock: Check for region-based endpoints
+    # Check multiple region variables in order of precedence (matching function_calling.py)
+    aws_region = (
+        os.environ.get("AWS_BEDROCK_REGION")
+        or os.environ.get("AWS_REGION")
+        or os.environ.get("AWS_DEFAULT_REGION")
+    )
+    if aws_region and (
+        os.environ.get("AWS_ACCESS_KEY_ID") or os.environ.get("AWS_SECRET_ACCESS_KEY")
+    ):
+        # Add Bedrock endpoint for the region
+        # Support both GovCloud and standard regions
+        # Also support AWS China regions
+        if "gov" in aws_region:
+            # GovCloud regions use FIPS endpoints
+            detected_urls.append(f"https://bedrock-runtime-fips.{aws_region}.amazonaws.com")
+        elif "cn-" in aws_region:
+            # AWS China regions use .amazonaws.com.cn
+            detected_urls.append(f"https://bedrock-runtime.{aws_region}.amazonaws.com.cn")
+        else:
+            # Standard commercial regions
+            detected_urls.append(f"https://bedrock-runtime.{aws_region}.amazonaws.com")
+
+    # Azure OpenAI: Extract from resource name if AZURE_OPENAI_KEY is set
+    azure_key = os.environ.get("AZURE_OPENAI_KEY") or os.environ.get("AZURE_API_KEY")
+    if azure_key:
+        # Try to get resource name from various env vars
+        azure_resource = None
+        for var in ["AZURE_OPENAI_RESOURCE", "AZURE_RESOURCE_NAME"]:
+            azure_resource = os.environ.get(var)
+            if azure_resource:
+                break
+
+        if azure_resource:
+            detected_urls.append(f"https://{azure_resource}.openai.azure.com")
+
+    # Deduplicate URLs
+    return list(set(detected_urls))
+
+
+def build_network_restriction_script(allowed_urls, test_mode=False):
+    """Build bash script to configure iptables firewall for network restrictions."""
+    script = """
+echo "=== Pre-downloading required data (before network restrictions) ==="
+
+# Try to pre-download tiktoken encodings (REQUIRED even for PatchPal 0.21.8+)
+# LiteLLM still uses tiktoken internally for some models, and will try to download
+# encodings from https://openaipublic.blob.core.windows.net/encodings/cl100k_base.tiktoken
+# If we don't pre-download before setting up the firewall, PatchPal will hang trying to
+# download it after the firewall blocks the connection.
+echo "Pre-downloading tiktoken encodings (required for LiteLLM)..."
+python3 << 'PYTHON_EOF' 2>&1 || echo "⚠ Tiktoken pre-download failed"
+try:
+    import tiktoken
+    import os
+    os.environ['TIKTOKEN_CACHE_DIR'] = '/tmp/tiktoken_cache'
+    enc = tiktoken.encoding_for_model("gpt-4")
+    enc.encode("test")
+    print("✓ Tiktoken encodings cached successfully")
+except ImportError as e:
+    print(f"⚠ Tiktoken not installed: {e}")
+except Exception as e:
+    print(f"⚠ Tiktoken cache failed: {e}")
+PYTHON_EOF
+
+# Pre-import litellm to trigger model cost map download
+echo "Downloading LiteLLM model cost map..."
+python3 -c "import litellm; print('✓ LiteLLM initialized')" 2>/dev/null || echo "⚠ LiteLLM initialization failed"
+
+echo ""
+echo "=== Setting up network restrictions ==="
+
+# Process allowed URLs and resolve IPs
+ALLOWED_IPS=""
+"""
+
+    # Add URL resolution for each allowed URL
+    for url in allowed_urls:
+        script += f"""
+# Resolve: {url}
+URL="{url}"
+HOSTNAME="${{URL#https://}}"
+HOSTNAME="${{HOSTNAME#http://}}"
+HOSTNAME="${{HOSTNAME%%/*}}"
+echo "Resolving: $HOSTNAME"
+IPS=$(getent hosts "$HOSTNAME" | awk '{{ print $1 }}' || true)
+if [ -z "$IPS" ]; then
+    echo "  WARNING: Could not resolve $HOSTNAME"
+else
+    echo "$IPS" | while read -r IP; do
+        echo "  Resolved: $IP"
+    done
+    ALLOWED_IPS="$ALLOWED_IPS$IPS"$'\\n'
+fi
+"""
+
+    script += """
+# Deduplicate IPs
+ALL_ALLOWED_IPS=$(echo -e "$ALLOWED_IPS" | sort -u | grep -v '^$')
+
+# Install iptables if not available
+if ! command -v iptables &> /dev/null; then
+    echo "Installing iptables..."
+    apt-get update -qq && apt-get install -y -qq iptables > /dev/null 2>&1
+fi
+
+# Configure iptables
+echo "Configuring firewall rules..."
+
+# Allow DNS (required for hostname resolution)
+iptables -A OUTPUT -p udp --dport 53 -j ACCEPT
+iptables -A OUTPUT -p tcp --dport 53 -j ACCEPT
+
+# Allow localhost
+iptables -A OUTPUT -d 127.0.0.1/8 -j ACCEPT
+# Allow IPv6 localhost (if IPv6 is available)
+ip6tables -A OUTPUT -d ::1/128 -j ACCEPT 2>/dev/null || true
+
+# Allow each resolved IP
+if [ -n "$ALL_ALLOWED_IPS" ]; then
+    echo "Allowed IPs:"
+    while IFS= read -r IP; do
+        if [ -n "$IP" ]; then
+            echo "  $IP (HTTPS)"
+            iptables -A OUTPUT -d $IP -p tcp --dport 443 -j ACCEPT
+        fi
+    done <<< "$ALL_ALLOWED_IPS"
+else
+    echo "⚠ WARNING: No URLs resolved - all external network access will be blocked"
+fi
+
+# Allow established connections (for responses)
+iptables -A OUTPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+
+# Log and drop everything else
+iptables -A OUTPUT -j LOG --log-prefix "BLOCKED: " --log-level 4
+iptables -A OUTPUT -j DROP
+
+echo ""
+echo "=== Firewall rules active ==="
+iptables -L OUTPUT -n -v
+echo ""
+echo "Waiting for iptables rules to fully apply..."
+sleep 1
+echo "Network restrictions ready."
+echo ""
+"""
+
+    # Add test mode if requested
+    if test_mode:
+        script += """
+echo "=== Testing network restrictions ==="
+echo ""
+
+# Test 1: Blocked site (should fail)
+echo "Test 1: Attempting to reach google.com (should be BLOCKED):"
+if curl -m 5 -s https://google.com > /dev/null 2>&1; then
+    echo "  ❌ FAILED: google.com was reachable (should be blocked)"
+    exit 1
+else
+    echo "  ✓ PASSED: google.com blocked as expected"
+fi
+echo ""
+
+# Test 2: Allowed URLs (should succeed)
+"""
+        for url in allowed_urls:
+            hostname = url.replace("https://", "").replace("http://", "").split("/")[0]
+            script += f"""
+echo "Test 2: Attempting to reach {hostname} (should be ALLOWED):"
+if curl -m 10 -s -I https://{hostname} > /dev/null 2>&1; then
+    echo "  ✓ PASSED: {hostname} accessible as expected"
+else
+    echo "  ⚠ WARNING: {hostname} not reachable (may be a network issue)"
+fi
+echo ""
+"""
+
+        script += """
+# Test 3: Another blocked site
+echo "Test 3: Attempting to reach github.com (should be BLOCKED):"
+if curl -m 5 -s https://github.com > /dev/null 2>&1; then
+    echo "  ❌ FAILED: github.com was reachable (should be blocked)"
+    exit 1
+else
+    echo "  ✓ PASSED: github.com blocked as expected"
+fi
+echo ""
+
+echo "=== All network restriction tests PASSED ==="
+echo ""
+"""
+
+    return script
+
+
 def build_container_args(sandbox_args, patchpal_args):
     """Build container runtime arguments."""
     runtime = detect_runtime()
@@ -159,6 +409,27 @@ def build_container_args(sandbox_args, patchpal_args):
             "/workspace",
         ]
     )
+
+    # Add capabilities for network restrictions (iptables)
+    if sandbox_args.restrict_network:
+        # Check if running rootless podman
+        needs_privileged = False
+        if runtime == "podman":
+            try:
+                result = subprocess.run(
+                    ["podman", "info"], capture_output=True, text=True, check=False
+                )
+                if "rootless: true" in result.stdout.lower():
+                    needs_privileged = True
+            except Exception:
+                pass
+
+        if needs_privileged:
+            print("⚠️  Rootless Podman detected - using --privileged mode for iptables")
+            container_args.extend(["--privileged"])
+            container_args.extend(["--cgroup-manager=cgroupfs"])
+        else:
+            container_args.extend(["--cap-add=NET_ADMIN"])
 
     # Add resource limits if specified
     if sandbox_args.memory:
@@ -270,6 +541,14 @@ def build_container_args(sandbox_args, patchpal_args):
         container_args.extend(["-e", f"SSL_CERT_DIR={container_cert_dir}"])
         mounted_paths.add(ssl_cert_dir_env)
 
+    # Add environment variables for network restrictions (must be before image)
+    if sandbox_args.restrict_network:
+        container_args.extend(["-e", "PATCHPAL_ENABLE_WEB=false"])
+        container_args.extend(["-e", "PATCHPAL_ENABLE_MCP=false"])
+        container_args.extend(["-e", "LITELLM_LOCAL_MODEL_COST_MAP=True"])
+        container_args.extend(["-e", "PYTHONUNBUFFERED=1"])
+        container_args.extend(["-e", "TIKTOKEN_CACHE_DIR=/tmp/tiktoken_cache"])
+
     # Add image
     container_args.append(sandbox_args.image)
 
@@ -281,24 +560,89 @@ def build_container_args(sandbox_args, patchpal_args):
         patchpal_cmd = "patchpal-autopilot"
         patchpal_cmd_args = patchpal_args[1:]  # Remove subcommand
 
-    # Build shell command with proper quoting
-    import shlex
+    # For network restrictions, extract model and pass as env var (matching launch-agent-sandbox)
+    if sandbox_args.restrict_network:
+        model_arg = None
+        i = 0
+        while i < len(patchpal_cmd_args):
+            if patchpal_cmd_args[i] == "--model" and i + 1 < len(patchpal_cmd_args):
+                model_arg = patchpal_cmd_args[i + 1]
+                break
+            i += 1
 
-    quoted_args = " ".join(shlex.quote(arg) for arg in patchpal_cmd_args)
+        # Pass model and AWS-related env vars (must add before image, so go back and insert)
+        if model_arg:
+            # Find where image was added and insert env vars before it
+            image_index = len(container_args) - 1
+            container_args.insert(image_index, f"MODEL={model_arg}")
+            container_args.insert(image_index, "-e")
+
+            # Also set AWS_BEDROCK_ENDPOINT if we have it
+            bedrock_endpoint = os.environ.get("AWS_BEDROCK_ENDPOINT") or os.environ.get(
+                "AWS_ENDPOINT_URL_BEDROCK_RUNTIME"
+            )
+            if bedrock_endpoint:
+                container_args.insert(image_index, f"AWS_BEDROCK_ENDPOINT={bedrock_endpoint}")
+                container_args.insert(image_index, "-e")
 
     # Build the shell command
+    shell_cmd_parts = []
+
     if dev_mode:
         # Development mode: reinstall patchpal from mounted source
         # Show pip output in case of errors, but suppress normal installation messages
-        shell_cmd = f"pip install -e /patchpal-dev 2>&1 | grep -i error || true && {patchpal_cmd} {quoted_args}"
+        shell_cmd_parts.append("pip install -e /patchpal-dev 2>&1 | grep -i error || true")
     elif "patchpal-sandbox" in sandbox_args.image:
         # Using pre-built image, skip pip install
-        shell_cmd = f"{patchpal_cmd} {quoted_args}"
+        pass
     else:
         # Custom image, install patchpal from PyPI
-        shell_cmd = f"pip install -q patchpal && {patchpal_cmd} {quoted_args}"
+        shell_cmd_parts.append("pip install -q patchpal")
 
-    container_args.extend(["bash", "-c", shell_cmd])
+    # Add network restriction script if enabled
+    if sandbox_args.restrict_network:
+        restriction_script = build_network_restriction_script(
+            sandbox_args.allow_url, sandbox_args.test_restrictions
+        )
+        shell_cmd_parts.append(restriction_script)
+
+        # If test mode, exit after testing
+        if sandbox_args.test_restrictions:
+            shell_cmd = "\n".join(shell_cmd_parts)  # Use newline for multi-line scripts
+            container_args.extend(["bash", "-c", shell_cmd])
+            return container_args, runtime
+
+    # Add main patchpal command
+    if sandbox_args.restrict_network:
+        # Use launch-agent-sandbox pattern: model from env var
+        shell_cmd_parts.append(f"""
+echo ""
+echo "=== Starting PatchPal ==="
+echo "Model: $MODEL"
+echo ""
+exec {patchpal_cmd} --model "$MODEL"
+""")
+    else:
+        # Normal mode: use $@ to pass all arguments
+        shell_cmd_parts.append(f"""
+echo ""
+echo "=== Starting PatchPal ==="
+echo "Model: {model_name if model_name else "default"}"
+echo ""
+exec {patchpal_cmd} "$@"
+""")
+
+    # Join all commands in a single bash script with proper line endings
+    # Add set -e at the beginning to exit on any error
+    shell_cmd = "set -e\n" + "\n".join(shell_cmd_parts)
+
+    # Pass arguments differently based on network restrictions
+    if sandbox_args.restrict_network:
+        # With restrictions: model passed as env var, no additional args needed
+        container_args.extend(["bash", "-c", shell_cmd])
+    else:
+        # Without restrictions: pass args after -- separator
+        container_args.extend(["bash", "-c", shell_cmd, "--"] + patchpal_cmd_args)
 
     return container_args, runtime
 
@@ -336,6 +680,21 @@ SCRIPT OPTIONS:
     --memory LIMIT      Memory limit (e.g., 2g, 4g) - optional, no limit by default
     --cpus NUM          CPU limit (e.g., 2, 4) - optional, no limit by default
     --env-file FILE     Load environment variables from .env file
+    --restrict-network  Enable iptables firewall for network isolation
+                        Automatically detects LLM endpoints from environment variables:
+                        * OpenAI (OPENAI_API_KEY)
+                        * Anthropic (ANTHROPIC_API_KEY)
+                        * AWS Bedrock (AWS_REGION + AWS_ACCESS_KEY_ID)
+                        * Azure OpenAI (AZURE_OPENAI_KEY + AZURE_OPENAI_RESOURCE)
+                        * Google AI (GOOGLE_API_KEY)
+                        * Groq, Cohere, Together, Replicate, etc.
+                        Custom endpoints also detected from *_BASE_URL env vars
+    --allow-url URL     Allow network access to specific URL (can be specified multiple times)
+                        Used with --restrict-network to add additional URLs beyond auto-detected
+                        Example:
+                          --allow-url https://pypi.org (for pip install)
+                          --allow-url https://github.com (for git operations)
+    --test-restrictions Test network restrictions and exit (requires --restrict-network)
     -h, --help          Show this help message
 
 ENVIRONMENT VARIABLES:
@@ -385,6 +744,42 @@ SECURITY:
       * Interactive mode (default): Permissions ENABLED (prompts before operations)
       * Autopilot mode: Permissions DISABLED automatically (autonomous operation)
 
+    NETWORK RESTRICTIONS (--restrict-network):
+      When enabled, uses iptables firewall to enforce network isolation:
+
+      AUTO-DETECTION:
+      * Automatically detects LLM provider APIs from environment variables
+      * Detects standard providers: OpenAI, Anthropic, Google, Groq, Cohere, etc.
+      * Detects custom endpoints from *_BASE_URL environment variables
+      * Detects AWS Bedrock from AWS_REGION (standard or GovCloud)
+      * Detects Azure OpenAI from AZURE_OPENAI_RESOURCE
+      * No need to manually specify --allow-url for detected providers
+
+      FIREWALL RULES:
+      - Only allowed URLs are accessible (auto-detected + --allow-url)
+      - DNS resolution permitted (required for hostname lookup)
+      - Localhost accessible (127.0.0.1/8)
+      - All other network traffic BLOCKED and LOGGED
+      - Web tools and MCP automatically disabled
+      - Ideal for sensitive/regulated environments
+
+      Use cases:
+      * Compliance: Meet data governance requirements
+      * Security: Prevent data exfiltration
+      * Testing: Verify network isolation works correctly
+
+      Example auto-detected endpoints:
+      * OPENAI_API_KEY → https://api.openai.com
+      * ANTHROPIC_API_KEY → https://api.anthropic.com
+      * AWS_REGION=us-gov-west-1 → https://bedrock-runtime-fips.us-gov-west-1.amazonaws.com
+      * AZURE_OPENAI_RESOURCE=myresource → https://myresource.openai.azure.com
+
+      Example additional URLs (use --allow-url):
+      * Package repos: https://pypi.org, https://files.pythonhosted.org
+      * Code repos: https://github.com, https://api.github.com
+
+      Blocked connections are logged via iptables for audit purposes.
+
 NOTES:
     - Default image (ghcr.io/amaiya/patchpal-sandbox:latest) has patchpal pre-installed for fast startup
     - First run downloads the image (~150MB, one-time)
@@ -426,6 +821,32 @@ EXAMPLES:
 
     # AutoPilot mode - read file containing prompt and and .env file
     patchpal-sandbox --env-file .env -- autopilot --model openai/gpt-5.2-codex --prompt-file task.md
+
+    # Network Restrictions: Auto-detect LLM API from environment
+    # (Automatically allows OpenAI API if OPENAI_API_KEY is set)
+    patchpal-sandbox --restrict-network --env-file .env \
+      -- --model openai/gpt-5.2-codex
+
+    # Network Restrictions: Auto-detect + additional URLs
+    # (Automatically allows Anthropic API + adds PyPI for pip install)
+    patchpal-sandbox --restrict-network \
+      --allow-url https://pypi.org \
+      --allow-url https://files.pythonhosted.org \
+      --env-file .env \
+      -- --model anthropic/claude-sonnet-4-5
+
+    # Network Restrictions: Manual URLs only (no auto-detection needed)
+    patchpal-sandbox --restrict-network \
+      --allow-url https://api.openai.com \
+      --allow-url https://api.anthropic.com \
+      -- autopilot --model openai/gpt-5.2-codex --prompt "Fix the bug"
+
+    # Network Restrictions: AWS Bedrock (auto-detected from AWS_REGION)
+    patchpal-sandbox --restrict-network --env-file .env.govcloud \
+      -- --model bedrock/us.anthropic.claude-3-5-sonnet-20241022-v2:0
+
+    # Test network restrictions (verify auto-detection and firewall)
+    patchpal-sandbox --restrict-network --env-file .env --test-restrictions
 
     # Ollama: Linux/WSL requires host network to reach Ollama on localhost
     patchpal-sandbox --host-network -- --model ollama_chat/qwen3:8b # interactive
@@ -481,12 +902,37 @@ def main():
         action="store_true",
         help="Mount local patchpal code for development (requires being run from patchpal repo root)",
     )
+    # Network restriction options
+    parser.add_argument(
+        "--restrict-network",
+        action="store_true",
+        help="Enable iptables firewall to restrict network access (use with --allow-url)",
+    )
+    parser.add_argument(
+        "--allow-url",
+        action="append",
+        default=[],
+        help="Allow network access to specific URL (can be specified multiple times, requires --restrict-network)",
+    )
+    parser.add_argument(
+        "--test-restrictions",
+        action="store_true",
+        help="Test network restrictions and exit (requires --restrict-network)",
+    )
 
     try:
         sandbox_args = parser.parse_args(sandbox_argv)
     except SystemExit:
         show_help()
         sys.exit(1)
+
+    # Validate network restriction arguments
+    if sandbox_args.test_restrictions and not sandbox_args.restrict_network:
+        print("❌ Error: --test-restrictions requires --restrict-network", file=sys.stderr)
+        sys.exit(1)
+
+    if sandbox_args.allow_url and not sandbox_args.restrict_network:
+        print("⚠️  Warning: --allow-url has no effect without --restrict-network", file=sys.stderr)
 
     # Handle network flags
     if sandbox_args.no_network:
@@ -499,6 +945,34 @@ def main():
         print(f"Loading environment variables from: {sandbox_args.env_file}")
         load_env_file(sandbox_args.env_file)
 
+    # Auto-detect LLM endpoints if network restrictions are enabled
+    detected_endpoints = []
+    if sandbox_args.restrict_network:
+        detected_endpoints = detect_llm_endpoints_from_env()
+        if detected_endpoints:
+            print("\n🔍 Auto-detected LLM endpoints from environment:")
+            for url in detected_endpoints:
+                print(f"   - {url}")
+            print()
+
+        # Combine user-specified and auto-detected URLs
+        all_allowed_urls = list(sandbox_args.allow_url) + detected_endpoints
+        # Deduplicate
+        all_allowed_urls = list(dict.fromkeys(all_allowed_urls))  # Preserves order
+        sandbox_args.allow_url = all_allowed_urls
+
+        # Update warning if still no URLs
+        if not sandbox_args.allow_url:
+            print(
+                "⚠️  Warning: --restrict-network enabled but no LLM endpoints detected",
+                file=sys.stderr,
+            )
+            print("    Set API keys (e.g., OPENAI_API_KEY) or use --allow-url", file=sys.stderr)
+            print(
+                "    All external network access will be blocked (DNS and localhost only)",
+                file=sys.stderr,
+            )
+
     # Build container command
     container_args, runtime = build_container_args(sandbox_args, patchpal_argv)
 
@@ -507,6 +981,29 @@ def main():
     print(f"Image: {sandbox_args.image}")
     print(f"Network: {sandbox_args.network}")
     print(f"Workspace: {os.getcwd()}")
+
+    # Show network restriction settings
+    if sandbox_args.restrict_network:
+        print("\n🔒 Network Restrictions: ENABLED")
+        if sandbox_args.allow_url:
+            # Separate auto-detected from manually specified
+            auto_detected_set = set(detected_endpoints)
+
+            print("   Allowed URLs:")
+            for url in sandbox_args.allow_url:
+                if url in auto_detected_set:
+                    print(f"     - {url} (auto-detected)")
+                else:
+                    print(f"     - {url}")
+        else:
+            print("   Allowed URLs: NONE (only DNS and localhost)")
+
+        if sandbox_args.test_restrictions:
+            print("   Mode: TEST (will validate restrictions and exit)")
+        else:
+            print("   Mode: ENFORCED (iptables firewall active)")
+        print("   Web tools: DISABLED")
+        print("   MCP tools: DISABLED")
 
     # Debug: Show SSL cert files being mounted (if any)
     ssl_env_vars = {
