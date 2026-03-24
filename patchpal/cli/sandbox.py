@@ -246,10 +246,10 @@ def build_container_args(sandbox_args, patchpal_args):
         container_args.extend(["-v", f"{ssl_cert_dir}:{ssl_cert_dir}:ro"])
         mounted_paths.add(ssl_cert_dir)
 
-    # Mount SSL_CERT_FILE and REQUESTS_CA_BUNDLE if set
+    # Mount SSL_CERT_FILE, REQUESTS_CA_BUNDLE, and CURL_CA_BUNDLE if set
     # Map host cert files to /tmp inside container since parent dirs may not exist
     cert_mapping = {}  # Track host path -> container path mappings
-    for env_var in ["SSL_CERT_FILE", "REQUESTS_CA_BUNDLE"]:
+    for env_var in ["SSL_CERT_FILE", "REQUESTS_CA_BUNDLE", "CURL_CA_BUNDLE"]:
         cert_path = os.environ.get(env_var)
         if cert_path and os.path.isfile(cert_path):
             if cert_path not in cert_mapping:
@@ -261,6 +261,14 @@ def build_container_args(sandbox_args, patchpal_args):
 
             # Always set the environment variable to point to the container path
             container_args.extend(["-e", f"{env_var}={cert_mapping[cert_path]}"])
+
+    # Mount SSL_CERT_DIR if set and is a directory
+    ssl_cert_dir_env = os.environ.get("SSL_CERT_DIR")
+    if ssl_cert_dir_env and os.path.isdir(ssl_cert_dir_env):
+        container_cert_dir = "/tmp/ssl-cert-dir"
+        container_args.extend(["-v", f"{ssl_cert_dir_env}:{container_cert_dir}:ro"])
+        container_args.extend(["-e", f"SSL_CERT_DIR={container_cert_dir}"])
+        mounted_paths.add(ssl_cert_dir_env)
 
     # Add image
     container_args.append(sandbox_args.image)
