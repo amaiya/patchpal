@@ -6,6 +6,17 @@ Most recent releases are shown at the top. Each release shows:
 - **Changed**: Additional parameters, changes to inputs or outputs, etc
 - **Fixed**: Bug fixes that don't change documented behaviour
 
+## 0.21.9 (2026-03-24)
+
+### new:
+- N/A
+
+### changed:
+- N/A
+
+### fixed:
+- Pin to `litellm<=1.82.6` due to [this](https://github.com/BerriAI/litellm/issues/24512)
+
 ## 0.21.8 (2026-03-23)
 
 ### new:
