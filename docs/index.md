@@ -11,6 +11,7 @@ Most agent frameworks are [built in TypeScript](https://news.ycombinator.com/ite
 **Key Features**
 
 - [Terminal Interface](usage/interactive.md) for interactive development
+- [Sandbox Mode](usage/sandbox.md) for secure container isolation
 - [Python SDK](usage/python-api.md) for flexibility and extensibility
 - [Built-In](features/tools.md) and [Custom Tools](features/custom-tools.md)
 - [Skills System](features/skills.md)
