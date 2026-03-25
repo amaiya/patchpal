@@ -819,7 +819,7 @@ It's currently empty (just the template). The file is automatically loaded at se
 
         except Exception as e:
             # Compaction failed - warn but continue
-            print(f"\033[1;31m✗ Compaction failed: {e}\033[0m")
+            print(f"\033[1;31m✗ Compaction failed: {e}\033[0m\n", flush=True)
             print(
                 "\033[1;33m   Continuing without compaction. Consider starting a new session.\033[0m\n"
             )
@@ -1203,7 +1203,7 @@ It's currently empty (just the template). The file is automatically loaded at se
                         tool_args = json.loads(tool_args_str)
                     except json.JSONDecodeError:
                         tool_result = f"Error: Invalid JSON arguments for {tool_name}"
-                        print(f"\033[1;31m✗ {tool_name}: Invalid arguments\033[0m")
+                        print(f"\033[1;31m✗ {tool_name}: Invalid arguments\033[0m\n", flush=True)
                     else:
                         # Get the tool function (check custom tools first, then built-in)
                         tool_func = self.custom_tool_funcs.get(tool_name) or TOOL_FUNCTIONS.get(
@@ -1211,7 +1211,7 @@ It's currently empty (just the template). The file is automatically loaded at se
                         )
                         if tool_func is None:
                             tool_result = f"Error: Unknown tool {tool_name}"
-                            print(f"\033[1;31m✗ Unknown tool: {tool_name}\033[0m")
+                            print(f"\033[1;31m✗ Unknown tool: {tool_name}\033[0m\n", flush=True)
                         else:
                             # Show tool call message
                             if tool_name in self.custom_tool_funcs:
@@ -1411,7 +1411,7 @@ It's currently empty (just the template). The file is automatically loaded at se
                                 tool_result = tool_func(**filtered_args)
                             except Exception as e:
                                 tool_result = f"Error executing {tool_name}: {e}"
-                                print(f"\033[1;31m✗ {tool_name}: {e}\033[0m")
+                                print(f"\033[1;31m✗ {tool_name}: {e}\033[0m\n", flush=True)
 
                     # Add tool result to messages
                     result_str = str(tool_result)

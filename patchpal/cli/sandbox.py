@@ -437,43 +437,46 @@ def build_container_args(sandbox_args, patchpal_args):
     if sandbox_args.cpus:
         container_args.extend(["--cpus", str(sandbox_args.cpus)])
 
-    # Pass through PATCHPAL_* environment variables
-    for key, value in os.environ.items():
-        if key.startswith("PATCHPAL_"):
-            container_args.extend(["-e", f"{key}={value}"])
+    # Pass through environment variables from host ONLY if --env-file is NOT provided
+    # This provides better isolation - when using --env-file, only those specific vars are used
+    if not sandbox_args.env_file:
+        # Pass through PATCHPAL_* environment variables
+        for key, value in os.environ.items():
+            if key.startswith("PATCHPAL_"):
+                container_args.extend(["-e", f"{key}={value}"])
 
-    # Pass through LLM provider environment variables
-    provider_prefixes = [
-        "OPENAI",
-        "ANTHROPIC",
-        "AWS",
-        "AZURE",
-        "GOOGLE",
-        "GROQ",
-        "COHERE",
-        "HUGGINGFACE",
-        "REPLICATE",
-        "TOGETHER",
-    ]
-    for key, value in os.environ.items():
-        if any(key.startswith(prefix + "_") for prefix in provider_prefixes):
-            container_args.extend(["-e", f"{key}={value}"])
+        # Pass through LLM provider environment variables
+        provider_prefixes = [
+            "OPENAI",
+            "ANTHROPIC",
+            "AWS",
+            "AZURE",
+            "GOOGLE",
+            "GROQ",
+            "COHERE",
+            "HUGGINGFACE",
+            "REPLICATE",
+            "TOGETHER",
+        ]
+        for key, value in os.environ.items():
+            if any(key.startswith(prefix + "_") for prefix in provider_prefixes):
+                container_args.extend(["-e", f"{key}={value}"])
 
-    # Pass through OLLAMA_* environment variables (including OLLAMA_CONTEXT_LENGTH)
-    # This allows you to set OLLAMA_API_BASE on the host to point to Ollama:
-    #
-    # For LOCAL Ollama on host machine:
-    #   - Linux/WSL2 with mirrored networking: Use --host-network (container shares host network)
-    #   - macOS/Windows Docker Desktop: export OLLAMA_API_BASE=http://host.docker.internal:11434
-    #   - Podman: export OLLAMA_API_BASE=http://host.containers.internal:11434
-    #
-    # For REMOTE Ollama:
-    #   export OLLAMA_API_BASE=http://192.168.1.100:11434
-    #
-    # The container will automatically receive OLLAMA_API_BASE environment variable.
-    for key, value in os.environ.items():
-        if key.startswith("OLLAMA_"):
-            container_args.extend(["-e", f"{key}={value}"])
+        # Pass through OLLAMA_* environment variables (including OLLAMA_CONTEXT_LENGTH)
+        # This allows you to set OLLAMA_API_BASE on the host to point to Ollama:
+        #
+        # For LOCAL Ollama on host machine:
+        #   - Linux/WSL2 with mirrored networking: Use --host-network (container shares host network)
+        #   - macOS/Windows Docker Desktop: export OLLAMA_API_BASE=http://host.docker.internal:11434
+        #   - Podman: export OLLAMA_API_BASE=http://host.containers.internal:11434
+        #
+        # For REMOTE Ollama:
+        #   export OLLAMA_API_BASE=http://192.168.1.100:11434
+        #
+        # The container will automatically receive OLLAMA_API_BASE environment variable.
+        for key, value in os.environ.items():
+            if key.startswith("OLLAMA_"):
+                container_args.extend(["-e", f"{key}={value}"])
 
     # Track mounted paths to avoid duplicates
     mounted_paths = set()
@@ -717,23 +720,27 @@ SCRIPT OPTIONS:
     -h, --help          Show this help message
 
 ENVIRONMENT VARIABLES:
-    The following environment variables are automatically passed to the container:
+    Environment variable behavior depends on whether --env-file is provided:
 
-    - All PATCHPAL_* variables (e.g., PATCHPAL_REQUIRE_PERMISSION)
-    - All OPENAI_* variables (e.g., OPENAI_API_KEY, OPENAI_BASE_URL)
-    - All ANTHROPIC_* variables (e.g., ANTHROPIC_API_KEY)
-    - All AWS_* variables (e.g., AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
-    - All AZURE_* variables (e.g., AZURE_OPENAI_KEY, AZURE_OPENAI_ENDPOINT)
-    - All GOOGLE_* variables (e.g., GOOGLE_API_KEY)
-    - All GROQ_* variables (e.g., GROQ_API_KEY)
-    - All COHERE_* variables (e.g., COHERE_API_KEY)
-    - All HUGGINGFACE_* variables (e.g., HUGGINGFACE_API_KEY)
-    - All REPLICATE_* variables (e.g., REPLICATE_API_TOKEN)
-    - All TOGETHER_* variables (e.g., TOGETHER_API_KEY)
-    - All OLLAMA_* variables (e.g., OLLAMA_CONTEXT_LENGTH - auto-set if not specified)
-    - SSL_CERT_FILE and REQUESTS_CA_BUNDLE (auto-mounted if paths exist)
+    WITHOUT --env-file (uses host environment):
+      - All PATCHPAL_* variables (e.g., PATCHPAL_REQUIRE_PERMISSION)
+      - All OPENAI_* variables (e.g., OPENAI_API_KEY, OPENAI_BASE_URL)
+      - All ANTHROPIC_* variables (e.g., ANTHROPIC_API_KEY)
+      - All AWS_* variables (e.g., AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
+      - All AZURE_* variables (e.g., AZURE_OPENAI_KEY, AZURE_OPENAI_ENDPOINT)
+      - All GOOGLE_* variables (e.g., GOOGLE_API_KEY)
+      - All GROQ_* variables (e.g., GROQ_API_KEY)
+      - All COHERE_* variables (e.g., COHERE_API_KEY)
+      - All HUGGINGFACE_* variables (e.g., HUGGINGFACE_API_KEY)
+      - All REPLICATE_* variables (e.g., REPLICATE_API_TOKEN)
+      - All TOGETHER_* variables (e.g., TOGETHER_API_KEY)
+      - All OLLAMA_* variables (e.g., OLLAMA_CONTEXT_LENGTH - auto-set if not specified)
+      - SSL_CERT_FILE and REQUESTS_CA_BUNDLE (auto-mounted if paths exist)
 
-    You can load these from a .env file using --env-file:
+    WITH --env-file (isolated mode):
+      - ONLY variables from the specified .env file are passed
+      - Host environment variables are NOT passed (better isolation)
+      - SSL certificates still auto-mounted (for HTTPS to LLM APIs)
 
     Example .env file:
         # API Keys

@@ -7,16 +7,16 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
-## 0.22.0 (TBD)
+## 0.22.0 (2026-03-24)
 
 ### new:
 - `patchpal-sandbox` now supports network-isolated containers for maximal security.
 
 ### changed:
-- N/A
+- `--env-file` flag in `patchpal-sandbox` suppresses host shell environment variables
 
 ### fixed:
-- N/A
+- Add newline after error messages to prevent *WARNING: your terminal doesn't support cursor position requests (CPR).*
 
 
 ## 0.21.8 (2026-03-23)

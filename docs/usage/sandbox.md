@@ -252,12 +252,19 @@ patchpal-sandbox \
 
 ### Environment Variables
 
+Environment variable behavior depends on whether `--env-file` is provided:
+
+**Without `--env-file` (uses host environment):**
 ```bash
-# Individual variables
-patchpal-sandbox \
-  -e OPENAI_API_KEY=$OPENAI_API_KEY \
-  -e CUSTOM_VAR=value \
-  -- --model openai/gpt-5-mini
+# Host environment variables (AWS_*, OPENAI_*, etc.) are passed through
+patchpal-sandbox -- --model openai/gpt-5-mini
+```
+
+**With `--env-file` (isolated mode):**
+```bash
+# ONLY variables from .env file are used (better isolation)
+# Host environment variables are NOT passed
+patchpal-sandbox --env-file .env -- --model anthropic/claude-sonnet-4-5
 
 # Multiple .env files (later files override earlier)
 patchpal-sandbox \
@@ -265,6 +272,8 @@ patchpal-sandbox \
   --env-file .env.local \
   -- --model anthropic/claude-sonnet-4-5
 ```
+
+**Note**: When using `--env-file`, host environment variables are intentionally excluded for better security isolation. This prevents accidental credential leakage from your shell environment.
 
 ### Resource Limits
 

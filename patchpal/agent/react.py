@@ -533,7 +533,7 @@ class ReActAgent:
             tool_func = self.tool_functions.get(tool_name)
             if tool_func is None:
                 error_msg = f"Error: Unknown tool '{tool_name}'"
-                print(f"\033[1;31m✗ {error_msg}\033[0m")
+                print(f"\033[1;31m✗ {error_msg}\033[0m\n", flush=True)
                 self.messages.append({"role": "user", "content": f"Observation: {error_msg}"})
                 continue
 
@@ -571,7 +571,7 @@ class ReActAgent:
 
             except Exception as e:
                 tool_result = f"Error executing {tool_name}: {e}"
-                print(f"\033[1;31m✗ {tool_name}: {e}\033[0m")
+                print(f"\033[1;31m✗ {tool_name}: {e}\033[0m\n", flush=True)
 
             # Check if operation was cancelled
             if str(tool_result).strip() == "Operation cancelled by user.":
