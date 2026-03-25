@@ -1,0 +1,3012 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="An agentic coding and automation assistant, supporting both local and cloud LLMs">
+      
+      
+      
+        <link rel="canonical" href="https://amaiya.github.io/patchpal/usage/sandbox/">
+      
+      
+        <link rel="prev" href="../interactive/">
+      
+      
+        <link rel="next" href="../python-api/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Sandbox Mode - PatchPal Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#sandbox-mode" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="PatchPal Documentation" class="md-header__button md-logo" aria-label="PatchPal Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            PatchPal Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Sandbox Mode
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/amaiya/patchpal" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    amaiya/patchpal
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../getting-started/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Getting Started
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../features/tools/" class="md-tabs__link">
+          
+  
+  
+  Features
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../models/overview/" class="md-tabs__link">
+          
+  
+  
+  Model Configuration
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../interactive/" class="md-tabs__link">
+          
+  
+  
+  Usage
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../configuration/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Configuration
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../safety/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Safety
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../context-management/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Context Management
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../troubleshooting/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Troubleshooting
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../reference/agent/" class="md-tabs__link">
+          
+  
+  
+  API Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="PatchPal Documentation" class="md-nav__button md-logo" aria-label="PatchPal Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    PatchPal Documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/amaiya/patchpal" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    amaiya/patchpal
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Features
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Features
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../features/tools/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Built-In Tools
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../features/custom-tools/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Custom Tools
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../features/skills/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Skills System
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../features/mcp/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MCP Integration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../features/memory/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Project Memory
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Model Configuration
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Model Configuration
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../models/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../models/local-models/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Local Models
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../models/offline-deployment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Offline Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Usage
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Usage
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../interactive/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Interactive Usage
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sandbox Mode
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sandbox Mode
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#quick-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quick Start
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#why-use-sandbox-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why Use Sandbox Mode?
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Why Use Sandbox Mode?">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#security-benefits" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Security Benefits
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#convenience-benefits" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Convenience Benefits
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Installation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#basic-usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Basic Usage
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Basic Usage">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#interactive-mode-permissions-enabled" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Interactive Mode (Permissions Enabled)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#autopilot-mode-permissions-disabled-automatically" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Autopilot Mode (Permissions Disabled Automatically)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#local-models-ollama" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Local Models (Ollama)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#network-restrictions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Network Restrictions
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Network Restrictions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-gets-blocked" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What Gets Blocked
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-stays-allowed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What Stays Allowed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#auto-detected-llm-endpoints" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Auto-Detected LLM Endpoints
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#testing-network-restrictions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Testing Network Restrictions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#aws-bedrock-govcloud-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AWS Bedrock GovCloud Example
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#security-considerations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Security Considerations
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#advanced-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Advanced Options
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Advanced Options">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#container-runtime-selection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Container Runtime Selection
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#custom-container-image" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Custom Container Image
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#additional-volume-mounts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Additional Volume Mounts
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#environment-variables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Environment Variables
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#resource-limits" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Resource Limits
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#custom-tools" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Custom Tools
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Troubleshooting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#docker-command-not-found" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        "docker: command not found"
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#permission-denied-errors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        "Permission denied" errors
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#firewall-rules-not-working" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Firewall rules not working
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ollama-connection-refused" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ollama connection refused
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#slow-startup-times" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Slow startup times
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#corporate-proxyfirewall-issues" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Corporate proxy/firewall issues
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#comparison-with-manual-dockerpodman" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Comparison with Manual Docker/Podman
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Comparison with Manual Docker/Podman">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#using-patchpal-sandbox-recommended" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Using patchpal-sandbox (Recommended)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#manual-docker-command" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Manual Docker Command
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#best-practices" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Best Practices
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Best Practices">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#always-use-sandbox-for" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Always Use Sandbox For
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#consider-sandbox-for" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Consider Sandbox For
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#optional-without-sandbox" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Optional Without Sandbox
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#network-restriction-recommendations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Network Restriction Recommendations
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Examples
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Examples">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#multi-phase-project" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Multi-Phase Project
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#debugging-inside-container" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Debugging Inside Container
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#learn-more" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Learn More
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../python-api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Python SDK
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../autopilot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Autopilot Mode
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Example Tasks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../safety/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Safety
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../context-management/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Context Management
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_10" >
+        
+          
+          <label class="md-nav__link" for="__nav_10" id="__nav_10_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_10_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/agent/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/tools/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tools
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/context/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Context Management
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/skills/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Skills
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/custom-tools/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Custom Tools
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#quick-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quick Start
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#why-use-sandbox-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why Use Sandbox Mode?
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Why Use Sandbox Mode?">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#security-benefits" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Security Benefits
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#convenience-benefits" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Convenience Benefits
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Installation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#basic-usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Basic Usage
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Basic Usage">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#interactive-mode-permissions-enabled" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Interactive Mode (Permissions Enabled)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#autopilot-mode-permissions-disabled-automatically" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Autopilot Mode (Permissions Disabled Automatically)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#local-models-ollama" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Local Models (Ollama)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#network-restrictions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Network Restrictions
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Network Restrictions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-gets-blocked" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What Gets Blocked
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-stays-allowed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What Stays Allowed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#auto-detected-llm-endpoints" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Auto-Detected LLM Endpoints
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#testing-network-restrictions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Testing Network Restrictions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#aws-bedrock-govcloud-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AWS Bedrock GovCloud Example
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#security-considerations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Security Considerations
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#advanced-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Advanced Options
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Advanced Options">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#container-runtime-selection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Container Runtime Selection
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#custom-container-image" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Custom Container Image
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#additional-volume-mounts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Additional Volume Mounts
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#environment-variables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Environment Variables
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#resource-limits" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Resource Limits
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#custom-tools" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Custom Tools
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Troubleshooting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#docker-command-not-found" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        "docker: command not found"
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#permission-denied-errors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        "Permission denied" errors
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#firewall-rules-not-working" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Firewall rules not working
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ollama-connection-refused" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ollama connection refused
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#slow-startup-times" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Slow startup times
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#corporate-proxyfirewall-issues" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Corporate proxy/firewall issues
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#comparison-with-manual-dockerpodman" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Comparison with Manual Docker/Podman
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Comparison with Manual Docker/Podman">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#using-patchpal-sandbox-recommended" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Using patchpal-sandbox (Recommended)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#manual-docker-command" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Manual Docker Command
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#best-practices" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Best Practices
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Best Practices">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#always-use-sandbox-for" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Always Use Sandbox For
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#consider-sandbox-for" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Consider Sandbox For
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#optional-without-sandbox" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Optional Without Sandbox
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#network-restriction-recommendations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Network Restriction Recommendations
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Examples
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Examples">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#multi-phase-project" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Multi-Phase Project
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#debugging-inside-container" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Debugging Inside Container
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#learn-more" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Learn More
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="sandbox-mode">Sandbox Mode<a class="headerlink" href="#sandbox-mode" title="Permanent link">&para;</a></h1>
+<p><strong>Sandbox mode</strong> runs PatchPal inside an isolated Docker or Podman container, providing security boundaries for AI agent operations. This is the <strong>recommended</strong> way to run PatchPal, especially for autopilot mode or when working with untrusted code.</p>
+<h2 id="quick-start">Quick Start<a class="headerlink" href="#quick-start" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1"># Interactive mode (with permissions enabled)</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>patchpal-sandbox<span class="w"> </span>--env-file<span class="w"> </span>.env<span class="w"> </span>--<span class="w"> </span>--model<span class="w"> </span>anthropic/claude-sonnet-4-5
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="c1"># Autopilot mode (permissions disabled automatically)</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>patchpal-sandbox<span class="w"> </span>--env-file<span class="w"> </span>.env<span class="w"> </span>--<span class="w"> </span>autopilot<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="w">  </span>--model<span class="w"> </span>anthropic/claude-sonnet-4-5<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="w">  </span>--prompt-file<span class="w"> </span>task.md
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="c1"># With local Ollama model</span>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>patchpal-sandbox<span class="w"> </span>--host-network<span class="w"> </span>--<span class="w"> </span>--model<span class="w"> </span>ollama_chat/llama3.2
+</code></pre></div>
+<p>The <code>--</code> separator distinguishes sandbox options (left side) from PatchPal arguments (right side).</p>
+<h2 id="why-use-sandbox-mode">Why Use Sandbox Mode?<a class="headerlink" href="#why-use-sandbox-mode" title="Permanent link">&para;</a></h2>
+<h3 id="security-benefits">Security Benefits<a class="headerlink" href="#security-benefits" title="Permanent link">&para;</a></h3>
+<p><strong>1. Ephemeral Filesystem</strong>
+- Container is destroyed after each session (<code>--rm</code> flag)
+- Malicious code can't persist backdoors
+- File modifications isolated to mounted <code>/workspace</code></p>
+<p><strong>2. Network Isolation</strong> (with <code>--restrict-network</code>)
+- Blocks data exfiltration attempts
+- Prevents backdoor downloads
+- Allows only whitelisted endpoints</p>
+<p><strong>3. Resource Limits</strong>
+- Memory and CPU constraints prevent resource exhaustion
+- Protects host system from runaway processes</p>
+<p><strong>4. Process Isolation</strong>
+- Agent runs in separate namespace
+- Can't access host processes or system files (outside mounts)</p>
+<h3 id="convenience-benefits">Convenience Benefits<a class="headerlink" href="#convenience-benefits" title="Permanent link">&para;</a></h3>
+<ul>
+<li>✅ Pre-built image with patchpal installed (fast startup)</li>
+<li>✅ Auto-detects Docker/Podman (prefers Podman rootless)</li>
+<li>✅ Auto-configures Ollama context lengths</li>
+<li>✅ Loads API keys from <code>.env</code> files</li>
+<li>✅ Mounts custom tools automatically</li>
+<li>✅ Clean environment on each run</li>
+</ul>
+<h2 id="installation">Installation<a class="headerlink" href="#installation" title="Permanent link">&para;</a></h2>
+<p>No separate installation needed - <code>patchpal-sandbox</code> is included with PatchPal:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>pip<span class="w"> </span>install<span class="w"> </span>patchpal
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>patchpal-sandbox<span class="w"> </span>--help
+</code></pre></div>
+<p><strong>First Run</strong>: Downloads pre-built container image (~150MB, one-time)
+<strong>Subsequent Runs</strong>: Start instantly (no pip install needed)</p>
+<h2 id="basic-usage">Basic Usage<a class="headerlink" href="#basic-usage" title="Permanent link">&para;</a></h2>
+<h3 id="interactive-mode-permissions-enabled">Interactive Mode (Permissions Enabled)<a class="headerlink" href="#interactive-mode-permissions-enabled" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># Using .env file for API keys</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>patchpal-sandbox<span class="w"> </span>--env-file<span class="w"> </span>.env<span class="w"> </span>--<span class="w"> </span>--model<span class="w"> </span>anthropic/claude-sonnet-4-5
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="c1"># Passing API key directly</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>patchpal-sandbox<span class="w"> </span>-e<span class="w"> </span><span class="nv">ANTHROPIC_API_KEY</span><span class="o">=</span><span class="nv">$ANTHROPIC_API_KEY</span><span class="w"> </span>--<span class="w"> </span>--model<span class="w"> </span>anthropic/claude-sonnet-4-5
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="c1"># Using multiple .env files</span>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>patchpal-sandbox<span class="w"> </span>--env-file<span class="w"> </span>.env<span class="w"> </span>--env-file<span class="w"> </span>.env.local<span class="w"> </span>--<span class="w"> </span>--model<span class="w"> </span>openai/gpt-5-mini
+</code></pre></div>
+<h3 id="autopilot-mode-permissions-disabled-automatically">Autopilot Mode (Permissions Disabled Automatically)<a class="headerlink" href="#autopilot-mode-permissions-disabled-automatically" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="c1"># From prompt file</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>patchpal-sandbox<span class="w"> </span>--env-file<span class="w"> </span>.env<span class="w"> </span>--<span class="w"> </span>autopilot<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">  </span>--model<span class="w"> </span>anthropic/claude-sonnet-4-5<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">  </span>--prompt-file<span class="w"> </span>task.md<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">  </span>--max-iterations<span class="w"> </span><span class="m">30</span>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="c1"># Inline prompt</span>
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>patchpal-sandbox<span class="w"> </span>--env-file<span class="w"> </span>.env<span class="w"> </span>--<span class="w"> </span>autopilot<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="w">  </span>--model<span class="w"> </span>anthropic/claude-sonnet-4-5<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a><span class="w">  </span>--prompt<span class="w"> </span><span class="s2">&quot;Build a calculator with tests&quot;</span>
+</code></pre></div>
+<p>See <a href="../autopilot/">Autopilot Mode</a> for comprehensive autopilot documentation.</p>
+<h3 id="local-models-ollama">Local Models (Ollama)<a class="headerlink" href="#local-models-ollama" title="Permanent link">&para;</a></h3>
+<p>When using local Ollama models, use <code>--host-network</code> to access the host's Ollama service:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>patchpal-sandbox<span class="w"> </span>--host-network<span class="w"> </span>--<span class="w"> </span>--model<span class="w"> </span>ollama_chat/llama3.2
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="c1"># Autopilot with Ollama</span>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>patchpal-sandbox<span class="w"> </span>--host-network<span class="w"> </span>--<span class="w"> </span>autopilot<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="w">  </span>--model<span class="w"> </span>ollama_chat/gpt-oss:120b<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="w">  </span>--prompt-file<span class="w"> </span>task.md
+</code></pre></div>
+<p><strong>Note</strong>: <code>--host-network</code> shares the host's network stack with the container (required for <code>localhost:11434</code> access). This bypasses network isolation.</p>
+<h2 id="network-restrictions">Network Restrictions<a class="headerlink" href="#network-restrictions" title="Permanent link">&para;</a></h2>
+<p>For maximum security, use <code>--restrict-network</code> to isolate the container from the internet while allowing access to required LLM APIs:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="c1"># Auto-detects LLM endpoints from environment variables</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>patchpal-sandbox<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w">  </span>--restrict-network<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="w">  </span>--env-file<span class="w"> </span>.env<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="w">  </span>--<span class="w"> </span>autopilot<span class="w"> </span>--prompt-file<span class="w"> </span>task.md
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="c1"># With custom allowed URLs</span>
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>patchpal-sandbox<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="w">  </span>--restrict-network<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a><span class="w">  </span>--allow-url<span class="w"> </span>https://api.openai.com<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a><span class="w">  </span>--allow-url<span class="w"> </span>https://custom-api.example.com<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a><span class="w">  </span>--env-file<span class="w"> </span>.env<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a><span class="w">  </span>--<span class="w"> </span>autopilot<span class="w"> </span>--prompt-file<span class="w"> </span>task.md
+</code></pre></div>
+<h3 id="what-gets-blocked">What Gets Blocked<a class="headerlink" href="#what-gets-blocked" title="Permanent link">&para;</a></h3>
+<p>With <code>--restrict-network</code>, the firewall blocks:
+- ❌ GitHub, PyPI, npm, Docker Hub
+- ❌ General internet access (google.com, etc.)
+- ❌ Data exfiltration attempts
+- ❌ Backdoor downloads</p>
+<h3 id="what-stays-allowed">What Stays Allowed<a class="headerlink" href="#what-stays-allowed" title="Permanent link">&para;</a></h3>
+<ul>
+<li>✅ Localhost (127.0.0.1/8)</li>
+<li>✅ DNS queries</li>
+<li>✅ Auto-detected LLM provider APIs</li>
+<li>✅ URLs specified with <code>--allow-url</code></li>
+</ul>
+<h3 id="auto-detected-llm-endpoints">Auto-Detected LLM Endpoints<a class="headerlink" href="#auto-detected-llm-endpoints" title="Permanent link">&para;</a></h3>
+<p>The sandbox automatically detects and allows these endpoints based on your environment variables:</p>
+<table>
+<thead>
+<tr>
+<th>Provider</th>
+<th>Environment Variable</th>
+<th>Endpoint Allowed</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>OpenAI</td>
+<td><code>OPENAI_API_KEY</code></td>
+<td><code>https://api.openai.com</code></td>
+</tr>
+<tr>
+<td>Anthropic</td>
+<td><code>ANTHROPIC_API_KEY</code></td>
+<td><code>https://api.anthropic.com</code></td>
+</tr>
+<tr>
+<td>Google AI</td>
+<td><code>GEMINI_API_KEY</code></td>
+<td><code>https://generativelanguage.googleapis.com</code></td>
+</tr>
+<tr>
+<td>AWS Bedrock</td>
+<td><code>AWS_REGION</code></td>
+<td>Region-specific endpoint</td>
+</tr>
+<tr>
+<td>Azure OpenAI</td>
+<td><code>AZURE_OPENAI_RESOURCE</code></td>
+<td><code>https://&lt;resource&gt;.openai.azure.com</code></td>
+</tr>
+<tr>
+<td>Groq</td>
+<td><code>GROQ_API_KEY</code></td>
+<td><code>https://api.groq.com</code></td>
+</tr>
+<tr>
+<td>Cohere</td>
+<td><code>COHERE_API_KEY</code></td>
+<td><code>https://api.cohere.ai</code></td>
+</tr>
+<tr>
+<td>Together</td>
+<td><code>TOGETHER_API_KEY</code></td>
+<td><code>https://api.together.xyz</code></td>
+</tr>
+<tr>
+<td>Replicate</td>
+<td><code>REPLICATE_API_KEY</code></td>
+<td><code>https://api.replicate.com</code></td>
+</tr>
+</tbody>
+</table>
+<p>Custom endpoints are also detected from variables like:
+- <code>OPENAI_BASE_URL</code>, <code>OPENAI_API_BASE</code>, <code>OPENAI_ENDPOINT</code>
+- <code>ANTHROPIC_BASE_URL</code>, <code>ANTHROPIC_API_BASE</code>
+- <code>AWS_BEDROCK_ENDPOINT</code>, <code>AWS_ENDPOINT_URL_BEDROCK_RUNTIME</code>
+- Any <code>*_BASE_URL</code>, <code>*_API_BASE</code>, <code>*_ENDPOINT</code> pattern</p>
+<h3 id="testing-network-restrictions">Testing Network Restrictions<a class="headerlink" href="#testing-network-restrictions" title="Permanent link">&para;</a></h3>
+<p>Validate firewall rules without running PatchPal:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>patchpal-sandbox<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">  </span>--restrict-network<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">  </span>--test-restrictions<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="w">  </span>--env-file<span class="w"> </span>.env
+</code></pre></div>
+<p>This tests that:
+- Blocked sites (google.com, github.com) are inaccessible
+- Allowed LLM endpoints are accessible
+- Returns exit code 0 on success, 1 on failure</p>
+<h3 id="aws-bedrock-govcloud-example">AWS Bedrock GovCloud Example<a class="headerlink" href="#aws-bedrock-govcloud-example" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="c1"># .env.govcloud file:</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="c1"># AWS_ACCESS_KEY_ID=...</span>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="c1"># AWS_SECRET_ACCESS_KEY=...</span>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="c1"># AWS_BEDROCK_REGION=us-gov-east-1</span>
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>patchpal-sandbox<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="w">  </span>--restrict-network<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a><span class="w">  </span>--env-file<span class="w"> </span>.env.govcloud<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a><span class="w">  </span>--<span class="w"> </span>autopilot<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a><span class="w">  </span>--model<span class="w"> </span>bedrock/arn:aws-us-gov:bedrock:us-gov-east-1::inference-profile/us-gov.anthropic.claude-sonnet-4-5-20250929-v1:0<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a><span class="w">  </span>--prompt-file<span class="w"> </span>task.md
+</code></pre></div>
+<p>The sandbox automatically detects <code>us-gov-east-1</code> and allows <code>https://bedrock-runtime.us-gov-east-1.amazonaws.com</code>.</p>
+<h3 id="security-considerations">Security Considerations<a class="headerlink" href="#security-considerations" title="Permanent link">&para;</a></h3>
+<p>⚠️ <strong>Container credentials</strong>: AWS credentials passed via <code>--env-file</code> are visible to the container. However:
+  - Exfiltration is still blocked by network restrictions
+  - Credentials don't persist after container exit
+  - Only affects that specific session</p>
+<p>For maximum security:
+- Use short-lived credentials (IAM roles, temporary tokens)
+- Use restrictive IAM policies (minimum required permissions)
+- Monitor AWS CloudTrail for unexpected API calls</p>
+<h2 id="advanced-options">Advanced Options<a class="headerlink" href="#advanced-options" title="Permanent link">&para;</a></h2>
+<h3 id="container-runtime-selection">Container Runtime Selection<a class="headerlink" href="#container-runtime-selection" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="c1"># Force Docker (default: auto-detect)</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>patchpal-sandbox<span class="w"> </span>--runtime<span class="w"> </span>docker<span class="w"> </span>--<span class="w"> </span>--model<span class="w"> </span>anthropic/claude-sonnet-4-5
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="c1"># Force Podman</span>
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>patchpal-sandbox<span class="w"> </span>--runtime<span class="w"> </span>podman<span class="w"> </span>--<span class="w"> </span>--model<span class="w"> </span>anthropic/claude-sonnet-4-5
+</code></pre></div>
+<p><strong>Auto-detection logic</strong>:
+1. Check if <code>podman</code> is available → use Podman rootless
+2. Fallback to <code>docker</code></p>
+<h3 id="custom-container-image">Custom Container Image<a class="headerlink" href="#custom-container-image" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="c1"># Use latest PyPI version (slower startup - requires pip install)</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>patchpal-sandbox<span class="w"> </span>--image<span class="w"> </span>python:3.11-slim<span class="w"> </span>--<span class="w"> </span>--model<span class="w"> </span>anthropic/claude-sonnet-4-5
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="c1"># Use specific patchpal version</span>
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>patchpal-sandbox<span class="w"> </span>--image<span class="w"> </span>ghcr.io/amaiya/patchpal-sandbox:0.21.8<span class="w"> </span>--<span class="w"> </span>--model<span class="w"> </span>anthropic/claude-sonnet-4-5
+</code></pre></div>
+<p><strong>Default image</strong>: <code>ghcr.io/amaiya/patchpal-sandbox:latest</code> (pre-built, fast startup)</p>
+<h3 id="additional-volume-mounts">Additional Volume Mounts<a class="headerlink" href="#additional-volume-mounts" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="c1"># Mount additional directories</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>patchpal-sandbox<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="w">  </span>-v<span class="w"> </span>/path/to/data:/data:ro<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="w">  </span>-v<span class="w"> </span>/path/to/output:/output<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a><span class="w">  </span>--<span class="w"> </span>--model<span class="w"> </span>anthropic/claude-sonnet-4-5
+</code></pre></div>
+<h3 id="environment-variables">Environment Variables<a class="headerlink" href="#environment-variables" title="Permanent link">&para;</a></h3>
+<p>Environment variable behavior depends on whether <code>--env-file</code> is provided:</p>
+<p><strong>Without <code>--env-file</code> (uses host environment):</strong>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="c1"># Host environment variables (AWS_*, OPENAI_*, etc.) are passed through</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>patchpal-sandbox<span class="w"> </span>--<span class="w"> </span>--model<span class="w"> </span>openai/gpt-5-mini
+</code></pre></div></p>
+<p><strong>With <code>--env-file</code> (isolated mode):</strong>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="c1"># ONLY variables from .env file are used (better isolation)</span>
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="c1"># Host environment variables are NOT passed</span>
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>patchpal-sandbox<span class="w"> </span>--env-file<span class="w"> </span>.env<span class="w"> </span>--<span class="w"> </span>--model<span class="w"> </span>anthropic/claude-sonnet-4-5
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a><span class="c1"># Multiple .env files (later files override earlier)</span>
+<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>patchpal-sandbox<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a><span class="w">  </span>--env-file<span class="w"> </span>.env.base<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a><span class="w">  </span>--env-file<span class="w"> </span>.env.local<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a><span class="w">  </span>--<span class="w"> </span>--model<span class="w"> </span>anthropic/claude-sonnet-4-5
+</code></pre></div></p>
+<p><strong>Note</strong>: When using <code>--env-file</code>, host environment variables are intentionally excluded for better security isolation. This prevents accidental credential leakage from your shell environment.</p>
+<h3 id="resource-limits">Resource Limits<a class="headerlink" href="#resource-limits" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="c1"># Memory and CPU limits</span>
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>patchpal-sandbox<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a><span class="w">  </span>--memory<span class="w"> </span>4g<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a><span class="w">  </span>--cpus<span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a><span class="w">  </span>--<span class="w"> </span>autopilot<span class="w"> </span>--prompt-file<span class="w"> </span>task.md
+</code></pre></div>
+<h2 id="custom-tools">Custom Tools<a class="headerlink" href="#custom-tools" title="Permanent link">&para;</a></h2>
+<p>Custom tools work automatically in sandbox mode:</p>
+<ul>
+<li><strong>Global tools</strong>: <code>~/.patchpal/tools/</code> (auto-mounted)</li>
+<li><strong>Repository tools</strong>: <code>&lt;repo&gt;/.patchpal/tools/</code> (in <code>/workspace</code>)</li>
+</ul>
+<p>See <a href="../../features/custom-tools/">Custom Tools</a> for details on creating tools.</p>
+<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
+<h3 id="docker-command-not-found">"docker: command not found"<a class="headerlink" href="#docker-command-not-found" title="Permanent link">&para;</a></h3>
+<p>Install Docker or Podman:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="c1"># Ubuntu/Debian</span>
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>sudo<span class="w"> </span>apt-get<span class="w"> </span>install<span class="w"> </span>podman
+<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>
+<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a><span class="c1"># macOS</span>
+<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a>brew<span class="w"> </span>install<span class="w"> </span>podman
+<a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a>podman<span class="w"> </span>machine<span class="w"> </span>init
+<a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a>podman<span class="w"> </span>machine<span class="w"> </span>start
+<a id="__codelineno-14-8" name="__codelineno-14-8" href="#__codelineno-14-8"></a>
+<a id="__codelineno-14-9" name="__codelineno-14-9" href="#__codelineno-14-9"></a><span class="c1"># RHEL/Fedora</span>
+<a id="__codelineno-14-10" name="__codelineno-14-10" href="#__codelineno-14-10"></a>sudo<span class="w"> </span>dnf<span class="w"> </span>install<span class="w"> </span>podman
+</code></pre></div>
+<h3 id="permission-denied-errors">"Permission denied" errors<a class="headerlink" href="#permission-denied-errors" title="Permanent link">&para;</a></h3>
+<p><strong>Podman rootless</strong> (recommended): No sudo required, works out of the box.</p>
+<p><strong>Docker</strong>: Add your user to the docker group:
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>sudo<span class="w"> </span>usermod<span class="w"> </span>-aG<span class="w"> </span>docker<span class="w"> </span><span class="nv">$USER</span>
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a><span class="c1"># Log out and back in</span>
+</code></pre></div></p>
+<h3 id="firewall-rules-not-working">Firewall rules not working<a class="headerlink" href="#firewall-rules-not-working" title="Permanent link">&para;</a></h3>
+<p>If <code>--restrict-network</code> isn't blocking traffic:</p>
+<ol>
+<li>
+<p><strong>Check container runtime capabilities</strong>:
+   <div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="c1"># Podman rootless needs --privileged</span>
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a><span class="c1"># (automatically added by patchpal-sandbox)</span>
+</code></pre></div></p>
+</li>
+<li>
+<p><strong>Test restrictions explicitly</strong>:
+   <div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>patchpal-sandbox<span class="w"> </span>--restrict-network<span class="w"> </span>--test-restrictions<span class="w"> </span>--env-file<span class="w"> </span>.env
+</code></pre></div></p>
+</li>
+<li>
+<p><strong>Verify iptables inside container</strong>:
+   <div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>patchpal-sandbox<span class="w"> </span>--restrict-network<span class="w"> </span>--shell
+<a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>$<span class="w"> </span>iptables<span class="w"> </span>-L<span class="w"> </span>-n
+</code></pre></div></p>
+</li>
+</ol>
+<h3 id="ollama-connection-refused">Ollama connection refused<a class="headerlink" href="#ollama-connection-refused" title="Permanent link">&para;</a></h3>
+<p>Use <code>--host-network</code> to access host's Ollama service:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>patchpal-sandbox<span class="w"> </span>--host-network<span class="w"> </span>--<span class="w"> </span>--model<span class="w"> </span>ollama_chat/llama3.2
+</code></pre></div>
+<h3 id="slow-startup-times">Slow startup times<a class="headerlink" href="#slow-startup-times" title="Permanent link">&para;</a></h3>
+<p><strong>Solution 1</strong>: Use pre-built image (default):
+<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a>patchpal-sandbox<span class="w"> </span>--<span class="w"> </span>--model<span class="w"> </span>anthropic/claude-sonnet-4-5
+<a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a><span class="c1"># First run: ~10s (image download, one-time)</span>
+<a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a><span class="c1"># Subsequent: &lt;1s</span>
+</code></pre></div></p>
+<p><strong>Solution 2</strong>: Pre-pull the image:
+<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a>docker<span class="w"> </span>pull<span class="w"> </span>ghcr.io/amaiya/patchpal-sandbox:latest
+<a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a><span class="c1"># or</span>
+<a id="__codelineno-21-3" name="__codelineno-21-3" href="#__codelineno-21-3"></a>podman<span class="w"> </span>pull<span class="w"> </span>ghcr.io/amaiya/patchpal-sandbox:latest
+</code></pre></div></p>
+<h3 id="corporate-proxyfirewall-issues">Corporate proxy/firewall issues<a class="headerlink" href="#corporate-proxyfirewall-issues" title="Permanent link">&para;</a></h3>
+<p>If you're behind a corporate proxy:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a><span class="c1"># Pass proxy settings</span>
+<a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a>patchpal-sandbox<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-22-3" name="__codelineno-22-3" href="#__codelineno-22-3"></a><span class="w">  </span>-e<span class="w"> </span><span class="nv">HTTP_PROXY</span><span class="o">=</span><span class="nv">$HTTP_PROXY</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-22-4" name="__codelineno-22-4" href="#__codelineno-22-4"></a><span class="w">  </span>-e<span class="w"> </span><span class="nv">HTTPS_PROXY</span><span class="o">=</span><span class="nv">$HTTPS_PROXY</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-22-5" name="__codelineno-22-5" href="#__codelineno-22-5"></a><span class="w">  </span>-e<span class="w"> </span><span class="nv">NO_PROXY</span><span class="o">=</span><span class="nv">$NO_PROXY</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-22-6" name="__codelineno-22-6" href="#__codelineno-22-6"></a><span class="w">  </span>--<span class="w"> </span>--model<span class="w"> </span>anthropic/claude-sonnet-4-5
+</code></pre></div>
+<p>SSL certificates are auto-mounted from:
+- <code>/etc/ssl/certs/ca-certificates.crt</code>
+- <code>/etc/pki/tls/certs/ca-bundle.crt</code>
+- <code>/etc/ssl/ca-bundle.pem</code></p>
+<h2 id="comparison-with-manual-dockerpodman">Comparison with Manual Docker/Podman<a class="headerlink" href="#comparison-with-manual-dockerpodman" title="Permanent link">&para;</a></h2>
+<h3 id="using-patchpal-sandbox-recommended">Using patchpal-sandbox (Recommended)<a class="headerlink" href="#using-patchpal-sandbox-recommended" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a>patchpal-sandbox<span class="w"> </span>--env-file<span class="w"> </span>.env<span class="w"> </span>--<span class="w"> </span>autopilot<span class="w"> </span>--prompt-file<span class="w"> </span>task.md
+</code></pre></div>
+<p>✅ Automatic container setup
+✅ Pre-built image (fast startup)
+✅ Auto-detects runtime (Podman/Docker)
+✅ Auto-configures Ollama context
+✅ Auto-mounts custom tools
+✅ Auto-mounts SSL certs
+✅ Network restriction support</p>
+<h3 id="manual-docker-command">Manual Docker Command<a class="headerlink" href="#manual-docker-command" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a>docker<span class="w"> </span>run<span class="w"> </span>-it<span class="w"> </span>--rm<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-24-2" name="__codelineno-24-2" href="#__codelineno-24-2"></a><span class="w">  </span>-v<span class="w"> </span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span>:/workspace<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-24-3" name="__codelineno-24-3" href="#__codelineno-24-3"></a><span class="w">  </span>-v<span class="w"> </span>~/.patchpal:/root/.patchpal<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-24-4" name="__codelineno-24-4" href="#__codelineno-24-4"></a><span class="w">  </span>-e<span class="w"> </span><span class="nv">ANTHROPIC_API_KEY</span><span class="o">=</span><span class="nv">$ANTHROPIC_API_KEY</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-24-5" name="__codelineno-24-5" href="#__codelineno-24-5"></a><span class="w">  </span>--memory<span class="o">=</span><span class="s2">&quot;2g&quot;</span><span class="w"> </span>--cpus<span class="o">=</span><span class="s2">&quot;2&quot;</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-24-6" name="__codelineno-24-6" href="#__codelineno-24-6"></a><span class="w">  </span>ghcr.io/amaiya/patchpal-sandbox:latest<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-24-7" name="__codelineno-24-7" href="#__codelineno-24-7"></a><span class="w">  </span>bash<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;patchpal-autopilot --prompt-file task.md&quot;</span>
+</code></pre></div>
+<p>❌ More verbose
+❌ Manual volume mounts
+❌ Manual environment setup
+❌ No auto-detection
+❌ No network restrictions</p>
+<p><strong>Recommendation</strong>: Use <code>patchpal-sandbox</code> for simplicity and consistency.</p>
+<h2 id="best-practices">Best Practices<a class="headerlink" href="#best-practices" title="Permanent link">&para;</a></h2>
+<h3 id="always-use-sandbox-for">Always Use Sandbox For<a class="headerlink" href="#always-use-sandbox-for" title="Permanent link">&para;</a></h3>
+<ul>
+<li>✅ Autopilot mode (REQUIRED for safety)</li>
+<li>✅ Untrusted code/repositories</li>
+<li>✅ Automated workflows</li>
+<li>✅ Production environments</li>
+<li>✅ Repositories with sensitive data</li>
+</ul>
+<h3 id="consider-sandbox-for">Consider Sandbox For<a class="headerlink" href="#consider-sandbox-for" title="Permanent link">&para;</a></h3>
+<ul>
+<li>✅ General development (extra safety layer)</li>
+<li>✅ Testing/experimentation</li>
+<li>✅ Learning PatchPal</li>
+</ul>
+<h3 id="optional-without-sandbox">Optional Without Sandbox<a class="headerlink" href="#optional-without-sandbox" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Direct use on trusted throwaway projects</li>
+<li>One-off interactive sessions on isolated VMs</li>
+<li>Cases where you need direct host access</li>
+</ul>
+<h3 id="network-restriction-recommendations">Network Restriction Recommendations<a class="headerlink" href="#network-restriction-recommendations" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Scenario</th>
+<th>Use <code>--restrict-network</code>?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Autopilot mode</td>
+<td>✅ <strong>YES</strong> (strongly recommended)</td>
+</tr>
+<tr>
+<td>Untrusted code</td>
+<td>✅ <strong>YES</strong></td>
+</tr>
+<tr>
+<td>Production automation</td>
+<td>✅ <strong>YES</strong></td>
+</tr>
+<tr>
+<td>Personal projects</td>
+<td>⚠️ Optional (adds defense-in-depth)</td>
+</tr>
+<tr>
+<td>Trusted code + human oversight</td>
+<td>⚠️ Optional</td>
+</tr>
+<tr>
+<td>Local models only (Ollama)</td>
+<td>❌ NO (requires <code>--host-network</code>)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="examples">Examples<a class="headerlink" href="#examples" title="Permanent link">&para;</a></h2>
+<h3 id="multi-phase-project">Multi-Phase Project<a class="headerlink" href="#multi-phase-project" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-25-1" name="__codelineno-25-1" href="#__codelineno-25-1"></a><span class="c1"># Phase 1: Core functionality</span>
+<a id="__codelineno-25-2" name="__codelineno-25-2" href="#__codelineno-25-2"></a>patchpal-sandbox<span class="w"> </span>--env-file<span class="w"> </span>.env<span class="w"> </span>--<span class="w"> </span>autopilot<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-25-3" name="__codelineno-25-3" href="#__codelineno-25-3"></a><span class="w">  </span>--model<span class="w"> </span>anthropic/claude-sonnet-4-5<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-25-4" name="__codelineno-25-4" href="#__codelineno-25-4"></a><span class="w">  </span>--prompt-file<span class="w"> </span>phase1.md
+<a id="__codelineno-25-5" name="__codelineno-25-5" href="#__codelineno-25-5"></a>
+<a id="__codelineno-25-6" name="__codelineno-25-6" href="#__codelineno-25-6"></a><span class="c1"># Phase 2: Tests</span>
+<a id="__codelineno-25-7" name="__codelineno-25-7" href="#__codelineno-25-7"></a>patchpal-sandbox<span class="w"> </span>--env-file<span class="w"> </span>.env<span class="w"> </span>--<span class="w"> </span>autopilot<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-25-8" name="__codelineno-25-8" href="#__codelineno-25-8"></a><span class="w">  </span>--model<span class="w"> </span>anthropic/claude-sonnet-4-5<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-25-9" name="__codelineno-25-9" href="#__codelineno-25-9"></a><span class="w">  </span>--prompt-file<span class="w"> </span>phase2.md
+<a id="__codelineno-25-10" name="__codelineno-25-10" href="#__codelineno-25-10"></a>
+<a id="__codelineno-25-11" name="__codelineno-25-11" href="#__codelineno-25-11"></a><span class="c1"># Phase 3: Documentation</span>
+<a id="__codelineno-25-12" name="__codelineno-25-12" href="#__codelineno-25-12"></a>patchpal-sandbox<span class="w"> </span>--env-file<span class="w"> </span>.env<span class="w"> </span>--<span class="w"> </span>autopilot<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-25-13" name="__codelineno-25-13" href="#__codelineno-25-13"></a><span class="w">  </span>--model<span class="w"> </span>anthropic/claude-sonnet-4-5<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-25-14" name="__codelineno-25-14" href="#__codelineno-25-14"></a><span class="w">  </span>--prompt-file<span class="w"> </span>phase3.md
+</code></pre></div>
+<h3 id="debugging-inside-container">Debugging Inside Container<a class="headerlink" href="#debugging-inside-container" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-26-1" name="__codelineno-26-1" href="#__codelineno-26-1"></a><span class="c1"># Start shell inside container with model pre-configured</span>
+<a id="__codelineno-26-2" name="__codelineno-26-2" href="#__codelineno-26-2"></a>patchpal-sandbox<span class="w"> </span>--env-file<span class="w"> </span>.env<span class="w"> </span>--shell<span class="w"> </span>--<span class="w"> </span>--model<span class="w"> </span>anthropic/claude-sonnet-4-5
+<a id="__codelineno-26-3" name="__codelineno-26-3" href="#__codelineno-26-3"></a>
+<a id="__codelineno-26-4" name="__codelineno-26-4" href="#__codelineno-26-4"></a><span class="c1"># Inside container</span>
+<a id="__codelineno-26-5" name="__codelineno-26-5" href="#__codelineno-26-5"></a>$<span class="w"> </span><span class="nb">pwd</span>
+<a id="__codelineno-26-6" name="__codelineno-26-6" href="#__codelineno-26-6"></a>/workspace
+<a id="__codelineno-26-7" name="__codelineno-26-7" href="#__codelineno-26-7"></a>
+<a id="__codelineno-26-8" name="__codelineno-26-8" href="#__codelineno-26-8"></a>$<span class="w"> </span>ls<span class="w"> </span>-la<span class="w"> </span>~/.patchpal/tools/
+<a id="__codelineno-26-9" name="__codelineno-26-9" href="#__codelineno-26-9"></a><span class="c1"># Your custom tools are here</span>
+<a id="__codelineno-26-10" name="__codelineno-26-10" href="#__codelineno-26-10"></a>
+<a id="__codelineno-26-11" name="__codelineno-26-11" href="#__codelineno-26-11"></a>$<span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="nv">$PATCHPAL_MODEL</span>
+<a id="__codelineno-26-12" name="__codelineno-26-12" href="#__codelineno-26-12"></a>anthropic/claude-sonnet-4-5
+<a id="__codelineno-26-13" name="__codelineno-26-13" href="#__codelineno-26-13"></a>
+<a id="__codelineno-26-14" name="__codelineno-26-14" href="#__codelineno-26-14"></a>$<span class="w"> </span>patchpal
+<a id="__codelineno-26-15" name="__codelineno-26-15" href="#__codelineno-26-15"></a><span class="c1"># Runs with the pre-configured model automatically</span>
+</code></pre></div>
+<p><strong>Tip</strong>: When you provide <code>--model</code> after <code>--</code>, it's automatically set as the <code>PATCHPAL_MODEL</code> environment variable, so you can run <code>patchpal</code> without specifying the model again.</p>
+<h2 id="learn-more">Learn More<a class="headerlink" href="#learn-more" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="../autopilot/">Autopilot Mode</a> - Comprehensive autopilot documentation</li>
+<li><a href="../../configuration/">Configuration</a> - Environment variables and settings</li>
+<li><a href="../../features/custom-tools/">Custom Tools</a> - Creating custom tool integrations</li>
+<li><a href="../../safety/">Safety</a> - Security best practices</li>
+<li><a href="https://github.com/amaiya/patchpal/tree/main/examples/ralph">Examples: Ralph</a> - Real-world autopilot examples</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.tabs", "navigation.sections", "navigation.expand", "navigation.top", "search.suggest", "search.highlight", "content.code.copy", "content.code.annotate"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
