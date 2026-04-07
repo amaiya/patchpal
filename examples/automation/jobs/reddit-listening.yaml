@@ -1,0 +1,26 @@
+# Reddit Listening Job
+# Searches Reddit every 15 minutes for posts about specific topics
+# Deduplicates using cache and sends top results to Telegram
+
+schedule: "*/15 * * * *"  # Every 15 minutes
+model: "anthropic/claude-sonnet-4"
+enabled: true
+notify: true
+
+prompt: |
+  Run the Reddit search script and analyze results for AI agent discussions:
+
+  run_shell python ~/.patchpal/scripts/reddit_search.py "AI agents" "coding assistants" "Claude Code"
+
+  Analyze the results and identify:
+  1. Rising topics or trends worth noting
+  2. Interesting discussions or debates
+  3. Potential opportunities to engage
+
+  Return the top 3 most interesting posts with:
+  - Title and subreddit
+  - Score and engagement level
+  - Why it's interesting
+  - Link to post
+
+  Format as a bulleted list.

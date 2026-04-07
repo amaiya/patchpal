@@ -1,0 +1,32 @@
+# Daily Morning Check-in
+# Runs every weekday at 9 AM
+# Shows your priorities and motivates you
+
+schedule: "0 9 * * 1-5"  # Weekdays at 9 AM
+model: "anthropic/claude-sonnet-4"
+enabled: true
+notify: true
+
+prompt: |
+  Good morning! Time for your daily startup routine.
+
+  1. Read the Daily Priorities section from MEMORY.md
+  2. Check for any urgent tasks or deadlines in the current directory
+  3. Review yesterday's progress by checking recent git commits
+
+  Provide a morning briefing with:
+  - Today's top 3 priorities
+  - Any urgent items requiring attention
+  - A brief motivational message
+
+  Format as:
+  🌅 **Morning Checkpoint**
+
+  **Top Priorities:**
+  1. ...
+  2. ...
+  3. ...
+
+  **Urgent:** ...
+
+  **Message:** ...

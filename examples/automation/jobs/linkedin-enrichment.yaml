@@ -1,0 +1,28 @@
+# LinkedIn Enrichment Job
+# Finds interesting people on LinkedIn every 15 minutes
+# Uses API interception (no Selenium!)
+
+schedule: "*/15 * * * *"  # Every 15 minutes
+model: "anthropic/claude-sonnet-4"
+enabled: false  # Enable after setting up the script
+notify: true
+
+prompt: |
+  Run the LinkedIn search script to find interesting people:
+
+  run_shell python ~/.patchpal/scripts/linkedin_search.py "AI startup founder" "building in public"
+
+  Analyze the results and identify the top 3 people to connect with.
+
+  For each person, provide:
+  - Name and title
+  - Company and what they're building
+  - Why they're interesting to connect with
+  - A personalized connection message (2-3 sentences)
+
+  Focus on:
+  - Active builders (posting about their product)
+  - Early-stage founders (MVP, beta, first users)
+  - Technical people (discussing architecture)
+
+  Format as numbered list with connection messages.

@@ -1,0 +1,37 @@
+# Daily Evening Review
+# Runs every weekday at 9 PM
+# Reviews what you accomplished and what got procrastinated
+
+schedule: "0 21 * * 1-5"  # Weekdays at 9 PM
+model: "anthropic/claude-sonnet-4"
+enabled: true
+notify: true
+
+prompt: |
+  Evening check-in! Let's review the day.
+
+  1. Check today's git commits to see what was actually done
+  2. Compare against the morning priorities
+  3. Identify patterns of procrastination
+
+  Provide an evening review with:
+  - What got completed today
+  - What's still in progress
+  - What got procrastinated (and why, if obvious)
+  - One improvement for tomorrow
+
+  Format as:
+  🌙 **Evening Review**
+
+  **Completed:**
+  ✅ ...
+
+  **In Progress:**
+  ⏳ ...
+
+  **Procrastinated:**
+  ❌ ...
+
+  **Tomorrow:** ...
+
+  Be honest but encouraging. The goal is accountability, not guilt.
