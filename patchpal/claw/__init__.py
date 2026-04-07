@@ -1,24 +1,26 @@
 """
-PatchPal Claw - Background automation features.
+PatchPal Claw - General AI Assistant
 
-Inspired by ClaudeClaw/OpenClaw, this module provides lightweight
-background automation with cron-style scheduling and notifications.
+A general AI assistant with:
+- Scheduled automation jobs (cron-based)
+- Bidirectional chat (Telegram/Discord)
+- Persistent conversation sessions
+- Proactive monitoring (HEARTBEAT)
+- Message storage and context
 
-Features:
-- Job scheduling (cron expressions)
-- Cache management (deduplication)
-- Telegram notifications
-- Background daemon
+Inspired by ClaudeClaw/NanoClaw architecture.
 
 Usage:
     # From command line
     patchpal-daemon
 
-    # From Python
-    from patchpal.claw import cache, scheduler
+    # Configure platforms
+    export TELEGRAM_BOT_TOKEN="..."
+    export DISCORD_BOT_TOKEN="..."
+    export HEARTBEAT_ENABLED="true"
 
-Install optional dependencies:
-    pip install patchpal[claw]  # Includes croniter + telegram
+Install dependencies:
+    pip install patchpal[claw]  # Includes croniter + telegram + discord bots
 """
 
 from . import cache, scheduler

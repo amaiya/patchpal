@@ -1,308 +1,332 @@
-# Background Automation Examples
+# PatchPal Claw - Automation Examples
 
-This directory contains examples of using PatchPal's background automation features, inspired by the ClaudeClaw use cases.
-
-## Contents
-
-- `jobs/` - Example job definitions (YAML files)
-- `scripts/` - Example Python scripts for data collection
-- `README.md` - This file
+Examples showing how to use PatchPal Claw as a general AI assistant with scheduled automation and chat bot capabilities.
 
 ## Quick Start
 
-1. **Install dependencies:**
-   ```bash
-   pip install patchpal[claw]  # Includes croniter + telegram
-   ```
-
-2. **Copy example jobs:**
-   ```bash
-   cp examples/automation/jobs/* ~/.patchpal/jobs/
-   ```
-
-3. **Copy example scripts:**
-   ```bash
-   cp examples/automation/scripts/* ~/.patchpal/scripts/
-   ```
-
-4. **Edit jobs to customize:**
-   ```bash
-   nano ~/.patchpal/jobs/reddit-listening.yaml
-   ```
-
-5. **Start the daemon:**
-   ```bash
-   patchpal-daemon
-   ```
-
-## Example Use Cases
-
-### 1. Reddit Listening
-
-**What it does:**
-- Searches Reddit every 15 minutes
-- Filters for posts about specific topics
-- Deduplicates using cache
-- Sends top 3 posts to Telegram
-
-**Files:**
-- `jobs/reddit-listening.yaml` - Job definition
-- `scripts/reddit_search.py` - Search script
-
-**Setup:**
-```bash
-# Install Reddit API library
-pip install praw
-
-# Configure Reddit API (get from https://www.reddit.com/prefs/apps)
-export REDDIT_CLIENT_ID="your-client-id"
-export REDDIT_CLIENT_SECRET="your-secret"
-export REDDIT_USER_AGENT="patchpal/1.0"
-```
-
-### 2. LinkedIn Enrichment
-
-**What it does:**
-- Searches LinkedIn for interesting people
-- Uses intercepted API (no Selenium needed!)
-- Identifies founders, builders, technical folks
-- Suggests personalized connection messages
-
-**Files:**
-- `jobs/linkedin-enrichment.yaml` - Job definition
-- `scripts/linkedin_search.py` - Search script with API interception guide
-
-**Setup:**
-See `scripts/linkedin_search.py` for detailed instructions on:
-1. How to intercept LinkedIn's search API
-2. How to extract cookies from your browser
-3. How to store credentials securely
-
-**Note:** This uses LinkedIn's internal API, not Selenium/Puppeteer. Much faster and more reliable!
-
-### 3. Daily Tracker
-
-**What it does:**
-- Morning check-in (9 AM): Shows your priorities
-- Evening review (9 PM): Checks what you completed
-- Uses git commits to track progress
-- Keeps you accountable
-
-**Files:**
-- `jobs/daily-morning.yaml` - Morning check-in
-- `jobs/daily-evening.yaml` - Evening review
-
-**Setup:**
-Edit your `MEMORY.md` to include daily priorities:
+See [patchpal/claw/README.md](../../patchpal/claw/README.md) for full documentation.
 
 ```bash
-nano ~/.patchpal/repos/your-project/MEMORY.md
+# 1. Install
+pip install patchpal[claw]
+
+# 2. Setup bot
+export TELEGRAM_BOT_TOKEN="..."
+
+# 3. Start daemon
+patchpal-daemon
+
+# 4. Chat with bot
+# Telegram: "@patchpal hello"
 ```
 
-Add a section like:
-```markdown
-## Daily Priorities
-- [ ] Review pull requests
-- [ ] Write documentation
-- [ ] Fix critical bugs
-```
+## Job Examples
 
-## Job File Format
-
-Jobs are defined in `~/.patchpal/jobs/*.yaml`:
+### Reddit Listening
 
 ```yaml
-# Schedule (cron format)
-schedule: "*/15 * * * *"  # Every 15 minutes
-
-# Model to use (optional, uses default if not specified)
-model: "anthropic/claude-sonnet-4"
-
-# Enable/disable the job
+# ~/.patchpal/jobs/reddit-listening.yaml
+schedule: "*/15 * * * *"
 enabled: true
-
-# Send Telegram notifications
-notify: true
-
-# The prompt to execute
+notify: true  # Sends to all active chats
 prompt: |
-  Run the search script and analyze results:
+  Run the reddit search script:
+  run_shell python ~/.patchpal/scripts/reddit_search.py "AI agents"
 
-  run_shell python ~/.patchpal/scripts/my_script.py "query"
-
-  Analyze the top 3 results and report interesting findings.
+  Analyze top 3 posts and summarize interesting discussions.
 ```
 
-## Cron Expression Examples
+When this runs, result goes to your Telegram/Discord chat!
 
-| Expression | Meaning |
-|------------|---------|
-| `*/15 * * * *` | Every 15 minutes |
-| `0 * * * *` | Every hour |
-| `0 9 * * *` | Daily at 9 AM |
-| `0 9,21 * * *` | Daily at 9 AM and 9 PM |
-| `0 9 * * 1-5` | Weekdays at 9 AM |
+### Daily Summary
 
-## Telegram Notifications
+```yaml
+# ~/.patchpal/jobs/daily-summary.yaml
+schedule: "0 18 * * *"  # 6 PM daily
+enabled: true
+notify: true
+prompt: |
+  Review today's automation activity:
+  - Check job logs
+  - Review cache for interesting findings
+  - Summarize key events
 
-1. **Create a bot:**
-   ```
-   1. Open Telegram, talk to @BotFather
-   2. Send: /newbot
-   3. Follow prompts, copy bot token
-   ```
-
-2. **Get your chat ID:**
-   ```
-   1. Send a message to your bot
-   2. Visit: https://api.telegram.org/bot<TOKEN>/getUpdates
-   3. Copy the chat ID from response
-   ```
-
-3. **Set environment variables:**
-   ```bash
-   export TELEGRAM_BOT_TOKEN="123456:ABC-DEF..."
-   export TELEGRAM_CHAT_ID="123456789"
-   ```
-
-4. **Test it:**
-   ```bash
-   python -c "from patchpal.claw.telegram import send; send('Hello from PatchPal!')"
-   ```
-
-## Script Writing Tips
-
-### 1. Use the Cache System
-
-```python
-from patchpal.claw.cache import get, set, is_duplicate, add_to_set
-
-# Check if we've seen this post before
-if not is_duplicate('reddit_seen', post_id):
-    print(f"New post: {post_id}")
-    add_to_set('reddit_seen', post_id)
+  Keep it brief and casual.
 ```
 
-### 2. Return Structured Data
+You'll get a daily summary in your chat at 6 PM.
 
-```python
-import json
+### LinkedIn Enrichment
 
-results = [
-    {'title': 'Post 1', 'score': 100},
-    {'title': 'Post 2', 'score': 50}
-]
+```yaml
+# ~/.patchpal/jobs/linkedin-enrichment.yaml
+schedule: "0 9 * * 1"  # Monday 9 AM
+enabled: true
+notify: true
+prompt: |
+  Run LinkedIn search for founders:
+  run_shell python ~/.patchpal/scripts/linkedin_search.py "AI startup founder"
 
-# Claude can easily parse JSON
-print(json.dumps(results, indent=2))
+  Filter for interesting profiles and provide summary.
 ```
 
-### 3. Use API Interception (Not Browser Automation)
+## Conversation Examples
 
-Instead of Selenium/Puppeteer:
+Beyond scheduled jobs, you can have conversations with your assistant:
 
-```python
-# Intercept the API endpoint from browser DevTools
-import requests
+### Ask About Job Results
 
-response = requests.get(
-    'https://www.example.com/api/search',
-    headers={
-        'Cookie': 'session=abc123...',
-        'User-Agent': 'Mozilla/5.0...'
-    },
-    params={'q': 'search query'}
-)
+```
+You: @patchpal what did the reddit job find today?
+Bot: Today's reddit search found 3 posts:
+     1. Discussion about AI agent frameworks
+     2. New research on LangChain alternatives
+     3. Tutorial on building coding assistants
 
-data = response.json()
+     The framework discussion was most interesting...
 ```
 
-This is:
-- ✅ 10x faster than browser automation
-- ✅ More reliable (no DOM selectors)
-- ✅ Lower resource usage
-- ✅ What the OP of ClaudeClaw used successfully
+### Set Reminders
 
-## Monitoring
+```
+You: @patchpal remind me to review those LinkedIn profiles tomorrow at 10am
+Bot: Got it! I'll remind you tomorrow at 10am to review the LinkedIn profiles.
 
-### Check daemon status:
+[Next day at 10am, HEARTBEAT runs]
+Bot: hey, it's 10am - time to review those linkedin profiles from yesterday
+```
+
+### Check Automation Status
+
+```
+You: @patchpal how are the jobs doing?
+Bot: Let me check...
+
+     Active jobs:
+     - reddit-listening: Last run 12 minutes ago (success)
+     - daily-summary: Runs at 6 PM (3 hours from now)
+     - linkedin-enrichment: Runs Monday 9 AM (2 days away)
+
+     All jobs healthy!
+```
+
+### On-Demand Execution
+
+```
+You: @patchpal run the reddit search now
+Bot: Running reddit search...
+     [executes script]
+
+     Found 2 new posts:
+     1. "Building AI agents with Claude" (85 upvotes)
+     2. "Agent frameworks comparison" (42 upvotes)
+```
+
+## Scripts
+
+### reddit_search.py
+
+Located in `scripts/reddit_search.py` - searches Reddit and uses cache to deduplicate.
+
+**Usage in job:**
+```yaml
+prompt: |
+  run_shell python ~/.patchpal/scripts/reddit_search.py "AI agents"
+```
+
+**Usage in conversation:**
+```
+You: @patchpal search reddit for "coding assistants"
+Bot: [runs script via agent] Found 5 posts...
+```
+
+### linkedin_search.py
+
+Located in `scripts/linkedin_search.py` - demonstrates API interception pattern.
+
+**Usage in job:**
+```yaml
+prompt: |
+  run_shell python ~/.patchpal/scripts/linkedin_search.py "AI startup founder"
+```
+
+**Usage in conversation:**
+```
+You: @patchpal find 3 AI startup founders on linkedin
+Bot: [runs script] Found profiles:
+     1. John Doe - Founded AI startup in 2023...
+     2. Jane Smith - CEO of ML platform...
+     3. Bob Wilson - Serial founder in AI space...
+```
+
+## HEARTBEAT Examples
+
+HEARTBEAT is the proactive monitoring feature (optional).
+
+### Enable HEARTBEAT
+
+```bash
+export HEARTBEAT_ENABLED=true
+patchpal-daemon --heartbeat-interval 900  # Every 15 minutes
+```
+
+### HEARTBEAT Behavior
+
+Every 15 minutes, checks all conversations and asks:
+- "Are there any pending tasks or reminders?"
+- "Did the user ask me to follow up on something?"
+- "Is there anything time-sensitive?"
+
+If yes: Sends casual reminder
+If no: Stays silent
+
+### Example HEARTBEAT Interaction
+
+```
+Morning:
+You: @patchpal remind me to deploy the app this afternoon
+Bot: Got it, I'll remind you this afternoon to deploy the app.
+
+[Afternoon, HEARTBEAT runs]
+Bot: hey, you wanted to deploy the app this afternoon - still planning to?
+
+You: yes, doing it now
+Bot: Cool, let me know if you need help!
+```
+
+## File Organization
+
+```
+examples/automation/
+├── README.md (this file)
+├── jobs/ (example job definitions)
+│   ├── reddit-listening.yaml
+│   ├── linkedin-enrichment.yaml
+│   └── daily-summary.yaml
+└── scripts/ (example scripts)
+    ├── reddit_search.py
+    └── linkedin_search.py
+
+~/.patchpal/ (your setup)
+├── jobs/ (copy examples here)
+├── scripts/ (copy examples here)
+├── cache/ (job caches)
+├── messages.db (conversation storage)
+└── chats/ (per-chat memory files)
+```
+
+## Common Use Cases
+
+### Daily automation + on-demand queries
+
+Set up a job that runs daily:
+```yaml
+schedule: "0 9 * * *"
+notify: true
+```
+
+Then query it anytime:
+```
+You: @patchpal what did the morning job find?
+Bot: [accesses job results and summarizes]
+```
+
+### Scheduled + manual execution
+
+Set up weekly automation:
+```yaml
+schedule: "0 9 * * 1"  # Monday mornings
+```
+
+But run it immediately when needed:
+```
+You: @patchpal run the linkedin search right now
+Bot: [executes immediately]
+```
+
+### Automation + reminders
+
+Job finds something interesting → notifies you:
+```
+Bot: Found 5 new AI startups in today's search!
+
+You: @patchpal remind me to research these tomorrow
+Bot: Got it, I'll remind you tomorrow.
+
+[Next day, HEARTBEAT]
+Bot: hey, you wanted to research those AI startups from yesterday
+```
+
+## Tips
+
+### Best Practices
+
+1. **Start simple** - Get bot working first, then add jobs
+2. **Use trigger word** - Default `@patchpal` prevents spam
+3. **Enable HEARTBEAT cautiously** - It messages you proactively
+4. **Per-chat isolation** - Each chat has its own conversation context
+5. **Check status often** - `patchpal-daemon --status` shows health
+
+### Common Patterns
+
+**Information gathering:**
+- Jobs collect data (Reddit, LinkedIn, etc.)
+- You query via chat: "@patchpal what did you find today?"
+- Bot summarizes with full context
+
+**Task management:**
+- You set reminders in conversation
+- HEARTBEAT proactively reminds you
+- Natural language: "remind me to X tomorrow at 2pm"
+
+**On-demand execution:**
+- Jobs run on schedule
+- But you can trigger manually: "@patchpal run X now"
+- Best of both worlds
+
+## Further Reading
+
+- [PatchPal Claw README](../../patchpal/claw/README.md) - Full documentation
+- [Job Scheduler](../../patchpal/claw/scheduler.py) - How jobs work
+- [Session Manager](../../patchpal/claw/session_manager.py) - How context works
+- [Message Store](../../patchpal/claw/message_store.py) - How messages stored
+
+## Troubleshooting
+
+**Check status:**
 ```bash
 patchpal-daemon --status
 ```
 
-### List all jobs:
+**Debug mode:**
 ```bash
-patchpal-daemon --list-jobs
-```
-
-### View job logs:
-```bash
-# Daemon logs to stdout
-patchpal-daemon 2>&1 | tee ~/patchpal-daemon.log
-```
-
-## Troubleshooting
-
-### Job not running?
-```bash
-# Check if job is enabled
-patchpal-daemon --list-jobs
-
-# Check schedule is valid
-python -c "from croniter import croniter; croniter('*/15 * * * *')"
-
-# Check for errors
 patchpal-daemon --debug
 ```
 
-### Script failing?
+**Test bot:**
 ```bash
-# Test script manually
-python ~/.patchpal/scripts/my_script.py "test"
-
-# Check permissions
-ls -la ~/.patchpal/scripts/
-
-# Check environment variables
-env | grep REDDIT
+python -c "
+from patchpal.claw.telegram_bot import TelegramBot
+bot = TelegramBot('$TELEGRAM_BOT_TOKEN', lambda x,y,z: print(f'Got message: {y}'))
+print('Bot created successfully!')
+"
 ```
 
-### Telegram not working?
+**Check messages:**
 ```bash
-# Test credentials
-python -c "from patchpal.claw.telegram import send; send('Test')"
-
-# Check config
-python -c "from patchpal.claw.telegram import is_configured; print(is_configured())"
+sqlite3 ~/.patchpal/messages.db "SELECT chat_id, role, content FROM messages ORDER BY timestamp DESC LIMIT 10;"
 ```
 
-## Comparison with ClaudeClaw/OpenClaw
+## What's Next?
 
-PatchPal provides similar automation capabilities but with a Python-native approach:
+Ideas for extending your setup:
 
-| Feature | PatchPal | ClaudeClaw | OpenClaw |
-|---------|----------|------------|----------|
-| Cron scheduling | ✅ | ✅ | ✅ |
-| Telegram | ✅ | ✅ | ✅ |
-| Python scripts | ✅ (native) | ❌ (JS only) | ❌ (JS only) |
-| Custom tools | ✅ | ✅ | ✅ |
-| Cache helpers | ✅ (built-in) | ❌ | ❌ |
-| Setup time | 5 min | 5 min | 15-20 hours |
-| Codebase size | ~1k LOC | ~4k LOC | 600k LOC |
-| Security | ✅✅✅ | ✅✅ | ❌ |
+1. **Add more jobs** - Weather checks, news summaries, system monitoring
+2. **Create custom scripts** - Integrate with your tools and APIs
+3. **Multiple chats** - Different contexts (work vs personal)
+4. **Team usage** - Share bot with team members (each gets own session)
+5. **Advanced automation** - Combine multiple jobs, chain workflows
 
-## Real-World Results
+---
 
-From the Reddit thread about ClaudeClaw:
-
-> "LinkedIn enrichment: my favourite! finds people talking about claude code and founders building interesting things to connect with, genuinely game changing for finding the right people"
->
-> "Before this my LinkedIn was full of garbage not relevant to what i do, and all my old connections were oldschool ancient people, so my posts were literally getting 3 likes mostly from my 1st circle, now my network jumped to 300+ new connections and recruiters are hunting me"
-
-The key insight: **The framework is less important than custom logic + AI analysis.**
-
-PatchPal gives you the same capabilities with better Python integration.
-
-## Contributing
-
-Have a useful automation script? Submit a PR to add it to these examples!
+**Questions?** See [patchpal/claw/README.md](../../patchpal/claw/README.md) for complete documentation.
