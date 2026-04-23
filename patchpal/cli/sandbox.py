@@ -670,7 +670,7 @@ exec {patchpal_cmd} "$@"
 def show_help():
     """Show help message."""
     help_text = """
-sandbox-patchpal - Run PatchPal in an isolated container
+patchpal-sandbox - Run PatchPal in an isolated container
 
 USAGE:
     patchpal-sandbox [SCRIPT_OPTIONS] -- [PATCHPAL_ARGS...]

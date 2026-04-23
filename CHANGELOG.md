@@ -7,6 +7,19 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
+## 0.22.1 (2026-04-23)
+
+### new:
+- N/A
+
+### changed:
+- N/A
+
+### fixed:
+- N/A
+
+
+
 ## 0.22.0 (2026-03-24)
 
 ### new:
