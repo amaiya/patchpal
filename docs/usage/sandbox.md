@@ -137,12 +137,12 @@ With `--restrict-network`, the firewall blocks:
 - ❌ Data exfiltration attempts
 - ❌ Backdoor downloads
 
-### What Stays Allowed
+<!--### What Stays Allowed-->
 
-- ✅ Localhost (127.0.0.1/8)
-- ✅ DNS queries
-- ✅ Auto-detected LLM provider APIs
-- ✅ URLs specified with `--allow-url`
+<!--- ✅ Localhost (127.0.0.1/8)-->
+<!--- ✅ DNS queries-->
+<!--- ✅ Auto-detected LLM provider APIs-->
+<!--- ✅ URLs specified with `--allow-url`-->
 
 ### Auto-Detected LLM Endpoints
 
@@ -206,6 +206,7 @@ The sandbox automatically detects `us-gov-east-1` and allows `https://bedrock-ru
   - Exfiltration is still blocked by network restrictions
   - Credentials don't persist after container exit
   - Only affects that specific session
+  - .env file is not readable/accessible by agent.
 
 For maximum security:
 - Use short-lived credentials (IAM roles, temporary tokens)
