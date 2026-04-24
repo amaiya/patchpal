@@ -8,6 +8,7 @@ def test_main_uses_default_model(monkeypatch):
     """Test that main() uses the default model when no args provided."""
     monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
     monkeypatch.delenv("PATCHPAL_LITELLM_KWARGS", raising=False)
+    monkeypatch.delenv("PATCHPAL_MODEL", raising=False)
     monkeypatch.setattr(sys, "argv", ["patchpal"])
 
     with (

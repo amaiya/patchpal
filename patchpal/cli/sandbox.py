@@ -916,10 +916,14 @@ def main():
         sandbox_argv = sys.argv[1:]
         patchpal_argv = []
 
-    # If no arguments at all, show help
+    # If no arguments at all, check if PATCHPAL_MODEL is set
+    # If model is set via env var, allow running with no args
+    # Otherwise show help
     if not sandbox_argv and not patchpal_argv:
-        show_help()
-        sys.exit(0)
+        if not os.environ.get("PATCHPAL_MODEL"):
+            show_help()
+            sys.exit(0)
+        # PATCHPAL_MODEL is set - proceed with defaults
 
     # Parse sandbox arguments
     parser = argparse.ArgumentParser(add_help=False)  # We handle help manually

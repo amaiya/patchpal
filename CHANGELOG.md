@@ -16,7 +16,7 @@ Most recent releases are shown at the top. Each release shows:
 - N/A
 
 ### fixed:
-- N/A
+- Allow `patchpal-sandbox` to launch without arguments
 
 
 
