@@ -143,7 +143,6 @@ def code_structure(path: str, max_symbols: int = 50) -> str:
         # Format output
         result = _format_output(resolved_path, path, symbols, max_symbols, source)
 
-        audit_logger.info(f"CODE_STRUCTURE: {path} ({len(symbols)} symbols)")
         return result
 
     except Exception as e:

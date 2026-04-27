@@ -20,7 +20,6 @@ from patchpal.tools.common import (
     WEB_HEADERS,
     _get_permission_manager,
     _operation_limiter,
-    audit_logger,
     extract_text_from_docx,
     extract_text_from_pdf,
     extract_text_from_pptx,
@@ -485,8 +484,20 @@ def web_fetch(url: str, extract_text: bool = True) -> str:
         if not config.ALLOW_DYNAMIC_URLS:
             _url_tracker.add_urls_from_text(text_content)
 
+        # Log web fetch result
+        try:
+            from patchpal.tools.audit import log_action_result
+
+            log_action_result(
+                tool_name="web_content_fetch",
+                description=f"Fetched web content: {url}",
+                success=True,
+                context={"url": url, "content_chars": len(text_content), "content_type": "text"},
+            )
+        except Exception:
+            pass  # Don't fail if audit logging fails
+
         # Note: Output truncation is handled by universal MAX_TOOL_OUTPUT_CHARS limit in agent.py
-        audit_logger.info(f"WEB_FETCH: {url} ({len(text_content)} chars)")
         return text_content
 
     except requests.Timeout:
@@ -544,7 +555,6 @@ def web_search(query: str, max_results: int = 5) -> str:
             results = list(ddgs.text(query, max_results=max_results))
 
         if not results:
-            audit_logger.info(f"WEB_SEARCH: {query} - No results")
             return f"No search results found for: {query}"
 
         # Format results
@@ -561,7 +571,24 @@ def web_search(query: str, max_results: int = 5) -> str:
                 _url_tracker.add_urls_from_text(url)
 
         output = "\n".join(formatted_results)
-        audit_logger.info(f"WEB_SEARCH: {query} - Found {len(results)} results")
+
+        # Log search results
+        try:
+            from patchpal.tools.audit import log_action_result
+
+            log_action_result(
+                tool_name="web_search_results",
+                description=f"Web search: {query}",
+                success=True,
+                context={
+                    "query": query[:200],
+                    "result_count": len(results),
+                    "max_results": max_results,
+                },
+            )
+        except Exception:
+            pass  # Don't fail if audit logging fails
+
         return output
 
     except Exception as e:

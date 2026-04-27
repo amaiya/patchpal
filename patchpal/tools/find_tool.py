@@ -12,7 +12,6 @@ from typing import Optional
 from patchpal.tools.common import (
     REPO_ROOT,
     _operation_limiter,
-    audit_logger,
     require_permission_for_read,
 )
 
@@ -112,10 +111,6 @@ def find(pattern: str = "**/*", path: Optional[str] = None) -> str:
 
     # Extract just the paths
     result_files = [f[0] for f in files_with_mtime]
-
-    audit_logger.info(
-        f"FIND: Found {len(result_files)} files matching '{pattern}' in {path or 'repository'}"
-    )
 
     if not result_files:
         return "No files found matching pattern"

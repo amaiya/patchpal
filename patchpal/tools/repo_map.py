@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 from patchpal.tools.code_analysis import LANGUAGE_MAP, code_structure
-from patchpal.tools.common import REPO_ROOT, _operation_limiter, audit_logger
+from patchpal.tools.common import REPO_ROOT, _operation_limiter
 
 
 class RepoMapCache:
@@ -119,11 +119,6 @@ def get_repo_map(
         - Savings: 92.5%
     """
     _operation_limiter.check_limit(f"get_repo_map(max_files={max_files})")
-
-    audit_logger.info(
-        f"REPO_MAP: Generating (max_files={max_files}, "
-        f"include={include_patterns}, exclude={exclude_patterns})"
-    )
 
     # Get supported file extensions
     supported_extensions = set(LANGUAGE_MAP.keys())
@@ -237,10 +232,24 @@ def get_repo_map(
     # Calculate rough token estimate (1 char ≈ 0.3 tokens for code)
     estimated_tokens = len(result) // 3
 
-    audit_logger.info(
-        f"REPO_MAP: Generated {len(result):,} chars (~{estimated_tokens:,} tokens) "
-        f"for {total_files} files"
-    )
+    # Log repo map generation
+    try:
+        from patchpal.tools.audit import log_action_result
+
+        log_action_result(
+            tool_name="repo_map_generation",
+            description=f"Generated repo map: {len(result):,} chars (~{estimated_tokens:,} tokens) for {total_files} files",
+            success=True,
+            context={
+                "char_count": len(result),
+                "estimated_tokens": estimated_tokens,
+                "total_files": total_files,
+                "focus_files_count": len(focus_set) if focus_set else 0,
+                "max_files": max_files,
+            },
+        )
+    except Exception:
+        pass  # Don't fail if audit logging fails
 
     return result
 
@@ -269,4 +278,3 @@ def clear_repo_map_cache():
     """
     global _REPO_MAP_CACHE
     _REPO_MAP_CACHE = RepoMapCache()
-    audit_logger.info("REPO_MAP: Cache cleared")

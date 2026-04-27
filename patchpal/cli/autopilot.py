@@ -112,9 +112,26 @@ def autopilot_loop(
         print(f"🔄 Autopilot Iteration {iteration + 1}/{max_iterations}")
         print(f"{'=' * 80}\n")
 
+        # Log user prompt to audit log (first iteration only)
+        if iteration == 0:
+            try:
+                from patchpal.tools.audit import log_user_prompt
+
+                log_user_prompt(prompt)
+            except Exception:
+                pass  # Don't fail if audit logging fails
+
         # Run agent with the SAME prompt every time
         # The agent's conversation history accumulates, so it can see all previous work
         response = agent.run(prompt, max_iterations=100)
+
+        # Log agent response to audit log
+        try:
+            from patchpal.tools.audit import log_agent_response
+
+            log_agent_response(response, success=True)
+        except Exception:
+            pass  # Don't fail if audit logging fails
 
         print(f"\n{'=' * 80}")
         print("📝 Agent Response:")

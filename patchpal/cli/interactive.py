@@ -1551,10 +1551,17 @@ Supported models: Any LiteLLM-supported model
                     if skill_args:
                         prompt += f"\n\nArguments: {skill_args}"
 
-                    # Log user prompt to audit log (sanitize to prevent Windows Unicode errors)
-                    audit_logger.info(
-                        _sanitize_for_logging(f"USER_PROMPT: /{skill_name} {skill_args}")
-                    )
+                    # Log skill invocation to audit log with hash-chaining
+                    try:
+                        from patchpal.tools.audit import log_user_prompt
+
+                        log_user_prompt(f"/{skill_name} {skill_args}")
+                    except Exception:
+                        # Fallback to old-style logging if audit fails
+                        audit_logger.info(
+                            _sanitize_for_logging(f"USER_PROMPT: /{skill_name} {skill_args}")
+                        )
+
                     result = agent.run(prompt, max_iterations=max_iterations)
 
                     print("\n" + "=" * 80)
@@ -1574,9 +1581,24 @@ Supported models: Any LiteLLM-supported model
             # Run the agent (Ctrl-C here will interrupt agent, not exit)
             try:
                 print()  # Add blank line before agent output
-                # Log user prompt to audit log (sanitize to prevent Windows Unicode errors)
-                audit_logger.info(_sanitize_for_logging(f"USER_PROMPT: {user_input}"))
+                # Log user prompt to audit log with hash-chaining
+                try:
+                    from patchpal.tools.audit import log_user_prompt
+
+                    log_user_prompt(user_input)
+                except Exception:
+                    # Fallback to old-style logging if audit fails
+                    audit_logger.info(_sanitize_for_logging(f"USER_PROMPT: {user_input}"))
+
                 result = agent.run(user_input, max_iterations=max_iterations)
+
+                # Log agent response to audit log with hash-chaining
+                try:
+                    from patchpal.tools.audit import log_agent_response
+
+                    log_agent_response(result, success=True)
+                except Exception:
+                    pass  # Don't fail if audit logging fails
 
                 print("\n" + "=" * 80)
                 print("\033[1;32mAgent:\033[0m")

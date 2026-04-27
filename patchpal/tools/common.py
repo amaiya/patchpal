@@ -279,7 +279,24 @@ class OperationLimiter:
                 f"Operation limit exceeded ({self.max_operations} operations)\n"
                 f"This prevents infinite loops. Increase with PATCHPAL_MAX_OPERATIONS env var."
             )
-        audit_logger.info(f"Operation {self.operations}/{self.max_operations}: {operation}")
+
+        # Log tool execution with hash-chaining
+        try:
+            from patchpal.tools.audit import log_tool_execution
+
+            # Parse operation string like "run_shell(date)" or "read_file(/path/to/file)"
+            if "(" in operation and operation.endswith(")"):
+                tool_name = operation.split("(")[0]
+                # Extract parameters (everything between parens)
+                params_str = operation[len(tool_name) + 1 : -1]  # Remove "tool_name(" and ")"
+                # Store as dict for structured logging
+                parameters = {"args": params_str} if params_str else None
+                log_tool_execution(tool_name, parameters=parameters, operation_num=self.operations)
+            else:
+                log_tool_execution(operation, operation_num=self.operations)
+        except Exception:
+            # Fallback to old-style logging if audit fails
+            audit_logger.info(f"Operation {self.operations}/{self.max_operations}: {operation}")
 
     def reset(self):
         """Reset the operation counter (used in tests)."""
@@ -647,7 +664,6 @@ def _backup_file(path: Path) -> Optional[Path]:
         backup_path = BACKUP_DIR / backup_name
 
         shutil.copy2(path, backup_path)
-        audit_logger.info(f"BACKUP: {path} -> {backup_path}")
         return backup_path
     except Exception as e:
         audit_logger.warning(f"BACKUP FAILED: {path} - {e}")

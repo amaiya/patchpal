@@ -5,7 +5,6 @@ from typing import Optional
 from patchpal.tools import common
 from patchpal.tools.common import (
     _operation_limiter,
-    audit_logger,
 )
 
 
@@ -51,7 +50,6 @@ Skills are markdown files with YAML frontmatter. See the examples for the format
     lines.append("  - User types: /skill_name (e.g., /commit)")
     lines.append("  - Or just ask naturally and the agent will discover the right skill")
 
-    audit_logger.info(f"LIST_SKILLS: {len(skills)} skill(s)")
     return "\n".join(lines)
 
 
@@ -83,8 +81,6 @@ def use_skill(skill_name: str, args: str = "") -> str:
     instructions = skill.instructions
     if args:
         instructions = f"{instructions}\n\nArguments: {args}"
-
-    audit_logger.info(f"USE_SKILL: {skill_name} (args={args[:50]})")
 
     return f"Skill: {skill.name}\n\n{instructions}"
 
@@ -177,5 +173,22 @@ def ask_user(question: str, options: Optional[list] = None) -> str:
         answer = prompt(prompt_text).strip()
         console.print()
 
-    audit_logger.info(f"ASK_USER: Q: {question[:50]}... A: {answer[:50]}")
+    # Log user interaction with hash-chaining
+    try:
+        from patchpal.tools.audit import log_action_result
+
+        log_action_result(
+            tool_name="user_interaction",
+            description=f"Asked user: {question[:100]}{'...' if len(question) > 100 else ''}",
+            success=True,
+            context={
+                "question": question[:500],  # Truncate long questions
+                "answer": answer[:500],  # Truncate long answers
+                "had_options": bool(options),
+                "num_options": len(options) if options else 0,
+            },
+        )
+    except Exception:
+        pass  # Don't fail if audit logging fails
+
     return answer

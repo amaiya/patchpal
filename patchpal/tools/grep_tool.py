@@ -12,7 +12,6 @@ from typing import Optional
 from patchpal.tools.common import (
     REPO_ROOT,
     _operation_limiter,
-    audit_logger,
     require_permission_for_read,
 )
 
@@ -167,7 +166,6 @@ def grep(
         search_location = f" in {path}" if path else ""
 
         if not output or result.returncode == 1:
-            audit_logger.info(f"GREP: {pattern}{search_location} - No matches found")
             return f"No matches found for pattern: {pattern}{search_location}"
 
         # Count and limit results
@@ -179,7 +177,6 @@ def grep(
             output = "\n".join(lines)
             output += f"\n\n... (showing first {max_results} of {total_matches} matches)"
 
-        audit_logger.info(f"GREP: {pattern}{search_location} - Found {total_matches} matches")
         return output
 
     except subprocess.TimeoutExpired:

@@ -48,6 +48,39 @@ def _compute_hash(entry: dict) -> str:
     return hash_obj.hexdigest()
 
 
+def _log_entry(entry: dict):
+    """Log an entry with hash-chaining.
+
+    This centralizes the hash-chaining logic:
+    - Adds prev_hash from previous entry
+    - Computes hash of this entry
+    - Updates prev_hash for next entry
+    - Logs as JSON
+
+    Args:
+        entry: Log entry dictionary (without prev_hash/hash fields)
+    """
+    if not config.AUDIT_LOG:
+        return
+
+    from patchpal.tools.common import audit_logger
+
+    # Add previous hash for chain
+    global _prev_hash
+    if _prev_hash is not None:
+        entry["prev_hash"] = _prev_hash
+
+    # Compute hash of this entry
+    entry_hash = _compute_hash(entry)
+    entry["hash"] = entry_hash
+
+    # Update prev_hash for next entry
+    _prev_hash = entry_hash
+
+    # Log as JSON
+    audit_logger.info(json.dumps(entry))
+
+
 def verify_hash_chain(entries: list[dict]) -> tuple[bool, Optional[str]]:
     """Verify the hash chain of log entries.
 
@@ -161,11 +194,6 @@ def log_action_blocked(
         pattern: Optional pattern that was blocked (e.g., command pattern, file path)
         context: Optional additional context dictionary
     """
-    if not config.AUDIT_LOG:
-        return
-
-    from patchpal.tools.common import audit_logger
-
     entry = {
         "timestamp": datetime.utcnow().isoformat() + "Z",
         "session_id": get_session_id(),
@@ -183,20 +211,7 @@ def log_action_blocked(
     if context:
         entry["context"] = context
 
-    # Add previous hash for chain
-    global _prev_hash
-    if _prev_hash is not None:
-        entry["prev_hash"] = _prev_hash
-
-    # Compute hash of this entry
-    entry_hash = _compute_hash(entry)
-    entry["hash"] = entry_hash
-
-    # Update prev_hash for next entry
-    _prev_hash = entry_hash
-
-    # Log as JSON for structured parsing
-    audit_logger.info(json.dumps(entry))
+    _log_entry(entry)
 
 
 def log_action_approved(
@@ -215,11 +230,6 @@ def log_action_approved(
         pattern: Optional pattern that was approved
         context: Optional additional context dictionary
     """
-    if not config.AUDIT_LOG:
-        return
-
-    from patchpal.tools.common import audit_logger
-
     entry = {
         "timestamp": datetime.utcnow().isoformat() + "Z",
         "session_id": get_session_id(),
@@ -237,19 +247,7 @@ def log_action_approved(
     if context:
         entry["context"] = context
 
-    # Add previous hash for chain
-    global _prev_hash
-    if _prev_hash is not None:
-        entry["prev_hash"] = _prev_hash
-
-    # Compute hash of this entry
-    entry_hash = _compute_hash(entry)
-    entry["hash"] = entry_hash
-
-    # Update prev_hash for next entry
-    _prev_hash = entry_hash
-
-    audit_logger.info(json.dumps(entry))
+    _log_entry(entry)
 
 
 def log_action_result(
@@ -268,11 +266,6 @@ def log_action_result(
         error: Optional error message if action failed
         context: Optional additional context dictionary
     """
-    if not config.AUDIT_LOG:
-        return
-
-    from patchpal.tools.common import audit_logger
-
     entry = {
         "timestamp": datetime.utcnow().isoformat() + "Z",
         "session_id": get_session_id(),
@@ -289,19 +282,7 @@ def log_action_result(
     if context:
         entry["context"] = context
 
-    # Add previous hash for chain
-    global _prev_hash
-    if _prev_hash is not None:
-        entry["prev_hash"] = _prev_hash
-
-    # Compute hash of this entry
-    entry_hash = _compute_hash(entry)
-    entry["hash"] = entry_hash
-
-    # Update prev_hash for next entry
-    _prev_hash = entry_hash
-
-    audit_logger.info(json.dumps(entry))
+    _log_entry(entry)
 
 
 def log_session_start(agent_type: str = "function_calling", model: str = "unknown"):
@@ -311,10 +292,9 @@ def log_session_start(agent_type: str = "function_calling", model: str = "unknow
         agent_type: Type of agent (e.g., 'function_calling', 'react')
         model: Model identifier being used
     """
-    if not config.AUDIT_LOG:
-        return
-
-    from patchpal.tools.common import audit_logger
+    # Reset chain for new session
+    global _prev_hash
+    _prev_hash = None
 
     entry = {
         "timestamp": datetime.utcnow().isoformat() + "Z",
@@ -325,18 +305,7 @@ def log_session_start(agent_type: str = "function_calling", model: str = "unknow
         "model": model,
     }
 
-    # Add previous hash for chain (SESSION_START has no prev_hash)
-    global _prev_hash
-    _prev_hash = None  # Reset chain for new session
-
-    # Compute hash of this entry
-    entry_hash = _compute_hash(entry)
-    entry["hash"] = entry_hash
-
-    # Update prev_hash for next entry
-    _prev_hash = entry_hash
-
-    audit_logger.info(json.dumps(entry))
+    _log_entry(entry)
 
 
 def log_session_end(total_operations: int = 0, success: bool = True):
@@ -346,11 +315,6 @@ def log_session_end(total_operations: int = 0, success: bool = True):
         total_operations: Total number of operations performed
         success: Whether the session completed successfully
     """
-    if not config.AUDIT_LOG:
-        return
-
-    from patchpal.tools.common import audit_logger
-
     entry = {
         "timestamp": datetime.utcnow().isoformat() + "Z",
         "session_id": get_session_id(),
@@ -360,16 +324,82 @@ def log_session_end(total_operations: int = 0, success: bool = True):
         "outcome": "success" if success else "error",
     }
 
-    # Add previous hash for chain
-    global _prev_hash
-    if _prev_hash is not None:
-        entry["prev_hash"] = _prev_hash
+    _log_entry(entry)
 
-    # Compute hash of this entry
-    entry_hash = _compute_hash(entry)
-    entry["hash"] = entry_hash
 
-    # Update prev_hash for next entry (though this is the last entry in session)
-    _prev_hash = entry_hash
+def log_user_prompt(prompt: str):
+    """Log a user prompt/message.
 
-    audit_logger.info(json.dumps(entry))
+    Args:
+        prompt: The user's prompt/request
+    """
+    # Truncate very long prompts for logging
+    max_length = 1000
+    if len(prompt) > max_length:
+        prompt = prompt[:max_length] + "... (truncated)"
+
+    entry = {
+        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "session_id": get_session_id(),
+        "user": get_user_identity(),
+        "event_type": "USER_PROMPT",
+        "prompt": prompt,
+    }
+
+    _log_entry(entry)
+
+
+def log_agent_response(response: str, success: bool = True):
+    """Log an agent response.
+
+    Args:
+        response: The agent's response
+        success: Whether the response was successful
+    """
+    # Truncate very long responses for logging
+    max_length = 1000
+    if len(response) > max_length:
+        response = response[:max_length] + "... (truncated)"
+
+    entry = {
+        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "session_id": get_session_id(),
+        "user": get_user_identity(),
+        "event_type": "AGENT_RESPONSE",
+        "response": response,
+        "outcome": "success" if success else "error",
+    }
+
+    _log_entry(entry)
+
+
+def log_tool_execution(tool_name: str, parameters: dict = None, operation_num: int = None):
+    """Log a tool execution.
+
+    Args:
+        tool_name: Name of the tool (e.g., 'run_shell', 'read_file')
+        parameters: Optional dict of parameters passed to the tool
+        operation_num: Optional operation number
+    """
+    entry = {
+        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "session_id": get_session_id(),
+        "user": get_user_identity(),
+        "event_type": "TOOL_EXECUTION",
+        "tool_name": tool_name,
+    }
+
+    if parameters:
+        # Truncate large parameter values
+        truncated_params = {}
+        for key, value in parameters.items():
+            if isinstance(value, str) and len(value) > 200:
+                truncated_params[key] = value[:200] + "... (truncated)"
+            else:
+                truncated_params[key] = value
+        entry["parameters"] = truncated_params
+
+    if operation_num is not None:
+        entry["operation_num"] = operation_num
+
+    _log_entry(entry)
