@@ -67,6 +67,11 @@ class PermissionManager:
         These commands replace dedicated tools that were removed (replaced by find tool)
         to reduce redundancy. Since those tools didn't require permissions, their shell
         equivalents shouldn't either.
+
+        SECURITY NOTE: Environment variable commands (env, printenv, set, Get-Variable)
+        are NOT in this list because they can expose API keys and secrets loaded from
+        .env files. While we block reading .env files directly, we must also block
+        reading the environment variables that were loaded from them.
         """
         # Check if web tools are enabled
         web_tools_enabled = config.ENABLE_WEB
@@ -99,9 +104,6 @@ class PermissionManager:
             "whereis",
             # Current directory
             "pwd",
-            # Environment
-            "env",
-            "printenv",
             # Network diagnostic
             "ifconfig",
             # Disk/system info
@@ -132,8 +134,6 @@ class PermissionManager:
             "assoc",
             "ftype",
             "doskey /history",
-            # Environment
-            "set",
             # Network diagnostic
             "tracert",
             "nslookup",
@@ -169,7 +169,6 @@ class PermissionManager:
             "get-host",
             "get-command",
             "get-alias",
-            "get-variable",
             "get-member",
             "get-help",
             # Search/filter
