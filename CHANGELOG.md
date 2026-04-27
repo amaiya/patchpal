@@ -7,6 +7,17 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
+## 0.22.2 (2026-04-27)
+
+### new:
+- N/A
+
+### changed:
+- logging refinements including hash-chaining
+
+### fixed:
+- N/A
+
 ## 0.22.1 (2026-04-23)
 
 ### new:
