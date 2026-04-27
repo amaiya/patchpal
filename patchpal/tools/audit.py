@@ -5,8 +5,16 @@ This module provides structured JSON-based audit logging with:
 - User identity tracking
 - Action approval/rejection logging
 - Structured format for easy parsing
+- Tamper-evidence via cryptographic hash-chaining (SHA-256)
+
+Each log entry contains:
+- A hash of its own contents
+- The hash of the previous entry (creating an immutable chain)
+
+This makes logs tamper-evident: modifying any entry breaks the chain.
 """
 
+import hashlib
 import json
 import os
 import uuid
@@ -17,6 +25,91 @@ from patchpal.config import config
 
 # Session ID - generated once per agent session
 _session_id: Optional[str] = None
+
+# Previous entry hash for chain verification
+_prev_hash: Optional[str] = None
+
+
+def _compute_hash(entry: dict) -> str:
+    """Compute SHA-256 hash of a log entry.
+
+    Args:
+        entry: Log entry dictionary (without hash field)
+
+    Returns:
+        Hex-encoded SHA-256 hash
+    """
+    # Create canonical JSON (sorted keys, no whitespace)
+    canonical = json.dumps(entry, sort_keys=True, separators=(",", ":"))
+
+    # Compute SHA-256 hash
+    hash_obj = hashlib.sha256(canonical.encode("utf-8"))
+
+    return hash_obj.hexdigest()
+
+
+def verify_hash_chain(entries: list[dict]) -> tuple[bool, Optional[str]]:
+    """Verify the hash chain of log entries.
+
+    Args:
+        entries: List of log entry dictionaries (must include 'hash' and 'prev_hash' fields)
+
+    Returns:
+        Tuple of (is_valid, error_message)
+        - (True, None) if chain is valid
+        - (False, error_message) if chain is broken
+    """
+    if not entries:
+        return True, None
+
+    prev_hash = None
+
+    for i, entry in enumerate(entries):
+        # Check if entry has required hash field
+        if "hash" not in entry:
+            return False, f"Entry {i} missing 'hash' field"
+
+        # Extract hash and prev_hash
+        stored_hash = entry.pop("hash")
+        stored_prev_hash = entry.get("prev_hash")
+
+        # First entry should have no prev_hash (SESSION_START)
+        if i == 0:
+            if stored_prev_hash is not None:
+                entry["hash"] = stored_hash  # Restore
+                return False, "Entry 0 (SESSION_START) should not have 'prev_hash'"
+        else:
+            # Subsequent entries must have prev_hash matching previous entry
+            if stored_prev_hash != prev_hash:
+                entry["hash"] = stored_hash  # Restore
+                return (
+                    False,
+                    f"Entry {i}: prev_hash mismatch (expected {prev_hash[:8]}..., got {stored_prev_hash[:8] if stored_prev_hash else None}...)",
+                )
+
+        # Compute expected hash
+        expected_hash = _compute_hash(entry)
+
+        # Restore hash to entry
+        entry["hash"] = stored_hash
+
+        # Verify hash matches
+        if stored_hash != expected_hash:
+            return (
+                False,
+                f"Entry {i}: hash mismatch (expected {expected_hash[:8]}..., got {stored_hash[:8]}...)",
+            )
+
+        # Update prev_hash for next iteration
+        prev_hash = stored_hash
+
+    return True, None
+
+
+def reset_prev_hash():
+    """Reset previous hash (for testing or new sessions)."""
+    global _prev_hash
+    _prev_hash = None
 
 
 def get_session_id() -> str:
@@ -90,6 +183,18 @@ def log_action_blocked(
     if context:
         entry["context"] = context
 
+    # Add previous hash for chain
+    global _prev_hash
+    if _prev_hash is not None:
+        entry["prev_hash"] = _prev_hash
+
+    # Compute hash of this entry
+    entry_hash = _compute_hash(entry)
+    entry["hash"] = entry_hash
+
+    # Update prev_hash for next entry
+    _prev_hash = entry_hash
+
     # Log as JSON for structured parsing
     audit_logger.info(json.dumps(entry))
 
@@ -132,6 +237,18 @@ def log_action_approved(
     if context:
         entry["context"] = context
 
+    # Add previous hash for chain
+    global _prev_hash
+    if _prev_hash is not None:
+        entry["prev_hash"] = _prev_hash
+
+    # Compute hash of this entry
+    entry_hash = _compute_hash(entry)
+    entry["hash"] = entry_hash
+
+    # Update prev_hash for next entry
+    _prev_hash = entry_hash
+
     audit_logger.info(json.dumps(entry))
 
 
@@ -172,6 +289,18 @@ def log_action_result(
     if context:
         entry["context"] = context
 
+    # Add previous hash for chain
+    global _prev_hash
+    if _prev_hash is not None:
+        entry["prev_hash"] = _prev_hash
+
+    # Compute hash of this entry
+    entry_hash = _compute_hash(entry)
+    entry["hash"] = entry_hash
+
+    # Update prev_hash for next entry
+    _prev_hash = entry_hash
+
     audit_logger.info(json.dumps(entry))
 
 
@@ -196,6 +325,17 @@ def log_session_start(agent_type: str = "function_calling", model: str = "unknow
         "model": model,
     }
 
+    # Add previous hash for chain (SESSION_START has no prev_hash)
+    global _prev_hash
+    _prev_hash = None  # Reset chain for new session
+
+    # Compute hash of this entry
+    entry_hash = _compute_hash(entry)
+    entry["hash"] = entry_hash
+
+    # Update prev_hash for next entry
+    _prev_hash = entry_hash
+
     audit_logger.info(json.dumps(entry))
 
 
@@ -219,5 +359,17 @@ def log_session_end(total_operations: int = 0, success: bool = True):
         "total_operations": total_operations,
         "outcome": "success" if success else "error",
     }
+
+    # Add previous hash for chain
+    global _prev_hash
+    if _prev_hash is not None:
+        entry["prev_hash"] = _prev_hash
+
+    # Compute hash of this entry
+    entry_hash = _compute_hash(entry)
+    entry["hash"] = entry_hash
+
+    # Update prev_hash for next entry (though this is the last entry in session)
+    _prev_hash = entry_hash
 
     audit_logger.info(json.dumps(entry))
