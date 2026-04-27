@@ -164,6 +164,14 @@ class ReActAgent:
         # Load project memory
         self._load_project_memory()
 
+        # Log session start
+        try:
+            from patchpal.tools.audit import log_session_start
+
+            log_session_start(agent_type="react", model=self.model_id)
+        except Exception:
+            pass  # Don't fail if audit logging fails
+
     def _load_project_memory(self):
         """Load project memory file if it exists."""
         from pathlib import Path

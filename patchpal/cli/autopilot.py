@@ -144,6 +144,16 @@ def autopilot_loop(
             )
             if agent.cumulative_cost > 0:
                 print(f"Total cost: ${agent.cumulative_cost:.4f}")
+
+            # Log successful session end
+            try:
+                from patchpal.tools.audit import log_session_end
+                from patchpal.tools.common import get_operation_count
+
+                log_session_end(total_operations=get_operation_count(), success=True)
+            except Exception:
+                pass  # Don't fail if audit logging fails
+
             return response
 
         # Stop hook: Agent tried to complete, but no completion promise
@@ -167,6 +177,15 @@ def autopilot_loop(
     print(f"Total tokens: {agent.cumulative_input_tokens + agent.cumulative_output_tokens:,}")
     if agent.cumulative_cost > 0:
         print(f"Total cost: ${agent.cumulative_cost:.4f}")
+
+    # Log session end
+    try:
+        from patchpal.tools.audit import log_session_end
+        from patchpal.tools.common import get_operation_count
+
+        log_session_end(total_operations=get_operation_count(), success=False)
+    except Exception:
+        pass  # Don't fail if audit logging fails
 
     return None
 

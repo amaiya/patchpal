@@ -1071,10 +1071,23 @@ def _check_path(path: str, must_exist: bool = True) -> Path:
     # Check if file is sensitive FIRST (regardless of whether it exists)
     # This prevents attempts to read/write sensitive files
     if _is_sensitive_file(p) and not config.ALLOW_SENSITIVE:
-        raise ValueError(
+        error_msg = (
             f"Access to sensitive file blocked: {path}\n"
             f"Set PATCHPAL_ALLOW_SENSITIVE=true to override (not recommended)"
         )
+        # Log blocked access to sensitive file
+        try:
+            from patchpal.tools.audit import log_action_blocked
+
+            log_action_blocked(
+                tool_name="file_access",
+                description=f"File access: {path}",
+                reason="sensitive_file",
+                pattern=str(p),
+            )
+        except Exception:
+            pass  # Don't fail if audit logging fails
+        raise ValueError(error_msg)
 
     # Check if file exists when required
     if must_exist and not p.is_file():

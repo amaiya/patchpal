@@ -564,6 +564,15 @@ Supported models: Any LiteLLM-supported model
 
                     audit_logger.info(", ".join(log_parts))
 
+                # Log structured session end
+                try:
+                    from patchpal.tools.audit import log_session_end
+                    from patchpal.tools.common import get_operation_count
+
+                    log_session_end(total_operations=get_operation_count(), success=True)
+                except Exception:
+                    pass  # Don't fail if audit logging fails
+
                 print("\nGoodbye!")
                 break
 

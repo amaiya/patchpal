@@ -508,6 +508,14 @@ class PatchPalAgent:
         # Load MEMORY.md if it exists and has non-template content
         self._load_project_memory()
 
+        # Log session start
+        try:
+            from patchpal.tools.audit import log_session_start
+
+            log_session_start(agent_type="function_calling", model=self.model_id)
+        except Exception:
+            pass  # Don't fail if audit logging fails
+
     def _load_project_memory(self):
         """Load MEMORY.md file at session start if it has non-template content."""
         try:

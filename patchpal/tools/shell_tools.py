@@ -286,17 +286,41 @@ def run_shell(cmd: str) -> str:
     # Check for dangerous tokens (privilege escalation commands)
     # Token-based matching: splits command and checks each token
     if any(tok in DANGEROUS_TOKENS for tok in cmd.split()):
-        raise ValueError(
+        error_msg = (
             f"Blocked dangerous command: {cmd}\nForbidden operations: {', '.join(DANGEROUS_TOKENS)}"
         )
+        # Log blocked command
+        try:
+            from patchpal.tools.audit import log_action_blocked
+
+            log_action_blocked(
+                tool_name="run_shell",
+                description=f"Shell command: {cmd[:100]}",
+                reason="dangerous_command",
+                pattern=next((tok for tok in cmd.split() if tok in DANGEROUS_TOKENS), None),
+            )
+        except Exception:
+            pass  # Don't fail if audit logging fails
+        raise ValueError(error_msg)
 
     # Check for dangerous patterns (destructive operations)
     # Substring matching: checks if pattern appears anywhere in command
     for pattern in DANGEROUS_PATTERNS:
         if pattern in cmd:
-            raise ValueError(
-                f"Blocked dangerous pattern in command: {pattern}\nFull command: {cmd}"
-            )
+            error_msg = f"Blocked dangerous pattern in command: {pattern}\nFull command: {cmd}"
+            # Log blocked command
+            try:
+                from patchpal.tools.audit import log_action_blocked
+
+                log_action_blocked(
+                    tool_name="run_shell",
+                    description=f"Shell command: {cmd[:100]}",
+                    reason="dangerous_pattern",
+                    pattern=pattern,
+                )
+            except Exception:
+                pass  # Don't fail if audit logging fails
+            raise ValueError(error_msg)
 
     audit_logger.info(f"SHELL: {cmd}")
 

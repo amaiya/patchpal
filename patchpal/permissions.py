@@ -420,6 +420,19 @@ class PermissionManager:
 
         # Check if already granted (with full_command for multi-word pattern matching)
         if self._check_existing_grant(tool_name, pattern, full_command):
+            # Log that permission was auto-granted from previous session grant
+            try:
+                from patchpal.tools.audit import log_action_approved
+
+                log_action_approved(
+                    tool_name=tool_name,
+                    description=description,
+                    approval_type="auto_granted",
+                    pattern=pattern,
+                    context={"working_dir": context} if context else None,
+                )
+            except Exception:
+                pass  # Don't fail if audit logging fails
             return True
 
         # Display the request - use stderr to avoid Rich console capture
@@ -481,14 +494,53 @@ class PermissionManager:
                 choice = input("\n\033[1;36mChoice [1-3]:\033[0m ").strip()
 
                 if choice == "1":
+                    # Log approval
+                    try:
+                        from patchpal.tools.audit import log_action_approved
+
+                        log_action_approved(
+                            tool_name=tool_name,
+                            description=description,
+                            approval_type="user_approved",
+                            pattern=pattern,
+                            context={"working_dir": context} if context else None,
+                        )
+                    except Exception:
+                        pass  # Don't fail if audit logging fails
                     return True
                 elif choice == "2":
                     # Grant session-only permission (like Claude Code)
                     self._grant_permission(tool_name, persistent=False, pattern=pattern)
+                    # Log approval with session grant
+                    try:
+                        from patchpal.tools.audit import log_action_approved
+
+                        log_action_approved(
+                            tool_name=tool_name,
+                            description=description,
+                            approval_type="session_granted",
+                            pattern=pattern,
+                            context={"working_dir": context} if context else None,
+                        )
+                    except Exception:
+                        pass  # Don't fail if audit logging fails
                     return True
                 elif choice == "3":
                     sys.stderr.write("\n\033[1;31mOperation cancelled.\033[0m\n")
                     sys.stderr.flush()
+                    # Log rejection
+                    try:
+                        from patchpal.tools.audit import log_action_blocked
+
+                        log_action_blocked(
+                            tool_name=tool_name,
+                            description=description,
+                            reason="user_rejected",
+                            pattern=pattern,
+                            context={"working_dir": context} if context else None,
+                        )
+                    except Exception:
+                        pass  # Don't fail if audit logging fails
                     return False
                 else:
                     sys.stderr.write("Invalid choice. Please enter 1, 2, or 3.\n")
