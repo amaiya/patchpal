@@ -45,7 +45,6 @@ The `--` separator distinguishes sandbox options (left side) from PatchPal argum
 
 - ✅ Pre-built image with patchpal installed (fast startup)
 - ✅ Auto-detects Docker/Podman (prefers Podman rootless)
-- ✅ Auto-configures Ollama context lengths
 - ✅ Loads API keys from `.env` files
 - ✅ Mounts custom tools automatically
 - ✅ Clean environment on each run
@@ -111,7 +110,7 @@ patchpal-sandbox --host-network -- autopilot \
 
 ## Network Restrictions
 
-For maximum security, use `--restrict-network` to isolate the container from the internet while allowing access to required LLM APIs:
+For maximum security, use `--restrict-network` to isolate the container from the external network while allowing access to required LLM APIs:
 
 ```bash
 # Auto-detects LLM endpoints from environment variables
