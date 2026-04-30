@@ -686,9 +686,6 @@ DESCRIPTION:
     - Pre-built image with patchpal installed (fast startup)
     - Auto-mounts ~/.patchpal for custom tools, config, and memory
     - Custom tools work automatically (from ~/.patchpal/tools/ and <repo>/.patchpal/tools/)
-    - Auto-sets OLLAMA_CONTEXT_LENGTH for Ollama models:
-      * 8192 for regular models (agents)
-      * 32768 for reasoning models (gpt-oss, deepseek-r1, qwq, qwen)
 
     Recommended for autopilot mode and high-risk operations.
 
