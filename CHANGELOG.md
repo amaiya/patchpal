@@ -17,6 +17,7 @@ Most recent releases are shown at the top. Each release shows:
 
 ### fixed:
 - fix compaction bug with token-tracking (#80)
+- pin `tree-sitter-language-pack` due to issue in newer versions (#81)
 
 
 ## 0.22.1 (2026-04-23)

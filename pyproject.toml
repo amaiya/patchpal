@@ -36,7 +36,7 @@ dependencies = [
     "pymupdf>=1.23.0",
     "python-docx>=1.0.0",
     "python-pptx>=0.6.0",
-    "tree-sitter-language-pack>=0.3.0",
+    "tree-sitter-language-pack>=0.3.0,<1.0.0",
 ]
 
 [project.optional-dependencies]
