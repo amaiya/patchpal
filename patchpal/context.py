@@ -355,15 +355,37 @@ Be comprehensive but concise. The goal is to continue work seamlessly without lo
         usage_ratio = total_tokens / self.context_limit
         return usage_ratio >= self.COMPACT_THRESHOLD
 
-    def get_usage_stats(self, messages: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def get_usage_stats(
+        self, messages: List[Dict[str, Any]], actual_prompt_tokens: int = None
+    ) -> Dict[str, Any]:
         """Get current context usage statistics.
 
         Args:
             messages: Current message history
+            actual_prompt_tokens: Optional actual prompt tokens from latest API response (includes cache operations)
 
         Returns:
             Dict with usage statistics
         """
+        # If we have actual prompt tokens from API (includes cache writes/reads), use those
+        if actual_prompt_tokens is not None:
+            total_tokens = actual_prompt_tokens + self.output_reserve
+            # For display purposes, estimate system vs message breakdown
+            system_tokens = self.estimator.estimate_tokens(self.system_prompt)
+            datetime_tokens = 30
+            message_tokens = actual_prompt_tokens - system_tokens - datetime_tokens
+
+            return {
+                "system_tokens": system_tokens + datetime_tokens,
+                "message_tokens": max(0, message_tokens),  # Ensure non-negative
+                "output_reserve": self.output_reserve,
+                "total_tokens": total_tokens,
+                "context_limit": self.context_limit,
+                "usage_ratio": total_tokens / self.context_limit,
+                "usage_percent": int((total_tokens / self.context_limit) * 100),
+            }
+
+        # Fallback to estimation when actual tokens not available
         system_tokens = self.estimator.estimate_tokens(self.system_prompt)
         datetime_tokens = 30  # Approximate size of dynamic date/time message
         message_tokens = self.estimator.estimate_messages_tokens(messages)

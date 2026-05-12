@@ -479,6 +479,10 @@ class PatchPalAgent:
         self.cumulative_input_tokens = 0
         self.cumulative_output_tokens = 0
 
+        # Track last prompt tokens from most recent API response (includes cache operations)
+        # This is the ACTUAL token count sent to the API, used for accurate context management
+        self.last_prompt_tokens = None
+
         # Track cache-related tokens (for Anthropic/Bedrock models with prompt caching)
         self.cumulative_cache_creation_tokens = 0
         self.cumulative_cache_read_tokens = 0
@@ -953,7 +957,10 @@ It's currently empty (just the template). The file is automatically loaded at se
 
         # Check for compaction BEFORE starting work
         # This ensures we never compact mid-execution and lose tool results
-        if self.enable_auto_compact and self.context_manager.needs_compaction(self.messages):
+        # Use last_prompt_tokens from previous API call for accurate check (includes cache operations)
+        if self.enable_auto_compact and self.context_manager.needs_compaction(
+            self.messages, actual_prompt_tokens=self.last_prompt_tokens
+        ):
             self._perform_auto_compaction()
 
         # Agent loop with interrupt handling
@@ -1100,7 +1107,10 @@ It's currently empty (just the template). The file is automatically loaded at se
                 last_prompt_tokens = None  # Track for reactive context management
                 if hasattr(response, "usage") and response.usage:
                     if hasattr(response.usage, "prompt_tokens"):
+                        # LiteLLM already includes cache operations in prompt_tokens for Anthropic/Bedrock
+                        # (see litellm/llms/anthropic/chat/transformation.py)
                         last_prompt_tokens = response.usage.prompt_tokens
+                        self.last_prompt_tokens = last_prompt_tokens  # Store for /status command
                         self.cumulative_input_tokens += response.usage.prompt_tokens
                     if hasattr(response.usage, "completion_tokens"):
                         self.cumulative_output_tokens += response.usage.completion_tokens

@@ -7,6 +7,30 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
+## 0.22.3 (2026-05-12)
+
+### new:
+- N/A
+
+### changed:
+- N/A
+
+### fixed:
+- fix compaction bug with token-tracking (#80)
+
+
+## 0.22.1 (2026-04-23)
+
+### new:
+- N/A
+
+### changed:
+- N/A
+
+### fixed:
+- Allow `patchpal-sandbox` to launch without arguments
+
+
 ## 0.22.2 (2026-04-27)
 
 ### new:

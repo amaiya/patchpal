@@ -670,7 +670,9 @@ Supported models: Any LiteLLM-supported model
 
             # Handle /status command - show context window usage
             if user_input.lower() in ["status", "/status"]:
-                stats = agent.context_manager.get_usage_stats(agent.messages)
+                stats = agent.context_manager.get_usage_stats(
+                    agent.messages, actual_prompt_tokens=agent.last_prompt_tokens
+                )
 
                 print("\n" + "=" * 70)
                 print("\033[1;36mContext Window Status\033[0m")
