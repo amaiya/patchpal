@@ -741,6 +741,7 @@ It's currently empty (just the template). The file is automatically loaded at se
                 response = litellm.completion(
                     model=self.model_id,
                     messages=messages,
+                    max_tokens=32000,  # Explicit output token limit for predictable context usage
                     timeout=LLM_TIMEOUT,
                     **self.litellm_kwargs,
                 )
@@ -1078,6 +1079,7 @@ It's currently empty (just the template). The file is automatically loaded at se
                         "messages": messages,
                         "tools": tools,
                         "tool_choice": "auto",
+                        "max_tokens": 32000,  # Explicit output token limit for predictable context usage
                         "timeout": LLM_TIMEOUT,
                         "stream": stream,
                         **self.litellm_kwargs,

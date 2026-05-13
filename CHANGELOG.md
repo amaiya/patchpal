@@ -7,6 +7,18 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
+## 0.22.5 (2026-05-13)
+
+### new:
+- N/A
+
+### changed:
+- N/A
+
+### fixed:
+- Explicitly set output reserve to avoid context window issues (#80)
+
+
 ## 0.22.4 (2026-05-12)
 
 ### new:

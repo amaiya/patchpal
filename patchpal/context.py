@@ -257,7 +257,10 @@ Be comprehensive but concise. The goal is to continue work seamlessly without lo
         self.system_prompt = system_prompt
         self.estimator = TokenEstimator(model_id)
         self.context_limit = self._get_context_limit()
-        self.output_reserve = 4_096  # Reserve tokens for model output
+        # Reserve 16% of context for output (min 4K, max 32K)
+        # This ensures older models like GPT-4 (8K) get 1.28K reserve
+        # while modern models get full 32K reserve
+        self.output_reserve = min(32_000, max(4_000, int(self.context_limit * 0.16)))
 
     def _get_context_limit(self) -> int:
         """Get context limit for model.
