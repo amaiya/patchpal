@@ -7,6 +7,17 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
+## 0.22.4 (2026-05-12)
+
+### new:
+- N/A
+
+### changed:
+- N/A
+
+### fixed:
+- Fixed 80% auto-compaction not triggering for large message additions (e.g., pasting changelogs, reading large files). Bug introduced in March when optimization started using stale token counts from previous API call instead of estimating current messages. Reverted `needs_compaction()` to always estimate current messages while keeping actual tokens for `/status` display. (#80)
+
 ## 0.22.3 (2026-05-12)
 
 ### new:
@@ -16,7 +27,7 @@ Most recent releases are shown at the top. Each release shows:
 - N/A
 
 ### fixed:
-- fix compaction bug with token-tracking (#80)
+- fix compaction bug with token-tracking (#80) - partial fix, staleness issue remained
 - pin `tree-sitter-language-pack` due to issue in newer versions (#81)
 
 

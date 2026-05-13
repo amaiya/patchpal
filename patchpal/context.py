@@ -321,30 +321,31 @@ Be comprehensive but concise. The goal is to continue work seamlessly without lo
     ) -> bool:
         """Check if context window needs compaction.
 
-        Supports both reactive (preferred) and proactive (fallback) approaches:
-        - Reactive: Use actual_prompt_tokens from latest API response
-        - Proactive: Estimate tokens if actual_prompt_tokens not available
+        ALWAYS estimates current messages to avoid staleness issues when predicting
+        whether the NEXT API call will overflow. Using actual_prompt_tokens from a
+        previous call can cause false negatives when large messages are added between
+        the last API call and the compaction check.
 
-        The reactive approach is preferred as it uses actual token counts from the LLM,
-        avoiding the need for tiktoken or other estimation methods.
+        Example of staleness bug (fixed):
+        - Previous API call: 120K tokens (60% usage)
+        - User pastes huge changelog: +90K tokens
+        - Total: 210K tokens (exceeds 200K limit)
+        - Bug: If we used actual_prompt_tokens=120K, we'd think we're at 60%
+        - Fix: Always re-estimate to see the 210K total
+
+        The actual_prompt_tokens parameter is kept for API compatibility but ignored
+        for compaction decisions. Use get_usage_stats() for display purposes where
+        actual tokens are appropriate (staleness OK for showing recent stats).
 
         Args:
             messages: Current message history
-            actual_prompt_tokens: Optional actual prompt token count from latest API response
+            actual_prompt_tokens: IGNORED - kept for API compatibility only
 
         Returns:
             True if compaction is needed
         """
-        # Reactive approach (preferred): use actual token counts from API response
-        if actual_prompt_tokens is not None:
-            # Add output reserve to account for response tokens
-            total_tokens = actual_prompt_tokens + self.output_reserve
-            usage_ratio = total_tokens / self.context_limit
-            return usage_ratio >= self.COMPACT_THRESHOLD
-
-        # Proactive approach (fallback): estimate tokens when API data not available
-        # This uses character-based estimation (3 chars per token) which works
-        # reliably without requiring tiktoken or network access
+        # ALWAYS estimate current messages - never use stale actual_prompt_tokens
+        # This ensures we detect large message additions that happen between API calls
         # Note: Dynamic date/time message adds ~30 tokens on each LLM call
         system_tokens = self.estimator.estimate_tokens(self.system_prompt)
         datetime_tokens = 30  # Approximate size of dynamic date/time message

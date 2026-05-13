@@ -957,10 +957,8 @@ It's currently empty (just the template). The file is automatically loaded at se
 
         # Check for compaction BEFORE starting work
         # This ensures we never compact mid-execution and lose tool results
-        # Use last_prompt_tokens from previous API call for accurate check (includes cache operations)
-        if self.enable_auto_compact and self.context_manager.needs_compaction(
-            self.messages, actual_prompt_tokens=self.last_prompt_tokens
-        ):
+        # Always estimates current messages to avoid staleness issues (no actual_prompt_tokens)
+        if self.enable_auto_compact and self.context_manager.needs_compaction(self.messages):
             self._perform_auto_compaction()
 
         # Agent loop with interrupt handling
