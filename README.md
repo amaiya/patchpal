@@ -11,6 +11,7 @@ Most agent frameworks are [built in TypeScript](https://news.ycombinator.com/ite
 
 **Key Features**
 - [Terminal Interface](https://amaiya.github.io/patchpal/usage/interactive/) for interactive development
+- [Sandbox Mode](https://amaiya.github.io/patchpal/usage/sandbox/) for secure container isolation
 - [Python SDK](https://amaiya.github.io/patchpal/usage/python-api/) for flexibility and extensibility
 - [Built-In](https://amaiya.github.io/patchpal/features/tools/) and [Custom Tools](https://amaiya.github.io/patchpal/features/custom-tools/)
 - [Skills System](https://amaiya.github.io/patchpal/features/skills/) and [MCP Integration](https://amaiya.github.io/patchpal/features/mcp/)
