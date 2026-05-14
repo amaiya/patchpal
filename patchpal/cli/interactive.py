@@ -9,6 +9,7 @@ from prompt_toolkit.completion import Completer, Completion, PathCompleter, merg
 from prompt_toolkit.document import Document
 from prompt_toolkit.formatted_text import FormattedText
 from prompt_toolkit.history import InMemoryHistory
+from prompt_toolkit.key_binding import KeyBindings
 from rich.console import Console
 from rich.markdown import Markdown
 
@@ -450,6 +451,23 @@ Supported models: Any LiteLLM-supported model
     # Get history file path for manual logging
     history_file = _get_patchpal_dir() / "history.txt"
 
+    # Configure key bindings for multi-line input
+    # Enter: Submit
+    # Ctrl+J: Newline (Shift+Enter doesn't work in most terminals)
+    bindings = KeyBindings()
+
+    @bindings.add("enter")
+    def _(event):
+        """Submit on Enter."""
+        buffer = event.current_buffer
+        # Submit the input
+        buffer.validate_and_handle()
+
+    @bindings.add("c-j")  # Ctrl+J (traditional terminal newline)
+    def _(event):
+        """Insert newline."""
+        event.current_buffer.insert_text("\n")
+
     print(" ╔═══════════════════════════════════════════════════════════╗")
     print(" ║  PatchPal - AI Coding and Automation Assistant  🤖        ║")
     print(" ╚═══════════════════════════════════════════════════════════╝")
@@ -492,8 +510,9 @@ Supported models: Any LiteLLM-supported model
             )
 
     print(
-        "\nType \033[1;33m'exit'\033[0m to quit or \033[1;33m'/help'\033[0m to see available commands.\n"
+        "\nType \033[1;33m'exit'\033[0m to quit or \033[1;33m'/help'\033[0m to see available commands."
     )
+    print("\033[2mTip: Use Ctrl+J for multi-line input. Enter to submit.\033[0m\n")
 
     while True:
         try:
@@ -513,14 +532,16 @@ Supported models: Any LiteLLM-supported model
                 completer=completer,
                 complete_while_typing=False,  # Only show completions on Tab
                 history=history,  # In-memory history for this session only
+                multiline=True,  # Enable multi-line input
+                key_bindings=bindings,  # Custom key bindings (Enter to submit, Shift+Enter for newline)
+                prompt_continuation="... ",  # Show "... " for continuation lines
             ).strip()
 
-            # Replace newlines with spaces to prevent history file corruption
-            # This can happen if user pastes multi-line text
-            user_input = user_input.replace("\n", " ").replace("\r", " ")
-
             # Save command to history file for manual review
-            _save_to_history_file(user_input, history_file)
+            # Replace newlines with \n escape sequence to keep one-line format
+            # This preserves the 2-line format (timestamp + command) that _save_to_history_file expects
+            history_entry = user_input.replace("\n", "\\n")
+            _save_to_history_file(history_entry, history_file)
 
             # Check for exit commands
             if user_input.lower() in ["exit", "quit", "q"]:
@@ -618,6 +639,7 @@ Supported models: Any LiteLLM-supported model
                 print("  \033[1;33mTips:\033[0m")
                 print("    • Use UP/DOWN arrows to navigate command history")
                 print("    • Press TAB for path and skill name completion")
+                print("    • Press Ctrl+J for multi-line input, Enter to submit")
                 print("    • Type your questions or requests naturally to the AI agent")
                 print("    • Use Ctrl+C to cancel current input (not the entire session)")
                 print()
