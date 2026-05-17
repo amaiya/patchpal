@@ -13,6 +13,30 @@ The agent operates with a security model inspired by Claude Code:
 - **Dangerous pattern detection**: Blocks patterns like `> /dev/`, `rm -rf /`, `| dd`, `--force`
 - **Timeout protection**: Shell commands timeout after 30 seconds
 
+### Sandboxed Environment (patchpal-sandbox)
+
+For maximum isolation, you can run PatchPal inside a sandboxed container using [`patchpal-sandbox`](https://amaiya.github.io/patchpal/usage/sandbox/):
+
+```bash
+# Interactive mode (permissions enabled by default)
+patchpal-sandbox
+
+# Or specify a model (pass arguments after --)
+patchpal-sandbox -- --model <litellm_model_id>
+
+# Autopilot mode (permissions disabled automatically)
+patchpal-sandbox -- autopilot --prompt "..."
+```
+
+This provides a fully isolated environment with restricted access to your host system. Permissions remain enabled in interactive mode but are automatically disabled when using the `autopilot` subcommand.
+
+**Benefits:**
+- Complete isolation from your host system
+- Network isolation support for air-gapped environments
+- Safe environment for testing untrusted code or prompts
+- Prevents any accidental or malicious access to files outside the repository
+- Ideal for compliance-driven environments or working with sensitive codebases
+
 ### Security Guardrails ✅ FULLY ENABLED
 
 PatchPal includes comprehensive security protections enabled by default:
