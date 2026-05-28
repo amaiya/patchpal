@@ -12,6 +12,9 @@ export PATCHPAL_MODEL=openai/gpt-5.2          # Override default model
 export PATCHPAL_LITELLM_KWARGS='{"reasoning_effort": "high", "temperature": 0.7}'
 # Use for: reasoning models (gpt-oss, deepseek-reasoner), temperature, max_tokens, etc.
 # See: https://docs.litellm.ai/docs/completion/input
+
+# AWS GovCloud Bedrock example
+export PATCHPAL_LITELLM_KWARGS='{"aws_region_name": "fill in", "aws_bedrock_runtime_endpoint": "fill in", "aws_access_key_id": "fill in", "aws_secret_access_key": "fill in"}'
 ```
 
 ### Security & Permissions
