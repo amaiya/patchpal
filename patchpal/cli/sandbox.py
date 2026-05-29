@@ -427,7 +427,25 @@ def build_container_args(sandbox_args, patchpal_args):
         if needs_privileged:
             print("⚠️  Rootless Podman detected - using --privileged mode for iptables")
             container_args.extend(["--privileged"])
-            container_args.extend(["--cgroup-manager=cgroupfs"])
+            # Only add --cgroup-manager on Linux (not supported on Windows/macOS Podman machines)
+            try:
+                # Check if we're on a Podman machine (macOS/Windows) vs native Linux
+                machine_check = subprocess.run(
+                    ["podman", "machine", "list"], capture_output=True, text=True, check=False
+                )
+                # If machine list works and shows machines, we're on macOS/Windows
+                is_podman_machine = (
+                    machine_check.returncode == 0
+                    and machine_check.stdout.strip()
+                    and len(machine_check.stdout.strip().split("\n")) > 1
+                )
+
+                if not is_podman_machine:
+                    # Native Linux - add cgroup-manager flag
+                    container_args.extend(["--cgroup-manager=cgroupfs"])
+            except Exception:
+                # If check fails, skip the flag (safer default)
+                pass
         else:
             container_args.extend(["--cap-add=NET_ADMIN"])
 

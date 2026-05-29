@@ -7,6 +7,18 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
+## 0.22.6 (2026-05-29)
+
+### new:
+- N/A
+
+### changed:
+- N/A
+
+### fixed:
+- Ensure cgroupfs is not supplied when running patchpal-sandbox on Windows (#82)
+
+
 ## 0.22.5 (2026-05-13)
 
 ### new:
