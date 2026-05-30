@@ -17,6 +17,7 @@ Most recent releases are shown at the top. Each release shows:
 
 ### fixed:
 - Ensure cgroupfs is not supplied when running patchpal-sandbox on Windows (#82)
+- Ensure PATHCPAL_LITELLM_KWARGS is parsed correctly and used by patchpal-sandbox (#83)
 
 
 ## 0.22.5 (2026-05-13)

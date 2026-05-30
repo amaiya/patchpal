@@ -61,6 +61,57 @@ patchpal-sandbox --help
 **First Run**: Downloads pre-built container image (~150MB, one-time)
 **Subsequent Runs**: Start instantly (no pip install needed)
 
+### Windows Setup (Podman)
+
+On Windows, if using Podman, you need to set up a Podman machine before using `patchpal-sandbox`:
+
+**Step 1: Create and start Podman machine**
+
+```cmd
+podman machine init --rootful
+podman machine start
+```
+
+**Note**: Use `--rootful` mode to avoid socket permission issues. This is the recommended configuration for Windows.
+
+**Step 2: Configure corporate firewall certificates (if behind a corporate firewall)**
+
+If you're behind a corporate firewall with SSL inspection, you need to add your company's CA certificates to the Podman machine so it can pull Docker images:
+
+```cmd
+podman machine ssh
+```
+
+Inside the Podman machine:
+
+```bash
+# Create directory for CA certificates
+sudo mkdir -p /etc/pki/ca-trust/source/anchors/
+
+# Copy your company's CA bundle
+# (You should already have this if Python/pip works with your firewall)
+sudo vi /etc/pki/ca-trust/source/anchors/your-company-ca-bundle.crt
+# Paste the certificate content and save
+
+# Update the CA trust store
+sudo update-ca-trust
+
+# Exit the SSH session
+exit
+```
+
+**Finding your CA bundle:**
+- If Python/pip already works, check: `%SSL_CERT_FILE%` or `%REQUESTS_CA_BUNDLE%`
+- Contact your IT department for the corporate root CA certificate
+- Common locations: `C:\Program Files\CompanyCerts\` or similar
+
+After completing these steps, `patchpal-sandbox` should work correctly.
+
+**Troubleshooting:**
+- If `podman machine start` fails, try: `podman machine stop && podman machine start`
+- If certificate errors persist, verify the certificate was copied correctly: `podman machine ssh -- cat /etc/pki/ca-trust/source/anchors/your-company-ca-bundle.crt`
+- To recreate the machine: `podman machine stop && podman machine rm && podman machine init --rootful && podman machine start`
+
 ## Basic Usage
 
 ### Interactive Mode (Permissions Enabled)

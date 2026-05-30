@@ -163,6 +163,7 @@ def detect_llm_endpoints_from_env():
         os.environ.get("AWS_BEDROCK_REGION")
         or os.environ.get("AWS_REGION")
         or os.environ.get("AWS_DEFAULT_REGION")
+        or os.environ.get("AWS_REGION_NAME")  # LiteLLM-specific
     )
     if aws_region and (
         os.environ.get("AWS_ACCESS_KEY_ID") or os.environ.get("AWS_SECRET_ACCESS_KEY")
@@ -653,19 +654,22 @@ def build_container_args(sandbox_args, patchpal_args):
     # Add main patchpal command
     if sandbox_args.restrict_network:
         # Use launch-agent-sandbox pattern: model from env var
+        # Falls back to PATCHPAL_MODEL if MODEL not set
         shell_cmd_parts.append(f"""
 echo ""
 echo "=== Starting PatchPal ==="
-echo "Model: $MODEL"
+echo "Model: ${{MODEL:-$PATCHPAL_MODEL}}"
 echo ""
-exec {patchpal_cmd} --model "$MODEL"
+exec {patchpal_cmd} --model "${{MODEL:-$PATCHPAL_MODEL}}"
 """)
     else:
         # Normal mode: use $@ to pass all arguments
+        # Display model from command line or fall back to PATCHPAL_MODEL env var
+        model_display = model_name if model_name else "${PATCHPAL_MODEL:-default}"
         shell_cmd_parts.append(f"""
 echo ""
 echo "=== Starting PatchPal ==="
-echo "Model: {model_name if model_name else "default"}"
+echo "Model: {model_display}"
 echo ""
 exec {patchpal_cmd} "$@"
 """)
@@ -1001,6 +1005,31 @@ def main():
     if sandbox_args.env_file:
         print(f"Loading environment variables from: {sandbox_args.env_file}")
         load_env_file(sandbox_args.env_file)
+
+    # If LITELLM_KWARGS contains AWS params, normalize env var names to uppercase
+    # This must happen before endpoint detection for AWS Bedrock auto-detection to work
+    litellm_kwargs = os.environ.get("PATCHPAL_LITELLM_KWARGS") or os.environ.get(
+        "LITELLM_KWARGS", ""
+    )
+    if litellm_kwargs and "aws_" in litellm_kwargs.lower():
+        # Try to parse as JSON first
+        try:
+            import json
+
+            kwargs_dict = json.loads(litellm_kwargs)
+            # Extract AWS parameters and set as environment variables
+            for key, value in kwargs_dict.items():
+                if key.lower().startswith("aws_"):
+                    upper_key = key.upper()
+                    if upper_key not in os.environ:
+                        os.environ[upper_key] = value
+        except (json.JSONDecodeError, ValueError):
+            # Not JSON, check if individual env vars exist (comma-separated format)
+            for key, value in list(os.environ.items()):
+                if key.lower().startswith("aws_"):
+                    upper_key = key.upper()
+                    if upper_key not in os.environ:
+                        os.environ[upper_key] = value
 
     # Auto-detect LLM endpoints if network restrictions are enabled
     detected_endpoints = []
