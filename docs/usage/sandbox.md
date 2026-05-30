@@ -96,6 +96,9 @@ sudo vi /etc/pki/ca-trust/source/anchors/your-company-ca-bundle.crt
 # Update the CA trust store
 sudo update-ca-trust
 
+# pull image: optional, patchpal-sandbox will do this automatically the first time
+podman pull ghcr.io/amaiya/patchpal-sandbox:latest
+
 # Exit the SSH session
 exit
 ```
