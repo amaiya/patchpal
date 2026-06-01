@@ -7,6 +7,18 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
+## 0.22.7 (2026-06-01)
+
+### new:
+- N/A
+
+### changed:
+- N/A
+
+### fixed:
+- Ensure context stats displayed by `/status` are properely reset after `/clear`
+
+
 ## 0.22.6 (2026-05-29)
 
 ### new:

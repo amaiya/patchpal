@@ -925,6 +925,7 @@ Supported models: Any LiteLLM-supported model
                 # Clear conversation history
                 agent.messages = []
                 agent._last_compaction_message_count = 0
+                agent.last_prompt_tokens = None  # Reset stale token count from before clear
 
                 print("\n\033[1;32m✓ Context cleared successfully!\033[0m")
                 print("  Starting fresh with empty conversation history.")
