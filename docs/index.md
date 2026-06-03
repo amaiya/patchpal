@@ -44,3 +44,16 @@ While originally designed for software development, PatchPal is also a general- 
 1. Most agent harnesses are in TypeScript. We wanted [something in Python](https://amaiya.github.io/patchpal/usage/python-api/) that we could   easily extend for our custom workflows.
 2. PatchPal includes a [unique guardrails system](https://amaiya.github.io/patchpal/safety/) that is better suited  to privacy-conscious use cases involving sensitive data.
 3. We needed an agent harness that seamlessly works with [both local and cloud models](https://amaiya.github.io/patchpal/models/overview/       #supported-models), including AWS GovCloud Bedrock models.
+
+> On Windows Subsystem for Linux (WSL), why is it stalling intermittently at "Thinking..."?
+
+This is a [known issue](https://github.com/microsoft/WSL/issues/6264#issuecomment-762154193) with WSL2.
+
+Try examining and then lowering the `mtu`:
+
+```bash
+$ cat /sys/class/net/eth1/mtu
+1427
+
+$ sudo ip link set eth1 mtu 1400
+```
