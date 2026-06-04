@@ -15,6 +15,7 @@ from rich.markdown import Markdown
 from patchpal.agent import create_agent, create_react_agent
 from patchpal.config import config
 from patchpal.tools import audit_logger, set_require_permission_for_all
+from patchpal.tools.common import reset_operation_counter
 
 
 def _sanitize_for_logging(text: str) -> str:
@@ -1567,6 +1568,10 @@ Supported models: Any LiteLLM-supported model
 
                     result = agent.run(prompt, max_iterations=max_iterations)
 
+                    # Reset operation counter after each conversation turn
+                    # This allows long sessions without hitting the global limit
+                    reset_operation_counter()
+
                     print("\n" + "=" * 80)
                     print("\033[1;32mAgent:\033[0m")
                     print("=" * 80)
@@ -1594,6 +1599,10 @@ Supported models: Any LiteLLM-supported model
                     audit_logger.info(_sanitize_for_logging(f"USER_PROMPT: {user_input}"))
 
                 result = agent.run(user_input, max_iterations=max_iterations)
+
+                # Reset operation counter after each conversation turn
+                # This allows long sessions without hitting the global limit
+                reset_operation_counter()
 
                 # Log agent response to audit log with hash-chaining
                 try:

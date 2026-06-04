@@ -125,6 +125,12 @@ def autopilot_loop(
         # The agent's conversation history accumulates, so it can see all previous work
         response = agent.run(prompt, max_iterations=100)
 
+        # Reset operation counter after each conversation turn
+        # This allows long autopilot sessions without hitting the global limit
+        from patchpal.tools.common import reset_operation_counter
+
+        reset_operation_counter()
+
         # Log agent response to audit log
         try:
             from patchpal.tools.audit import log_agent_response

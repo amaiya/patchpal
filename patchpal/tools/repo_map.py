@@ -162,8 +162,10 @@ def get_repo_map(
 
         if structure is None:
             # Generate structure
+            # Pass _internal_call=True so code_structure doesn't count as an operation
+            # This prevents repo_map from using thousands of operations in large repos
             try:
-                structure = code_structure(str(rel_path), max_symbols=20)
+                structure = code_structure(str(rel_path), max_symbols=20, _internal_call=True)
                 if structure and not structure.startswith("❌"):
                     # Extract just the essential parts (remove hints and verbose info)
                     lines = structure.split("\n")

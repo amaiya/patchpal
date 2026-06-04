@@ -76,7 +76,7 @@ CLASS_NODE_TYPES = {
 }
 
 
-def code_structure(path: str, max_symbols: int = 50) -> str:
+def code_structure(path: str, max_symbols: int = 50, _internal_call: bool = False) -> str:
     """
     Analyze code structure using tree-sitter AST parsing.
 
@@ -92,6 +92,7 @@ def code_structure(path: str, max_symbols: int = 50) -> str:
     Args:
         path: File path to analyze (relative or absolute)
         max_symbols: Maximum number of symbols to show (default: 50)
+        _internal_call: Internal flag - don't count operation if called from get_repo_map
 
     Returns:
         Formatted code structure overview
@@ -107,7 +108,10 @@ def code_structure(path: str, max_symbols: int = 50) -> str:
 
         Use read_lines('patchpal/tools.py', start, end) to read specific sections.
     """
-    _operation_limiter.check_limit(f"code_structure({path})")
+    # Only count operation if not an internal call from get_repo_map
+    # This prevents exceeding operation limits when scanning large repos
+    if not _internal_call:
+        _operation_limiter.check_limit(f"code_structure({path})")
 
     if not TREE_SITTER_AVAILABLE:
         return (
