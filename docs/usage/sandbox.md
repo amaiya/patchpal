@@ -5,16 +5,14 @@
 ## Quick Start
 
 ```bash
-# Interactive mode (with permissions enabled)
+# Interactive mode
 patchpal-sandbox --env-file .env -- --model anthropic/claude-sonnet-4-5
 
-# Autopilot mode (permissions disabled automatically)
-patchpal-sandbox --env-file .env -- autopilot \
-  --model anthropic/claude-sonnet-4-5 \
-  --prompt-file task.md
+# Autopilot mode
+patchpal-sandbox --env-file .env -- autopilot --prompt-file task.md
 
-# With local Ollama model
-patchpal-sandbox --host-network -- --model ollama_chat/llama3.2
+# With local Ollama (requires --host-network)
+patchpal-sandbox --host-network -- --model ollama_chat/glm-4.7-flash:q4_K_M
 ```
 
 The `--` separator distinguishes sandbox options (left side) from PatchPal arguments (right side).
@@ -61,6 +59,8 @@ patchpal-sandbox --help
 **First Run**: Downloads pre-built container image (~150MB, one-time)
 **Subsequent Runs**: Start instantly (no pip install needed)
 
+**Updating the image**: Run `docker pull ghcr.io/amaiya/patchpal-sandbox:latest` (or `podman pull`) to get the latest version.
+
 ### Windows Setup (Podman)
 
 On Windows, if using Podman, you need to set up a Podman machine before using `patchpal-sandbox`:
@@ -96,9 +96,6 @@ sudo vi /etc/pki/ca-trust/source/anchors/your-company-ca-bundle.crt
 # Update the CA trust store
 sudo update-ca-trust
 
-# pull image: optional, patchpal-sandbox will do this automatically the first time
-podman pull ghcr.io/amaiya/patchpal-sandbox:latest
-
 # Exit the SSH session
 exit
 ```
@@ -117,7 +114,7 @@ After completing these steps, `patchpal-sandbox` should work correctly.
 
 ## Basic Usage
 
-### Interactive Mode (Permissions Enabled)
+### Interactive Mode
 
 ```bash
 # Using .env file for API keys
@@ -126,11 +123,13 @@ patchpal-sandbox --env-file .env -- --model anthropic/claude-sonnet-4-5
 # Passing API key directly
 patchpal-sandbox -e ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY -- --model anthropic/claude-sonnet-4-5
 
-# Using multiple .env files
-patchpal-sandbox --env-file .env --env-file .env.local -- --model openai/gpt-5-mini
+# Using multiple .env files (later files override earlier)
+patchpal-sandbox --env-file .env --env-file .env.local -- --model openai/gpt-4o
 ```
 
-### Autopilot Mode (Permissions Disabled Automatically)
+In interactive mode, permissions are enabled and you'll be prompted before destructive operations.
+
+### Autopilot Mode
 
 ```bash
 # From prompt file
@@ -141,26 +140,26 @@ patchpal-sandbox --env-file .env -- autopilot \
 
 # Inline prompt
 patchpal-sandbox --env-file .env -- autopilot \
-  --model anthropic/claude-sonnet-4-5 \
+  --model openai/gpt-4o \
   --prompt "Build a calculator with tests"
 ```
 
-See [Autopilot Mode](autopilot.md) for comprehensive autopilot documentation.
+In autopilot mode, permissions are automatically disabled for safety. See [Autopilot Mode](autopilot.md) for comprehensive documentation.
 
 ### Local Models (Ollama)
 
 When using local Ollama models, use `--host-network` to access the host's Ollama service:
 
 ```bash
-patchpal-sandbox --host-network -- --model ollama_chat/llama3.2
+patchpal-sandbox --host-network -- --model ollama_chat/glm-4.7-flash:q4_K_M
 
 # Autopilot with Ollama
 patchpal-sandbox --host-network -- autopilot \
-  --model ollama_chat/gpt-oss:120b \
+  --model ollama_chat/qwen2.5-coder:32b \
   --prompt-file task.md
 ```
 
-**Note**: `--host-network` shares the host's network stack with the container (required for `localhost:11434` access). This bypasses network isolation.
+**Note**: `--host-network` shares the host's network stack with the container (required for `localhost:11434` access). This bypasses network isolation - only use with trusted local models.
 
 ## Network Restrictions
 
@@ -189,13 +188,6 @@ With `--restrict-network`, the firewall blocks:
 - ❌ General internet access (google.com, etc.)
 - ❌ Data exfiltration attempts
 - ❌ Backdoor downloads
-
-<!--### What Stays Allowed-->
-
-<!--- ✅ Localhost (127.0.0.1/8)-->
-<!--- ✅ DNS queries-->
-<!--- ✅ Auto-detected LLM provider APIs-->
-<!--- ✅ URLs specified with `--allow-url`-->
 
 ### Auto-Detected LLM Endpoints
 
@@ -275,7 +267,7 @@ For maximum security:
 patchpal-sandbox --runtime docker -- --model anthropic/claude-sonnet-4-5
 
 # Force Podman
-patchpal-sandbox --runtime podman -- --model anthropic/claude-sonnet-4-5
+patchpal-sandbox --runtime podman -- --model groq/llama-3.3-70b-versatile
 ```
 
 **Auto-detection logic**:
@@ -289,7 +281,7 @@ patchpal-sandbox --runtime podman -- --model anthropic/claude-sonnet-4-5
 patchpal-sandbox --image python:3.11-slim -- --model anthropic/claude-sonnet-4-5
 
 # Use specific patchpal version
-patchpal-sandbox --image ghcr.io/amaiya/patchpal-sandbox:0.21.8 -- --model anthropic/claude-sonnet-4-5
+patchpal-sandbox --image ghcr.io/amaiya/patchpal-sandbox:0.21.8 -- --model openai/gpt-4o
 ```
 
 **Default image**: `ghcr.io/amaiya/patchpal-sandbox:latest` (pre-built, fast startup)
@@ -311,7 +303,7 @@ Environment variable behavior depends on whether `--env-file` is provided:
 **Without `--env-file` (uses host environment):**
 ```bash
 # Host environment variables (AWS_*, OPENAI_*, etc.) are passed through
-patchpal-sandbox -- --model openai/gpt-5-mini
+patchpal-sandbox -- --model openai/gpt-4o
 ```
 
 **With `--env-file` (isolated mode):**
@@ -319,12 +311,6 @@ patchpal-sandbox -- --model openai/gpt-5-mini
 # ONLY variables from .env file are used (better isolation)
 # Host environment variables are NOT passed
 patchpal-sandbox --env-file .env -- --model anthropic/claude-sonnet-4-5
-
-# Multiple .env files (later files override earlier)
-patchpal-sandbox \
-  --env-file .env.base \
-  --env-file .env.local \
-  -- --model anthropic/claude-sonnet-4-5
 ```
 
 **Note**: When using `--env-file`, host environment variables are intentionally excluded for better security isolation. This prevents accidental credential leakage from your shell environment.
@@ -381,48 +367,31 @@ sudo usermod -aG docker $USER
 
 If `--restrict-network` isn't blocking traffic:
 
-1. **Check container runtime capabilities**:
-   ```bash
-   # Podman rootless needs --privileged
-   # (automatically added by patchpal-sandbox)
-   ```
-
-2. **Test restrictions explicitly**:
+1. **Test restrictions explicitly**:
    ```bash
    patchpal-sandbox --restrict-network --test-restrictions --env-file .env
    ```
 
-3. **Verify iptables inside container**:
+2. **Verify iptables inside container**:
    ```bash
    patchpal-sandbox --restrict-network --shell
    $ iptables -L -n
    ```
 
-### Ollama connection refused
-
-Use `--host-network` to access host's Ollama service:
-
-```bash
-patchpal-sandbox --host-network -- --model ollama_chat/llama3.2
-```
+3. **Check that Podman has necessary capabilities** (automatically added by patchpal-sandbox)
 
 ### Slow startup times
 
-**Solution 1**: Use pre-built image (default):
-```bash
-patchpal-sandbox -- --model anthropic/claude-sonnet-4-5
-# First run: ~10s (image download, one-time)
-# Subsequent: <1s
-```
+The default pre-built image should start in under 1 second after the initial download.
 
-**Solution 2**: Pre-pull the image:
+**To pre-download or update the image**:
 ```bash
 docker pull ghcr.io/amaiya/patchpal-sandbox:latest
 # or
 podman pull ghcr.io/amaiya/patchpal-sandbox:latest
 ```
 
-**Note**: To update to the latest sandbox image, run the same `pull` command. The sandbox image is updated periodically with PatchPal releases.
+**Note**: The sandbox image is updated periodically with PatchPal releases.
 
 ### Corporate proxy/firewall issues
 
@@ -441,6 +410,8 @@ SSL certificates are auto-mounted from:
 - `/etc/ssl/certs/ca-certificates.crt`
 - `/etc/pki/tls/certs/ca-bundle.crt`
 - `/etc/ssl/ca-bundle.pem`
+
+For Windows Podman with corporate firewalls, see the [Windows Setup](#windows-setup-podman) section above.
 
 ## Comparison with Manual Docker/Podman
 
@@ -513,30 +484,44 @@ docker run -it --rm \
 
 ## Examples
 
-### Multi-Phase Project
+### Multi-Phase Development Workflow
 
 ```bash
-# Phase 1: Core functionality
+# Phase 1: Core functionality with Claude
 patchpal-sandbox --env-file .env -- autopilot \
   --model anthropic/claude-sonnet-4-5 \
-  --prompt-file phase1.md
+  --prompt-file phase1-core.md
 
-# Phase 2: Tests
+# Phase 2: Add tests with GPT-4o
 patchpal-sandbox --env-file .env -- autopilot \
-  --model anthropic/claude-sonnet-4-5 \
-  --prompt-file phase2.md
+  --model openai/gpt-4o \
+  --prompt-file phase2-tests.md
 
-# Phase 3: Documentation
-patchpal-sandbox --env-file .env -- autopilot \
+# Phase 3: Documentation with local model
+patchpal-sandbox --host-network -- autopilot \
+  --model ollama_chat/qwen2.5-coder:32b \
+  --prompt-file phase3-docs.md
+```
+
+### Secure Autopilot with Network Restrictions
+
+```bash
+# Maximum security: network isolation + autopilot
+patchpal-sandbox \
+  --restrict-network \
+  --env-file .env \
+  --memory 4g \
+  -- autopilot \
   --model anthropic/claude-sonnet-4-5 \
-  --prompt-file phase3.md
+  --prompt-file secure-task.md \
+  --max-iterations 20
 ```
 
 ### Debugging Inside Container
 
 ```bash
 # Start shell inside container with model pre-configured
-patchpal-sandbox --env-file .env --shell -- --model anthropic/claude-sonnet-4-5
+patchpal-sandbox --env-file .env --shell -- --model groq/llama-3.3-70b-versatile
 
 # Inside container
 $ pwd
@@ -546,13 +531,32 @@ $ ls -la ~/.patchpal/tools/
 # Your custom tools are here
 
 $ echo $PATCHPAL_MODEL
-anthropic/claude-sonnet-4-5
+groq/llama-3.3-70b-versatile
 
 $ patchpal
 # Runs with the pre-configured model automatically
 ```
 
-**Tip**: When you provide `--model` after `--`, it's automatically set as the `PATCHPAL_MODEL` environment variable, so you can run `patchpal` without specifying the model again.
+**Tip**: When you provide `--model` after `--`, it's automatically set as the `PATCHPAL_MODEL` environment variable.
+
+### Using Different Providers
+
+```bash
+# Google Gemini
+patchpal-sandbox --env-file .env -- autopilot \
+  --model gemini/gemini-2.0-flash-exp \
+  --prompt-file task.md
+
+# Groq (fast inference)
+patchpal-sandbox --env-file .env -- autopilot \
+  --model groq/llama-3.3-70b-versatile \
+  --prompt-file task.md
+
+# Azure OpenAI
+patchpal-sandbox --env-file .env.azure -- autopilot \
+  --model azure/gpt-4o \
+  --prompt-file task.md
+```
 
 ## Learn More
 
