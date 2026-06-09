@@ -561,6 +561,15 @@ class PatchPalAgent:
 
                 if self.detected_model_name:
                     print(f"\033[2m✓ Detected model: {self.detected_model_name}\033[0m", flush=True)
+
+                    # Update context limit based on detected model
+                    try:
+                        model_info = litellm.get_model_info(f"bedrock/{self.detected_model_name}")
+                        max_input = model_info.get("max_input_tokens")
+                        if max_input and isinstance(max_input, (int, float)) and max_input > 0:
+                            self.context_manager.context_limit = int(max_input)
+                    except Exception:
+                        pass  # Keep default limit
                 else:
                     print(
                         "\033[2m⚠  Could not detect underlying model name (cost tracking may be inaccurate)\033[0m",
