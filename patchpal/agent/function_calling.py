@@ -28,12 +28,34 @@ LLM_TIMEOUT = config.LLM_TIMEOUT
 
 
 def _is_bedrock_arn(model_id: str) -> bool:
-    """Check if a model ID is a Bedrock ARN."""
+    """Check if a model ID is a Bedrock ARN.
+
+    Supports all Bedrock inference profile ARN formats:
+    - arn:aws:bedrock:region:account:inference-profile/profile-id
+    - arn:aws-us-gov:bedrock:region:account:inference-profile/profile-id
+    - arn:aws:bedrock:region:account:application-inference-profile/app-id
+    - arn:aws-us-gov:bedrock:region:account:application-inference-profile/app-id
+    """
     return (
         model_id.startswith("arn:aws")
         and ":bedrock:" in model_id
-        and ":inference-profile/" in model_id
+        and "inference-profile/" in model_id
     )
+
+
+def _is_application_inference_profile(model_id: str) -> bool:
+    """Check if a model ID is a Bedrock application inference profile (tagged profile).
+
+    Application inference profiles are tagged profiles that don't include the underlying
+    model name in the ARN, making it impossible to statically determine model capabilities.
+
+    Args:
+        model_id: Model identifier (may or may not have bedrock/ prefix)
+
+    Returns:
+        True if this is an application inference profile ARN
+    """
+    return ":application-inference-profile/" in model_id
 
 
 def _normalize_bedrock_model_id(model_id: str) -> str:
@@ -51,7 +73,11 @@ def _normalize_bedrock_model_id(model_id: str) -> str:
 
     # If it looks like a Bedrock ARN, add the prefix
     if _is_bedrock_arn(model_id):
-        return f"bedrock/{model_id}"
+        # Application inference profiles require the converse API
+        if ":application-inference-profile/" in model_id:
+            return f"bedrock/converse/{model_id}"
+        else:
+            return f"bedrock/{model_id}"
 
     # If it's a standard Bedrock model ID (e.g., anthropic.claude-v2)
     # Check if it looks like a Bedrock model format
@@ -274,6 +300,10 @@ def _supports_prompt_caching(model_id: str) -> bool:
     # Bedrock Nova models support caching
     if model_id.startswith("bedrock/") and "amazon.nova" in model_id.lower():
         return True
+    # Bedrock ARNs (all types): enable caching and let Bedrock handle it
+    # If the underlying model doesn't support caching, Bedrock will ignore the markers
+    if model_id.startswith("bedrock/") and "inference-profile/" in model_id:
+        return True
     return False
 
 
@@ -301,12 +331,14 @@ def _apply_prompt_caching(messages: List[Dict[str, Any]], model_id: str) -> List
 
     # Determine cache marker format based on provider
     # Anthropic models (direct or via Bedrock) use cache_control
-    # Other Bedrock models (Nova, etc.) use cachePoint
-    if model_id.startswith("bedrock/") and "anthropic" not in model_id.lower():
-        # Non-Anthropic Bedrock models (Nova, etc.) use cachePoint
+    # Nova models use cachePoint
+    # For Bedrock ARNs without model name, default to cache_control (most common)
+    if model_id.startswith("bedrock/") and "amazon.nova" in model_id.lower():
+        # Nova models explicitly use cachePoint
         cache_marker = {"cachePoint": {"type": "default"}}
     else:
         # Anthropic models (direct or via Bedrock) use cache_control
+        # Also default for Bedrock ARNs (most use Anthropic/Claude)
         cache_marker = {"cache_control": {"type": "ephemeral"}}
 
     # Count existing cache markers across all messages
@@ -508,6 +540,30 @@ class PatchPalAgent:
         # Merge in any user-provided litellm_kwargs
         if litellm_kwargs:
             self.litellm_kwargs.update(litellm_kwargs)
+
+        # Detect prompt caching support for application inference profiles
+        # These ARNs don't include model names, so we test with a minimal request
+        self.prompt_caching_supported = None  # None = untested, True/False after test
+        if _is_application_inference_profile(self.model_id):
+            # Test caching support with a minimal request
+            try:
+                from patchpal.agent.caching_detector import test_prompt_caching_support
+
+                print("\033[2mℹ️  Testing prompt caching support...\033[0m", flush=True)
+                self.prompt_caching_supported = test_prompt_caching_support(
+                    self.model_id, self.litellm_kwargs
+                )
+                if self.prompt_caching_supported:
+                    print("\033[2m✓ Prompt caching is supported\033[0m", flush=True)
+                else:
+                    print("\033[2m✗ Prompt caching is not supported\033[0m", flush=True)
+            except Exception:
+                # If test fails, assume caching not supported
+                self.prompt_caching_supported = False
+        elif _supports_prompt_caching(self.model_id):
+            self.prompt_caching_supported = True
+        else:
+            self.prompt_caching_supported = False
 
         # Load MEMORY.md if it exists and has non-template content
         self._load_project_memory()
@@ -1048,8 +1104,10 @@ It's currently empty (just the template). The file is automatically loaded at se
             # Filter images if BLOCK_IMAGES is enabled (for non-vision models or user preference)
             messages = self.image_handler.filter_images_if_blocked(messages)
 
-            # Apply prompt caching for supported models (Anthropic/Claude)
-            messages = _apply_prompt_caching(messages, self.model_id)
+            # Apply prompt caching for supported models
+            # Check instance variable for dynamically-tested models (application inference profiles)
+            if self.prompt_caching_supported:
+                messages = _apply_prompt_caching(messages, self.model_id)
 
             # Use LiteLLM for all providers
             try:

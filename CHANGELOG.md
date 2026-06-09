@@ -7,6 +7,19 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
+## 0.22.9 (2026-06-09)
+
+### new:
+- N/A
+
+### changed:
+- Support for AWS Bedrock application inference profiles
+- Added `max_depth` parameter to `repo_map` and `find` tools
+
+### fixed:
+- N/A
+
+
 ## 0.22.8 (2026-06-04)
 
 ### new:
