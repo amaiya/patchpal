@@ -48,6 +48,40 @@ except ImportError:
 
 REPO_ROOT = Path(".").resolve()
 
+
+def depth_limited_walk(root_dir: Path, max_depth: int):
+    """Walk directory tree up to max_depth without traversing deeper.
+
+    This is a shared utility for tools that need depth-limited traversal
+    to avoid performance issues in large codebases.
+
+    Args:
+        root_dir: Root directory to start traversal
+        max_depth: Maximum depth to traverse (0 = only root_dir level)
+
+    Yields:
+        Path objects found within depth limit (both files and directories)
+    """
+
+    def _walk(current_dir: Path, current_depth: int):
+        """Recursively walk directories up to max_depth."""
+        if current_depth > max_depth:
+            return
+
+        try:
+            for item in current_dir.iterdir():
+                yield item
+                # Only recurse if we haven't reached max depth and it's a directory
+                if item.is_dir() and not any(part.startswith(".") for part in item.parts):
+                    if current_depth < max_depth:  # Check before recursing
+                        yield from _walk(item, current_depth + 1)
+        except (PermissionError, OSError):
+            # Skip directories we can't read
+            pass
+
+    yield from _walk(root_dir, 0)
+
+
 # Import config for centralized environment variable access
 from patchpal.config import config  # noqa: E402
 

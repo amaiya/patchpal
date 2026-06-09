@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 from patchpal.tools.code_analysis import LANGUAGE_MAP, code_structure
-from patchpal.tools.common import REPO_ROOT, _operation_limiter
+from patchpal.tools.common import REPO_ROOT, _operation_limiter, depth_limited_walk
 
 
 class RepoMapCache:
@@ -80,6 +80,7 @@ def get_repo_map(
     include_patterns: Optional[List[str]] = None,
     exclude_patterns: Optional[List[str]] = None,
     focus_files: Optional[List[str]] = None,
+    max_depth: Optional[int] = None,
 ) -> str:
     """Generate a compact repository map showing code structure across all files.
 
@@ -95,6 +96,8 @@ def get_repo_map(
         include_patterns: Glob patterns to include (e.g., ['*.py', '*.js'])
         exclude_patterns: Glob patterns to exclude (e.g., ['*test*', '*_pb2.py'])
         focus_files: Files mentioned in conversation (prioritized in output)
+        max_depth: Maximum directory depth to traverse (default: None for unlimited).
+                   Example: max_depth=3 traverses up to 3 levels deep from repository root.
 
     Returns:
         Formatted repository map with file structures
@@ -130,7 +133,13 @@ def get_repo_map(
     file_structures: Dict[str, str] = {}
     skipped_count = 0
 
-    for path in REPO_ROOT.rglob("*"):
+    # Use depth-limited traversal if max_depth is specified
+    if max_depth is not None:
+        paths_to_check = depth_limited_walk(REPO_ROOT, max_depth)
+    else:
+        paths_to_check = REPO_ROOT.rglob("*")
+
+    for path in paths_to_check:
         # Skip directories, hidden files, and non-code files
         if not path.is_file():
             continue

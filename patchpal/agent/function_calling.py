@@ -1260,6 +1260,7 @@ It's currently empty (just the template). The file is automatically loaded at se
                                 )
                             elif tool_name == "get_repo_map":
                                 max_files = tool_args.get("max_files", 100)
+                                max_depth = tool_args.get("max_depth")
                                 patterns = ""
                                 if tool_args.get("include_patterns"):
                                     patterns = (
@@ -1269,8 +1270,9 @@ It's currently empty (just the template). The file is automatically loaded at se
                                     patterns = (
                                         f" (exclude: {', '.join(tool_args['exclude_patterns'])})"
                                     )
+                                depth_info = f", depth≤{max_depth}" if max_depth is not None else ""
                                 print(
-                                    f"\033[2m🗺️  Generating repository map (max {max_files} files{patterns})...\033[0m",
+                                    f"\033[2m🗺️  Generating repository map (max {max_files} files{depth_info}{patterns})...\033[0m",
                                     flush=True,
                                 )
                             elif tool_name == "get_file_info":
@@ -1295,8 +1297,12 @@ It's currently empty (just the template). The file is automatically loaded at se
                                 )
                             elif tool_name == "find":
                                 pattern_desc = tool_args.get("pattern", "*")
+                                max_depth = tool_args.get("max_depth")
+                                depth_info = (
+                                    f" (depth≤{max_depth})" if max_depth is not None else ""
+                                )
                                 print(
-                                    f"\033[2m📂 Finding files: {pattern_desc}\033[0m",
+                                    f"\033[2m📂 Finding files: {pattern_desc}{depth_info}\033[0m",
                                     flush=True,
                                 )
                             elif tool_name == "list_skills":

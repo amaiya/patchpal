@@ -12,6 +12,7 @@ from typing import Optional
 from patchpal.tools.common import (
     REPO_ROOT,
     _operation_limiter,
+    depth_limited_walk,
     require_permission_for_read,
 )
 
@@ -19,14 +20,38 @@ MAX_RESULTS = 100
 MAX_OUTPUT_BYTES = 50 * 1024
 
 
+def _matches_glob_pattern(file_path: Path, search_dir: Path, pattern: str) -> bool:
+    """Check if a file matches a glob pattern.
+
+    Args:
+        file_path: Absolute path to the file
+        search_dir: Base search directory
+        pattern: Glob pattern (e.g., '*.py', '**/*.js', 'src/*.txt')
+
+    Returns:
+        True if file matches the pattern
+    """
+    try:
+        rel_path = file_path.relative_to(search_dir)
+    except ValueError:
+        return False
+
+    # Match against relative path for patterns with directory structure
+    if "**" in pattern or "/" in pattern or "\\" in pattern:
+        return rel_path.match(pattern)
+    else:
+        # Match against just the filename for simple patterns
+        return Path(file_path.name).match(pattern)
+
+
 @require_permission_for_read(
     "find",
-    get_description=lambda pattern="**/*", path=None: (
+    get_description=lambda pattern="**/*", path=None, max_depth=None: (
         f"   Search for files matching '{pattern}'" + (f" in {path}" if path else "")
     ),
-    get_pattern=lambda pattern="**/*", path=None: path,
+    get_pattern=lambda pattern="**/*", path=None, max_depth=None: path,
 )
-def find(pattern: str = "**/*", path: Optional[str] = None) -> str:
+def find(pattern: str = "**/*", path: Optional[str] = None, max_depth: Optional[int] = None) -> str:
     """Search for files by glob pattern.
 
     Returns matching file paths relative to the search directory, sorted by
@@ -36,6 +61,8 @@ def find(pattern: str = "**/*", path: Optional[str] = None) -> str:
         pattern: Glob pattern to match files (default: "**/*" for all files).
                  Examples: '*.py', '**/*.json', 'src/**/*.spec.ts'
         path: Directory to search in (default: repository root). Can be relative to repo root or absolute.
+        max_depth: Maximum directory depth to traverse (default: None for unlimited).
+                   Example: max_depth=2 searches up to 2 levels deep from the search directory.
 
     Returns:
         Newline-separated list of matching file paths, sorted by modification time
@@ -59,21 +86,27 @@ def find(pattern: str = "**/*", path: Optional[str] = None) -> str:
     else:
         search_dir = REPO_ROOT
 
-    # Check if pattern requires recursive search
-    if "**" in pattern:
-        # Recursive glob
-        matches = list(search_dir.glob(pattern))
+    # Collect candidate files
+    if max_depth is not None:
+        # Depth-limited: walk tree and filter by pattern
+        all_files = [p for p in depth_limited_walk(search_dir, max_depth) if p.is_file()]
+        matches = [f for f in all_files if _matches_glob_pattern(f, search_dir, pattern)]
     else:
-        # Check if pattern contains path separators
-        if "/" in pattern or "\\" in pattern:
-            # Pattern includes directory structure
+        # Check if pattern requires recursive search
+        if "**" in pattern:
+            # Recursive glob
             matches = list(search_dir.glob(pattern))
         else:
-            # Simple filename pattern - search recursively
-            matches = list(search_dir.glob(f"**/{pattern}"))
+            # Check if pattern contains path separators
+            if "/" in pattern or "\\" in pattern:
+                # Pattern includes directory structure
+                matches = list(search_dir.glob(pattern))
+            else:
+                # Simple filename pattern - search recursively
+                matches = list(search_dir.glob(f"**/{pattern}"))
 
-    # Filter to only files
-    matches = [p for p in matches if p.is_file()]
+        # Filter to only files
+        matches = [p for p in matches if p.is_file()]
 
     # Load gitignore patterns if .gitignore exists
     gitignore_patterns = _load_gitignore_patterns(REPO_ROOT)
