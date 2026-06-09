@@ -541,25 +541,35 @@ class PatchPalAgent:
         if litellm_kwargs:
             self.litellm_kwargs.update(litellm_kwargs)
 
-        # Detect prompt caching support for application inference profiles
+        # Detect capabilities for application inference profiles
         # These ARNs don't include model names, so we test with a minimal request
         self.prompt_caching_supported = None  # None = untested, True/False after test
+        self.detected_model_name = None  # Store detected model for cost tracking
         if _is_application_inference_profile(self.model_id):
-            # Test caching support with a minimal request
+            # Test capabilities with a minimal request
             try:
-                from patchpal.agent.caching_detector import test_prompt_caching_support
+                from patchpal.agent.bedrock_profile_utils import detect_model_capabilities
 
-                print("\033[2mℹ️  Testing prompt caching support...\033[0m", flush=True)
-                self.prompt_caching_supported = test_prompt_caching_support(
+                print("\033[2mℹ️  Detecting model capabilities...\033[0m", flush=True)
+                self.prompt_caching_supported, self.detected_model_name = detect_model_capabilities(
                     self.model_id, self.litellm_kwargs
                 )
                 if self.prompt_caching_supported:
                     print("\033[2m✓ Prompt caching is supported\033[0m", flush=True)
                 else:
                     print("\033[2m✗ Prompt caching is not supported\033[0m", flush=True)
+
+                if self.detected_model_name:
+                    print(f"\033[2m✓ Detected model: {self.detected_model_name}\033[0m", flush=True)
+                else:
+                    print(
+                        "\033[2m⚠  Could not detect underlying model name (cost tracking may be inaccurate)\033[0m",
+                        flush=True,
+                    )
             except Exception:
-                # If test fails, assume caching not supported
+                # If test fails, assume caching not supported and model unknown
                 self.prompt_caching_supported = False
+                self.detected_model_name = None
         elif _supports_prompt_caching(self.model_id):
             self.prompt_caching_supported = True
         else:
@@ -903,7 +913,17 @@ It's currently empty (just the template). The file is automatically loaded at se
             float: The calculated cost in dollars
         """
         try:
-            model_info = litellm.get_model_info(self.model_id)
+            # For application inference profiles, use detected model name for pricing
+            model_for_pricing = self.model_id
+            if _is_application_inference_profile(self.model_id) and self.detected_model_name:
+                # Map detected model name to a pricing model
+                # e.g., "anthropic.claude-3-5-sonnet-20241022-v2:0" -> "bedrock/anthropic.claude-3-5-sonnet-20241022-v2:0"
+                if not self.detected_model_name.startswith("bedrock/"):
+                    model_for_pricing = f"bedrock/{self.detected_model_name}"
+                else:
+                    model_for_pricing = self.detected_model_name
+
+            model_info = litellm.get_model_info(model_for_pricing)
             input_cost_per_token = model_info.get("input_cost_per_token", 0)
             output_cost_per_token = model_info.get("output_cost_per_token", 0)
 
@@ -937,19 +957,26 @@ It's currently empty (just the template). The file is automatically loaded at se
                 cost += cache_read_tokens * input_cost_per_token * 0.1
 
             # Handle OpenAI cache pricing (prompt_tokens_details.cached_tokens)
+            # IMPORTANT: For Bedrock, LiteLLM populates prompt_tokens_details.cached_tokens
+            # with cache_read_input_tokens for compatibility, but we already handled those above.
+            # Only process this field if we're NOT using Bedrock-style cache fields.
             openai_cached_tokens = 0
-            if hasattr(usage, "prompt_tokens_details") and usage.prompt_tokens_details is not None:
-                prompt_details = usage.prompt_tokens_details
-                if hasattr(prompt_details, "cached_tokens") and prompt_details.cached_tokens:
-                    # Ensure cached_tokens is a number, not a mock or None
-                    if isinstance(prompt_details.cached_tokens, (int, float)):
-                        openai_cached_tokens = prompt_details.cached_tokens
-                        # Use cached_input_cost_per_token if available, otherwise fallback to 0.5x multiplier
-                        if cached_input_cost_per_token > 0:
-                            cost += openai_cached_tokens * cached_input_cost_per_token
-                        else:
-                            # Fallback: OpenAI cached tokens typically cost 50% of regular input
-                            cost += openai_cached_tokens * input_cost_per_token * 0.5
+            if not (cache_creation_tokens or cache_read_tokens):  # Only for non-Bedrock models
+                if (
+                    hasattr(usage, "prompt_tokens_details")
+                    and usage.prompt_tokens_details is not None
+                ):
+                    prompt_details = usage.prompt_tokens_details
+                    if hasattr(prompt_details, "cached_tokens") and prompt_details.cached_tokens:
+                        # Ensure cached_tokens is a number, not a mock or None
+                        if isinstance(prompt_details.cached_tokens, (int, float)):
+                            openai_cached_tokens = prompt_details.cached_tokens
+                            # Use cached_input_cost_per_token if available, otherwise fallback to 0.5x multiplier
+                            if cached_input_cost_per_token > 0:
+                                cost += openai_cached_tokens * cached_input_cost_per_token
+                            else:
+                                # Fallback: OpenAI cached tokens typically cost 50% of regular input
+                                cost += openai_cached_tokens * input_cost_per_token * 0.5
 
             # Regular input tokens (excluding all cache tokens)
             regular_input = (
