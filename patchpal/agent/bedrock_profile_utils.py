@@ -130,39 +130,41 @@ def detect_model_capabilities(
         # If we got here without error, caching is supported
         caching_supported = True
 
-        # Try to extract model name from response metadata
-        # Bedrock responses include model info in various places
-        if hasattr(response, "_hidden_params") and response._hidden_params:
-            # LiteLLM stores raw response data here
-            hidden = response._hidden_params
+        # Only try to extract model from response if we didn't get it from AWS API
+        if not detected_model:
+            # Try to extract model name from response metadata
+            # Bedrock responses include model info in various places
+            if hasattr(response, "_hidden_params") and response._hidden_params:
+                # LiteLLM stores raw response data here
+                hidden = response._hidden_params
 
-            # Check optional_params which may contain raw boto3 response
-            if "optional_params" in hidden and isinstance(hidden["optional_params"], dict):
-                optional = hidden["optional_params"]
-                # Bedrock converse API may include model info in the response
-                if "model" in optional:
-                    detected_model = optional["model"]
-                elif "modelId" in optional:
-                    detected_model = optional["modelId"]
+                # Check optional_params which may contain raw boto3 response
+                if "optional_params" in hidden and isinstance(hidden["optional_params"], dict):
+                    optional = hidden["optional_params"]
+                    # Bedrock converse API may include model info in the response
+                    if "model" in optional:
+                        detected_model = optional["model"]
+                    elif "modelId" in optional:
+                        detected_model = optional["modelId"]
 
-            # Check standard fields
-            if not detected_model and "model_id" in hidden and hidden["model_id"]:
-                detected_model = hidden["model_id"]
-            elif not detected_model and "model" in hidden and hidden["model"]:
-                detected_model = hidden["model"]
+                # Check standard fields
+                if not detected_model and "model_id" in hidden and hidden["model_id"]:
+                    detected_model = hidden["model_id"]
+                elif not detected_model and "model" in hidden and hidden["model"]:
+                    detected_model = hidden["model"]
 
-        # Check response metadata
-        if not detected_model and hasattr(response, "model"):
-            model_val = response.model
-            # Skip if it's just the ARN we passed in
-            if model_val and "application-inference-profile" not in model_val:
-                detected_model = model_val
+            # Check response metadata
+            if not detected_model and hasattr(response, "model"):
+                model_val = response.model
+                # Skip if it's just the ARN we passed in
+                if model_val and "application-inference-profile" not in model_val:
+                    detected_model = model_val
 
-        # Try to extract from response choices/usage if available
-        if not detected_model and hasattr(response, "usage"):
-            usage = response.usage
-            if hasattr(usage, "model") and usage.model:
-                detected_model = usage.model
+            # Try to extract from response choices/usage if available
+            if not detected_model and hasattr(response, "usage"):
+                usage = response.usage
+                if hasattr(usage, "model") and usage.model:
+                    detected_model = usage.model
 
     except Exception as e:
         error_msg = str(e).lower()
@@ -179,27 +181,30 @@ def detect_model_capabilities(
         ):
             # Caching not supported, but still try to detect model without caching
             caching_supported = False
-            try:
-                # Retry without cache markers to detect model
-                simple_messages = [{"role": "user", "content": "Hi"}]
-                response = litellm.completion(
-                    model=model_id,
-                    messages=simple_messages,
-                    tools=test_tools,
-                    max_tokens=5,
-                    **litellm_kwargs,
-                )
-                # Try to extract model from response
-                if hasattr(response, "_hidden_params") and response._hidden_params:
-                    hidden = response._hidden_params
-                    if "model_id" in hidden:
-                        detected_model = hidden["model_id"]
-                    elif "model" in hidden:
-                        detected_model = hidden["model"]
-                if not detected_model and hasattr(response, "model"):
-                    detected_model = response.model
-            except Exception:
-                pass  # Could not detect model
+
+            # Only retry if we don't already have model from AWS API
+            if not detected_model:
+                try:
+                    # Retry without cache markers to detect model
+                    simple_messages = [{"role": "user", "content": "Hi"}]
+                    response = litellm.completion(
+                        model=model_id,
+                        messages=simple_messages,
+                        tools=test_tools,
+                        max_tokens=5,
+                        **litellm_kwargs,
+                    )
+                    # Try to extract model from response
+                    if hasattr(response, "_hidden_params") and response._hidden_params:
+                        hidden = response._hidden_params
+                        if "model_id" in hidden:
+                            detected_model = hidden["model_id"]
+                        elif "model" in hidden:
+                            detected_model = hidden["model"]
+                    if not detected_model and hasattr(response, "model"):
+                        detected_model = response.model
+                except Exception:
+                    pass  # Could not detect model
         else:
             # Different error (auth, network, etc.)
             caching_supported = False
