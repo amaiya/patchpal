@@ -360,8 +360,30 @@ def _apply_prompt_caching(messages: List[Dict[str, Any]], model_id: str) -> List
     max_cache_markers = 4
     available_slots = max_cache_markers - existing_cache_count
 
+    # Debug logging
+    import os
+
+    if os.environ.get("PATCHPAL_DEBUG_CACHE") == "true":
+        print("\n[CACHE DEBUG] _apply_prompt_caching called")
+        print(f"  Total messages: {len(messages)}")
+        print(f"  Existing cache markers: {existing_cache_count}")
+        print(f"  Available slots: {available_slots}")
+        # Show which messages have markers
+        marked_indices = []
+        for i, msg in enumerate(messages):
+            if isinstance(msg.get("content"), list):
+                for block in msg["content"]:
+                    if isinstance(block, dict) and (
+                        "cache_control" in block or "cachePoint" in block
+                    ):
+                        marked_indices.append(i)
+                        break
+        print(f"  Messages with existing markers: {marked_indices}")
+
     if available_slots <= 0:
         # Already at or over limit, don't add any more cache markers
+        if os.environ.get("PATCHPAL_DEBUG_CACHE") == "true":
+            print("  Result: No slots available, returning without changes")
         return messages
 
     # Find system messages (usually at the start)
@@ -372,6 +394,9 @@ def _apply_prompt_caching(messages: List[Dict[str, Any]], model_id: str) -> List
     last_two_indices = (
         non_system_messages[-2:] if len(non_system_messages) >= 2 else non_system_messages
     )
+
+    if os.environ.get("PATCHPAL_DEBUG_CACHE") == "true":
+        print(f"  Last 2 non-system indices: {last_two_indices}")
 
     # Build list of candidate indices to cache (prioritize system messages)
     candidates = []
@@ -405,6 +430,12 @@ def _apply_prompt_caching(messages: List[Dict[str, Any]], model_id: str) -> List
             if not has_cache:
                 candidates.append(idx)
 
+    import os
+
+    if os.environ.get("PATCHPAL_DEBUG_CACHE") == "true":
+        print(f"  Candidates for marking: {candidates}")
+        print(f"  Will mark first {available_slots} candidates")
+
     # Apply cache markers to candidates, respecting the available slots
     # This ensures we never exceed the 4 marker limit
     for idx in candidates[:available_slots]:
@@ -424,6 +455,20 @@ def _apply_prompt_caching(messages: List[Dict[str, Any]], model_id: str) -> List
                     **msg,
                     "content": [{"type": "text", "text": content_text, **cache_marker}],
                 }
+
+    if os.environ.get("PATCHPAL_DEBUG_CACHE") == "true":
+        # Show final state
+        final_marked = []
+        for i, msg in enumerate(messages):
+            if isinstance(msg.get("content"), list):
+                for block in msg["content"]:
+                    if isinstance(block, dict) and (
+                        "cache_control" in block or "cachePoint" in block
+                    ):
+                        final_marked.append(i)
+                        break
+        print(f"  Final messages with markers: {final_marked}")
+        print(f"  Markers applied to indices: {[c for c in candidates[:available_slots]]}")
 
     return messages
 

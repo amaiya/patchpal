@@ -422,6 +422,8 @@ docker pull ghcr.io/amaiya/patchpal-sandbox:latest
 podman pull ghcr.io/amaiya/patchpal-sandbox:latest
 ```
 
+**Note**: To update to the latest sandbox image, run the same `pull` command. The sandbox image is updated periodically with PatchPal releases.
+
 ### Corporate proxy/firewall issues
 
 If you're behind a corporate proxy:
