@@ -250,7 +250,7 @@ def cmd_test(args):
         print("\n✓ Test successful!")
 
     except Exception as e:
-        print(f"\n✗ Test failed: {e}")
+        print(f"\n✗ Test failed: {e}", flush=True)
         sys.exit(1)
 
 

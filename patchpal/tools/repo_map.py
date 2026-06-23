@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 from patchpal.tools.code_analysis import LANGUAGE_MAP, code_structure
-from patchpal.tools.common import REPO_ROOT, _operation_limiter, audit_logger
+from patchpal.tools.common import REPO_ROOT, _operation_limiter, depth_limited_walk
 
 
 class RepoMapCache:
@@ -80,6 +80,7 @@ def get_repo_map(
     include_patterns: Optional[List[str]] = None,
     exclude_patterns: Optional[List[str]] = None,
     focus_files: Optional[List[str]] = None,
+    max_depth: Optional[int] = None,
 ) -> str:
     """Generate a compact repository map showing code structure across all files.
 
@@ -95,6 +96,8 @@ def get_repo_map(
         include_patterns: Glob patterns to include (e.g., ['*.py', '*.js'])
         exclude_patterns: Glob patterns to exclude (e.g., ['*test*', '*_pb2.py'])
         focus_files: Files mentioned in conversation (prioritized in output)
+        max_depth: Maximum directory depth to traverse (default: None for unlimited).
+                   Example: max_depth=3 traverses up to 3 levels deep from repository root.
 
     Returns:
         Formatted repository map with file structures
@@ -120,11 +123,6 @@ def get_repo_map(
     """
     _operation_limiter.check_limit(f"get_repo_map(max_files={max_files})")
 
-    audit_logger.info(
-        f"REPO_MAP: Generating (max_files={max_files}, "
-        f"include={include_patterns}, exclude={exclude_patterns})"
-    )
-
     # Get supported file extensions
     supported_extensions = set(LANGUAGE_MAP.keys())
 
@@ -135,7 +133,13 @@ def get_repo_map(
     file_structures: Dict[str, str] = {}
     skipped_count = 0
 
-    for path in REPO_ROOT.rglob("*"):
+    # Use depth-limited traversal if max_depth is specified
+    if max_depth is not None:
+        paths_to_check = depth_limited_walk(REPO_ROOT, max_depth)
+    else:
+        paths_to_check = REPO_ROOT.rglob("*")
+
+    for path in paths_to_check:
         # Skip directories, hidden files, and non-code files
         if not path.is_file():
             continue
@@ -167,8 +171,10 @@ def get_repo_map(
 
         if structure is None:
             # Generate structure
+            # Pass _internal_call=True so code_structure doesn't count as an operation
+            # This prevents repo_map from using thousands of operations in large repos
             try:
-                structure = code_structure(str(rel_path), max_symbols=20)
+                structure = code_structure(str(rel_path), max_symbols=20, _internal_call=True)
                 if structure and not structure.startswith("❌"):
                     # Extract just the essential parts (remove hints and verbose info)
                     lines = structure.split("\n")
@@ -237,10 +243,24 @@ def get_repo_map(
     # Calculate rough token estimate (1 char ≈ 0.3 tokens for code)
     estimated_tokens = len(result) // 3
 
-    audit_logger.info(
-        f"REPO_MAP: Generated {len(result):,} chars (~{estimated_tokens:,} tokens) "
-        f"for {total_files} files"
-    )
+    # Log repo map generation
+    try:
+        from patchpal.tools.audit import log_action_result
+
+        log_action_result(
+            tool_name="repo_map_generation",
+            description=f"Generated repo map: {len(result):,} chars (~{estimated_tokens:,} tokens) for {total_files} files",
+            success=True,
+            context={
+                "char_count": len(result),
+                "estimated_tokens": estimated_tokens,
+                "total_files": total_files,
+                "focus_files_count": len(focus_set) if focus_set else 0,
+                "max_files": max_files,
+            },
+        )
+    except Exception:
+        pass  # Don't fail if audit logging fails
 
     return result
 
@@ -269,4 +289,3 @@ def clear_repo_map_cache():
     """
     global _REPO_MAP_CACHE
     _REPO_MAP_CACHE = RepoMapCache()
-    audit_logger.info("REPO_MAP: Cache cleared")

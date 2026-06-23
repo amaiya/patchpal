@@ -639,6 +639,7 @@ def test_web_fetch_success(monkeypatch):
     from unittest.mock import Mock
 
     from patchpal.tools import web_fetch
+    from patchpal.tools.web_tools import get_url_tracker
 
     # Mock requests.get
     mock_response = Mock()
@@ -660,6 +661,9 @@ def test_web_fetch_success(monkeypatch):
 
     reset_operation_counter()
 
+    # Add URL to context tracker (simulating user message)
+    get_url_tracker().add_urls_from_text("https://example.com")
+
     result = web_fetch("https://example.com")
     assert "Test" in result
     assert "Content" in result
@@ -680,6 +684,7 @@ def test_web_fetch_content_too_large(monkeypatch):
     from unittest.mock import Mock
 
     from patchpal.tools import web_fetch
+    from patchpal.tools.web_tools import get_url_tracker
 
     # Mock a response with large content
     mock_response = Mock()
@@ -696,6 +701,9 @@ def test_web_fetch_content_too_large(monkeypatch):
     from patchpal.tools import reset_operation_counter
 
     reset_operation_counter()
+
+    # Add URL to context tracker (simulating user message)
+    get_url_tracker().add_urls_from_text("https://example.com")
 
     with pytest.raises(ValueError, match="Content too large"):
         web_fetch("https://example.com")
@@ -832,6 +840,7 @@ def test_web_fetch_no_truncation(temp_repo, monkeypatch):
     Note: Universal tool output truncation is now handled in agent.py, not in web_fetch itself.
     """
     from patchpal.tools import web_fetch
+    from patchpal.tools.web_tools import get_url_tracker
 
     # Disable permission requirement
     monkeypatch.setenv("PATCHPAL_REQUIRE_PERMISSION", "false")
@@ -846,6 +855,9 @@ def test_web_fetch_no_truncation(temp_repo, monkeypatch):
     mock_response.raise_for_status = MagicMock()
     mock_response.iter_content = MagicMock(return_value=[large_content.encode("utf-8")])
 
+    # Add URL to context tracker (simulating user message)
+    get_url_tracker().add_urls_from_text("http://example.com/large.txt")
+
     with patch("patchpal.tools.web_tools.requests.get", return_value=mock_response):
         result = web_fetch("http://example.com/large.txt", extract_text=False)
 
@@ -858,6 +870,7 @@ def test_web_fetch_no_truncation(temp_repo, monkeypatch):
 def test_web_fetch_no_truncation_needed(temp_repo, monkeypatch):
     """Test that web_fetch doesn't truncate when content is within limit."""
     from patchpal.tools import web_fetch
+    from patchpal.tools.web_tools import get_url_tracker
 
     # Disable permission requirement
     monkeypatch.setenv("PATCHPAL_REQUIRE_PERMISSION", "false")
@@ -871,6 +884,9 @@ def test_web_fetch_no_truncation_needed(temp_repo, monkeypatch):
     mock_response.encoding = "utf-8"
     mock_response.raise_for_status = MagicMock()
     mock_response.iter_content = MagicMock(return_value=[small_content.encode("utf-8")])
+
+    # Add URL to context tracker (simulating user message)
+    get_url_tracker().add_urls_from_text("http://example.com/small.txt")
 
     with patch("patchpal.tools.web_tools.requests.get", return_value=mock_response):
         result = web_fetch("http://example.com/small.txt", extract_text=False)
@@ -1773,6 +1789,7 @@ def test_web_fetch_pdf_extraction(monkeypatch):
 
     from patchpal.tools import web_fetch
     from patchpal.tools.common import PYMUPDF_AVAILABLE
+    from patchpal.tools.web_tools import get_url_tracker
 
     if not PYMUPDF_AVAILABLE:
         pytest.skip("PyMuPDF not available")
@@ -1811,6 +1828,9 @@ def test_web_fetch_pdf_extraction(monkeypatch):
 
     reset_operation_counter()
 
+    # Add URL to context tracker (simulating user message)
+    get_url_tracker().add_urls_from_text("https://example.com/test.pdf")
+
     result = web_fetch("https://example.com/test.pdf")
     assert "Test PDF Content" in result
     assert "Second Line" in result
@@ -1821,6 +1841,7 @@ def test_web_fetch_pdf_without_pymupdf(monkeypatch):
     from unittest.mock import Mock
 
     from patchpal.tools import web_fetch
+    from patchpal.tools.web_tools import get_url_tracker
 
     # Mock PyMuPDF as unavailable in common module (where it's now checked)
     monkeypatch.setattr("patchpal.tools.common.PYMUPDF_AVAILABLE", False)
@@ -1848,6 +1869,9 @@ def test_web_fetch_pdf_without_pymupdf(monkeypatch):
     from patchpal.tools import reset_operation_counter
 
     reset_operation_counter()
+
+    # Add URL to context tracker (simulating user message)
+    get_url_tracker().add_urls_from_text("https://example.com/test.pdf")
 
     result = web_fetch("https://example.com/test.pdf")
     # Should return error message when PyMuPDF is not available

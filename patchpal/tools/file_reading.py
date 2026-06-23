@@ -8,7 +8,6 @@ from patchpal.tools.common import (
     _check_path,
     _is_binary_file,
     _operation_limiter,
-    audit_logger,
     extract_text_from_docx,
     extract_text_from_pdf,
     extract_text_from_pptx,
@@ -56,7 +55,6 @@ def read_file(path: str) -> str:
                 )
             with open(p, "r", encoding="utf-8", errors="surrogateescape", newline=None) as f:
                 content = f.read()
-            audit_logger.info(f"READ: {path} ({size} bytes, SVG as text)")
             return content
 
         # For raster images, allow larger files (up to 10MB) since they're for vision models
@@ -100,8 +98,6 @@ def read_file(path: str) -> str:
         else:
             image_mime = "image/png"  # fallback
 
-        audit_logger.info(f"READ: {path} ({size} bytes, IMAGE {image_mime})")
-
         # Return IMAGE_DATA format that agent will convert to multimodal content
         # This bypasses tool output truncation limits (PATCHPAL_MAX_TOOL_OUTPUT_CHARS)
         return f"IMAGE_DATA:{image_mime}:{b64_data}"
@@ -113,9 +109,25 @@ def read_file(path: str) -> str:
         # Extract text from PDF (no size check on binary - check extracted text instead)
         content_bytes = p.read_bytes()
         text_content = extract_text_from_pdf(content_bytes, source=str(path))
-        audit_logger.info(
-            f"READ: {path} ({size} bytes binary, {len(text_content)} chars text, PDF)"
-        )
+
+        # Log document extraction
+        try:
+            from patchpal.tools.audit import log_action_result
+
+            log_action_result(
+                tool_name="document_extraction",
+                description=f"Extracted text from PDF: {path}",
+                success=True,
+                context={
+                    "file_type": "PDF",
+                    "binary_bytes": size,
+                    "extracted_chars": len(text_content),
+                    "path": str(path),
+                },
+            )
+        except Exception:
+            pass  # Don't fail if audit logging fails
+
         return text_content
     elif (mime_type and ("wordprocessingml" in mime_type or "msword" in mime_type)) or ext in (
         ".docx",
@@ -124,9 +136,25 @@ def read_file(path: str) -> str:
         # Extract text from DOCX/DOC
         content_bytes = p.read_bytes()
         text_content = extract_text_from_docx(content_bytes, source=str(path))
-        audit_logger.info(
-            f"READ: {path} ({size} bytes binary, {len(text_content)} chars text, DOCX)"
-        )
+
+        # Log document extraction
+        try:
+            from patchpal.tools.audit import log_action_result
+
+            log_action_result(
+                tool_name="document_extraction",
+                description=f"Extracted text from DOCX: {path}",
+                success=True,
+                context={
+                    "file_type": "DOCX",
+                    "binary_bytes": size,
+                    "extracted_chars": len(text_content),
+                    "path": str(path),
+                },
+            )
+        except Exception:
+            pass  # Don't fail if audit logging fails
+
         return text_content
     elif (mime_type and ("presentationml" in mime_type or "ms-powerpoint" in mime_type)) or ext in (
         ".pptx",
@@ -135,9 +163,25 @@ def read_file(path: str) -> str:
         # Extract text from PPTX/PPT
         content_bytes = p.read_bytes()
         text_content = extract_text_from_pptx(content_bytes, source=str(path))
-        audit_logger.info(
-            f"READ: {path} ({size} bytes binary, {len(text_content)} chars text, PPTX)"
-        )
+
+        # Log document extraction
+        try:
+            from patchpal.tools.audit import log_action_result
+
+            log_action_result(
+                tool_name="document_extraction",
+                description=f"Extracted text from PPTX: {path}",
+                success=True,
+                context={
+                    "file_type": "PPTX",
+                    "binary_bytes": size,
+                    "extracted_chars": len(text_content),
+                    "path": str(path),
+                },
+            )
+        except Exception:
+            pass  # Don't fail if audit logging fails
+
         return text_content
 
     # For non-document files, check size before reading
@@ -157,7 +201,6 @@ def read_file(path: str) -> str:
     # Read as text file
     with open(p, "r", encoding="utf-8", errors="surrogateescape", newline=None) as f:
         content = f.read()
-    audit_logger.info(f"READ: {path} ({size} bytes)")
     return content
 
 
@@ -242,7 +285,4 @@ def read_lines(path: str, start_line: int, end_line: Optional[int] = None) -> st
             f"\n\n(Note: Requested lines up to {end_line}, but file only has {total_lines} lines)"
         )
 
-    audit_logger.info(
-        f"READ_LINES: {path} lines {start_line}-{actual_end_line} ({len(requested_lines)} lines)"
-    )
     return output

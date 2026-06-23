@@ -25,19 +25,18 @@ classifiers = [
 ]
 requires-python = ">=3.10"
 dependencies = [
-    "litellm>=1.0.0",
+    "litellm<=1.82.6",
     "requests>=2.31.0",
     "beautifulsoup4>=4.12.0",
     "ddgs>=1.0.0",
     "rich>=13.0.0",
     "pyyaml>=6.0.0",
     "prompt_toolkit>=3.0.0",
-    "tiktoken>=0.5.0",
     "boto3",
     "pymupdf>=1.23.0",
     "python-docx>=1.0.0",
     "python-pptx>=0.6.0",
-    "tree-sitter-language-pack>=0.3.0",
+    "tree-sitter-language-pack>=0.3.0,<1.0.0",
 ]
 
 [project.optional-dependencies]
@@ -67,6 +66,7 @@ Issues = "https://github.com/amaiya/patchpal/issues"
 patchpal = "patchpal.cli.interactive:main"
 patchpal-autopilot = "patchpal.cli.autopilot:main"
 patchpal-mcp = "patchpal.cli.mcp:main"
+patchpal-sandbox = "patchpal.cli.sandbox:main"
 
 [tool.setuptools.packages.find]
 include = ["patchpal*"]

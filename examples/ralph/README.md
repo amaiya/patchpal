@@ -8,7 +8,7 @@ The **Ralph Wiggum technique** is an iterative AI development methodology where 
 
 For complete documentation on using autopilot mode, see:
 
-**[docs/usage/autopilot.md](../../docs/usage/autopilot.md)**
+**[docs/usage/autopilot.md](https://amaiya.github.io/patchpal/usage/autopilot/)**
 
 The documentation covers:
 - Quick start and usage
@@ -34,7 +34,7 @@ examples/ralph/
 
 ## Learn More
 
-- **PatchPal Autopilot Documentation**: [docs/usage/autopilot.md](../../docs/usage/autopilot.md)
+- **PatchPal Autopilot Documentation**: [docs/usage/autopilot.md](https://amaiya.github.io/patchpal/usage/autopilot/)
 - **Ralph Technique Origins**:
   - [Ralph Wiggum as a "Software Engineer"](https://ghuntley.com/ralph/) - Geoffrey Huntley's comprehensive guide
   - [A Brief History of Ralph](https://www.humanlayer.dev/blog/brief-history-of-ralph)

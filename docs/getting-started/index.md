@@ -10,6 +10,66 @@ pip install patchpal
 
 **Supported Operating Systems:**  Linux, MacOS, MS Windows.
 
+
+**Alternative: Run with Docker/Podman (no installation required)**
+
+If you prefer to use containers instead of installing PatchPal locally:
+
+**Option 1: Using patchpal-sandbox (Easiest)**
+
+After installing PatchPal (`pip install patchpal`), use the `patchpal-sandbox` command for automatic container setup:
+
+```bash
+# Interactive mode (any [LiteLLM-supported model](https://models.litellm.ai/) can be used)
+patchpal-sandbox -- --model openai/gpt-5-mini
+
+# With environment file
+patchpal-sandbox --env-file .env -- --model anthropic/claude-sonnet-4-5
+
+# Autopilot mode (for autonomous iterative development - see Autopilot docs)
+patchpal-sandbox --env-file .env -- autopilot --prompt "..." --model anthropic/claude-sonnet-4-5
+```
+
+The `patchpal-sandbox` command automatically:
+- Auto-detects Docker/Podman
+- Mounts current directory and `~/.patchpal`
+- Loads API keys from `.env` file or environment
+- Uses pre-built image (fast startup)
+- Default: permissions enabled for interactive mode; disabled for autopilot mode
+
+**Option 2: Manual Docker/Podman Commands**
+
+```bash
+# Using Docker with pre-built image (default model)
+docker run -it --rm \
+  -v $(pwd):/workspace \
+  -e ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY \
+  ghcr.io/amaiya/patchpal-sandbox:latest \
+  patchpal --model anthropic/claude-sonnet-4-5
+
+# Or with Podman
+podman run -it --rm \
+  -v $(pwd):/workspace \
+  -e ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY \
+  ghcr.io/amaiya/patchpal-sandbox:latest \
+  patchpal --model anthropic/claude-sonnet-4-5
+
+# Specify a different model
+docker run -it --rm \
+  -v $(pwd):/workspace \
+  -e OPENAI_API_KEY=$OPENAI_API_KEY \
+  ghcr.io/amaiya/patchpal-sandbox:latest \
+  patchpal --model openai/gpt-5-mini
+```
+
+This runs PatchPal in an isolated container with:
+- PatchPal pre-installed (no pip install needed)
+- Current directory mounted at `/workspace`
+- Your API key passed through environment variable
+- For other models, pass additional `-e` flags (e.g., `-e OPENAI_API_KEY=$OPENAI_API_KEY`)
+- Pass patchpal arguments after `patchpal` command (e.g., `patchpal --model openai/gpt-4o-mini`, `patchpal --autopilot`)
+
+
 ## Setup
 
 1. **Get an API key or a Local LLM Engine**:
@@ -60,4 +120,7 @@ export PATCHPAL_MODEL=anthropic/claude-opus-4-5
 patchpal
 ```
 
-**Tip for Local Models:** Local models (i.e., models served by Ollama or vLLM) may work better with the environment variable settings, `PATCHPAL_MINIMAL_TOOLS=true` and `PATCHPAL_ENABLE_WEB=false`, which provides only essential tools (`read_file`, `read_lines`, `write_file`, `edit_file`, `run_shell`), reducing tool confusion with smaller models.
+**Tip for Local Models:** Local models (i.e., models served by Ollama or vLLM) may work better with these settings:
+- `PATCHPAL_MINIMAL_TOOLS=true` and `PATCHPAL_ENABLE_WEB=false` - For models **with** function calling: Provides only essential tools (`read_file`, `read_lines`, `write_file`, `edit_file`, `run_shell`), reducing tool confusion
+- `PATCHPAL_REACT_MODE=true` - For models **without** function calling: Enables text-based tool invocation (see [ReAct mode docs](../models/local-models.md#react-mode-for-models-without-function-calling))
+- For Ollama, additionally setting `PATCHPAL_STREAM_OUTPUT=false` [may help with tool call reliability](https://github.com/openclaw/openclaw/issues/5769)

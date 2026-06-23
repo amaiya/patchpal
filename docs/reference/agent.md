@@ -9,23 +9,37 @@ The core agent implementation for PatchPal, providing the main interface for int
       show_root_heading: true
       heading_level: 3
 
-## Agent Class
+::: patchpal.agent.create_react_agent
+    options:
+      show_root_heading: true
+      heading_level: 3
+
+!!! note "ReAct Agent for Local Models"
+    For local models that don't support native function calling, use `create_react_agent()` instead of `create_agent()`.
+    See [Local Models - ReAct Mode](../models/local-models.md#react-mode-for-models-without-function-calling) for details.
+
+## Agent Classes
+
+### PatchPalAgent (Function Calling)
 
 ::: patchpal.agent.PatchPalAgent
     options:
       show_root_heading: true
-      heading_level: 3
+      heading_level: 4
       members:
         - __init__
         - run
         - compaction_completion
 
-## Helper Functions
+### ReActAgent (Text-Based Tool Calling)
 
-::: patchpal.agent._is_bedrock_arn
+::: patchpal.agent.ReActAgent
     options:
       show_root_heading: true
-      heading_level: 3
+      heading_level: 4
+      members:
+        - __init__
+        - run
 
 ## Usage Example
 

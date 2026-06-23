@@ -5,43 +5,33 @@ from typing import Any, Callable, Dict, List, Tuple
 
 from patchpal.config import config
 
-try:
-    import tiktoken
-
-    TIKTOKEN_AVAILABLE = True
-except ImportError:
-    TIKTOKEN_AVAILABLE = False
-
 
 class TokenEstimator:
-    """Estimate tokens in messages for context management."""
+    """Estimate tokens in messages for context management.
+
+    Uses character-based estimation (~3 chars per token) as a fallback when
+    actual token counts from API responses are not available. This works reliably
+    for all models without requiring network access or external dependencies.
+    """
 
     def __init__(self, model_id: str):
         self.model_id = model_id
-        self._encoder = self._get_encoder()
+        # Character-based estimation is used as fallback (primary: actual API token counts)
+        self._encoder = None
 
     def _get_encoder(self):
-        """Get appropriate tokenizer based on model."""
-        if not TIKTOKEN_AVAILABLE:
-            return None
+        """Get appropriate tokenizer based on model.
 
-        try:
-            # Map model families to encoders
-            model_lower = self.model_id.lower()
-
-            if "gpt-4" in model_lower or "gpt-3.5" in model_lower:
-                return tiktoken.encoding_for_model("gpt-4")
-            elif "claude" in model_lower or "anthropic" in model_lower:
-                # Anthropic uses similar tokenization to GPT-4
-                return tiktoken.encoding_for_model("gpt-4")
-            else:
-                # Default fallback
-                return tiktoken.get_encoding("cl100k_base")
-        except Exception:
-            return None
+        NOTE: This method is deprecated and always returns None.
+        Character-based estimation is used as fallback when actual API token counts unavailable.
+        """
+        return None
 
     def estimate_tokens(self, text: str) -> int:
-        """Estimate tokens in text.
+        """Estimate tokens in text using character-based heuristic.
+
+        Uses ~3 chars per token which is accurate for code-heavy content
+        and works reliably without requiring network access for tokenizer data.
 
         Args:
             text: Text to estimate tokens for
@@ -52,14 +42,9 @@ class TokenEstimator:
         if not text:
             return 0
 
-        if self._encoder:
-            try:
-                return len(self._encoder.encode(str(text)))
-            except Exception:
-                pass
-
-        # Fallback: ~3 chars per token (conservative for code-heavy content)
+        # Character-based estimation: ~3 chars per token
         # This is more accurate than 4 chars/token for technical content
+        # and works reliably for all models without network dependencies
         return len(str(text)) // 3
 
     def estimate_message_tokens(self, message: Dict[str, Any]) -> int:
@@ -118,6 +103,20 @@ class TokenEstimator:
         if message.get("name"):
             tokens += self.estimate_tokens(message["name"])
 
+        # Reasoning fields (for reasoning models like gpt-oss)
+        # These are passed back to the API by LiteLLM and count as input tokens
+        reasoning_fields = ["reasoning_content", "reasoning", "reasoning_text"]
+        for field in reasoning_fields:
+            if message.get(field):
+                tokens += self.estimate_tokens(str(message[field]))
+
+        # Thinking blocks (for Anthropic extended thinking)
+        # These are also passed back to the API and count as input tokens
+        if message.get("thinking_blocks"):
+            for block in message["thinking_blocks"]:
+                if isinstance(block, dict) and block.get("thinking"):
+                    tokens += self.estimate_tokens(str(block["thinking"]))
+
         return tokens
 
     def estimate_messages_tokens(self, messages: List[Dict[str, Any]]) -> int:
@@ -140,7 +139,7 @@ class ContextManager:
     PRUNE_MINIMUM = config.PRUNE_MINIMUM  # Minimum tokens to prune to make it worthwhile
     COMPACT_THRESHOLD = (
         config.COMPACT_THRESHOLD
-    )  # Compact at 75% capacity (lower due to estimation inaccuracy)
+    )  # Compact at PATCHPAL_COMPACT_THRESHOLD (default: 80% capacity)
     ENABLE_PROACTIVE_PRUNING = (
         config.PROACTIVE_PRUNING
     )  # Proactively prune after tool calls when outputs exceed PRUNE_PROTECT (default: true)
@@ -258,7 +257,10 @@ Be comprehensive but concise. The goal is to continue work seamlessly without lo
         self.system_prompt = system_prompt
         self.estimator = TokenEstimator(model_id)
         self.context_limit = self._get_context_limit()
-        self.output_reserve = 4_096  # Reserve tokens for model output
+        # Reserve 16% of context for output (min 4K, max 32K)
+        # This ensures older models like GPT-4 (8K) get 1.28K reserve
+        # while modern models get full 32K reserve
+        self.output_reserve = min(32_000, max(4_000, int(self.context_limit * 0.16)))
 
     def _get_context_limit(self) -> int:
         """Get context limit for model.
@@ -317,16 +319,36 @@ Be comprehensive but concise. The goal is to continue work seamlessly without lo
         # Default conservative limit for unknown models
         return 128_000
 
-    def needs_compaction(self, messages: List[Dict[str, Any]]) -> bool:
+    def needs_compaction(
+        self, messages: List[Dict[str, Any]], actual_prompt_tokens: int = None
+    ) -> bool:
         """Check if context window needs compaction.
+
+        ALWAYS estimates current messages to avoid staleness issues when predicting
+        whether the NEXT API call will overflow. Using actual_prompt_tokens from a
+        previous call can cause false negatives when large messages are added between
+        the last API call and the compaction check.
+
+        Example of staleness bug (fixed):
+        - Previous API call: 120K tokens (60% usage)
+        - User pastes huge changelog: +90K tokens
+        - Total: 210K tokens (exceeds 200K limit)
+        - Bug: If we used actual_prompt_tokens=120K, we'd think we're at 60%
+        - Fix: Always re-estimate to see the 210K total
+
+        The actual_prompt_tokens parameter is kept for API compatibility but ignored
+        for compaction decisions. Use get_usage_stats() for display purposes where
+        actual tokens are appropriate (staleness OK for showing recent stats).
 
         Args:
             messages: Current message history
+            actual_prompt_tokens: IGNORED - kept for API compatibility only
 
         Returns:
             True if compaction is needed
         """
-        # Estimate total tokens
+        # ALWAYS estimate current messages - never use stale actual_prompt_tokens
+        # This ensures we detect large message additions that happen between API calls
         # Note: Dynamic date/time message adds ~30 tokens on each LLM call
         system_tokens = self.estimator.estimate_tokens(self.system_prompt)
         datetime_tokens = 30  # Approximate size of dynamic date/time message
@@ -337,15 +359,37 @@ Be comprehensive but concise. The goal is to continue work seamlessly without lo
         usage_ratio = total_tokens / self.context_limit
         return usage_ratio >= self.COMPACT_THRESHOLD
 
-    def get_usage_stats(self, messages: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def get_usage_stats(
+        self, messages: List[Dict[str, Any]], actual_prompt_tokens: int = None
+    ) -> Dict[str, Any]:
         """Get current context usage statistics.
 
         Args:
             messages: Current message history
+            actual_prompt_tokens: Optional actual prompt tokens from latest API response (includes cache operations)
 
         Returns:
             Dict with usage statistics
         """
+        # If we have actual prompt tokens from API (includes cache writes/reads), use those
+        if actual_prompt_tokens is not None:
+            total_tokens = actual_prompt_tokens + self.output_reserve
+            # For display purposes, estimate system vs message breakdown
+            system_tokens = self.estimator.estimate_tokens(self.system_prompt)
+            datetime_tokens = 30
+            message_tokens = actual_prompt_tokens - system_tokens - datetime_tokens
+
+            return {
+                "system_tokens": system_tokens + datetime_tokens,
+                "message_tokens": max(0, message_tokens),  # Ensure non-negative
+                "output_reserve": self.output_reserve,
+                "total_tokens": total_tokens,
+                "context_limit": self.context_limit,
+                "usage_ratio": total_tokens / self.context_limit,
+                "usage_percent": int((total_tokens / self.context_limit) * 100),
+            }
+
+        # Fallback to estimation when actual tokens not available
         system_tokens = self.estimator.estimate_tokens(self.system_prompt)
         datetime_tokens = 30  # Approximate size of dynamic date/time message
         message_tokens = self.estimator.estimate_messages_tokens(messages)

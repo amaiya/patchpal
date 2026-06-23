@@ -18,13 +18,14 @@ ONLY use in isolated environments (Docker containers, VMs, throwaway projects).
 See examples/ralph/README.md for detailed safety guidelines.
 
 Usage:
-    python -m patchpal autopilot --prompt "Build a REST API with tests" --completion-promise "COMPLETE"
-    python -m patchpal autopilot --prompt-file task.md --completion-promise "DONE" --max-iterations 50
+    patchpal-autopilot --prompt "Build a REST API with tests"
+    patchpal-autopilot --prompt-file task.md --max-iterations 50
 """
 
 import argparse
 import os
 import sys
+import warnings
 
 from patchpal.agent import create_agent
 from patchpal.config import config
@@ -47,6 +48,10 @@ def autopilot_loop(
     This is the key insight: The agent sees its previous work in the conversation
     history and can adjust its approach, notice what's broken, see failing tests, etc.
 
+    Safety: Autopilot automatically restricts file access to the current directory
+    (PATCHPAL_RESTRICT_TO_REPO=true) to prevent PII leakage and limit scope.
+    Override with PATCHPAL_RESTRICT_TO_REPO=false if needed.
+
     Args:
         prompt: Task description for the agent
         completion_promise: String that signals task completion (e.g., "COMPLETE", "DONE")
@@ -60,6 +65,11 @@ def autopilot_loop(
     """
     # Disable permissions for autonomous operation
     os.environ["PATCHPAL_REQUIRE_PERMISSION"] = "false"
+
+    # Restrict to current directory for safety (prevent PII leakage, limit scope)
+    # This ensures the agent only works within the project directory
+    if "PATCHPAL_RESTRICT_TO_REPO" not in os.environ:
+        os.environ["PATCHPAL_RESTRICT_TO_REPO"] = "true"
 
     # Discover custom tools from ~/.patchpal/tools/ and <repo>/.patchpal/tools/
     from pathlib import Path
@@ -83,6 +93,9 @@ def autopilot_loop(
     print(f"Completion promise: '{completion_promise}'")
     print(f"Max iterations: {max_iterations}")
     print(f"Model: {agent.model_id}")
+    print(f"Working directory: {repo_root}")
+    if config.RESTRICT_TO_REPO:
+        print("🔒 File access restricted to working directory")
 
     # Show custom tools info if any were loaded
     custom_tool_info = list_custom_tools(repo_root=repo_root)
@@ -99,9 +112,32 @@ def autopilot_loop(
         print(f"🔄 Autopilot Iteration {iteration + 1}/{max_iterations}")
         print(f"{'=' * 80}\n")
 
+        # Log user prompt to audit log (first iteration only)
+        if iteration == 0:
+            try:
+                from patchpal.tools.audit import log_user_prompt
+
+                log_user_prompt(prompt)
+            except Exception:
+                pass  # Don't fail if audit logging fails
+
         # Run agent with the SAME prompt every time
         # The agent's conversation history accumulates, so it can see all previous work
         response = agent.run(prompt, max_iterations=100)
+
+        # Reset operation counter after each conversation turn
+        # This allows long autopilot sessions without hitting the global limit
+        from patchpal.tools.common import reset_operation_counter
+
+        reset_operation_counter()
+
+        # Log agent response to audit log
+        try:
+            from patchpal.tools.audit import log_agent_response
+
+            log_agent_response(response, success=True)
+        except Exception:
+            pass  # Don't fail if audit logging fails
 
         print(f"\n{'=' * 80}")
         print("📝 Agent Response:")
@@ -131,6 +167,16 @@ def autopilot_loop(
             )
             if agent.cumulative_cost > 0:
                 print(f"Total cost: ${agent.cumulative_cost:.4f}")
+
+            # Log successful session end
+            try:
+                from patchpal.tools.audit import log_session_end
+                from patchpal.tools.common import get_operation_count
+
+                log_session_end(total_operations=get_operation_count(), success=True)
+            except Exception:
+                pass  # Don't fail if audit logging fails
+
             return response
 
         # Stop hook: Agent tried to complete, but no completion promise
@@ -155,28 +201,105 @@ def autopilot_loop(
     if agent.cumulative_cost > 0:
         print(f"Total cost: ${agent.cumulative_cost:.4f}")
 
+    # Log session end
+    try:
+        from patchpal.tools.audit import log_session_end
+        from patchpal.tools.common import get_operation_count
+
+        log_session_end(total_operations=get_operation_count(), success=False)
+    except Exception:
+        pass  # Don't fail if audit logging fails
+
     return None
 
 
 def main():
     """Autopilot mode CLI entry point."""
 
-    # Show safety warning
-    print("\n" + "⚠️" * 40)
-    print("  PATCHPAL AUTOPILOT MODE - AUTONOMOUS OPERATION")
-    print("⚠️" * 40)
-    print()
-    print("Autopilot disables PatchPal's permission system for autonomous operation.")
-    print()
-    print("🔒 RECOMMENDED: Run in isolated environments only:")
-    print("   • Docker/Podman containers (see examples/ralph/PODMAN_GUIDE.md)")
-    print("   • Dedicated VMs or test machines")
-    print("   • Throwaway projects with version control")
-    print()
-    print("❌ DO NOT RUN on production systems.")
-    print()
-    print("This implements the 'Ralph Wiggum technique' - see examples/ralph/README.md")
-    print()
+    # Suppress warnings to keep CLI clean (e.g., Pydantic, deprecation warnings from dependencies)
+    warnings.simplefilter("ignore")
+
+    # Set up argument parser FIRST so --help works before confirmation prompt
+    parser = argparse.ArgumentParser(
+        description="PatchPal Autopilot - Autonomous iterative development",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Build a calculator with tests
+  patchpal-autopilot --prompt "Create calculator.py with add, subtract, multiply, divide functions. Create test_calculator.py with pytest tests. Run tests to verify." --max-iterations 20
+
+  # Refactor code with specific completion criteria
+  patchpal-autopilot --model openai/gpt-5-mini --prompt "Refactor auth.py to use async/await. Update all tests. Run tests to verify."
+
+  # Use prompt from file
+  patchpal-autopilot --prompt-file task.md --max-iterations 50
+
+  # With local Ollama model (zero API cost)
+  patchpal-autopilot --model ollama_chat/qwen2.5-coder:7b --prompt "..."
+
+  # Custom completion promise (optional, defaults to "COMPLETE")
+  patchpal-autopilot --prompt-file task.md --completion-promise "DONE"
+
+  # Skip confirmation prompt (for automation/scripts)
+  PATCHPAL_AUTOPILOT_CONFIRMED=true patchpal-autopilot --prompt-file task.md
+
+Prompt Best Practices:
+  - Include the completion promise in your prompt (agent sees this as the goal)
+  - Clear completion criteria (specific tests, checks, deliverables)
+  - Incremental goals (break into phases if complex)
+  - Self-correction patterns (run tests, debug, fix, repeat)
+  - Example: "Create X. Test X. Fix any errors. Output <promise>COMPLETE</promise>"
+
+Safety:
+  - File access restricted to current directory (PATCHPAL_RESTRICT_TO_REPO=true)
+  - Permissions disabled for autonomous operation
+  - Recommended: Run in containers or throwaway projects
+  - See examples/ralph/README.md for detailed safety guidelines
+
+Related Resources (Ralph Wiggum Technique):
+  - https://www.humanlayer.dev/blog/brief-history-of-ralph
+  - https://awesomeclaude.ai/ralph-wiggum
+  - https://github.com/ghuntley/ralph
+        """,
+    )
+    parser.add_argument("--prompt", type=str, help="Task prompt (or use --prompt-file)")
+    parser.add_argument("--prompt-file", type=str, help="Path to file containing prompt")
+    parser.add_argument(
+        "--completion-promise",
+        type=str,
+        default="COMPLETE",
+        help='String that signals completion (default: "COMPLETE")',
+    )
+    parser.add_argument(
+        "--max-iterations",
+        type=int,
+        default=50,
+        help="Maximum autopilot iterations (default: 50)",
+    )
+    parser.add_argument(
+        "--model",
+        type=str,
+        help="Model to use (overrides PATCHPAL_MODEL env var)",
+    )
+
+    args = parser.parse_args()
+
+    # Show safety warning only if not already confirmed (after argparse so --help works)
+    if not config.AUTOPILOT_CONFIRMED:
+        print("\n" + "⚠️" * 40)
+        print("  PATCHPAL AUTOPILOT MODE - AUTONOMOUS OPERATION")
+        print("⚠️" * 40)
+        print()
+        print("Autopilot disables PatchPal's permission system for autonomous operation.")
+        print()
+        print("🔒 RECOMMENDED: Run in isolated environments:")
+        print("   • Docker/Podman containers (e.g., use patchpal-sandbox if you're not already)")
+        print("   • Dedicated VMs or test machines")
+        print()
+        print("❌ DO NOT RUN on production systems.")
+        print()
+        print("This implements the 'Ralph Wiggum technique' - see examples/ralph/README.md")
+        print()
 
     # Check for environment variable to skip prompt (for automation)
     if not config.AUTOPILOT_CONFIRMED:
@@ -190,56 +313,6 @@ def main():
             sys.exit(1)
 
     print()
-
-    parser = argparse.ArgumentParser(
-        description="PatchPal Autopilot - Autonomous iterative development",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
-Examples:
-  python -m patchpal autopilot --prompt "Build a REST API with tests" --completion-promise "COMPLETE"
-  python -m patchpal autopilot --prompt-file task.md --completion-promise "DONE" --max-iterations 50
-
-  # With local model (zero API cost)
-  python -m patchpal autopilot --model hosted_vllm/openai/gpt-oss-120b --prompt "..." --completion-promise "DONE"
-
-  # Skip confirmation prompt (for automation)
-  PATCHPAL_AUTOPILOT_CONFIRMED=true python -m patchpal autopilot --prompt-file task.md --completion-promise "DONE"
-
-Prompt Best Practices:
-  - Clear completion criteria (specific tests, checks, deliverables)
-  - Incremental goals (break into phases)
-  - Self-correction patterns (run tests, debug, fix, repeat)
-  - Escape hatches (document blocking issues after N failures)
-  - Output the completion promise when done: "Output: <promise>COMPLETE</promise>"
-
-Related Resources (Ralph Wiggum Technique):
-  - https://www.humanlayer.dev/blog/brief-history-of-ralph
-  - https://awesomeclaude.ai/ralph-wiggum
-  - https://github.com/ghuntley/ralph
-  - examples/ralph/README.md (comprehensive guide)
-        """,
-    )
-    parser.add_argument("--prompt", type=str, help="Task prompt (or use --prompt-file)")
-    parser.add_argument("--prompt-file", type=str, help="Path to file containing prompt")
-    parser.add_argument(
-        "--completion-promise",
-        type=str,
-        required=True,
-        help='String that signals completion (e.g., "COMPLETE", "DONE")',
-    )
-    parser.add_argument(
-        "--max-iterations",
-        type=int,
-        default=50,
-        help="Maximum autopilot iterations (default: 50)",
-    )
-    parser.add_argument(
-        "--model",
-        type=str,
-        help="Model to use (default: PATCHPAL_MODEL env var or claude-sonnet-4-5)",
-    )
-
-    args = parser.parse_args()
 
     # Get prompt from file or argument
     if args.prompt_file:
@@ -258,6 +331,15 @@ Related Resources (Ralph Wiggum Technique):
         prompt = args.prompt
     else:
         parser.error("Either --prompt or --prompt-file is required")
+
+    # Auto-append completion instruction if not already present
+    completion_tag = f"<promise>{args.completion_promise}</promise>"
+    if completion_tag not in prompt:
+        prompt = (
+            f"{prompt}\n\n"
+            f"When you have successfully completed the task, output the following exactly:\n"
+            f"{completion_tag}"
+        )
 
     # Run autopilot loop
     try:

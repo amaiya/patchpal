@@ -4,7 +4,6 @@ from datetime import datetime
 
 from patchpal.tools.common import (
     _operation_limiter,
-    audit_logger,
 )
 
 # ============================================================================
@@ -21,7 +20,6 @@ def reset_session_todos():
     """Reset the session TODO list. Called when starting a new session."""
     global _session_todos
     _session_todos = {"tasks": [], "next_id": 1}
-    audit_logger.info("TODO: Session todos reset")
 
 
 def _load_todos() -> dict:
@@ -33,7 +31,6 @@ def _save_todos(data: dict):
     """Save todos to session storage."""
     global _session_todos
     _session_todos = data
-    audit_logger.info(f"TODOS: Updated session with {len(data['tasks'])} tasks")
 
 
 def todo_add(description: str, details: str = "") -> str:
@@ -76,7 +73,6 @@ def todo_add(description: str, details: str = "") -> str:
     if details:
         result += f"\n  Details: {details}"
 
-    audit_logger.info(f"TODO_ADD: #{task['id']} - {description[:50]}")
     return result
 
 
@@ -145,7 +141,6 @@ def todo_list(show_completed: bool = False) -> str:
     lines.append(f"\n{separator}")
     lines.append(f"Summary: {pending} pending, {completed} completed, {total} total")
 
-    audit_logger.info(f"TODO_LIST: {pending} pending, {completed} completed")
     return "\n".join(lines)
 
 
@@ -193,7 +188,6 @@ def todo_complete(task_id: int) -> str:
     result = f"✓ Completed task #{task_id}: {task['description']}"
     result += f"\n\nProgress: {completed}/{total} tasks completed"
 
-    audit_logger.info(f"TODO_COMPLETE: #{task_id} - {task['description'][:50]}")
     return result
 
 
@@ -247,7 +241,6 @@ def todo_update(task_id: int, description: str = None, details: str = None) -> s
     result = f"✓ Updated task #{task_id}\n"
     result += "\n".join(f"  • {change}" for change in changes)
 
-    audit_logger.info(f"TODO_UPDATE: #{task_id} - {changes}")
     return result
 
 
@@ -285,7 +278,6 @@ def todo_remove(task_id: int) -> str:
     remaining = len(data["tasks"])
     result += f"\n\n{remaining} task(s) remaining in TODO list"
 
-    audit_logger.info(f"TODO_REMOVE: #{task_id} - {task['description'][:50]}")
     return result
 
 
@@ -332,5 +324,4 @@ def todo_clear(completed_only: bool = True) -> str:
 
         result = f"✓ Cleared all {count} task(s)\n\nTODO list is now empty. Use todo_add() to create a new task plan."
 
-    audit_logger.info(f"TODO_CLEAR: {count} task(s) cleared (completed_only={completed_only})")
     return result

@@ -40,5 +40,3 @@ After 15 iterations if any tests still fail:
 - Suggest possible causes
 
 When all tests pass, output:
-
-<promise>DONE</promise>

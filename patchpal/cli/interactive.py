@@ -12,9 +12,10 @@ from prompt_toolkit.history import InMemoryHistory
 from rich.console import Console
 from rich.markdown import Markdown
 
-from patchpal.agent import create_agent
+from patchpal.agent import create_agent, create_react_agent
 from patchpal.config import config
 from patchpal.tools import audit_logger, set_require_permission_for_all
+from patchpal.tools.common import reset_operation_counter
 
 
 def _sanitize_for_logging(text: str) -> str:
@@ -79,7 +80,7 @@ def _print_cost_statistics(
         print(f"  Session cost: ${_format_cost(agent.cumulative_cost)} (estimated)")
 
         # Check if using GovCloud pricing
-        from patchpal.agent import _is_govcloud_bedrock
+        from patchpal.agent.function_calling import _is_govcloud_bedrock
 
         if agent.model_id.startswith("bedrock/") and _is_govcloud_bedrock(agent.model_id):
             print("  \033[2m(Using AWS GovCloud pricing: ~1.2x commercial rates)\033[0m")
@@ -349,7 +350,7 @@ Supported models: Any LiteLLM-supported model
     parser.add_argument(
         "--require-permission-for-all",
         action="store_true",
-        help="Require permission for ALL operations including read operations (read_file, list_files, etc.). "
+        help="Require permission for ALL operations including read operations (read_file, find, etc.). "
         "Use this for maximum security when you want to review every operation the agent performs.",
     )
     parser.add_argument(
@@ -406,11 +407,31 @@ Supported models: Any LiteLLM-supported model
     else:
         custom_tools_message = None
 
+    # Check if ReAct mode is enabled (for models without native function calling)
+    use_react_mode = os.getenv("PATCHPAL_REACT_MODE", "false").lower() == "true"
+
+    # Get enabled tools from environment variable (comma-separated list)
+    enabled_tools_env = os.getenv("PATCHPAL_ENABLED_TOOLS")
+    enabled_tools = None
+    if enabled_tools_env:
+        enabled_tools = [t.strip() for t in enabled_tools_env.split(",")]
+
     # Create the agent with the specified model and custom tools
     # LiteLLM will handle API key validation and provide appropriate error messages
-    agent = create_agent(
-        model_id=model_id, custom_tools=custom_tools, litellm_kwargs=litellm_kwargs
-    )
+    if use_react_mode:
+        agent = create_react_agent(
+            model_id=model_id,
+            custom_tools=custom_tools,
+            enabled_tools=enabled_tools,
+            litellm_kwargs=litellm_kwargs,
+        )
+    else:
+        agent = create_agent(
+            model_id=model_id,
+            custom_tools=custom_tools,
+            enabled_tools=enabled_tools,
+            litellm_kwargs=litellm_kwargs,
+        )
 
     # Get max iterations from environment variable or use default
     max_iterations = config.MAX_ITERATIONS
@@ -544,6 +565,15 @@ Supported models: Any LiteLLM-supported model
 
                     audit_logger.info(", ".join(log_parts))
 
+                # Log structured session end
+                try:
+                    from patchpal.tools.audit import log_session_end
+                    from patchpal.tools.common import get_operation_count
+
+                    log_session_end(total_operations=get_operation_count(), success=True)
+                except Exception:
+                    pass  # Don't fail if audit logging fails
+
                 print("\nGoodbye!")
                 break
 
@@ -641,7 +671,9 @@ Supported models: Any LiteLLM-supported model
 
             # Handle /status command - show context window usage
             if user_input.lower() in ["status", "/status"]:
-                stats = agent.context_manager.get_usage_stats(agent.messages)
+                stats = agent.context_manager.get_usage_stats(
+                    agent.messages, actual_prompt_tokens=agent.last_prompt_tokens
+                )
 
                 print("\n" + "=" * 70)
                 print("\033[1;36mContext Window Status\033[0m")
@@ -894,6 +926,7 @@ Supported models: Any LiteLLM-supported model
                 # Clear conversation history
                 agent.messages = []
                 agent._last_compaction_message_count = 0
+                agent.last_prompt_tokens = None  # Reset stale token count from before clear
 
                 print("\n\033[1;32m✓ Context cleared successfully!\033[0m")
                 print("  Starting fresh with empty conversation history.")
@@ -902,11 +935,7 @@ Supported models: Any LiteLLM-supported model
                 continue
 
             # Handle /context command - view current context
-            if (
-                user_input.lower() == "context"
-                or user_input.lower().startswith("context ")
-                or user_input.lower().startswith("/context")
-            ):
+            if user_input.lower().startswith("/context"):
                 # Parse optional message number
                 parts = user_input.split()
                 specific_msg_num = None
@@ -923,14 +952,23 @@ Supported models: Any LiteLLM-supported model
                 print("\033[1;36mCurrent Context\033[0m")
                 print("=" * 70)
 
-                # Import SYSTEM_PROMPT to prepend as message 0
-                from patchpal.agent import SYSTEM_PROMPT
+                # Get the actual system prompt from the agent
+                from patchpal.agent.react import ReActAgent
+
+                if isinstance(agent, ReActAgent):
+                    # ReAct agent stores system prompt
+                    actual_system_prompt = agent.system_prompt
+                else:
+                    # Function calling agent - import SYSTEM_PROMPT
+                    from patchpal.agent.function_calling import SYSTEM_PROMPT
+
+                    actual_system_prompt = SYSTEM_PROMPT
 
                 # If specific message requested, show only that message
                 if specific_msg_num is not None:
                     # Message 0 is the base system prompt
                     if specific_msg_num == 0:
-                        base_system_msg = {"role": "system", "content": SYSTEM_PROMPT}
+                        base_system_msg = {"role": "system", "content": actual_system_prompt}
                         msg_tokens = agent.context_manager.estimator.estimate_messages_tokens(
                             [base_system_msg]
                         )
@@ -938,7 +976,7 @@ Supported models: Any LiteLLM-supported model
                         role_display = "\033[1;33mSystem (Base Prompt)\033[0m"
                         print(f"  Message [0] {role_display} ({msg_tokens:,} tokens):")
                         print()
-                        print(f"  {SYSTEM_PROMPT}")
+                        print(f"  {actual_system_prompt}")
                         print("=" * 70 + "\n")
                         continue
 
@@ -1023,15 +1061,14 @@ Supported models: Any LiteLLM-supported model
                 print()
 
                 # Display message 0 - base system prompt
-                from patchpal.agent import SYSTEM_PROMPT
-
-                base_system_msg = {"role": "system", "content": SYSTEM_PROMPT}
+                # (actual_system_prompt was already set above based on agent type)
+                base_system_msg = {"role": "system", "content": actual_system_prompt}
                 base_tokens = agent.context_manager.estimator.estimate_messages_tokens(
                     [base_system_msg]
                 )
                 print(f"  [0] \033[1;33mSystem (Base Prompt)\033[0m ({base_tokens:,} tokens):")
-                preview = SYSTEM_PROMPT[:200]
-                if len(SYSTEM_PROMPT) > 200:
+                preview = actual_system_prompt[:200]
+                if len(actual_system_prompt) > 200:
                     preview += "..."
                 print(f"      {preview}")
                 print()
@@ -1518,11 +1555,22 @@ Supported models: Any LiteLLM-supported model
                     if skill_args:
                         prompt += f"\n\nArguments: {skill_args}"
 
-                    # Log user prompt to audit log (sanitize to prevent Windows Unicode errors)
-                    audit_logger.info(
-                        _sanitize_for_logging(f"USER_PROMPT: /{skill_name} {skill_args}")
-                    )
+                    # Log skill invocation to audit log with hash-chaining
+                    try:
+                        from patchpal.tools.audit import log_user_prompt
+
+                        log_user_prompt(f"/{skill_name} {skill_args}")
+                    except Exception:
+                        # Fallback to old-style logging if audit fails
+                        audit_logger.info(
+                            _sanitize_for_logging(f"USER_PROMPT: /{skill_name} {skill_args}")
+                        )
+
                     result = agent.run(prompt, max_iterations=max_iterations)
+
+                    # Reset operation counter after each conversation turn
+                    # This allows long sessions without hitting the global limit
+                    reset_operation_counter()
 
                     print("\n" + "=" * 80)
                     print("\033[1;32mAgent:\033[0m")
@@ -1541,9 +1589,28 @@ Supported models: Any LiteLLM-supported model
             # Run the agent (Ctrl-C here will interrupt agent, not exit)
             try:
                 print()  # Add blank line before agent output
-                # Log user prompt to audit log (sanitize to prevent Windows Unicode errors)
-                audit_logger.info(_sanitize_for_logging(f"USER_PROMPT: {user_input}"))
+                # Log user prompt to audit log with hash-chaining
+                try:
+                    from patchpal.tools.audit import log_user_prompt
+
+                    log_user_prompt(user_input)
+                except Exception:
+                    # Fallback to old-style logging if audit fails
+                    audit_logger.info(_sanitize_for_logging(f"USER_PROMPT: {user_input}"))
+
                 result = agent.run(user_input, max_iterations=max_iterations)
+
+                # Reset operation counter after each conversation turn
+                # This allows long sessions without hitting the global limit
+                reset_operation_counter()
+
+                # Log agent response to audit log with hash-chaining
+                try:
+                    from patchpal.tools.audit import log_agent_response
+
+                    log_agent_response(result, success=True)
+                except Exception:
+                    pass  # Don't fail if audit logging fails
 
                 print("\n" + "=" * 80)
                 print("\033[1;32mAgent:\033[0m")

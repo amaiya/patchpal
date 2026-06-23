@@ -58,5 +58,3 @@ Refactor the codebase to improve code quality while maintaining all functionalit
 - No behavior changes
 
 When all refactoring is complete and tests pass, output:
-
-<promise>REFACTORED</promise>

@@ -9,6 +9,8 @@ vLLM provides:
 - ✅ 3-10x faster inference than Ollama
 - ✅ Production-ready reliability
 
+**For models without native function calling support**, PatchPal includes a [ReAct agent mode](#react-mode-for-models-without-function-calling) that uses text-based tool invocation instead of native function calling APIs.
+
 ## vLLM (Recommended for Local Models)
 
 vLLM is significantly faster than Ollama due to optimized inference with continuous batching and PagedAttention.
@@ -70,6 +72,56 @@ patchpal --model hosted_vllm/openai/gpt-oss-120b
 
 **Recommended models for vLLM:**
 - `openai/gpt-oss-120b` - OpenAI's open-source model (use parser: `openai`)
+- `openai/gpt-oss-20b` - Smaller variant, good for lower-resource setups (use parser: `openai`)
+
+### Special Notes for gpt-oss Models
+
+The gpt-oss models (20B and 120B) are reasoning models that use chain-of-thought (CoT) to solve complex tasks. **PatchPal automatically captures and passes back the reasoning content** (enabled by default), which is critical for these models to maintain focus across multiple turns.
+
+**Key requirements for gpt-oss:**
+
+1. **Use the OpenAI tool call parser** - Required for proper function calling
+2. **Use Unsloth template** (if using llama.cpp) - Contains fixes for proper reasoning handling
+3. **Reasoning content is automatic** - PatchPal captures `reasoning_content` from responses and passes it back in subsequent turns (enabled by default, disable with `PATCHPAL_CAPTURE_REASONING=false` if needed)
+
+**Example with vLLM:**
+```bash
+# Start vLLM with gpt-oss-20b
+vllm serve openai/gpt-oss-20b \
+  --dtype auto \
+  --api-key token-abc123 \
+  --tool-call-parser openai \
+  --enable-auto-tool-choice
+
+# Use with PatchPal (reasoning content capture is automatic)
+export HOSTED_VLLM_API_BASE=http://localhost:8000
+export HOSTED_VLLM_API_KEY=token-abc123
+patchpal --model hosted_vllm/openai/gpt-oss-20b
+```
+
+**Example with llama.cpp:**
+```bash
+# Start llama.cpp server with Unsloth template
+llama-server \
+  --model gpt-oss-20b-Q4_K_M.gguf \
+  --chat-template unsloth \
+  --port 8080
+
+# Use with PatchPal via OpenAI-compatible endpoint (reasoning content capture is automatic)
+export OPENAI_API_BASE=http://localhost:8080/v1
+export OPENAI_API_KEY=dummy
+patchpal --model openai/gpt-oss-20b
+```
+
+**Performance characteristics:**
+- **Focus maintenance**: Without reasoning content pass-back (`PATCHPAL_CAPTURE_REASONING=false`), the model loses focus after 15-20 steps
+- **Multi-turn reliability**: With reasoning content enabled (default), the model maintains context across many turns
+- **Task completion**: The reasoning content allows the model to track what it's done and what remains
+
+**Resources:**
+- [Blog: Proper tool calling with gpt-oss](https://alde.dev/blog/proper-tool-calling-with-gpt-oss/)
+- [Notebook: gpt-oss tool calling examples](https://github.com/aldehir/gpt-oss-tool-calling-notebook/blob/main/tool-calling.ipynb)
+- [Reddit: Discussion on gpt-oss setup](https://www.reddit.com/r/LocalLLaMA/comments/1rc6c8m/)
 
 **Tool Call Parser Reference:**
 Different models require different parsers. Common parsers include: `qwen3_xml`, `openai`, `deepseek_v3`, `llama3_json`, `mistral`, `hermes`, `pythonic`, `xlam`. See [vLLM Tool Calling docs](https://docs.vllm.ai/en/latest/features/tool_calling/) for the complete list.
@@ -82,6 +134,28 @@ Ollama v0.14+ supports tool calling for agentic workflows. However, proper confi
 
 1. **Ollama v0.14.0 or later** - Required for tool calling support
 2. **Sufficient context window** - Default 4096 tokens is too small; increase to at least 32K
+
+**Recommended Settings for Local Models:**
+
+For better performance with local models (both Ollama and vLLM), especially smaller models (<20B params):
+
+```bash
+# Reduce tool confusion by limiting to 5 essential tools
+export PATCHPAL_MINIMAL_TOOLS=true
+
+# Disable web tools for offline/faster operation
+export PATCHPAL_ENABLE_WEB=false
+
+# Disable streaming (fixes Ollama tool call bug - see openclaw/openclaw#5769)
+export PATCHPAL_STREAM_OUTPUT=false
+
+# Use with Ollama
+patchpal --model ollama_chat/glm-4.7-flash:q4_K_M
+```
+
+**Benefits:**
+- **Fewer tools** - Reduces tool confusion with smaller models
+- **Fixes tool calls** - Ollama's streaming drops tool calls; disabling fixes this
 
 **Setup Instructions:**
 
@@ -138,8 +212,8 @@ docker exec -it ollama ollama run glm-4.7-flash:q4_K_M
 
 - `gpt-oss:120b` - OpenAI's open-source model
 - `glm-4.7-flash:q4_K_M` - Z.ai's GLM model, excellent tool calling
-- `qwen3:32b` - Qwen3 model with good agentic capabilities
-- `qwen3-coder` - Specialized for coding tasks
+- `qwen3.5` - Qwen3.5 model with good agentic capabilities
+- `qwen3-coder-next` - Specialized for coding tasks
 
 **Performance Note:**
 
@@ -160,3 +234,155 @@ patchpal --model ollama_chat/glm-4.7-flash:q4_K_M
 # vLLM (recommended for production)
 patchpal --model hosted_vllm/openai/gpt-oss-120b
 ```
+
+## ReAct Mode for Models Without Function Calling
+
+Some local models (especially smaller ones) struggle with native function calling. For these models, PatchPal provides a **ReAct (Reason + Act)** agent mode that uses text-based tool invocation instead of function calling APIs.
+
+**Why ReAct Mode?** Many smaller local models (<20B parameters) either don't support native function calling or perform poorly with it. Even models that technically support function calling may generate malformed JSON, skip required parameters, or fail to invoke tools reliably. ReAct mode sidesteps these issues by using simple text-based patterns that are easier for such models to follow.
+
+### What is ReAct?
+
+ReAct is a prompting pattern where the LLM follows this loop:
+
+1. **Thought**: Reason about what needs to be done
+2. **Action**: Invoke a tool with parameters (formatted as text/JSON)
+3. **PAUSE**: Wait for the tool result
+4. **Observation**: Receive the tool's output
+5. **Repeat** or output final **Answer**
+
+Instead of using native function calling APIs, the agent parses tool invocations from the model's text output.
+
+### When to Use ReAct Mode
+
+Use ReAct mode when:
+- Your model doesn't support native function calling
+- Native function calling is unreliable for your model
+- You're using smaller models (<20B parameters) that struggle with function calling
+- You want text-based tool invocation for debugging/transparency
+
+### Available Tools
+
+ReAct mode includes these tools by default:
+
+- `read_file` - Read file contents
+- `read_lines` - Read specific lines from a file
+- `write_file` - Create or overwrite files
+- `edit_file` - Find and replace in files
+- `run_shell` - Execute shell commands
+- `grep` - Search for patterns in files
+- `find` - Find files by pattern or list directory contents
+- `web_search` - Search the web
+- `web_fetch` - Fetch webpage content
+
+You can limit tools if needed:
+
+```python
+agent = create_react_agent(
+    model_id="ollama_chat/your_model",
+    enabled_tools=["read_file", "write_file", "edit_file"]
+)
+```
+
+### Enabling ReAct Mode
+
+**CLI:**
+```bash
+# Use ReAct mode with any model
+export PATCHPAL_REACT_MODE=true
+patchpal --model ollama_chat/llama3.2
+
+# Or inline
+PATCHPAL_REACT_MODE=true patchpal --model ollama_chat/qwen2.5
+
+# Limit tools using environment variable
+export PATCHPAL_REACT_MODE=true
+export PATCHPAL_ENABLED_TOOLS="read_file,write_file,edit_file"
+patchpal --model ollama_chat/llama3.2
+```
+
+**Python API:**
+```python
+from patchpal import create_react_agent
+
+# Basic usage
+agent = create_react_agent(model_id="ollama_chat/llama3.2")
+response = agent.run("List the Python files")
+print(response)
+
+# With custom tools
+def calculator(x: int, y: int) -> str:
+    """Add two numbers together."""
+    return str(x + y)
+
+agent = create_react_agent(
+    model_id="ollama_chat/qwen2.5",
+    custom_tools=[calculator]
+)
+response = agent.run("What is 42 plus 58?")
+```
+
+
+### Best Practices
+
+1. **Start with defaults** - These tools are available by default:
+   ```bash
+   PATCHPAL_REACT_MODE=true patchpal --model ollama_chat/llama3.1:8b
+   ```
+
+2. **Limit tools for simpler tasks** - Fewer tools can improve focus:
+   ```python
+   agent = create_react_agent(
+       model_id="ollama_chat/your_model",
+       enabled_tools=["read_file", "write_file", "edit_file"]
+   )
+   ```
+
+3. **Add custom instructions** - Guide the model's behavior:
+   ```python
+   agent = create_react_agent(
+       model_id="ollama_chat/your_model",
+       custom_instructions="""
+       - Answer general questions directly without tools
+       - Only use tools for file/code operations
+       - Provide concise answers
+       """
+   )
+   ```
+
+### Native Function Calling vs ReAct
+
+| Aspect | Native Function Calling | ReAct Mode |
+|--------|------------------------|------------|
+| **Model Support** | Requires function calling | Works with any LLM |
+| **Reliability** | High (API-enforced) | Good (prompt-based) |
+| **Performance** | Generally faster | Comparable |
+| **Setup** | Zero config (if supported) | Single env var |
+| **Parallel Tools** | Supported | Sequential only |
+| **Debugging** | Opaque API calls | Visible text reasoning |
+
+### Troubleshooting ReAct Mode
+
+**Model not following format:**
+- Try a better/larger model
+- Simplify the task into smaller steps
+- Add more explicit instructions via `custom_instructions`
+
+**Tool calls not being parsed:**
+Ensure model outputs exact format:
+```
+Action: tool_name: {"param": "value"}
+PAUSE
+```
+
+**Agent looping without finishing:**
+- Reduce `max_iterations` to fail faster
+- Try a model that better understands completion signals
+- Add explicit completion instructions
+
+### Implementation Details
+
+- Source code: [`patchpal/agent/react.py`](https://github.com/amaiya/patchpal/blob/main/patchpal/agent/react.py)
+- Example: [`examples/react_agent_example.py`](https://github.com/amaiya/patchpal/blob/main/examples/react_agent_example.py)
+- Based on [Simon Willison's ReAct pattern](https://til.simonwillison.net/llms/python-react-pattern) and [smolagents](https://github.com/huggingface/smolagents)
+- Academic paper: [ReAct: Synergizing Reasoning and Acting in Language Models](https://arxiv.org/abs/2210.03629)

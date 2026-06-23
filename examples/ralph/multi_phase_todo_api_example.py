@@ -57,8 +57,6 @@ Success Criteria:
 - Database migrations work
 - All tests passing
 - No SQLAlchemy warnings
-
-Output: <promise>PHASE1_DONE</promise> when complete.
             """,
             "completion_promise": "PHASE1_DONE",
             "max_iterations": 20,
@@ -94,8 +92,6 @@ Success Criteria:
 - Error handling works
 - All integration tests pass
 - API responds correctly to valid/invalid requests
-
-Output: <promise>PHASE2_DONE</promise> when complete.
             """,
             "completion_promise": "PHASE2_DONE",
             "max_iterations": 25,
@@ -131,8 +127,6 @@ Success Criteria:
 - Protected routes require valid token
 - Invalid tokens are rejected
 - All tests pass (models, API, auth)
-
-Output: <promise>PHASE3_DONE</promise> when complete.
             """,
             "completion_promise": "PHASE3_DONE",
             "max_iterations": 20,

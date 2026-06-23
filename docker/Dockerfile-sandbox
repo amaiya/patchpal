@@ -1,0 +1,17 @@
+FROM python:3.11-slim
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    git \
+    curl \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Build arg to force cache invalidation on new releases
+ARG CACHEBUST=1
+
+# Install patchpal (always get latest from PyPI)
+RUN pip install --no-cache-dir --upgrade patchpal
+
+# Set working directory
+WORKDIR /workspace

@@ -16,7 +16,6 @@ from patchpal.tools.common import (
     _is_critical_file,
     _is_inside_repo,
     _operation_limiter,
-    audit_logger,
 )
 
 
@@ -266,11 +265,6 @@ def write_file(path: str, content: str) -> str:
     with open(p, "w", encoding="utf-8", errors="surrogateescape", newline="\n") as f:
         f.write(content)
 
-    # Audit log
-    audit_logger.info(
-        f"WRITE: {path} ({new_size} bytes)" + (f" [BACKUP: {backup_path}]" if backup_path else "")
-    )
-
     backup_msg = f"\n[Backup saved: {backup_path}]" if backup_path else ""
 
     return f"Successfully updated {path}{warning}{git_warning}{backup_msg}\n\nDiff:\n{diff_str}"
@@ -431,8 +425,6 @@ def edit_file(path: str, old_string: str, new_string: str) -> str:
     new_lines = adjusted_new_string.split("\n")
     diff = difflib.unified_diff(old_lines, new_lines, fromfile="old", tofile="new", lineterm="")
     diff_str = "\n".join(diff)
-
-    audit_logger.info(f"EDIT: {path} ({len(matched_string)} -> {len(adjusted_new_string)} chars)")
 
     backup_msg = f"\n[Backup saved: {backup_path}]" if backup_path else ""
     return f"Successfully edited {path}{backup_msg}\n\nChange:\n{diff_str}"

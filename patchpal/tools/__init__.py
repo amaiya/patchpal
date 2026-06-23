@@ -33,6 +33,12 @@ from patchpal.tools.file_writing import (
     edit_file,
     write_file,
 )
+from patchpal.tools.find_tool import (
+    find,
+)
+from patchpal.tools.grep_tool import (
+    grep,
+)
 from patchpal.tools.repo_map import (
     clear_repo_map_cache,
     get_repo_map,
@@ -56,6 +62,7 @@ from patchpal.tools.user_interaction import (
     use_skill,
 )
 from patchpal.tools.web_tools import (
+    get_url_tracker,
     web_fetch,
     web_search,
 )
@@ -73,6 +80,10 @@ __all__ = [
     # File editing
     "write_file",
     "edit_file",
+    # Search
+    "grep",
+    # Directory navigation
+    "find",
     # TODO tools
     "reset_session_todos",
     "todo_add",
@@ -84,6 +95,7 @@ __all__ = [
     # Web tools
     "web_fetch",
     "web_search",
+    "get_url_tracker",
     # Shell tools
     "run_shell",
     # User interaction

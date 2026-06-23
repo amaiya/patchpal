@@ -55,5 +55,3 @@ After 15 iterations if not complete:
 - Suggest what's preventing completion
 
 When all requirements are met and tests pass, output:
-
-<promise>COMPLETE</promise>

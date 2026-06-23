@@ -28,12 +28,34 @@ LLM_TIMEOUT = config.LLM_TIMEOUT
 
 
 def _is_bedrock_arn(model_id: str) -> bool:
-    """Check if a model ID is a Bedrock ARN."""
+    """Check if a model ID is a Bedrock ARN.
+
+    Supports all Bedrock inference profile ARN formats:
+    - arn:aws:bedrock:region:account:inference-profile/profile-id
+    - arn:aws-us-gov:bedrock:region:account:inference-profile/profile-id
+    - arn:aws:bedrock:region:account:application-inference-profile/app-id
+    - arn:aws-us-gov:bedrock:region:account:application-inference-profile/app-id
+    """
     return (
         model_id.startswith("arn:aws")
         and ":bedrock:" in model_id
-        and ":inference-profile/" in model_id
+        and "inference-profile/" in model_id
     )
+
+
+def _is_application_inference_profile(model_id: str) -> bool:
+    """Check if a model ID is a Bedrock application inference profile (tagged profile).
+
+    Application inference profiles are tagged profiles that don't include the underlying
+    model name in the ARN, making it impossible to statically determine model capabilities.
+
+    Args:
+        model_id: Model identifier (may or may not have bedrock/ prefix)
+
+    Returns:
+        True if this is an application inference profile ARN
+    """
+    return ":application-inference-profile/" in model_id
 
 
 def _normalize_bedrock_model_id(model_id: str) -> str:
@@ -51,7 +73,11 @@ def _normalize_bedrock_model_id(model_id: str) -> str:
 
     # If it looks like a Bedrock ARN, add the prefix
     if _is_bedrock_arn(model_id):
-        return f"bedrock/{model_id}"
+        # Application inference profiles require the converse API
+        if ":application-inference-profile/" in model_id:
+            return f"bedrock/converse/{model_id}"
+        else:
+            return f"bedrock/{model_id}"
 
     # If it's a standard Bedrock model ID (e.g., anthropic.claude-v2)
     # Check if it looks like a Bedrock model format
@@ -67,13 +93,21 @@ def _setup_bedrock_env():
     """Set up Bedrock-specific environment variables for LiteLLM.
 
     Configures custom region and endpoint URL for AWS Bedrock (including GovCloud and VPC endpoints).
-    Maps PatchPal's environment variables to LiteLLM's expected format.
+    Maps AWS SDK standard variables and PatchPal-specific variables to LiteLLM's expected format.
+
+    Region precedence:
+    1. AWS_BEDROCK_REGION (PatchPal-specific)
+    2. AWS_REGION (AWS SDK standard)
+    3. AWS_DEFAULT_REGION (AWS SDK standard)
+    4. AWS_REGION_NAME (LiteLLM-specific)
+
+    Endpoint precedence:
+    1. AWS_BEDROCK_ENDPOINT (PatchPal-specific)
+    2. AWS_ENDPOINT_URL_BEDROCK_RUNTIME (AWS SDK standard, boto3 1.28.0+)
+    3. AWS_ENDPOINT_URL (AWS SDK global, boto3 1.28.0+)
+    4. AWS_BEDROCK_RUNTIME_ENDPOINT (LiteLLM-specific)
     """
     # Set custom region (e.g., us-gov-east-1 for GovCloud)
-    # LiteLLM checks these environment variables in order:
-    # 1. AWS_REGION_NAME (LiteLLM-specific)
-    # 2. AWS_REGION (standard AWS)
-    # 3. AWS_DEFAULT_REGION (standard AWS)
     bedrock_region = (
         os.getenv("AWS_BEDROCK_REGION")
         or os.getenv("AWS_REGION")
@@ -90,7 +124,17 @@ def _setup_bedrock_env():
             os.environ["AWS_REGION"] = bedrock_region
 
     # Set custom endpoint URL (e.g., VPC endpoint or GovCloud endpoint)
-    bedrock_endpoint = os.getenv("AWS_BEDROCK_ENDPOINT")
+    # Check for custom endpoint in order of precedence:
+    # 1. AWS_BEDROCK_ENDPOINT (PatchPal-specific)
+    # 2. AWS_ENDPOINT_URL_BEDROCK_RUNTIME (AWS SDK standard, boto3 1.28.0+)
+    # 3. AWS_ENDPOINT_URL (AWS SDK global endpoint, boto3 1.28.0+)
+    # 4. AWS_BEDROCK_RUNTIME_ENDPOINT (LiteLLM-specific)
+    bedrock_endpoint = (
+        os.getenv("AWS_BEDROCK_ENDPOINT")
+        or os.getenv("AWS_ENDPOINT_URL_BEDROCK_RUNTIME")
+        or os.getenv("AWS_ENDPOINT_URL")
+        or os.getenv("AWS_BEDROCK_RUNTIME_ENDPOINT")
+    )
     if bedrock_endpoint and not os.getenv("AWS_BEDROCK_RUNTIME_ENDPOINT"):
         os.environ["AWS_BEDROCK_RUNTIME_ENDPOINT"] = bedrock_endpoint
 
@@ -199,10 +243,12 @@ def _load_system_prompt() -> str:
             )
             print("\033[1;33m   Falling back to default system prompt.\033[0m\n")
             # Fall back to default
-            prompt_path = os.path.join(os.path.dirname(__file__), "prompts", "system_prompt.md")
+            prompt_path = os.path.join(
+                os.path.dirname(__file__), "..", "prompts", "system_prompt.md"
+            )
     else:
         # Use default prompt from package directory
-        prompt_path = os.path.join(os.path.dirname(__file__), "prompts", "system_prompt.md")
+        prompt_path = os.path.join(os.path.dirname(__file__), "..", "prompts", "system_prompt.md")
 
     # Read the prompt template
     with open(prompt_path, "r", encoding="utf-8") as f:
@@ -254,6 +300,10 @@ def _supports_prompt_caching(model_id: str) -> bool:
     # Bedrock Nova models support caching
     if model_id.startswith("bedrock/") and "amazon.nova" in model_id.lower():
         return True
+    # Bedrock ARNs (all types): enable caching and let Bedrock handle it
+    # If the underlying model doesn't support caching, Bedrock will ignore the markers
+    if model_id.startswith("bedrock/") and "inference-profile/" in model_id:
+        return True
     return False
 
 
@@ -281,12 +331,14 @@ def _apply_prompt_caching(messages: List[Dict[str, Any]], model_id: str) -> List
 
     # Determine cache marker format based on provider
     # Anthropic models (direct or via Bedrock) use cache_control
-    # Other Bedrock models (Nova, etc.) use cachePoint
-    if model_id.startswith("bedrock/") and "anthropic" not in model_id.lower():
-        # Non-Anthropic Bedrock models (Nova, etc.) use cachePoint
+    # Nova models use cachePoint
+    # For Bedrock ARNs without model name, default to cache_control (most common)
+    if model_id.startswith("bedrock/") and "amazon.nova" in model_id.lower():
+        # Nova models explicitly use cachePoint
         cache_marker = {"cachePoint": {"type": "default"}}
     else:
         # Anthropic models (direct or via Bedrock) use cache_control
+        # Also default for Bedrock ARNs (most use Anthropic/Claude)
         cache_marker = {"cache_control": {"type": "ephemeral"}}
 
     # Count existing cache markers across all messages
@@ -308,8 +360,30 @@ def _apply_prompt_caching(messages: List[Dict[str, Any]], model_id: str) -> List
     max_cache_markers = 4
     available_slots = max_cache_markers - existing_cache_count
 
+    # Debug logging
+    import os
+
+    if os.environ.get("PATCHPAL_DEBUG_CACHE") == "true":
+        print("\n[CACHE DEBUG] _apply_prompt_caching called")
+        print(f"  Total messages: {len(messages)}")
+        print(f"  Existing cache markers: {existing_cache_count}")
+        print(f"  Available slots: {available_slots}")
+        # Show which messages have markers
+        marked_indices = []
+        for i, msg in enumerate(messages):
+            if isinstance(msg.get("content"), list):
+                for block in msg["content"]:
+                    if isinstance(block, dict) and (
+                        "cache_control" in block or "cachePoint" in block
+                    ):
+                        marked_indices.append(i)
+                        break
+        print(f"  Messages with existing markers: {marked_indices}")
+
     if available_slots <= 0:
         # Already at or over limit, don't add any more cache markers
+        if os.environ.get("PATCHPAL_DEBUG_CACHE") == "true":
+            print("  Result: No slots available, returning without changes")
         return messages
 
     # Find system messages (usually at the start)
@@ -320,6 +394,9 @@ def _apply_prompt_caching(messages: List[Dict[str, Any]], model_id: str) -> List
     last_two_indices = (
         non_system_messages[-2:] if len(non_system_messages) >= 2 else non_system_messages
     )
+
+    if os.environ.get("PATCHPAL_DEBUG_CACHE") == "true":
+        print(f"  Last 2 non-system indices: {last_two_indices}")
 
     # Build list of candidate indices to cache (prioritize system messages)
     candidates = []
@@ -353,6 +430,12 @@ def _apply_prompt_caching(messages: List[Dict[str, Any]], model_id: str) -> List
             if not has_cache:
                 candidates.append(idx)
 
+    import os
+
+    if os.environ.get("PATCHPAL_DEBUG_CACHE") == "true":
+        print(f"  Candidates for marking: {candidates}")
+        print(f"  Will mark first {available_slots} candidates")
+
     # Apply cache markers to candidates, respecting the available slots
     # This ensures we never exceed the 4 marker limit
     for idx in candidates[:available_slots]:
@@ -373,6 +456,20 @@ def _apply_prompt_caching(messages: List[Dict[str, Any]], model_id: str) -> List
                     "content": [{"type": "text", "text": content_text, **cache_marker}],
                 }
 
+    if os.environ.get("PATCHPAL_DEBUG_CACHE") == "true":
+        # Show final state
+        final_marked = []
+        for i, msg in enumerate(messages):
+            if isinstance(msg.get("content"), list):
+                for block in msg["content"]:
+                    if isinstance(block, dict) and (
+                        "cache_control" in block or "cachePoint" in block
+                    ):
+                        final_marked.append(i)
+                        break
+        print(f"  Final messages with markers: {final_marked}")
+        print(f"  Markers applied to indices: {[c for c in candidates[:available_slots]]}")
+
     return messages
 
 
@@ -383,6 +480,7 @@ class PatchPalAgent:
         self,
         model_id: str = "anthropic/claude-sonnet-4-5",
         custom_tools: Optional[List[Callable]] = None,
+        enabled_tools: Optional[List[str]] = None,
         litellm_kwargs: Optional[Dict[str, Any]] = None,
     ):
         """Initialize the agent.
@@ -390,12 +488,25 @@ class PatchPalAgent:
         Args:
             model_id: LiteLLM model identifier
             custom_tools: Optional list of Python functions to add as tools
+            enabled_tools: Optional list of tool names to enable (whitelist). If provided,
+                          only these tools will be available. Takes precedence over
+                          PATCHPAL_ENABLED_TOOLS environment variable.
             litellm_kwargs: Optional dict of extra parameters to pass to litellm.completion()
                           (e.g., {"reasoning_effort": "high"} for reasoning models)
         """
         # Store custom tools
         self.custom_tools = custom_tools or []
         self.custom_tool_funcs = {func.__name__: func for func in self.custom_tools}
+
+        # Configure enabled tools (parameter takes precedence over environment variable)
+        if enabled_tools is not None:
+            self.enabled_tools = enabled_tools
+        else:
+            env_enabled = os.getenv("PATCHPAL_ENABLED_TOOLS")
+            if env_enabled:
+                self.enabled_tools = [t.strip() for t in env_enabled.split(",")]
+            else:
+                self.enabled_tools = None  # No filtering - all tools available
 
         # Convert ollama/ to ollama_chat/ for LiteLLM compatibility
         if model_id.startswith("ollama/"):
@@ -445,6 +556,10 @@ class PatchPalAgent:
         self.cumulative_input_tokens = 0
         self.cumulative_output_tokens = 0
 
+        # Track last prompt tokens from most recent API response (includes cache operations)
+        # This is the ACTUAL token count sent to the API, used for accurate context management
+        self.last_prompt_tokens = None
+
         # Track cache-related tokens (for Anthropic/Bedrock models with prompt caching)
         self.cumulative_cache_creation_tokens = 0
         self.cumulative_cache_read_tokens = 0
@@ -471,8 +586,59 @@ class PatchPalAgent:
         if litellm_kwargs:
             self.litellm_kwargs.update(litellm_kwargs)
 
+        # Detect capabilities for application inference profiles
+        # These ARNs don't include model names, so we test with a minimal request
+        self.prompt_caching_supported = None  # None = untested, True/False after test
+        self.detected_model_name = None  # Store detected model for cost tracking
+        if _is_application_inference_profile(self.model_id):
+            # Test capabilities with a minimal request
+            try:
+                from patchpal.agent.bedrock_profile_utils import detect_model_capabilities
+
+                print("\033[2mℹ️  Detecting model capabilities...\033[0m", flush=True)
+                self.prompt_caching_supported, self.detected_model_name = detect_model_capabilities(
+                    self.model_id, self.litellm_kwargs
+                )
+                if self.prompt_caching_supported:
+                    print("\033[2m✓ Prompt caching is supported\033[0m", flush=True)
+                else:
+                    print("\033[2m✗ Prompt caching is not supported\033[0m", flush=True)
+
+                if self.detected_model_name:
+                    print(f"\033[2m✓ Detected model: {self.detected_model_name}\033[0m", flush=True)
+
+                    # Update context limit based on detected model
+                    try:
+                        model_info = litellm.get_model_info(f"bedrock/{self.detected_model_name}")
+                        max_input = model_info.get("max_input_tokens")
+                        if max_input and isinstance(max_input, (int, float)) and max_input > 0:
+                            self.context_manager.context_limit = int(max_input)
+                    except Exception:
+                        pass  # Keep default limit
+                else:
+                    print(
+                        "\033[2m⚠  Could not detect underlying model name (cost tracking may be inaccurate)\033[0m",
+                        flush=True,
+                    )
+            except Exception:
+                # If test fails, assume caching not supported and model unknown
+                self.prompt_caching_supported = False
+                self.detected_model_name = None
+        elif _supports_prompt_caching(self.model_id):
+            self.prompt_caching_supported = True
+        else:
+            self.prompt_caching_supported = False
+
         # Load MEMORY.md if it exists and has non-template content
         self._load_project_memory()
+
+        # Log session start
+        try:
+            from patchpal.tools.audit import log_session_start
+
+            log_session_start(agent_type="function_calling", model=self.model_id)
+        except Exception:
+            pass  # Don't fail if audit logging fails
 
     def _load_project_memory(self):
         """Load MEMORY.md file at session start if it has non-template content."""
@@ -566,8 +732,8 @@ It's currently empty (just the template). The file is automatically loaded at se
     def _perform_auto_compaction(self):
         """Perform automatic context window compaction.
 
-        This method is called when the context window reaches 75% capacity.
-        It attempts pruning first, then full compaction if needed.
+        This method is called when the context window reaches COMPACT_THRESHOLD
+        (default: 80% capacity). It attempts pruning first, then full compaction if needed.
         """
         # Don't compact if we have very few messages - compaction summary
         # could be longer than the messages being removed
@@ -695,6 +861,7 @@ It's currently empty (just the template). The file is automatically loaded at se
                 response = litellm.completion(
                     model=self.model_id,
                     messages=messages,
+                    max_tokens=32000,  # Explicit output token limit for predictable context usage
                     timeout=LLM_TIMEOUT,
                     **self.litellm_kwargs,
                 )
@@ -785,7 +952,7 @@ It's currently empty (just the template). The file is automatically loaded at se
 
         except Exception as e:
             # Compaction failed - warn but continue
-            print(f"\033[1;31m✗ Compaction failed: {e}\033[0m")
+            print(f"\033[1;31m✗ Compaction failed: {e}\033[0m\n", flush=True)
             print(
                 "\033[1;33m   Continuing without compaction. Consider starting a new session.\033[0m\n"
             )
@@ -800,7 +967,17 @@ It's currently empty (just the template). The file is automatically loaded at se
             float: The calculated cost in dollars
         """
         try:
-            model_info = litellm.get_model_info(self.model_id)
+            # For application inference profiles, use detected model name for pricing
+            model_for_pricing = self.model_id
+            if _is_application_inference_profile(self.model_id) and self.detected_model_name:
+                # Map detected model name to a pricing model
+                # e.g., "anthropic.claude-3-5-sonnet-20241022-v2:0" -> "bedrock/anthropic.claude-3-5-sonnet-20241022-v2:0"
+                if not self.detected_model_name.startswith("bedrock/"):
+                    model_for_pricing = f"bedrock/{self.detected_model_name}"
+                else:
+                    model_for_pricing = self.detected_model_name
+
+            model_info = litellm.get_model_info(model_for_pricing)
             input_cost_per_token = model_info.get("input_cost_per_token", 0)
             output_cost_per_token = model_info.get("output_cost_per_token", 0)
 
@@ -834,19 +1011,26 @@ It's currently empty (just the template). The file is automatically loaded at se
                 cost += cache_read_tokens * input_cost_per_token * 0.1
 
             # Handle OpenAI cache pricing (prompt_tokens_details.cached_tokens)
+            # IMPORTANT: For Bedrock, LiteLLM populates prompt_tokens_details.cached_tokens
+            # with cache_read_input_tokens for compatibility, but we already handled those above.
+            # Only process this field if we're NOT using Bedrock-style cache fields.
             openai_cached_tokens = 0
-            if hasattr(usage, "prompt_tokens_details") and usage.prompt_tokens_details is not None:
-                prompt_details = usage.prompt_tokens_details
-                if hasattr(prompt_details, "cached_tokens") and prompt_details.cached_tokens:
-                    # Ensure cached_tokens is a number, not a mock or None
-                    if isinstance(prompt_details.cached_tokens, (int, float)):
-                        openai_cached_tokens = prompt_details.cached_tokens
-                        # Use cached_input_cost_per_token if available, otherwise fallback to 0.5x multiplier
-                        if cached_input_cost_per_token > 0:
-                            cost += openai_cached_tokens * cached_input_cost_per_token
-                        else:
-                            # Fallback: OpenAI cached tokens typically cost 50% of regular input
-                            cost += openai_cached_tokens * input_cost_per_token * 0.5
+            if not (cache_creation_tokens or cache_read_tokens):  # Only for non-Bedrock models
+                if (
+                    hasattr(usage, "prompt_tokens_details")
+                    and usage.prompt_tokens_details is not None
+                ):
+                    prompt_details = usage.prompt_tokens_details
+                    if hasattr(prompt_details, "cached_tokens") and prompt_details.cached_tokens:
+                        # Ensure cached_tokens is a number, not a mock or None
+                        if isinstance(prompt_details.cached_tokens, (int, float)):
+                            openai_cached_tokens = prompt_details.cached_tokens
+                            # Use cached_input_cost_per_token if available, otherwise fallback to 0.5x multiplier
+                            if cached_input_cost_per_token > 0:
+                                cost += openai_cached_tokens * cached_input_cost_per_token
+                            else:
+                                # Fallback: OpenAI cached tokens typically cost 50% of regular input
+                                cost += openai_cached_tokens * input_cost_per_token * 0.5
 
             # Regular input tokens (excluding all cache tokens)
             regular_input = (
@@ -900,11 +1084,18 @@ It's currently empty (just the template). The file is automatically loaded at se
         Returns:
             The agent's final response
         """
+        # Track URLs from user message (for web_fetch security)
+        if not config.ALLOW_DYNAMIC_URLS:
+            from patchpal.tools.web_tools import get_url_tracker
+
+            get_url_tracker().add_urls_from_text(user_message)
+
         # Add user message to history
         self.messages.append({"role": "user", "content": user_message})
 
         # Check for compaction BEFORE starting work
         # This ensures we never compact mid-execution and lose tool results
+        # Always estimates current messages to avoid staleness issues (no actual_prompt_tokens)
         if self.enable_auto_compact and self.context_manager.needs_compaction(self.messages):
             self._perform_auto_compaction()
 
@@ -994,13 +1185,26 @@ It's currently empty (just the template). The file is automatically loaded at se
             # Filter images if BLOCK_IMAGES is enabled (for non-vision models or user preference)
             messages = self.image_handler.filter_images_if_blocked(messages)
 
-            # Apply prompt caching for supported models (Anthropic/Claude)
-            messages = _apply_prompt_caching(messages, self.model_id)
+            # Apply prompt caching for supported models
+            # Check instance variable for dynamically-tested models (application inference profiles)
+            if self.prompt_caching_supported:
+                messages = _apply_prompt_caching(messages, self.model_id)
 
             # Use LiteLLM for all providers
             try:
                 # Build tool list (built-in + custom)
-                tools = list(TOOLS)
+                # Import from definitions to get ALL tools (including optional ones)
+                from patchpal.tools.definitions import TOOLS as ALL_TOOLS
+
+                tools = list(ALL_TOOLS)
+
+                # Filter tools if enabled_tools is specified
+                if self.enabled_tools is not None:
+                    tools = [t for t in tools if t["function"]["name"] in self.enabled_tools]
+                else:
+                    # Use the default filtered list (excludes optional tools)
+                    tools = list(TOOLS)
+
                 if self.custom_tools:
                     from patchpal.tools.tool_schema import function_to_tool_schema
 
@@ -1014,6 +1218,7 @@ It's currently empty (just the template). The file is automatically loaded at se
                         "messages": messages,
                         "tools": tools,
                         "tool_choice": "auto",
+                        "max_tokens": 32000,  # Explicit output token limit for predictable context usage
                         "timeout": LLM_TIMEOUT,
                         "stream": stream,
                         **self.litellm_kwargs,
@@ -1038,8 +1243,13 @@ It's currently empty (just the template). The file is automatically loaded at se
 
                 # Track token usage from this LLM call
                 self.total_llm_calls += 1
+                last_prompt_tokens = None  # Track for reactive context management
                 if hasattr(response, "usage") and response.usage:
                     if hasattr(response.usage, "prompt_tokens"):
+                        # LiteLLM already includes cache operations in prompt_tokens for Anthropic/Bedrock
+                        # (see litellm/llms/anthropic/chat/transformation.py)
+                        last_prompt_tokens = response.usage.prompt_tokens
+                        self.last_prompt_tokens = last_prompt_tokens  # Store for /status command
                         self.cumulative_input_tokens += response.usage.prompt_tokens
                     if hasattr(response.usage, "completion_tokens"):
                         self.cumulative_output_tokens += response.usage.completion_tokens
@@ -1078,16 +1288,50 @@ It's currently empty (just the template). The file is automatically loaded at se
             # Get the assistant's response
             assistant_message = response.choices[0].message
 
+            # Build assistant message dict
+            assistant_msg = {
+                "role": "assistant",
+                "content": assistant_message.content or "",
+                "tool_calls": assistant_message.tool_calls
+                if hasattr(assistant_message, "tool_calls") and assistant_message.tool_calls
+                else None,
+            }
+
+            # For gpt-oss and similar reasoning models: capture reasoning_content
+            # This is critical for maintaining focus across multiple turns
+            # Only capture if PATCHPAL_CAPTURE_REASONING=true (default: true)
+            if config.CAPTURE_REASONING:
+                # Check multiple reasoning field names (different providers use different names)
+                # llama.cpp uses reasoning_content, others use reasoning or reasoning_text
+                # Use the first non-empty field to avoid duplication (some providers return multiple)
+                # Store which field was used so we can pass it back with the same name (pi-mono approach)
+                reasoning_fields = ["reasoning_content", "reasoning", "reasoning_text"]
+                captured_reasoning = None
+                reasoning_field_name = None
+
+                for field in reasoning_fields:
+                    if hasattr(assistant_message, field):
+                        value = getattr(assistant_message, field)
+                        if value and (isinstance(value, str) and value.strip()):
+                            captured_reasoning = value
+                            reasoning_field_name = field
+                            break
+
+                # Store reasoning content using the original field name (pi-mono approach)
+                # This ensures providers that expect specific field names get them back correctly
+                if captured_reasoning and reasoning_field_name:
+                    assistant_msg[reasoning_field_name] = captured_reasoning
+
+                # For Anthropic extended thinking models: capture thinking_blocks
+                # Required for multi-turn tool calling with Anthropic's extended thinking
+                if (
+                    hasattr(assistant_message, "thinking_blocks")
+                    and assistant_message.thinking_blocks
+                ):
+                    assistant_msg["thinking_blocks"] = assistant_message.thinking_blocks
+
             # Add assistant message to history
-            self.messages.append(
-                {
-                    "role": "assistant",
-                    "content": assistant_message.content or "",
-                    "tool_calls": assistant_message.tool_calls
-                    if hasattr(assistant_message, "tool_calls") and assistant_message.tool_calls
-                    else None,
-                }
-            )
+            self.messages.append(assistant_msg)
 
             # For OpenAI: Inject any pending images as a user message
             # OpenAI doesn't support images in tool results, so we collected them and inject here
@@ -1116,7 +1360,7 @@ It's currently empty (just the template). The file is automatically loaded at se
                         tool_args = json.loads(tool_args_str)
                     except json.JSONDecodeError:
                         tool_result = f"Error: Invalid JSON arguments for {tool_name}"
-                        print(f"\033[1;31m✗ {tool_name}: Invalid arguments\033[0m")
+                        print(f"\033[1;31m✗ {tool_name}: Invalid arguments\033[0m\n", flush=True)
                     else:
                         # Get the tool function (check custom tools first, then built-in)
                         tool_func = self.custom_tool_funcs.get(tool_name) or TOOL_FUNCTIONS.get(
@@ -1124,7 +1368,7 @@ It's currently empty (just the template). The file is automatically loaded at se
                         )
                         if tool_func is None:
                             tool_result = f"Error: Unknown tool {tool_name}"
-                            print(f"\033[1;31m✗ Unknown tool: {tool_name}\033[0m")
+                            print(f"\033[1;31m✗ Unknown tool: {tool_name}\033[0m\n", flush=True)
                         else:
                             # Show tool call message
                             if tool_name in self.custom_tool_funcs:
@@ -1155,6 +1399,7 @@ It's currently empty (just the template). The file is automatically loaded at se
                                 )
                             elif tool_name == "get_repo_map":
                                 max_files = tool_args.get("max_files", 100)
+                                max_depth = tool_args.get("max_depth")
                                 patterns = ""
                                 if tool_args.get("include_patterns"):
                                     patterns = (
@@ -1164,8 +1409,9 @@ It's currently empty (just the template). The file is automatically loaded at se
                                     patterns = (
                                         f" (exclude: {', '.join(tool_args['exclude_patterns'])})"
                                     )
+                                depth_info = f", depth≤{max_depth}" if max_depth is not None else ""
                                 print(
-                                    f"\033[2m🗺️  Generating repository map (max {max_files} files{patterns})...\033[0m",
+                                    f"\033[2m🗺️  Generating repository map (max {max_files} files{depth_info}{patterns})...\033[0m",
                                     flush=True,
                                 )
                             elif tool_name == "get_file_info":
@@ -1186,6 +1432,16 @@ It's currently empty (just the template). The file is automatically loaded at se
                             elif tool_name == "grep":
                                 print(
                                     f"\033[2m🔍 Searching: {tool_args.get('pattern', '')}\033[0m",
+                                    flush=True,
+                                )
+                            elif tool_name == "find":
+                                pattern_desc = tool_args.get("pattern", "*")
+                                max_depth = tool_args.get("max_depth")
+                                depth_info = (
+                                    f" (depth≤{max_depth})" if max_depth is not None else ""
+                                )
+                                print(
+                                    f"\033[2m📂 Finding files: {pattern_desc}{depth_info}\033[0m",
                                     flush=True,
                                 )
                             elif tool_name == "list_skills":
@@ -1318,11 +1574,17 @@ It's currently empty (just the template). The file is automatically loaded at se
                                 tool_result = tool_func(**filtered_args)
                             except Exception as e:
                                 tool_result = f"Error executing {tool_name}: {e}"
-                                print(f"\033[1;31m✗ {tool_name}: {e}\033[0m")
+                                print(f"\033[1;31m✗ {tool_name}: {e}\033[0m\n", flush=True)
 
                     # Add tool result to messages
                     result_str = str(tool_result)
                     result_size = len(result_str)
+
+                    # Track URLs from tool results (for web_fetch security)
+                    if not config.ALLOW_DYNAMIC_URLS:
+                        from patchpal.tools.web_tools import get_url_tracker
+
+                        get_url_tracker().add_urls_from_text(result_str)
 
                     # Check if result contains an image (IMAGE_DATA format)
                     # Images bypass truncation and are formatted as multimodal content
@@ -1347,8 +1609,6 @@ It's currently empty (just the template). The file is automatically loaded at se
                         total_lines = len(lines)
 
                         # Check if output exceeds universal limits
-                        from patchpal.config import config
-
                         if (
                             total_lines > config.MAX_TOOL_OUTPUT_LINES
                             or result_size > config.MAX_TOOL_OUTPUT_CHARS
@@ -1427,7 +1687,7 @@ It's currently empty (just the template). The file is automatically loaded at se
                     return "Operation cancelled by user."
 
                 # Proactive pruning: If enabled and tool outputs exceed PRUNE_PROTECT threshold,
-                # summarize old outputs now (before hitting 75% compaction threshold)
+                # summarize old outputs now (before hitting COMPACT_THRESHOLD, default 80%)
                 # This keeps context lean and reduces tokens in subsequent API calls
                 if self.context_manager.ENABLE_PROACTIVE_PRUNING:
                     tool_output_tokens = sum(
@@ -1449,8 +1709,9 @@ It's currently empty (just the template). The file is automatically loaded at se
 
                 # Check if context window needs compaction after tool results are added
                 # This prevents context from ballooning within a single turn (e.g., reading large files)
+                # Use reactive approach (actual token count) if available, fallback to estimation
                 if self.enable_auto_compact and self.context_manager.needs_compaction(
-                    self.messages
+                    self.messages, actual_prompt_tokens=last_prompt_tokens
                 ):
                     self._perform_auto_compaction()
 
@@ -1459,8 +1720,9 @@ It's currently empty (just the template). The file is automatically loaded at se
             else:
                 # No tool calls, agent is done
                 # Check if we need compaction before returning (final response might be large)
+                # Use reactive approach (actual token count) if available, fallback to estimation
                 if self.enable_auto_compact and self.context_manager.needs_compaction(
-                    self.messages
+                    self.messages, actual_prompt_tokens=last_prompt_tokens
                 ):
                     self._perform_auto_compaction()
 
@@ -1477,6 +1739,7 @@ It's currently empty (just the template). The file is automatically loaded at se
 def create_agent(
     model_id: str = "anthropic/claude-sonnet-4-5",
     custom_tools: Optional[List[Callable]] = None,
+    enabled_tools: Optional[List[str]] = None,
     litellm_kwargs: Optional[Dict[str, Any]] = None,
 ) -> PatchPalAgent:
     """Create and return a PatchPal agent.
@@ -1485,6 +1748,11 @@ def create_agent(
         model_id: LiteLLM model identifier (default: anthropic/claude-sonnet-4-5)
         custom_tools: Optional list of Python functions to use as custom tools.
                      Each function should have type hints and a docstring.
+        enabled_tools: Optional list of tool names to enable (whitelist). If provided,
+                      only these built-in tools will be available. Custom tools are
+                      always added. Takes precedence over PATCHPAL_ENABLED_TOOLS
+                      environment variable.
+                      Example: ["read_file", "edit_file", "run_shell"]
         litellm_kwargs: Optional dict of extra parameters to pass to litellm.completion()
                        (e.g., {"reasoning_effort": "high"} for reasoning models)
 
@@ -1504,6 +1772,11 @@ def create_agent(
         agent = create_agent(custom_tools=[calculator])
         response = agent.run("What's 5 + 3?")
 
+        # Limit to read-only tools
+        agent = create_agent(
+            enabled_tools=["read_file", "read_lines", "code_structure"]
+        )
+
         # With reasoning model
         agent = create_agent(
             model_id="ollama_chat/gpt-oss:120b",
@@ -1516,5 +1789,8 @@ def create_agent(
     reset_session_todos()
 
     return PatchPalAgent(
-        model_id=model_id, custom_tools=custom_tools, litellm_kwargs=litellm_kwargs
+        model_id=model_id,
+        custom_tools=custom_tools,
+        enabled_tools=enabled_tools,
+        litellm_kwargs=litellm_kwargs,
     )

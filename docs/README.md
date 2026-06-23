@@ -26,7 +26,7 @@ This directory contains the source files for PatchPal's documentation site, buil
 - `getting-started/` - Installation and setup guides
 - `features/` - Feature documentation (tools, skills, custom tools)
 - `models/` - Model configuration
-- `usage/` - Usage guides (interactive, Python API, autopilot)
+- `usage/` - Usage guides (interactive, Python API, autopilot, sandbox)
 - `configuration.md` - Environment variables
 - `safety.md` - Security model
 - `context-management.md` - Context window management

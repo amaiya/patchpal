@@ -7,6 +7,275 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
+## 0.23.0 (2026-06-09)
+
+### new:
+- Support for AWS Bedrock application inference profiles
+
+### changed:
+- Added `max_depth` parameter to `repo_map` and `find` tools
+
+### fixed:
+- N/A
+
+
+## 0.22.8 (2026-06-04)
+
+### new:
+- N/A
+
+### changed:
+- N/A
+
+### fixed:
+- Fix issue with operation limit being exceeded when `repomap` is called (#84)
+
+
+## 0.22.7 (2026-06-01)
+
+### new:
+- N/A
+
+### changed:
+- N/A
+
+### fixed:
+- Ensure context stats displayed by `/status` are properely reset after `/clear`
+
+
+## 0.22.6 (2026-05-29)
+
+### new:
+- N/A
+
+### changed:
+- N/A
+
+### fixed:
+- Ensure cgroupfs is not supplied when running patchpal-sandbox on Windows (#82)
+- Ensure `PATHCPAL_LITELLM_KWARGS` is parsed correctly and used by patchpal-sandbox (#83)
+
+
+## 0.22.5 (2026-05-13)
+
+### new:
+- N/A
+
+### changed:
+- N/A
+
+### fixed:
+- Explicitly set output reserve to avoid context window issues (#80)
+
+
+## 0.22.4 (2026-05-12)
+
+### new:
+- N/A
+
+### changed:
+- N/A
+
+### fixed:
+- Fixed 80% auto-compaction not triggering for large message additions (e.g., pasting changelogs, reading large files). Bug introduced in March when optimization started using stale token counts from previous API call instead of estimating current messages. Reverted `needs_compaction()` to always estimate current messages while keeping actual tokens for `/status` display. (#80)
+
+## 0.22.3 (2026-05-12)
+
+### new:
+- N/A
+
+### changed:
+- N/A
+
+### fixed:
+- fix compaction bug with token-tracking (#80) - partial fix, staleness issue remained
+- pin `tree-sitter-language-pack` due to issue in newer versions (#81)
+
+
+## 0.22.1 (2026-04-23)
+
+### new:
+- N/A
+
+### changed:
+- N/A
+
+### fixed:
+- Allow `patchpal-sandbox` to launch without arguments
+
+
+## 0.22.2 (2026-04-27)
+
+### new:
+- N/A
+
+### changed:
+- logging refinements including hash-chaining
+
+### fixed:
+- N/A
+
+## 0.22.1 (2026-04-23)
+
+### new:
+- N/A
+
+### changed:
+- N/A
+
+### fixed:
+- Allow `patchpal-sandbox` to launch without arguments
+
+
+
+## 0.22.0 (2026-03-24)
+
+### new:
+- `patchpal-sandbox` now supports network-isolated containers for maximal security.
+
+### changed:
+- `--env-file` flag in `patchpal-sandbox` suppresses host shell environment variables
+
+### fixed:
+- Add newline after error messages to prevent *WARNING: your terminal doesn't support cursor position requests (CPR).*
+
+
+## 0.21.8 (2026-03-23)
+
+### new:
+- N/A
+
+### changed:
+- N/A
+
+### fixed:
+- Include AWS standard names for Bedrock endpoint URL
+- Pin to `litellm<=1.82.6` due to [this](https://github.com/BerriAI/litellm/issues/24512)
+
+## 0.21.7 (2026-03-20)
+
+### new:
+- N/A
+
+### changed:
+- Removed tiktoken as dependency. Rely on actual usage statistics with simple fallback.
+
+### fixed:
+- Added security checks for web fetch
+- Fix for for token estimation of reasoning content
+
+
+## 0.21.6 (2026-03-19)
+
+### new:
+- N/A
+
+### changed:
+- N/A
+
+### fixed:
+- Fix for corporate firewalls interfering with `web_fetch`.
+
+
+## 0.21.5 (2026-03-19)
+
+### new:
+- N/A
+
+### changed:
+- N/A
+
+### fixed:
+- Make completion promise argument in autopilot mode optional
+
+## 0.21.4 (2026-03-19)
+
+### new:
+- N/A
+
+### changed:
+
+### fixed:
+- Fix `patchpal-sandbox` interactive usage
+
+
+## 0.21.3 (2026-03-18)
+
+### new:
+- N/A
+
+### changed:
+- `patchpal-sandbox` now uses this [ghcr image](https://ghcr.io/amaiya/patchpal-sandbox:latest)
+
+### fixed:
+- /N/A
+
+
+## 0.21.2 (2026-03-17)
+
+### new:
+- N/A
+
+### changed:
+- N/A
+
+### fixed:
+- Fixed issue with reading `MEMORY.md` when `RESTRICT_TO_REPO` is true.
+- **gpt-oss support**: Added automatic support for multi-turn tool calling with gpt-oss models (20B/120B) by capturing and passing back `reasoning_content` from LLM responses. Enabled by default (disable with `PATCHPAL_CAPTURE_REASONING=false` if needed). This prevents the model from losing focus after 15-20 steps and ensures reliable task completion across many turns. Also captures `thinking_blocks` for Anthropic extended thinking models.
+
+
+## 0.21.1 (2026-03-16)
+
+### new:
+- N/A
+
+### changed:
+- **Breaking Change**: Replaced optional `list_files` tool with optional `find` told that includes both `glob` and `ls` functionality.
+
+### fixed:
+- N/A
+
+
+
+## 0.21.0 (2026-03-15)
+
+### new:
+- **`patchpal-sandbox` command**: Added built-in sandboxed execution for interactive and autopilot modes using Docker/Podman containers. Auto-detects runtime, auto-sets `OLLAMA_CONTEXT_LENGTH` (8192 for agents, 32768 for reasoning models like gpt-oss/deepseek-r1/qwq/qwen), loads API keys from `.env` files, mounts current directory and `~/.patchpal`, auto-mounts SSL certificates for corporate networks, and provides clean isolated environment with `--rm` flag. See `patchpal-sandbox --help` for full options.
+- **ReAct agent mode for models without native function calling**: Added `PATCHPAL_REACT_MODE` environment variable and `create_react_agent()` API to enable text-based tool calling for models that don't support native function calling (e.g., smaller Ollama models like llama3.2, qwen2.5). ReAct agent uses chain-of-thought reasoning with text-based action/observation loops, making PatchPal compatible with a wider range of local models. See docs/models/local-models.md for usage examples.
+
+### changed:
+- In AutoPilot mode, completion promises are automatically added to supplied prompts when missing.
+- AutoPilot mode now sets `PATCHPAL_RESTRICT_TO_REPO` by default.
+
+### fixed:
+- Fixed bug with prompts beginning with word "context" (#77)
+
+
+## 0.20.1 (2026-03-05)
+
+### new:
+- N/A
+
+### changed:
+- N/A
+
+### fixed:
+- **Critical fix**: Optional tools (`grep`, `list_files`) weren't actually passed to LLM when specified in `enabled_tools`. The agent was filtering from a pre-filtered tools list that already excluded optional tools. Now imports complete tool list when `enabled_tools` is used.
+
+
+## 0.20.0 (2026-03-05)
+
+### new:
+- **Tool selection control (`enabled_tools`)**: Added `enabled_tools` parameter to `create_agent()` and `PATCHPAL_ENABLED_TOOLS` environment variable to limit which built-in tools are available to agents. Enables creation of specialized agents (e.g., read-only, editor-only) for security and performance. Parameter takes precedence over environment variable.
+- **Optional tools (`grep`, `list_files`)**: Re-added `grep` and `list_files` tools as optional, disabled-by-default tools. Provide lightweight search and navigation for read-only agents without requiring `run_shell` access or expensive code parsing. Enable via `enabled_tools` parameter when needed. Shell commands remain preferred for most use cases.
+
+### changed:
+- N/A
+
+### fixed:
+- N/A
+
+
 ## 0.19.2 (2026-03-02)
 
 ### new:
@@ -388,7 +657,7 @@ Most recent releases are shown at the top. Each release shows:
 ## 0.11.0 (2026-02-07)
 
 ### new:
-- **Autopilot mode (Ralph Wiggum technique)**: Added autonomous iterative development mode where the agent repeatedly works on a task until completion. Based on the methodology pioneered by Geoffrey Huntley, it embodies persistent iteration over perfection. Available via `python -m patchpal autopilot` CLI command, `patchpal-autopilot` console script, or `autopilot_loop()` Python API. Supports configurable completion detection via `--completion-promise` keyword, max iterations limit, and Python library usage for multi-phase builds. Includes comprehensive safety warnings and examples in `examples/ralph/`. Disables permission system for autonomous operation - intended for isolated environments only (Docker containers, VMs, throwaway projects). (fixes #53)
+- **Autopilot mode (Ralph Wiggum technique)**: Added autonomous iterative development mode where the agent repeatedly works on a task until completion. Based on the methodology pioneered by Geoffrey Huntley, it embodies persistent iteration over perfection. Available via `patchpal-autopilot` console script or `autopilot_loop()` Python API. Supports configurable completion detection via `--completion-promise` keyword, max iterations limit, and Python library usage for multi-phase builds. Includes comprehensive safety warnings and examples in `examples/ralph/`. Disables permission system for autonomous operation - intended for isolated environments only (Docker containers, VMs, throwaway projects). (fixes #53)
 
 ### changed:
 - N/A

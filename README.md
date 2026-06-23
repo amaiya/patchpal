@@ -11,10 +11,11 @@ Most agent frameworks are [built in TypeScript](https://news.ycombinator.com/ite
 
 **Key Features**
 - [Terminal Interface](https://amaiya.github.io/patchpal/usage/interactive/) for interactive development
+- [Sandbox Mode](https://amaiya.github.io/patchpal/usage/sandbox/) for secure container isolation
 - [Python SDK](https://amaiya.github.io/patchpal/usage/python-api/) for flexibility and extensibility
 - [Built-In](https://amaiya.github.io/patchpal/features/tools/) and [Custom Tools](https://amaiya.github.io/patchpal/features/custom-tools/)
 - [Skills System](https://amaiya.github.io/patchpal/features/skills/) and [MCP Integration](https://amaiya.github.io/patchpal/features/mcp/)
-- [Autopilot Mode](https://amaiya.github.io/patchpal/usage/autopilot/) using [Ralph Wiggum loops](https://ghuntley.com/ralph/)
+- [Autopilot Mode](https://amaiya.github.io/patchpal/usage/autopilot/) using [Ralph Wiggum loops](https://github.com/amaiya/patchpal/tree/main/examples/ralph/)
 - [Project Memory](https://amaiya.github.io/patchpal/features/memory/) automatically loads project context from `~/.patchpal/repos/<repo-name>/MEMORY.md` at startup.
 
 PatchPal prioritizes customizability: custom tools, custom skills, a flexible Python API, and support for any tool-calling LLM.
@@ -24,11 +25,38 @@ Full documentation is [here](https://amaiya.github.io/patchpal).
 ## Quick Start
 
 ```bash
-$ pip install patchpal  # install
-$ patchpal              # start
+$ pip install patchpal          # install
+$ patchpal --model <model_id>   # start
 ```
 
+> Model support: Any [LiteLLM-supported model](https://models.litellm.ai/) can be used.
 > Platform support: Linux, macOS, and Windows are all supported
+
+**Alternative: Run with Docker/Podman (no installation required)**
+
+```bash
+# Using pre-built image with patchpal installed (default model)
+docker run -it --rm \
+  -v $(pwd):/workspace \
+  -e ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY \
+  ghcr.io/amaiya/patchpal-sandbox:latest \
+  patchpal --model anthropic/claude-sonnet-4-5
+
+# Or with Podman
+podman run -it --rm \
+  -v $(pwd):/workspace \
+  -e ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY \
+  ghcr.io/amaiya/patchpal-sandbox:latest \
+  patchpal --model anthropic/claude-sonnet-4-5
+
+# Specify a different model
+docker run -it --rm \
+  -v $(pwd):/workspace \
+  -e OPENAI_API_KEY=$OPENAI_API_KEY \
+  ghcr.io/amaiya/patchpal-sandbox:latest \
+  patchpal --model openai/gpt-5-mini
+```
+
 
 ## Setup
 0. **Install**: `pip install patchpal`
@@ -81,7 +109,10 @@ export PATCHPAL_MODEL=openai/gpt-5.2
 patchpal
 ```
 
-**Tip for Local Models:** Local models (i.e., models served by Ollama or vLLM) may work better with the environment variable settings, `PATCHPAL_MINIMAL_TOOLS=true` and `PATCHPAL_ENABLE_WEB=false`, which provides only essential tools (`read_file`, `read_lines`, `write_file`, `edit_file`, `run_shell`), reducing tool confusion with smaller models.
+**Tip for Local Models:** Local models (i.e., models served by Ollama or vLLM) may work better with these settings:
+- `PATCHPAL_MINIMAL_TOOLS=true` and `PATCHPAL_ENABLE_WEB=false` - For models **with** function calling: Provides only essential tools (`read_file`, `read_lines`, `write_file`, `edit_file`, `run_shell`), reducing tool confusion
+- `PATCHPAL_REACT_MODE=true` - For models **without** function calling: Enables text-based tool invocation (see [ReAct mode docs](https://amaiya.github.io/patchpal/models/local-models/#react-mode-for-models-without-function-calling))
+- For Ollama, additionally setting `PATCHPAL_STREAM_OUTPUT=false` [may help with tool call reliability](https://github.com/openclaw/openclaw/issues/5769)
 
 
 ## Beyond Coding: General Problem-Solving
@@ -89,6 +120,27 @@ patchpal
 While originally designed for software development, PatchPal is also a general-purpose assistant. With web search, file operations, shell commands, and custom tools/skills, it can help with research, data analysis, document processing, log file analyses, etc.
 
 <img src="https://raw.githubusercontent.com/amaiya/patchpal/refs/heads/main/assets/patchpal_assistant.png" alt="PatchPal as General Assistant" width="650"/>
+
+## FAQ
+
+> There are so many coding agent harnesses. Why build yet another one?
+
+1. Most agent harnesses are in TypeScript. We wanted [something in Python](https://amaiya.github.io/patchpal/usage/python-api/) that we could easily extend for our custom workflows.
+2. PatchPal includes a [unique guardrails system](https://amaiya.github.io/patchpal/safety/) that is better suited to privacy-conscious use cases involving sensitive data.
+3. We needed an agent harness that seamlessly works with [both local and cloud models](https://amaiya.github.io/patchpal/models/overview/#supported-models), including AWS GovCloud Bedrock models.
+
+> On Windows Subsystem for Linux (WSL), why is it stalling intermittently at "Thinking..."?
+
+This is a [known issue](https://github.com/microsoft/WSL/issues/6264#issuecomment-762154193) with WSL2.
+
+Try examining and then lowering the `mtu`:
+
+```bash
+$ cat /sys/class/net/eth1/mtu
+1427
+
+$ sudo ip link set eth1 mtu 1400
+```
 
 ## Documentation
 

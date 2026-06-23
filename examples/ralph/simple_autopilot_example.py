@@ -36,8 +36,6 @@ Process:
 3. Run tests: run_shell("pytest test_calculator.py -v")
 4. Fix any failures
 5. Repeat until all tests pass
-
-When all tests pass, output: <promise>CALCULATOR_COMPLETE</promise>
 """
 
     print("=" * 80)

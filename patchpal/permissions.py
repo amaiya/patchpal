@@ -27,7 +27,7 @@ class PermissionManager:
         self.enabled = config.REQUIRE_PERMISSION
 
         # Auto-grant harmless read-only commands in all modes EXCEPT maximum security
-        # Since these replace dedicated tools that were removed (list_files, tree, etc.),
+        # Since these replace dedicated tools that were removed (replaced by find tool, etc.),
         # they should work seamlessly. However, in maximum security mode (--maximum-security),
         # we require explicit permission for ALL operations including harmless commands.
         from patchpal.tools.common import get_require_permission_for_all
@@ -64,9 +64,14 @@ class PermissionManager:
     def _grant_harmless_commands(self):
         """Auto-grant harmless read-only commands in all modes.
 
-        These commands replace dedicated tools that were removed (list_files, tree,
-        find_files, count_lines) to reduce redundancy. Since those tools didn't
-        require permissions, their shell equivalents shouldn't either.
+        These commands replace dedicated tools that were removed (replaced by find tool)
+        to reduce redundancy. Since those tools didn't require permissions, their shell
+        equivalents shouldn't either.
+
+        SECURITY NOTE: Environment variable commands (env, printenv, set, Get-Variable)
+        are NOT in this list because they can expose API keys and secrets loaded from
+        .env files. While we block reading .env files directly, we must also block
+        reading the environment variables that were loaded from them.
         """
         # Check if web tools are enabled
         web_tools_enabled = config.ENABLE_WEB
@@ -99,9 +104,6 @@ class PermissionManager:
             "whereis",
             # Current directory
             "pwd",
-            # Environment
-            "env",
-            "printenv",
             # Network diagnostic
             "ifconfig",
             # Disk/system info
@@ -132,8 +134,6 @@ class PermissionManager:
             "assoc",
             "ftype",
             "doskey /history",
-            # Environment
-            "set",
             # Network diagnostic
             "tracert",
             "nslookup",
@@ -169,7 +169,6 @@ class PermissionManager:
             "get-host",
             "get-command",
             "get-alias",
-            "get-variable",
             "get-member",
             "get-help",
             # Search/filter
@@ -420,6 +419,19 @@ class PermissionManager:
 
         # Check if already granted (with full_command for multi-word pattern matching)
         if self._check_existing_grant(tool_name, pattern, full_command):
+            # Log that permission was auto-granted from previous session grant
+            try:
+                from patchpal.tools.audit import log_action_approved
+
+                log_action_approved(
+                    tool_name=tool_name,
+                    description=description,
+                    approval_type="auto_granted",
+                    pattern=pattern,
+                    context={"working_dir": context} if context else None,
+                )
+            except Exception:
+                pass  # Don't fail if audit logging fails
             return True
 
         # Display the request - use stderr to avoid Rich console capture
@@ -481,14 +493,53 @@ class PermissionManager:
                 choice = input("\n\033[1;36mChoice [1-3]:\033[0m ").strip()
 
                 if choice == "1":
+                    # Log approval
+                    try:
+                        from patchpal.tools.audit import log_action_approved
+
+                        log_action_approved(
+                            tool_name=tool_name,
+                            description=description,
+                            approval_type="user_approved",
+                            pattern=pattern,
+                            context={"working_dir": context} if context else None,
+                        )
+                    except Exception:
+                        pass  # Don't fail if audit logging fails
                     return True
                 elif choice == "2":
                     # Grant session-only permission (like Claude Code)
                     self._grant_permission(tool_name, persistent=False, pattern=pattern)
+                    # Log approval with session grant
+                    try:
+                        from patchpal.tools.audit import log_action_approved
+
+                        log_action_approved(
+                            tool_name=tool_name,
+                            description=description,
+                            approval_type="session_granted",
+                            pattern=pattern,
+                            context={"working_dir": context} if context else None,
+                        )
+                    except Exception:
+                        pass  # Don't fail if audit logging fails
                     return True
                 elif choice == "3":
                     sys.stderr.write("\n\033[1;31mOperation cancelled.\033[0m\n")
                     sys.stderr.flush()
+                    # Log rejection
+                    try:
+                        from patchpal.tools.audit import log_action_blocked
+
+                        log_action_blocked(
+                            tool_name=tool_name,
+                            description=description,
+                            reason="user_rejected",
+                            pattern=pattern,
+                            context={"working_dir": context} if context else None,
+                        )
+                    except Exception:
+                        pass  # Don't fail if audit logging fails
                     return False
                 else:
                     sys.stderr.write("Invalid choice. Please enter 1, 2, or 3.\n")

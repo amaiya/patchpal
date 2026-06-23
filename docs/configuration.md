@@ -12,6 +12,9 @@ export PATCHPAL_MODEL=openai/gpt-5.2          # Override default model
 export PATCHPAL_LITELLM_KWARGS='{"reasoning_effort": "high", "temperature": 0.7}'
 # Use for: reasoning models (gpt-oss, deepseek-reasoner), temperature, max_tokens, etc.
 # See: https://docs.litellm.ai/docs/completion/input
+
+# AWS GovCloud Bedrock example
+export PATCHPAL_LITELLM_KWARGS='{"aws_region_name": "fill in", "aws_bedrock_runtime_endpoint": "fill in", "aws_access_key_id": "fill in", "aws_secret_access_key": "fill in"}'
 ```
 
 ### Security & Permissions
@@ -25,7 +28,7 @@ patchpal --maximum-security
 ```
 
 This single flag enables **all** security restrictions:
-- **Permission for all operations**: Requires approval for ALL operations including read operations (`read_file`, `list_files`, etc.)
+- **Permission for all operations**: Requires approval for ALL operations including read operations (`read_file`, `find`, etc.)
 - **Repository-only access**: Blocks reading/writing files outside the repository directory (`PATCHPAL_RESTRICT_TO_REPO=true`)
 - **Web access disabled**: Disables web search and fetch tools to prevent data spillage (`PATCHPAL_ENABLE_WEB=false`)
 
@@ -48,12 +51,33 @@ export PATCHPAL_ENABLE_WEB=false       # Disable web access
 patchpal
 ```
 
+In addition, the `run_shell` tool also includes [built-in guardrails](https://amaiya.github.io/patchpal/features/tools/#run_shell).
+
+For maximum isolation, you can run PatchPal inside a sandboxed container using [`patchpal-sandbox`](https://amaiya.github.io/patchpal/usage/sandbox/):
+
+```bash
+# Interactive mode (permissions enabled by default)
+patchpal-sandbox
+
+# Or specify a model (pass arguments after --)
+patchpal-sandbox -- --model <litellm_model_id>
+
+# Autopilot mode (permissions disabled automatically)
+patchpal-sandbox -- autopilot --prompt "..."
+```
+
+This provides a fully isolated environment with restricted access to your host system. Permissions remain enabled in interactive mode but are automatically disabled when using the `autopilot` subcommand.
+
 #### Environment Variables
 
 ```bash
 # Permission System
 export PATCHPAL_REQUIRE_PERMISSION=true      # Prompt before executing commands/modifying files (default: true)
                                               # ⚠️  WARNING: Setting to false disables prompts - only use in trusted environments
+                                              # Note: Automatically set to false by autopilot mode (patchpal-autopilot command)
+                                              # When using patchpal-sandbox:
+                                              #   - Interactive mode (default): permissions ENABLED
+                                              #   - Autopilot mode (autopilot subcommand): permissions DISABLED automatically
 
 # File Safety
 export PATCHPAL_MAX_FILE_SIZE=512000         # Maximum file size in bytes for read/write (default: 500KB)
@@ -141,7 +165,9 @@ export PATCHPAL_ENABLE_MCP=false             # Disable MCP tool loading (default
                                               # Note: MCP tools are loaded dynamically from ~/.patchpal/config.json
 ```
 
-### Minimal Tools Mode
+### Tool Selection
+
+#### Minimal Tools Mode
 
 ```bash
 # Limit to Essential Tools Only
@@ -151,6 +177,100 @@ export PATCHPAL_MINIMAL_TOOLS=true           # Enable minimal tools mode (defaul
                                               # Improves: decision speed (2-3s vs 10-30s), tool accuracy (~95% vs ~60%)
                                               # Trade-off: No code_structure, web tools, TODO tools, etc.
 ```
+
+#### Limiting Available Tools (enabled_tools)
+
+For fine-grained control over which built-in tools are available to the agent, use `enabled_tools`:
+
+**Via Environment Variable (for CLI usage):**
+```bash
+# Limit to specific tools (whitelist)
+export PATCHPAL_ENABLED_TOOLS="read_file,read_lines,code_structure,get_repo_map"
+patchpal
+
+# Read-only agent (no modifications)
+export PATCHPAL_ENABLED_TOOLS="read_file,read_lines,code_structure"
+patchpal
+
+# Lightweight read-only with search (uses optional tools)
+export PATCHPAL_ENABLED_TOOLS="read_file,read_lines,find,grep"
+patchpal
+
+# Code editor (no shell access)
+export PATCHPAL_ENABLED_TOOLS="read_file,edit_file,write_file"
+patchpal
+
+# Research assistant (web + reading)
+export PATCHPAL_ENABLED_TOOLS="read_file,web_search,web_fetch"
+patchpal
+```
+
+**Via Python API (for programmatic use):**
+```python
+from patchpal import create_agent
+
+# Read-only analysis agent
+agent = create_agent(
+    enabled_tools=["read_file", "read_lines", "code_structure", "get_repo_map"]
+)
+
+# Lightweight read-only with search (uses optional tools)
+agent = create_agent(
+    enabled_tools=["read_file", "read_lines", "find", "grep"]
+)
+
+# Code editor agent (no shell commands)
+agent = create_agent(
+    enabled_tools=["read_file", "read_lines", "edit_file", "write_file"]
+)
+
+# Research assistant
+agent = create_agent(
+    enabled_tools=["read_file", "web_search", "web_fetch"]
+)
+
+# Custom tools are always added on top of enabled_tools
+def my_calculator(x: int, y: int) -> str:
+    """Add two numbers."""
+    return str(x + y)
+
+agent = create_agent(
+    enabled_tools=["read_file"],  # Only this built-in tool
+    custom_tools=[my_calculator]   # Plus custom tool
+)
+```
+
+**Available Built-in Tools:**
+- `read_file` - Read file contents (text, images, PDFs, etc.)
+- `read_lines` - Read specific lines from a file
+- `write_file` - Write complete file contents
+- `edit_file` - Edit files using find/replace
+- `code_structure` - Analyze code structure (AST parsing)
+- `get_repo_map` - Generate repository overview
+- `run_shell` - Execute shell commands
+- `grep` - Pattern search in files (disabled by default; shell commands preferred for most cases)
+- `find` - Find files by pattern or list directory contents (disabled by default; faster than get_repo_map for simple file listing)
+- `web_search` - Search the web
+- `web_fetch` - Fetch content from URLs
+- `list_skills` - List available skills
+- `use_skill` - Invoke a skill
+- `todo_add`, `todo_list`, `todo_complete`, `todo_update`, `todo_remove`, `todo_clear` - Task management
+- `ask_user` - Ask user for input/clarification
+
+**Note:** The `grep` and `find` tools are disabled by default but can be explicitly enabled via `enabled_tools`. They provide lightweight search and navigation without requiring `run_shell` access or expensive code parsing (`get_repo_map`), making them ideal for read-only agents exploring codebases.
+
+**Precedence:**
+1. `enabled_tools` parameter (Python API - highest priority)
+2. `PATCHPAL_ENABLED_TOOLS` environment variable (CLI)
+3. `PATCHPAL_ENABLE_WEB` / `PATCHPAL_MINIMAL_TOOLS` (broader filters)
+
+**Use Cases:**
+- **Security**: Limit agent capabilities in production environments
+- **Specialization**: Create focused agents for specific tasks (read-only, editor-only, etc.)
+- **Testing**: Control agent behavior in test environments
+- **User Control**: Let end-users configure agent permissions
+
+**Note:** The `enabled_tools` parameter/variable overrides `PATCHPAL_ENABLE_WEB` and `PATCHPAL_MINIMAL_TOOLS`. If you specify `enabled_tools`, you get exactly those tools (plus any custom tools).
 
 ### Web Tools
 
@@ -231,7 +351,7 @@ patchpal
 export PATCHPAL_AUTOPILOT_CONFIRMED=true     # Skip autopilot safety confirmation (default: false)
                                               # ⚠️  Only use in CI/CD or automation contexts
                                               # Autopilot mode allows continuous iterative execution
-patchpal autopilot "Implement feature X"
+patchpal-autopilot --prompt "Implement feature X"
 ```
 
 **Image Analysis with Vision Models:**

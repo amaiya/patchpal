@@ -25,8 +25,8 @@ PatchPal works with any model supported by LiteLLM, including:
 - **Anthropic** (Recommended): `anthropic/claude-sonnet-4-5`, `anthropic/claude-opus-4-5`, `anthropic/claude-3-7-sonnet-latest`
 - **OpenAI**: `openai/gpt-5.2`, `openai/gpt-5.2-codex`, `openai/gpt-5-mini`
 - **AWS Bedrock**: `bedrock/anthropic.claude-sonnet-4-5-v1:0`
-- **vLLM (Local)** (Recommended for local): See vLLM section below for setup
-- **Ollama (Local)**:  See Ollama section below for setup
+- **vLLM (Local)** (Recommended for local): See [vLLM section](https://amaiya.github.io/patchpal/models/local-models/#vllm-recommended-for-local-models) for setup
+- **Ollama (Local)**:  See [Ollama section](https://amaiya.github.io/patchpal/models/local-models/#ollama) for setup
 - **Google**: `gemini/gemini-pro`, `vertex_ai/gemini-pro`
 - **Others**: Cohere, Azure OpenAI, and many more
 

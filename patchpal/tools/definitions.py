@@ -9,7 +9,9 @@ from patchpal.tools import (
     ask_user,
     code_structure,
     edit_file,
+    find,
     get_repo_map,
+    grep,
     list_skills,
     read_file,
     read_lines,
@@ -137,6 +139,10 @@ Tip: Read README first for context when exploring repositories.""",
                         "items": {"type": "string"},
                         "description": "Files to prioritize in the output (e.g., files mentioned in conversation). These appear first in the map.",
                     },
+                    "max_depth": {
+                        "type": "integer",
+                        "description": "Maximum directory depth to traverse (default: None for unlimited). Example: max_depth=3 traverses up to 3 levels deep from repository root. Useful for large codebases to limit scope.",
+                    },
                 },
                 "required": [],
             },
@@ -192,7 +198,7 @@ Tip: Read README first for context when exploring repositories.""",
         "type": "function",
         "function": {
             "name": "web_search",
-            "description": "Search the web for information. Requires permission to prevent information leakage about your codebase.",
+            "description": "Search the web for information.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -210,7 +216,7 @@ Tip: Read README first for context when exploring repositories.""",
         "type": "function",
         "function": {
             "name": "web_fetch",
-            "description": "Fetch and read content from a URL. Supports text extraction from HTML, PDF, DOCX (Word), PPTX (PowerPoint), and plain text files. Requires permission to prevent information leakage about your codebase.",
+            "description": "Fetch and read content from a URL. Supports text extraction from HTML, PDF, DOCX (Word), PPTX (PowerPoint), and plain text files.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -396,13 +402,71 @@ Tip: Read README first for context when exploring repositories.""",
         "type": "function",
         "function": {
             "name": "run_shell",
-            "description": "Run a safe shell command in the repository. Commands execute from repository root automatically (no need for 'cd'). Privilege escalation (sudo, su) and destructive patterns (rm -rf /, piping to dd, writing to /dev/) blocked by default unless PATCHPAL_ALLOW_SUDO=true.",
+            "description": "Run a shell command in the repository. Commands execute from repository root automatically (no need for 'cd'). Privilege escalation (sudo, su) and destructive patterns (rm -rf /, piping to dd, writing to /dev/) blocked by default unless PATCHPAL_ALLOW_SUDO=true.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "cmd": {"type": "string", "description": "The shell command to execute"}
                 },
                 "required": ["cmd"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "grep",
+            "description": "Search for a pattern in files using grep or ripgrep. Useful for read-only agents that need search capabilities without run_shell access. Supports case-insensitive search, file globs, and path filtering.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "pattern": {
+                        "type": "string",
+                        "description": "Regular expression pattern to search for",
+                    },
+                    "file_glob": {
+                        "type": "string",
+                        "description": "Optional glob pattern to filter files (e.g., '*.py', 'src/**/*.js')",
+                    },
+                    "case_sensitive": {
+                        "type": "boolean",
+                        "description": "Whether the search should be case-sensitive (default: True)",
+                    },
+                    "max_results": {
+                        "type": "integer",
+                        "description": "Maximum number of results to return (default: 100)",
+                    },
+                    "path": {
+                        "type": "string",
+                        "description": "Optional file or directory path to search in (relative to repo root or absolute). Defaults to repository root.",
+                    },
+                },
+                "required": ["pattern"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "find",
+            "description": "Find files by glob pattern or list all files in a directory. Without pattern, lists all files (like ls). With pattern, searches by glob (e.g., '*.py', '**/*.json'). Returns file paths sorted by modification time (most recent first). Respects .gitignore automatically.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "pattern": {
+                        "type": "string",
+                        "description": "Glob pattern to match files (default: '**/*' lists all files). Examples: '*.py', '**/*.test.js', 'src/**/*.ts'",
+                    },
+                    "path": {
+                        "type": "string",
+                        "description": "Directory to search in (default: repository root). Can be relative to repo root or absolute.",
+                    },
+                    "max_depth": {
+                        "type": "integer",
+                        "description": "Maximum directory depth to traverse (default: None for unlimited). Example: max_depth=2 searches up to 2 levels deep from the search directory. Useful for limiting scope in large codebases.",
+                    },
+                },
+                "required": [],
             },
         },
     },
@@ -428,6 +492,8 @@ TOOL_FUNCTIONS = {
     "todo_clear": todo_clear,
     "ask_user": ask_user,
     "run_shell": run_shell,
+    "grep": grep,  # Optional tool
+    "find": find,  # Optional tool
 }
 
 
@@ -440,6 +506,10 @@ def get_tools(web_tools_enabled: bool = True):
     Returns:
         Tuple of (tools_list, tool_functions_dict)
     """
+    # Tools that are available but disabled by default
+    # They can be enabled via enabled_tools parameter/env var
+    disabled_by_default = ["grep", "find"]
+
     # Check if minimal tools mode is enabled (for local models with tool confusion)
     minimal_mode = config.MINIMAL_TOOLS
 
@@ -461,6 +531,10 @@ def get_tools(web_tools_enabled: bool = True):
     # Start with built-in tools
     tools = TOOLS.copy()
     functions = TOOL_FUNCTIONS.copy()
+
+    # Filter out disabled-by-default tools (can be enabled via enabled_tools)
+    tools = [tool for tool in tools if tool["function"]["name"] not in disabled_by_default]
+    # Note: Keep functions dict complete so enabled_tools can access them
 
     # Filter out web tools if disabled
     if not web_tools_enabled:

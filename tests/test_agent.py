@@ -61,54 +61,57 @@ def test_create_agent_ollama_model():
 
 def test_agent_has_correct_tools():
     """Test that the agent has the correct tools defined."""
-    from patchpal.agent import TOOL_FUNCTIONS, TOOLS
+    from patchpal.agent.function_calling import TOOL_FUNCTIONS, TOOLS
+    from patchpal.tools.definitions import TOOLS as ALL_TOOLS
 
-    # Verify we have 18 built-in tools (removed grep and get_file_info as they have shell equivalents)
-    assert len(TOOLS) == 18
-    assert len(TOOL_FUNCTIONS) == 18
+    # Verify we have 20 built-in tools total (in definitions)
+    assert len(ALL_TOOLS) == 20
+    assert len(TOOL_FUNCTIONS) == 20
 
-    # Verify tool names
-    tool_names = [tool["function"]["name"] for tool in TOOLS]
+    # The TOOLS imported from agent is filtered (optional tools removed by get_tools())
+    assert len(TOOLS) == 18  # grep and find are filtered out by default
+
+    # Verify tool names in the full tool list
+    all_tool_names = [tool["function"]["name"] for tool in ALL_TOOLS]
     # File operations
-    assert "read_file" in tool_names
-    assert "read_lines" in tool_names
+    assert "read_file" in all_tool_names
+    assert "read_lines" in all_tool_names
     # Code analysis
-    assert "code_structure" in tool_names
-    assert "get_repo_map" in tool_names
+    assert "code_structure" in all_tool_names
+    assert "get_repo_map" in all_tool_names
     # File editing
-    assert "edit_file" in tool_names
-    assert "write_file" in tool_names
+    assert "edit_file" in all_tool_names
+    assert "write_file" in all_tool_names
     # Skills
-    assert "list_skills" in tool_names
-    assert "use_skill" in tool_names
+    assert "list_skills" in all_tool_names
+    assert "use_skill" in all_tool_names
     # Web tools
-    assert "web_search" in tool_names
-    assert "web_fetch" in tool_names
+    assert "web_search" in all_tool_names
+    assert "web_fetch" in all_tool_names
     # Shell
-    assert "run_shell" in tool_names
+    assert "run_shell" in all_tool_names
+    # Optional tools (disabled by default but available)
+    assert "grep" in all_tool_names
+    assert "find" in all_tool_names
     # TODO tools (6)
-    assert "todo_add" in tool_names
-    assert "todo_list" in tool_names
-    assert "todo_complete" in tool_names
-    assert "todo_update" in tool_names
-    assert "todo_remove" in tool_names
-    assert "todo_clear" in tool_names
+    assert "todo_add" in all_tool_names
+    assert "todo_list" in all_tool_names
+    assert "todo_complete" in all_tool_names
+    assert "todo_update" in all_tool_names
+    assert "todo_remove" in all_tool_names
+    assert "todo_clear" in all_tool_names
     # User interaction
-    assert "ask_user" in tool_names
-    # New TODO tools
-    assert "todo_add" in tool_names
-    assert "todo_list" in tool_names
-    assert "todo_complete" in tool_names
-    assert "todo_update" in tool_names
-    assert "todo_remove" in tool_names
-    assert "todo_clear" in tool_names
-    # New ask_user tool
-    assert "ask_user" in tool_names
+    assert "ask_user" in all_tool_names
+
+    # Verify optional tools are NOT in the default filtered list
+    default_tool_names = [tool["function"]["name"] for tool in TOOLS]
+    assert "grep" not in default_tool_names
+    assert "find" not in default_tool_names
 
 
 def test_agent_system_prompt():
     """Test that the agent has proper system prompt."""
-    from patchpal.agent import SYSTEM_PROMPT, _get_current_datetime_message
+    from patchpal.agent.function_calling import SYSTEM_PROMPT, _get_current_datetime_message
 
     # Verify system prompt has key principles
     assert "expert software engineer" in SYSTEM_PROMPT.lower()
@@ -192,8 +195,12 @@ def test_agent_run_simple_response(monkeypatch):
     mock_response.choices[0].message = MagicMock()
     mock_response.choices[0].message.content = "Hello! I can help you."
     mock_response.choices[0].message.tool_calls = None
+    # Add usage data for reactive context management
+    mock_response.usage = MagicMock()
+    mock_response.usage.prompt_tokens = 100
+    mock_response.usage.completion_tokens = 20
 
-    with patch("patchpal.agent.litellm.completion", return_value=mock_response):
+    with patch("patchpal.agent.function_calling.litellm.completion", return_value=mock_response):
         agent = create_agent()
         result = agent.run("Hello")
 
@@ -216,6 +223,10 @@ def test_agent_run_with_tool_call(monkeypatch):
     mock_response1.choices[0].message = MagicMock()
     mock_response1.choices[0].message.content = ""
     mock_response1.choices[0].message.tool_calls = [tool_call]
+    # Add usage data
+    mock_response1.usage = MagicMock()
+    mock_response1.usage.prompt_tokens = 150
+    mock_response1.usage.completion_tokens = 30
 
     # Second response: agent responds after tool execution
     mock_response2 = MagicMock()
@@ -223,8 +234,15 @@ def test_agent_run_with_tool_call(monkeypatch):
     mock_response2.choices[0].message = MagicMock()
     mock_response2.choices[0].message.content = "The file contains Python code"
     mock_response2.choices[0].message.tool_calls = None
+    # Add usage data
+    mock_response2.usage = MagicMock()
+    mock_response2.usage.prompt_tokens = 200
+    mock_response2.usage.completion_tokens = 25
 
-    with patch("patchpal.agent.litellm.completion", side_effect=[mock_response1, mock_response2]):
+    with patch(
+        "patchpal.agent.function_calling.litellm.completion",
+        side_effect=[mock_response1, mock_response2],
+    ):
         with patch("patchpal.tools.read_file", return_value="def hello(): pass"):
             agent = create_agent()
             # Disable permissions for test
@@ -243,11 +261,13 @@ def test_web_tools_enabled_by_default():
     import sys
 
     # Remove patchpal.agent from cache if present
-    if "patchpal.agent" in sys.modules:
-        del sys.modules["patchpal.agent"]
+    # Clear agent modules from cache for fresh import
+    for mod in list(sys.modules.keys()):
+        if mod.startswith("patchpal.agent"):
+            del sys.modules[mod]
 
     # Import fresh module
-    from patchpal.agent import TOOL_FUNCTIONS, TOOLS
+    from patchpal.agent.function_calling import TOOL_FUNCTIONS, TOOLS
 
     # Verify web tools are present
     tool_names = [tool["function"]["name"] for tool in TOOLS]
@@ -265,11 +285,13 @@ def test_web_tools_can_be_disabled(monkeypatch):
     monkeypatch.setenv("PATCHPAL_ENABLE_WEB", "false")
 
     # Remove patchpal.agent from cache to force reload
-    if "patchpal.agent" in sys.modules:
-        del sys.modules["patchpal.agent"]
+    # Clear agent modules from cache for fresh import
+    for mod in list(sys.modules.keys()):
+        if mod.startswith("patchpal.agent"):
+            del sys.modules[mod]
 
     # Import module with web tools disabled
-    from patchpal.agent import SYSTEM_PROMPT, TOOL_FUNCTIONS, TOOLS
+    from patchpal.agent.function_calling import SYSTEM_PROMPT, TOOL_FUNCTIONS, TOOLS
 
     # Verify web tools are not present
     tool_names = [tool["function"]["name"] for tool in TOOLS]
@@ -294,12 +316,13 @@ def test_web_tools_disabled_with_various_values(monkeypatch):
         # Set environment variable
         monkeypatch.setenv("PATCHPAL_ENABLE_WEB", false_value)
 
-        # Remove patchpal.agent from cache
-        if "patchpal.agent" in sys.modules:
-            del sys.modules["patchpal.agent"]
+        # Clear agent modules from cache for fresh import
+        for mod in list(sys.modules.keys()):
+            if mod.startswith("patchpal.agent") or mod.startswith("patchpal.tools"):
+                del sys.modules[mod]
 
         # Import module
-        from patchpal.agent import TOOLS
+        from patchpal.agent.function_calling import TOOLS
 
         # Verify web tools are not present
         tool_names = [tool["function"]["name"] for tool in TOOLS]
@@ -311,7 +334,9 @@ def test_web_tools_disabled_with_various_values(monkeypatch):
         )
 
         # Clean up
-        del sys.modules["patchpal.agent"]
+        for mod in list(sys.modules.keys()):
+            if mod.startswith("patchpal.agent") or mod.startswith("patchpal.tools"):
+                del sys.modules[mod]
 
 
 def test_agent_returns_immediately_on_cancellation(monkeypatch):
@@ -346,13 +371,15 @@ def test_agent_returns_immediately_on_cancellation(monkeypatch):
         return "Operation cancelled by user."  # Exact message from permissions.py
 
     # Patch the TOOL_FUNCTIONS dict directly since it's populated at import time
-    from patchpal.agent import TOOL_FUNCTIONS
+    from patchpal.agent.function_calling import TOOL_FUNCTIONS
 
     original_run_shell = TOOL_FUNCTIONS["run_shell"]
     TOOL_FUNCTIONS["run_shell"] = mock_run_shell
 
     try:
-        with patch("patchpal.agent.litellm.completion", side_effect=mock_completion):
+        with patch(
+            "patchpal.agent.function_calling.litellm.completion", side_effect=mock_completion
+        ):
             agent = create_agent()
 
             result = agent.run("Run echo test")
@@ -370,7 +397,7 @@ def test_agent_returns_immediately_on_cancellation(monkeypatch):
 
 def test_agent_doesnt_trigger_on_file_containing_cancellation_text(monkeypatch):
     """Test that reading a file containing 'Operation cancelled by user' doesn't trigger early exit."""
-    from patchpal.agent import TOOL_FUNCTIONS, create_agent
+    from patchpal.agent.function_calling import TOOL_FUNCTIONS, create_agent
 
     # Disable permissions for this test
     monkeypatch.setenv("PATCHPAL_REQUIRE_PERMISSION", "false")
@@ -392,6 +419,9 @@ def test_agent_doesnt_trigger_on_file_containing_cancellation_text(monkeypatch):
             mock_response.choices[0].message = MagicMock()
             mock_response.choices[0].message.content = ""
             mock_response.choices[0].message.tool_calls = [tool_call]
+            mock_response.usage = MagicMock()
+            mock_response.usage.prompt_tokens = 150
+            mock_response.usage.completion_tokens = 30
 
             return mock_response
         else:
@@ -403,6 +433,9 @@ def test_agent_doesnt_trigger_on_file_containing_cancellation_text(monkeypatch):
                 0
             ].message.content = "The file contains documentation about cancellation."
             mock_response.choices[0].message.tool_calls = None
+            mock_response.usage = MagicMock()
+            mock_response.usage.prompt_tokens = 200
+            mock_response.usage.completion_tokens = 25
 
             return mock_response
 
@@ -415,7 +448,9 @@ def test_agent_doesnt_trigger_on_file_containing_cancellation_text(monkeypatch):
     TOOL_FUNCTIONS["read_file"] = mock_read_file
 
     try:
-        with patch("patchpal.agent.litellm.completion", side_effect=mock_completion):
+        with patch(
+            "patchpal.agent.function_calling.litellm.completion", side_effect=mock_completion
+        ):
             agent = create_agent()
 
             result = agent.run("Read the test file")
@@ -434,7 +469,7 @@ def test_agent_doesnt_trigger_on_file_containing_cancellation_text(monkeypatch):
 
 def test_prompt_caching_detection():
     """Test that prompt caching is correctly detected for supported models."""
-    from patchpal.agent import _supports_prompt_caching
+    from patchpal.agent.function_calling import _supports_prompt_caching
 
     # Anthropic models should support caching
     assert _supports_prompt_caching("anthropic/claude-sonnet-4-5")
@@ -455,7 +490,7 @@ def test_prompt_caching_detection():
 
 def test_prompt_caching_application_anthropic():
     """Test that prompt caching markers are correctly applied for Anthropic models."""
-    from patchpal.agent import _apply_prompt_caching
+    from patchpal.agent.function_calling import _apply_prompt_caching
 
     messages = [
         {"role": "system", "content": "You are a helpful assistant."},
@@ -482,7 +517,7 @@ def test_prompt_caching_application_anthropic():
 
 def test_prompt_caching_application_bedrock_anthropic():
     """Test that prompt caching markers use cache_control for Bedrock Anthropic models."""
-    from patchpal.agent import _apply_prompt_caching
+    from patchpal.agent.function_calling import _apply_prompt_caching
 
     messages = [
         {"role": "system", "content": "You are a helpful assistant."},
@@ -511,7 +546,7 @@ def test_prompt_caching_application_bedrock_anthropic():
 
 def test_prompt_caching_application_bedrock_nova():
     """Test that prompt caching markers use cachePoint for Bedrock Nova models."""
-    from patchpal.agent import _apply_prompt_caching
+    from patchpal.agent.function_calling import _apply_prompt_caching
 
     messages = [
         {"role": "system", "content": "You are a helpful assistant."},
@@ -538,7 +573,7 @@ def test_prompt_caching_application_bedrock_nova():
 
 def test_prompt_caching_no_modification_for_unsupported():
     """Test that prompt caching doesn't modify messages for unsupported models."""
-    from patchpal.agent import _apply_prompt_caching
+    from patchpal.agent.function_calling import _apply_prompt_caching
 
     messages = [
         {"role": "system", "content": "You are a helpful assistant."},
@@ -556,7 +591,7 @@ def test_prompt_caching_no_modification_for_unsupported():
 
 def test_prompt_caching_idempotent():
     """Test that applying caching multiple times doesn't add duplicate markers."""
-    from patchpal.agent import _apply_prompt_caching
+    from patchpal.agent.function_calling import _apply_prompt_caching
 
     messages = [
         {"role": "system", "content": "You are a helpful assistant."},
@@ -596,7 +631,7 @@ def test_agent_handles_keyboard_interrupt_during_tool_execution(monkeypatch):
     mock_response.choices[0].message.tool_calls = [tool_call]
 
     # Mock read_file to raise KeyboardInterrupt (simulating user pressing CTRL-C)
-    from patchpal.agent import TOOL_FUNCTIONS
+    from patchpal.agent.function_calling import TOOL_FUNCTIONS
 
     original_read_file = TOOL_FUNCTIONS["read_file"]
 
@@ -606,7 +641,9 @@ def test_agent_handles_keyboard_interrupt_during_tool_execution(monkeypatch):
     TOOL_FUNCTIONS["read_file"] = mock_read_file_interrupt
 
     try:
-        with patch("patchpal.agent.litellm.completion", return_value=mock_response):
+        with patch(
+            "patchpal.agent.function_calling.litellm.completion", return_value=mock_response
+        ):
             agent = create_agent()
 
             # Run should raise KeyboardInterrupt
@@ -663,7 +700,7 @@ def test_agent_handles_keyboard_interrupt_with_multiple_tool_calls(monkeypatch):
     mock_response.choices[0].message.tool_calls = [tool_call_1, tool_call_2]
 
     # Mock read_file to raise KeyboardInterrupt on first call
-    from patchpal.agent import TOOL_FUNCTIONS
+    from patchpal.agent.function_calling import TOOL_FUNCTIONS
 
     original_read_file = TOOL_FUNCTIONS["read_file"]
 
@@ -678,7 +715,9 @@ def test_agent_handles_keyboard_interrupt_with_multiple_tool_calls(monkeypatch):
     TOOL_FUNCTIONS["read_file"] = mock_read_file_interrupt
 
     try:
-        with patch("patchpal.agent.litellm.completion", return_value=mock_response):
+        with patch(
+            "patchpal.agent.function_calling.litellm.completion", return_value=mock_response
+        ):
             agent = create_agent()
 
             # Run should raise KeyboardInterrupt
@@ -730,6 +769,9 @@ def test_agent_keyboard_interrupt_after_successful_retry(monkeypatch):
     mock_response_1.choices[0].message = MagicMock()
     mock_response_1.choices[0].message.content = ""
     mock_response_1.choices[0].message.tool_calls = [tool_call]
+    mock_response_1.usage = MagicMock()
+    mock_response_1.usage.prompt_tokens = 150
+    mock_response_1.usage.completion_tokens = 30
 
     # Second call: return success response (after interrupt and retry)
     mock_response_2 = MagicMock()
@@ -737,9 +779,12 @@ def test_agent_keyboard_interrupt_after_successful_retry(monkeypatch):
     mock_response_2.choices[0].message = MagicMock()
     mock_response_2.choices[0].message.content = "I found the Python code."
     mock_response_2.choices[0].message.tool_calls = None
+    mock_response_2.usage = MagicMock()
+    mock_response_2.usage.prompt_tokens = 200
+    mock_response_2.usage.completion_tokens = 25
 
     # Mock read_file to raise interrupt first, then succeed
-    from patchpal.agent import TOOL_FUNCTIONS
+    from patchpal.agent.function_calling import TOOL_FUNCTIONS
 
     original_read_file = TOOL_FUNCTIONS["read_file"]
 
@@ -755,7 +800,8 @@ def test_agent_keyboard_interrupt_after_successful_retry(monkeypatch):
 
     try:
         with patch(
-            "patchpal.agent.litellm.completion", side_effect=[mock_response_1, mock_response_2]
+            "patchpal.agent.function_calling.litellm.completion",
+            side_effect=[mock_response_1, mock_response_2],
         ):
             agent = create_agent()
 
@@ -805,7 +851,7 @@ def test_cache_token_tracking():
     mock_response.choices[0].message.tool_calls = None
 
     # Mock the completion call
-    with patch("patchpal.agent.litellm.completion", return_value=mock_response):
+    with patch("patchpal.agent.function_calling.litellm.completion", return_value=mock_response):
         agent.run("test")
 
         # Verify cache tokens were tracked
@@ -833,7 +879,7 @@ def test_cache_token_tracking_without_cache():
     mock_response.choices[0].message.tool_calls = None
 
     # Mock the completion call
-    with patch("patchpal.agent.litellm.completion", return_value=mock_response):
+    with patch("patchpal.agent.function_calling.litellm.completion", return_value=mock_response):
         agent.run("test")
 
         # Verify regular tokens were tracked but cache tokens remain at 0
@@ -845,7 +891,7 @@ def test_cache_token_tracking_without_cache():
 
 def test_govcloud_detection_from_arn(monkeypatch):
     """Test that GovCloud is detected from model ARN."""
-    from patchpal.agent import _is_govcloud_bedrock
+    from patchpal.agent.function_calling import _is_govcloud_bedrock
 
     # Clear environment variables
     monkeypatch.delenv("AWS_BEDROCK_REGION", raising=False)
@@ -862,7 +908,7 @@ def test_govcloud_detection_from_arn(monkeypatch):
 
 def test_govcloud_detection_from_env_bedrock_region(monkeypatch):
     """Test that GovCloud is detected from AWS_BEDROCK_REGION environment variable."""
-    from patchpal.agent import _is_govcloud_bedrock
+    from patchpal.agent.function_calling import _is_govcloud_bedrock
 
     # Clear AWS_REGION_NAME
     monkeypatch.delenv("AWS_REGION_NAME", raising=False)
@@ -878,7 +924,7 @@ def test_govcloud_detection_from_env_bedrock_region(monkeypatch):
 
 def test_govcloud_detection_from_env_region_name(monkeypatch):
     """Test that GovCloud is detected from AWS_REGION_NAME environment variable."""
-    from patchpal.agent import _is_govcloud_bedrock
+    from patchpal.agent.function_calling import _is_govcloud_bedrock
 
     # Clear AWS_BEDROCK_REGION
     monkeypatch.delenv("AWS_BEDROCK_REGION", raising=False)
@@ -1017,11 +1063,13 @@ def test_llm_timeout_default_value(monkeypatch):
     monkeypatch.delenv("PATCHPAL_LLM_TIMEOUT", raising=False)
 
     # Remove module from cache to get fresh import
-    if "patchpal.agent" in sys.modules:
-        del sys.modules["patchpal.agent"]
+    # Clear agent modules from cache for fresh import
+    for mod in list(sys.modules.keys()):
+        if mod.startswith("patchpal.agent"):
+            del sys.modules[mod]
 
     # Import without environment variable set
-    from patchpal.agent import LLM_TIMEOUT
+    from patchpal.agent.function_calling import LLM_TIMEOUT
 
     # Verify default is 300 seconds (5 minutes)
     assert LLM_TIMEOUT == 300
@@ -1035,11 +1083,13 @@ def test_llm_timeout_environment_override(monkeypatch):
     monkeypatch.setenv("PATCHPAL_LLM_TIMEOUT", "60")
 
     # Remove module from cache to force reload
-    if "patchpal.agent" in sys.modules:
-        del sys.modules["patchpal.agent"]
+    # Clear agent modules from cache for fresh import
+    for mod in list(sys.modules.keys()):
+        if mod.startswith("patchpal.agent"):
+            del sys.modules[mod]
 
     # Import with environment variable set
-    from patchpal.agent import LLM_TIMEOUT
+    from patchpal.agent.function_calling import LLM_TIMEOUT
 
     # Verify timeout was overridden
     assert LLM_TIMEOUT == 60
@@ -1056,8 +1106,10 @@ def test_llm_timeout_passed_to_completion(monkeypatch):
     monkeypatch.delenv("PATCHPAL_LLM_TIMEOUT", raising=False)
 
     # Remove module from cache to get fresh import with default timeout
-    if "patchpal.agent" in sys.modules:
-        del sys.modules["patchpal.agent"]
+    # Clear agent modules from cache for fresh import
+    for mod in list(sys.modules.keys()):
+        if mod.startswith("patchpal.agent"):
+            del sys.modules[mod]
 
     from patchpal.agent import create_agent
 
@@ -1076,10 +1128,13 @@ def test_llm_timeout_passed_to_completion(monkeypatch):
         mock_response.choices[0].message = MagicMock()
         mock_response.choices[0].message.content = "Test response"
         mock_response.choices[0].message.tool_calls = None
+        mock_response.usage = MagicMock()
+        mock_response.usage.prompt_tokens = 100
+        mock_response.usage.completion_tokens = 20
 
         return mock_response
 
-    with patch("patchpal.agent.litellm.completion", side_effect=mock_completion):
+    with patch("patchpal.agent.function_calling.litellm.completion", side_effect=mock_completion):
         agent = create_agent()
         agent.run("test")
 

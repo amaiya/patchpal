@@ -2,7 +2,7 @@
 
 import os
 
-from patchpal.agent import _load_system_prompt
+from patchpal.agent.function_calling import _load_system_prompt
 
 
 def test_system_prompt_exists():

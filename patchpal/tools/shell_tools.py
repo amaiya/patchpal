@@ -11,7 +11,6 @@ from patchpal.tools.common import (
     OutputFilter,
     _get_permission_manager,
     _operation_limiter,
-    audit_logger,
 )
 
 
@@ -286,19 +285,41 @@ def run_shell(cmd: str) -> str:
     # Check for dangerous tokens (privilege escalation commands)
     # Token-based matching: splits command and checks each token
     if any(tok in DANGEROUS_TOKENS for tok in cmd.split()):
-        raise ValueError(
+        error_msg = (
             f"Blocked dangerous command: {cmd}\nForbidden operations: {', '.join(DANGEROUS_TOKENS)}"
         )
+        # Log blocked command
+        try:
+            from patchpal.tools.audit import log_action_blocked
+
+            log_action_blocked(
+                tool_name="run_shell",
+                description=f"Shell command: {cmd[:100]}",
+                reason="dangerous_command",
+                pattern=next((tok for tok in cmd.split() if tok in DANGEROUS_TOKENS), None),
+            )
+        except Exception:
+            pass  # Don't fail if audit logging fails
+        raise ValueError(error_msg)
 
     # Check for dangerous patterns (destructive operations)
     # Substring matching: checks if pattern appears anywhere in command
     for pattern in DANGEROUS_PATTERNS:
         if pattern in cmd:
-            raise ValueError(
-                f"Blocked dangerous pattern in command: {pattern}\nFull command: {cmd}"
-            )
+            error_msg = f"Blocked dangerous pattern in command: {pattern}\nFull command: {cmd}"
+            # Log blocked command
+            try:
+                from patchpal.tools.audit import log_action_blocked
 
-    audit_logger.info(f"SHELL: {cmd}")
+                log_action_blocked(
+                    tool_name="run_shell",
+                    description=f"Shell command: {cmd[:100]}",
+                    reason="dangerous_pattern",
+                    pattern=pattern,
+                )
+            except Exception:
+                pass  # Don't fail if audit logging fails
+            raise ValueError(error_msg)
 
     result = subprocess.run(
         cmd,
@@ -318,14 +339,26 @@ def run_shell(cmd: str) -> str:
     # Apply output filtering to reduce token usage
     if OutputFilter.should_filter(cmd):
         filtered_output = OutputFilter.filter_output(cmd, output)
-        # Log if we filtered significantly
+        # Log if we filtered significantly (>50% reduction)
         original_lines = len(output.split("\n"))
         filtered_lines = len(filtered_output.split("\n"))
         if filtered_lines < original_lines * 0.5:
-            audit_logger.info(
-                f"SHELL_FILTER: Reduced output from {original_lines} to {filtered_lines} lines "
-                f"(~{int((1 - filtered_lines / original_lines) * 100)}% reduction)"
-            )
+            try:
+                from patchpal.tools.audit import log_action_result
+
+                reduction_pct = int((1 - filtered_lines / original_lines) * 100)
+                log_action_result(
+                    tool_name="output_filter",
+                    description=f"Filtered shell output: {original_lines} → {filtered_lines} lines ({reduction_pct}% reduction)",
+                    success=True,
+                    context={
+                        "command": cmd[:100],
+                        "original_lines": original_lines,
+                        "filtered_lines": filtered_lines,
+                    },
+                )
+            except Exception:
+                pass  # Don't fail if audit logging fails
         return filtered_output
 
     return output

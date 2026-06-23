@@ -193,6 +193,58 @@ class Config:
         """SSL verification for web requests (optional, default: verify)."""
         return os.getenv("PATCHPAL_VERIFY_SSL")
 
+    @property
+    def ALLOW_DYNAMIC_URLS(self) -> bool:
+        """Allow LLM to construct URLs dynamically (default: false).
+
+        When disabled (default), web_fetch can only access URLs that appear in:
+        - User messages
+        - Previous tool results (web_search, web_fetch, read_file)
+
+        This prevents data exfiltration via dynamically constructed URLs like:
+        https://attacker.com/?data=SECRET_KEY
+
+        Only enable this if you fully trust the LLM and inputs.
+        """
+        return _get_env_bool("PATCHPAL_ALLOW_DYNAMIC_URLS", "false")
+
+    @property
+    def WEB_ALLOWED_DOMAINS(self) -> Optional[str]:
+        """Comma-separated list of allowed domains for web_fetch (optional).
+
+        Example: "docs.python.org,github.com,stackoverflow.com"
+
+        When set, web_fetch can ONLY access these domains (and their subdomains).
+        Cannot be used together with WEB_BLOCKED_DOMAINS.
+        """
+        return os.getenv("PATCHPAL_WEB_ALLOWED_DOMAINS")
+
+    @property
+    def WEB_BLOCKED_DOMAINS(self) -> Optional[str]:
+        """Comma-separated list of blocked domains for web_fetch (optional).
+
+        Example: "internal.company.com,localhost,192.168.0.0"
+
+        When set, web_fetch will refuse to access these domains.
+        Cannot be used together with WEB_ALLOWED_DOMAINS.
+        """
+        return os.getenv("PATCHPAL_WEB_BLOCKED_DOMAINS")
+
+    @property
+    def ALLOW_UNICODE_DOMAINS(self) -> bool:
+        """Allow Unicode/IDN domains in web_fetch (default: false).
+
+        When disabled (default), domains with mixed scripts are blocked to prevent
+        homograph attacks where visually similar characters from different scripts
+        bypass domain filters (e.g., аmazon.com with Cyrillic 'а' vs amazon.com).
+        """
+        return _get_env_bool("PATCHPAL_ALLOW_UNICODE_DOMAINS", "false")
+
+    @property
+    def WEB_RATE_LIMIT(self) -> int:
+        """Maximum web_fetch requests per domain per minute (default: 10)."""
+        return int(os.getenv("PATCHPAL_WEB_RATE_LIMIT", "10"))
+
     # ============================================================================
     # Permission System Configuration
     # ============================================================================
@@ -246,8 +298,8 @@ class Config:
 
     @property
     def COMPACT_THRESHOLD(self) -> float:
-        """Compact at N% of context capacity (default: 0.75 = 75%)."""
-        return float(os.getenv("PATCHPAL_COMPACT_THRESHOLD", "0.75"))
+        """Compact at N% of context capacity (default: 0.80 = 80%)."""
+        return float(os.getenv("PATCHPAL_COMPACT_THRESHOLD", "0.80"))
 
     @property
     def PROACTIVE_PRUNING(self) -> bool:
@@ -267,6 +319,24 @@ class Config:
     def STREAM_OUTPUT(self) -> bool:
         """Enable streaming output with spinner and token counter (default: true)."""
         return _get_env_bool("PATCHPAL_STREAM_OUTPUT", "true")
+
+    # ============================================================================
+    # Reasoning Models Support
+    # ============================================================================
+
+    @property
+    def CAPTURE_REASONING(self) -> bool:
+        """Capture and pass back reasoning_content for reasoning models like gpt-oss (default: true).
+
+        When enabled, captures reasoning_content/reasoning/reasoning_text fields from LLM responses and passes
+        them back in subsequent requests. This is critical for multi-turn tool calling with
+        reasoning models (gpt-oss, deepseek-reasoner, etc.) to maintain focus across many turns.
+
+        Checks multiple field names in priority order: reasoning_content, reasoning, reasoning_text.
+
+        Set to false to disable if needed for compatibility or testing.
+        """
+        return _get_env_bool("PATCHPAL_CAPTURE_REASONING", "true")
 
     # ============================================================================
     # Special Modes

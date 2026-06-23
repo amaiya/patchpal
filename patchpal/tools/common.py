@@ -48,6 +48,40 @@ except ImportError:
 
 REPO_ROOT = Path(".").resolve()
 
+
+def depth_limited_walk(root_dir: Path, max_depth: int):
+    """Walk directory tree up to max_depth without traversing deeper.
+
+    This is a shared utility for tools that need depth-limited traversal
+    to avoid performance issues in large codebases.
+
+    Args:
+        root_dir: Root directory to start traversal
+        max_depth: Maximum depth to traverse (0 = only root_dir level)
+
+    Yields:
+        Path objects found within depth limit (both files and directories)
+    """
+
+    def _walk(current_dir: Path, current_depth: int):
+        """Recursively walk directories up to max_depth."""
+        if current_depth > max_depth:
+            return
+
+        try:
+            for item in current_dir.iterdir():
+                yield item
+                # Only recurse if we haven't reached max depth and it's a directory
+                if item.is_dir() and not any(part.startswith(".") for part in item.parts):
+                    if current_depth < max_depth:  # Check before recursing
+                        yield from _walk(item, current_depth + 1)
+        except (PermissionError, OSError):
+            # Skip directories we can't read
+            pass
+
+    yield from _walk(root_dir, 0)
+
+
 # Import config for centralized environment variable access
 from patchpal.config import config  # noqa: E402
 
@@ -279,7 +313,24 @@ class OperationLimiter:
                 f"Operation limit exceeded ({self.max_operations} operations)\n"
                 f"This prevents infinite loops. Increase with PATCHPAL_MAX_OPERATIONS env var."
             )
-        audit_logger.info(f"Operation {self.operations}/{self.max_operations}: {operation}")
+
+        # Log tool execution with hash-chaining
+        try:
+            from patchpal.tools.audit import log_tool_execution
+
+            # Parse operation string like "run_shell(date)" or "read_file(/path/to/file)"
+            if "(" in operation and operation.endswith(")"):
+                tool_name = operation.split("(")[0]
+                # Extract parameters (everything between parens)
+                params_str = operation[len(tool_name) + 1 : -1]  # Remove "tool_name(" and ")"
+                # Store as dict for structured logging
+                parameters = {"args": params_str} if params_str else None
+                log_tool_execution(tool_name, parameters=parameters, operation_num=self.operations)
+            else:
+                log_tool_execution(operation, operation_num=self.operations)
+        except Exception:
+            # Fallback to old-style logging if audit fails
+            audit_logger.info(f"Operation {self.operations}/{self.max_operations}: {operation}")
 
     def reset(self):
         """Reset the operation counter (used in tests)."""
@@ -647,7 +698,6 @@ def _backup_file(path: Path) -> Optional[Path]:
         backup_path = BACKUP_DIR / backup_name
 
         shutil.copy2(path, backup_path)
-        audit_logger.info(f"BACKUP: {path} -> {backup_path}")
         return backup_path
     except Exception as e:
         audit_logger.warning(f"BACKUP FAILED: {path} - {e}")
@@ -881,6 +931,16 @@ def _is_inside_repo(path: Path) -> bool:
         return False
 
 
+def _is_inside_patchpal_dir(path: Path) -> bool:
+    """Check if a path is inside the ~/.patchpal directory."""
+    try:
+        patchpal_root = Path.home() / ".patchpal"
+        path.relative_to(patchpal_root)
+        return True
+    except ValueError:
+        return False
+
+
 def _get_permission_pattern_for_path(path: str, resolved_path: Path) -> str:
     """Get permission pattern for a file path (matches Claude Code's behavior).
 
@@ -961,7 +1021,12 @@ def require_permission_for_read(tool_name: str, get_description, get_pattern=Non
                             p = (REPO_ROOT / expanded_path).resolve()
 
                         # Check repository restriction FIRST (before permission prompt)
-                        if config.RESTRICT_TO_REPO and not _is_inside_repo(p):
+                        # Exception: ~/.patchpal directory is always accessible (for MEMORY.md, etc.)
+                        if (
+                            config.RESTRICT_TO_REPO
+                            and not _is_inside_repo(p)
+                            and not _is_inside_patchpal_dir(p)
+                        ):
                             raise ValueError(
                                 f"Access outside repository blocked: {path}\n"
                                 f"File location: {p}\n"
@@ -1043,7 +1108,8 @@ def _check_path(path: str, must_exist: bool = True) -> Path:
         p = (REPO_ROOT / expanded_path).resolve()
 
     # Check if access is restricted to repository
-    if config.RESTRICT_TO_REPO and not _is_inside_repo(p):
+    # Exception: ~/.patchpal directory is always accessible (for MEMORY.md, etc.)
+    if config.RESTRICT_TO_REPO and not _is_inside_repo(p) and not _is_inside_patchpal_dir(p):
         raise ValueError(
             f"Access outside repository blocked: {path}\n"
             f"File location: {p}\n"
@@ -1055,10 +1121,23 @@ def _check_path(path: str, must_exist: bool = True) -> Path:
     # Check if file is sensitive FIRST (regardless of whether it exists)
     # This prevents attempts to read/write sensitive files
     if _is_sensitive_file(p) and not config.ALLOW_SENSITIVE:
-        raise ValueError(
+        error_msg = (
             f"Access to sensitive file blocked: {path}\n"
             f"Set PATCHPAL_ALLOW_SENSITIVE=true to override (not recommended)"
         )
+        # Log blocked access to sensitive file
+        try:
+            from patchpal.tools.audit import log_action_blocked
+
+            log_action_blocked(
+                tool_name="file_access",
+                description=f"File access: {path}",
+                reason="sensitive_file",
+                pattern=str(p),
+            )
+        except Exception:
+            pass  # Don't fail if audit logging fails
+        raise ValueError(error_msg)
 
     # Check if file exists when required
     if must_exist and not p.is_file():
