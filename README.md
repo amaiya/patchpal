@@ -129,7 +129,7 @@ While originally designed for software development, PatchPal is also a general-p
 2. PatchPal includes a [unique guardrails system](https://amaiya.github.io/patchpal/safety/) that is better suited to privacy-conscious use cases involving sensitive data.
 3. We needed an agent harness that seamlessly works with [both local and cloud models](https://amaiya.github.io/patchpal/models/overview/#supported-models), including AWS GovCloud Bedrock models.
 
-> I noticed there's another Fedora package called PatchPal on GitLab. Are they related?
+> I noticed there's another package called PatchPal on GitLab. Are they related?
 
 No, they're separate projects. The [project with the same name on GitLab](https://gitlab.com/patchpal-ai) is unrelated to this one.
 
