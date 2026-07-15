@@ -7,6 +7,18 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
+## 0.23.1 (2026-07-15)
+
+### new:
+- N/A
+
+### changed:
+- Allow `MEMORY.md` to be loaded from repo folder (for management by git)
+
+### fixed:
+- N/A
+
+
 ## 0.23.0 (2026-06-09)
 
 ### new:

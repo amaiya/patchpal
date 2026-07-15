@@ -643,38 +643,33 @@ class PatchPalAgent:
     def _load_project_memory(self):
         """Load MEMORY.md file at session start if it has non-template content."""
         try:
-            from patchpal.tools.common import MEMORY_FILE
+            from patchpal.tools.common import get_memory_info
 
-            # Always tell the agent where MEMORY.md is located
-            if not MEMORY_FILE.exists():
+            info = get_memory_info()
+
+            if not info["exists"]:
                 return
 
-            memory_content = MEMORY_FILE.read_text(encoding="utf-8")
-
-            # Check if user has added content after the "---" separator
-            has_user_content = False
-            if "---" in memory_content:
-                parts = memory_content.split("---", 1)
-                if len(parts) > 1:
-                    user_content = parts[1].strip()
-                    if user_content and len(user_content) > 10:
-                        has_user_content = True
-
             # Build the message - include full content if user added info, otherwise just location
-            if has_user_content:
+            if info["has_content"]:
                 memory_msg = f"""# Project Memory (from MEMORY.md)
 
-{memory_content}
+{info["content"]}
 
-The information above is from {MEMORY_FILE} and persists across sessions.
-To update it, use edit_file("{MEMORY_FILE}", ...) or write_file("{MEMORY_FILE}", ...)."""
+The information above is from MEMORY.md ({info["location_note"]}) and persists across sessions.
+To update it, use edit_file("{info["path"]}", ...) or write_file("{info["path"]}", ...)."""
             else:
                 # Empty template - just inform agent
                 memory_msg = f"""# Project Memory (MEMORY.md)
 
-Your project memory file is located at: {MEMORY_FILE}
+Your project memory file is located at: {info["path"]}
 
-It's currently empty (just the template). The file is automatically loaded at session start."""
+It's currently empty (just the template). The file is automatically loaded at session start.
+
+Note: You can use MEMORY.md in either location:
+- Repository root: MEMORY.md (can be version controlled)
+- Home directory: ~/.patchpal/repos/<repo-name>/MEMORY.md (default)
+Repository root takes priority if both exist."""
 
             # Add as a system message at the start
             self.messages.insert(

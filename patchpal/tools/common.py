@@ -247,9 +247,22 @@ def _get_patchpal_dir() -> Path:
 def _ensure_memory_file() -> Path:
     """Ensure MEMORY.md file exists, creating it from template if needed.
 
+    Priority order:
+    1. Repo root: MEMORY.md (if it exists, use it)
+    2. PatchPal dir: ~/.patchpal/repos/<repo-name>/MEMORY.md (default location)
+
+    This allows users to keep MEMORY.md in the repository (e.g., for version control)
+    while maintaining backward compatibility with the home directory location.
+
     Returns:
-        Path to the MEMORY.md file
+        Path to the MEMORY.md file (either repo root or patchpal dir)
     """
+    # Check repo root first (new alternative location)
+    repo_memory_path = REPO_ROOT / "MEMORY.md"
+    if repo_memory_path.exists():
+        return repo_memory_path
+
+    # Fall back to patchpal directory (default location)
     memory_path = PATCHPAL_DIR / "MEMORY.md"
 
     if not memory_path.exists():
@@ -266,6 +279,56 @@ PATCHPAL_DIR = _get_patchpal_dir()
 BACKUP_DIR = PATCHPAL_DIR / "backups"
 AUDIT_LOG_FILE = PATCHPAL_DIR / "audit.log"
 MEMORY_FILE = _ensure_memory_file()
+
+
+def get_memory_info() -> dict:
+    """Get memory file information for display to agent.
+
+    Returns:
+        dict with keys:
+        - path: Path to memory file
+        - exists: bool
+        - is_in_repo: bool (True if in repository root)
+        - has_content: bool (True if has user content beyond template)
+        - content: str (file content if exists)
+        - location_note: str (human-readable location description)
+    """
+    info = {
+        "path": MEMORY_FILE,
+        "exists": MEMORY_FILE.exists(),
+        "is_in_repo": False,
+        "has_content": False,
+        "content": "",
+        "location_note": "",
+    }
+
+    if not info["exists"]:
+        return info
+
+    # Check if in repo
+    try:
+        MEMORY_FILE.relative_to(REPO_ROOT)
+        info["is_in_repo"] = True
+        info["location_note"] = "in repository root"
+    except ValueError:
+        info["location_note"] = f"at {MEMORY_FILE}"
+
+    # Read content
+    try:
+        info["content"] = MEMORY_FILE.read_text(encoding="utf-8")
+
+        # Check for user content after "---" separator
+        if "---" in info["content"]:
+            parts = info["content"].split("---", 1)
+            if len(parts) > 1:
+                user_content = parts[1].strip()
+                if user_content and len(user_content) > 10:
+                    info["has_content"] = True
+    except Exception:
+        pass
+
+    return info
+
 
 # Permission manager
 _permission_manager = None

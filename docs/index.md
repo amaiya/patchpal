@@ -16,7 +16,7 @@ Most agent frameworks are [built in TypeScript](https://news.ycombinator.com/ite
 - [Built-In](features/tools.md) and [Custom Tools](features/custom-tools.md)
 - [Skills System](features/skills.md) and [MCP Integration](features/mcp.md)
 - [Autopilot Mode](usage/autopilot.md) using [Ralph Wiggum loops](https://github.com/amaiya/patchpal/tree/main/examples/ralph/)
-- [Project Memory](features/memory.md) automatically loads project context from `~/.patchpal/repos/<repo-name>/MEMORY.md` at startup.
+- [Project Memory](features/memory.md) automatically loads project context from `MEMORY.md` (repository root or `~/.patchpal/repos/<repo-name>/MEMORY.md`) at startup.
 
 PatchPal prioritizes customizability: custom tools, custom skills, a flexible Python API, and support for any tool-calling LLM.
 
