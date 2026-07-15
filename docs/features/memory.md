@@ -66,7 +66,7 @@ git add MEMORY.md
 git commit -m "Add project memory"
 ```
 
-**For personal projects**: Either location works fine (home directory is auto-created)
+**For personal projects**: Either location works fine (`~/.patchpal/repos/<repo-name>/MEMORY.md` is auto-created if needed)
 
 **For sensitive information**: Use home directory (don't commit to git)
 
