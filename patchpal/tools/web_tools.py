@@ -245,9 +245,10 @@ class URLContextTracker:
             text: Text that may contain URLs
         """
         # Simple URL extraction (http:// and https://)
+        # Note: Apostrophes (') are allowed in URLs (e.g., Wikipedia article titles)
         import re
 
-        url_pattern = r"https?://[^\s<>\"\'\)]*"
+        url_pattern = r"https?://[^\s<>\"\)]*"
         urls = re.findall(url_pattern, text)
         self.seen_urls.update(urls)
 

@@ -7,6 +7,18 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
+## 0.23.2 (2026-07-31)
+
+### new:
+- N/A
+
+### changed:
+- N/A
+
+### fixed:
+- Fixed bug with web fetch security check.
+
+
 ## 0.23.1 (2026-07-15)
 
 ### new:
