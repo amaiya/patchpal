@@ -665,8 +665,11 @@ def get_tools(web_tools_enabled: bool = True):
         ]
         functions = {k: v for k, v in functions.items() if k not in ("web_search", "web_fetch")}
 
-    # Filter out browser tools if Playwright not available OR web tools disabled
-    if not PLAYWRIGHT_AVAILABLE or not web_tools_enabled:
+    # Filter out browser tools if:
+    #   - Playwright is not installed, OR
+    #   - web tools are disabled (browser requires web access), OR
+    #   - browser tools are explicitly disabled via PATCHPAL_ENABLE_BROWSER=false
+    if not PLAYWRIGHT_AVAILABLE or not web_tools_enabled or not config.ENABLE_BROWSER:
         browser_tool_names = [
             "browser_navigate",
             "browser_click",

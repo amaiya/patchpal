@@ -277,6 +277,13 @@ agent = create_agent(
 ```bash
 # Enable/Disable Web Access
 export PATCHPAL_ENABLE_WEB=false             # Disable web search/fetch for air-gapped environments (default: true)
+                                              # Note: disabling web also disables browser tools
+
+# Enable/Disable Browser Automation Tools
+export PATCHPAL_ENABLE_BROWSER=false         # Disable browser tools (Playwright/Chromium) while keeping
+                                              # web_search/web_fetch (default: true)
+                                              # Browser tools also require Playwright to be installed and
+                                              # PATCHPAL_ENABLE_WEB=true
 
 # SSL Certificate Verification
 # For web_search and web_fetch (requests/DDGS-based):
