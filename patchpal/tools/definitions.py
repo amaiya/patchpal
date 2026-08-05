@@ -6,7 +6,15 @@ from tool names to their implementation functions.
 
 from patchpal.config import config
 from patchpal.tools import (
+    PLAYWRIGHT_AVAILABLE,
     ask_user,
+    browser_click,
+    browser_close,
+    browser_fill,
+    browser_get_text,
+    browser_navigate,
+    browser_screenshot,
+    browser_wait,
     code_structure,
     edit_file,
     find,
@@ -231,6 +239,113 @@ Tip: Read README first for context when exploring repositories.""",
                 },
                 "required": ["url"],
             },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "browser_navigate",
+            "description": "Navigate visible browser to a URL. Opens Chromium window if not already open. Browser stays open for subsequent browser_* actions (click, fill, screenshot, etc). Useful for JavaScript-heavy sites and interactive tasks.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "url": {
+                        "type": "string",
+                        "description": "URL to visit (must start with http:// or https://)",
+                    },
+                },
+                "required": ["url"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "browser_click",
+            "description": "Click an element in the browser. Supports CSS selectors (#id, .class), text content (text=Login), and ARIA roles (role=button:Submit). Browser must be open first.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "selector": {
+                        "type": "string",
+                        "description": "Element selector (CSS, text=..., or role=...)",
+                    },
+                },
+                "required": ["selector"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "browser_fill",
+            "description": "Fill a form field with text. Supports CSS selectors, placeholder text (placeholder=Email), and label text (label=Username). Browser must be open first.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "selector": {
+                        "type": "string",
+                        "description": "Field selector (CSS, placeholder=..., or label=...)",
+                    },
+                    "text": {
+                        "type": "string",
+                        "description": "Text to enter into the field",
+                    },
+                },
+                "required": ["selector", "text"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "browser_screenshot",
+            "description": "Take a full-page screenshot of the current browser page and save to file. Useful for debugging or capturing visual state.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "Where to save screenshot (default: /tmp/patchpal_screenshot.png)",
+                    },
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "browser_get_text",
+            "description": "Extract all visible text from the current browser page. Unlike web_fetch, this gets rendered content after JavaScript execution. Useful for SPAs and dynamic content.",
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "browser_wait",
+            "description": "Wait for a duration (milliseconds) or for an element to appear. Useful for waiting for dynamic content to load or animations to complete.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "milliseconds": {
+                        "type": "integer",
+                        "description": "How long to wait in milliseconds (default: 1000, max: 30000)",
+                    },
+                    "selector": {
+                        "type": "string",
+                        "description": "Optional CSS selector to wait for. If provided, waits for element to appear.",
+                    },
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "browser_close",
+            "description": "Close the browser window and cleanup resources. Safe to call even if browser is already closed.",
+            "parameters": {"type": "object", "properties": {}},
         },
     },
     {
@@ -482,6 +597,13 @@ TOOL_FUNCTIONS = {
     "write_file": write_file,
     "web_search": web_search,
     "web_fetch": web_fetch,
+    "browser_navigate": browser_navigate,
+    "browser_click": browser_click,
+    "browser_fill": browser_fill,
+    "browser_screenshot": browser_screenshot,
+    "browser_get_text": browser_get_text,
+    "browser_wait": browser_wait,
+    "browser_close": browser_close,
     "list_skills": list_skills,
     "use_skill": use_skill,
     "todo_add": todo_add,
@@ -542,6 +664,20 @@ def get_tools(web_tools_enabled: bool = True):
             tool for tool in tools if tool["function"]["name"] not in ("web_search", "web_fetch")
         ]
         functions = {k: v for k, v in functions.items() if k not in ("web_search", "web_fetch")}
+
+    # Filter out browser tools if Playwright not available OR web tools disabled
+    if not PLAYWRIGHT_AVAILABLE or not web_tools_enabled:
+        browser_tool_names = [
+            "browser_navigate",
+            "browser_click",
+            "browser_fill",
+            "browser_screenshot",
+            "browser_get_text",
+            "browser_wait",
+            "browser_close",
+        ]
+        tools = [tool for tool in tools if tool["function"]["name"] not in browser_tool_names]
+        functions = {k: v for k, v in functions.items() if k not in browser_tool_names}
 
     # Load MCP tools dynamically (unless disabled via environment variable)
     if config.ENABLE_MCP:

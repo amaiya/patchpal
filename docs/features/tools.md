@@ -1,6 +1,6 @@
 # Built-In Tools
 
-PatchPal provides 20 built-in tools for file operations, code analysis, web access, task planning, and user interaction.
+PatchPal provides 27 built-in tools for file operations, code analysis, web access, browser automation, task planning, and user interaction.
 
 > **For Local Models:** Set `PATCHPAL_MINIMAL_TOOLS=true` and `PATCHPAL_ENABLE_WEB=false` to use only 5 essential tools (`read_file`, `read_lines`, `write_file`, `edit_file`, `run_shell`), reducing tool confusion with smaller models.
 
@@ -94,6 +94,129 @@ Fetch and read content from URLs.
 - Extract text from HTML, PDF, DOCX (Word), and PPTX (PowerPoint)
 - Supports plain text, JSON, XML, and other text formats
 - Warns about unsupported binary formats (images, videos, archives)
+
+## Browser Automation (7 tools - optional)
+
+> **Optional Feature:** Browser automation tools require Playwright. Install with:
+> ```bash
+> pip install patchpal[browser]
+> python -m playwright install chromium
+> ```
+>
+> **Security Note:** Browser tools respect `PATCHPAL_ENABLE_WEB` environment variable. If web tools are disabled (`PATCHPAL_ENABLE_WEB=false`), browser tools are also disabled.
+
+Interactive browser automation for JavaScript-heavy sites, forms, and dynamic content that `web_fetch` cannot handle.
+
+### When to Use Browser Tools vs web_fetch
+
+| Use Case | Tool | Why |
+|----------|------|-----|
+| Static HTML pages | `web_fetch` | Faster, lighter |
+| REST APIs / JSON | `web_fetch` | Direct HTTP request |
+| Documentation sites | `web_fetch` | Static content |
+| Single-page applications (React, Vue) | `browser_*` | Needs JS execution |
+| Forms with validation | `browser_*` | Interactive input |
+| Login flows | `browser_*` | Session management |
+| Dynamic content loading | `browser_*` | Wait for AJAX |
+
+### browser_navigate
+Navigate to a URL in a visible Chromium browser window.
+
+- **Example**: `browser_navigate("https://example.com")`
+- Browser stays open for subsequent operations (stateful session)
+- Applies same security checks as `web_fetch` (domain filtering, rate limiting)
+- Returns page title and URL confirmation
+
+### browser_click
+Click an element using flexible selectors.
+
+- **Examples**:
+  - `browser_click("#submit-button")` - CSS selector
+  - `browser_click("text=Login")` - Text content
+  - `browser_click("role=button:Submit")` - ARIA role
+- Browser must be open first via `browser_navigate`
+- Returns confirmation with current URL
+
+### browser_fill
+Fill form fields with text.
+
+- **Examples**:
+  - `browser_fill("#email", "user@example.com")` - CSS selector
+  - `browser_fill("placeholder=Email", "user@example.com")` - Placeholder text
+  - `browser_fill("label=Password", "secret123")` - Label text
+- Clears existing content by default
+- Browser must be open first
+
+### browser_screenshot
+Take a full-page screenshot.
+
+- **Example**: `browser_screenshot("/tmp/page.png")`
+- Saves as PNG file
+- Useful for debugging or capturing visual state
+- Returns path to saved screenshot
+
+### browser_get_text
+Extract all visible text from the page after JavaScript execution.
+
+- **Example**: `browser_get_text()`
+- Unlike `web_fetch`, this gets rendered content (post-JS)
+- Useful for single-page applications and dynamically loaded content
+- Returns title, URL, and page text (truncated at 20KB by default)
+- Integrates with web_fetch's URL tracking for security
+
+### browser_wait
+Wait for a duration or element to appear.
+
+- **Examples**:
+  - `browser_wait(2000)` - Wait 2 seconds
+  - `browser_wait(5000, "#results")` - Wait up to 5s for element
+- Useful for waiting for dynamic content to load
+- Maximum wait time: 30 seconds
+
+### browser_close
+Close the browser and cleanup resources.
+
+- **Example**: `browser_close()`
+- Safe to call even if browser is already closed
+- Releases browser process and memory
+
+### Example Workflow: Form Submission
+
+```python
+# Navigate to form
+browser_navigate("https://example.com/contact")
+
+# Fill fields
+browser_fill("label=Name", "John Doe")
+browser_fill("label=Email", "john@example.com")
+browser_fill("label=Message", "Test message")
+
+# Submit and wait for confirmation
+browser_click("text=Submit")
+browser_wait(3000, ".success-message")
+
+# Capture proof
+browser_screenshot("/tmp/submission.png")
+
+# Cleanup
+browser_close()
+```
+
+### Security Features
+
+Browser tools inherit `web_fetch` security:
+- Domain filtering (`PATCHPAL_WEB_ALLOWED_DOMAINS`, `PATCHPAL_WEB_BLOCKED_DOMAINS`)
+- Rate limiting (`PATCHPAL_WEB_RATE_LIMIT`)
+- Permission system (requires approval like other tools)
+- URL validation (must start with `http://` or `https://`)
+
+### Implementation Details
+
+- **Browser**: Chromium via Playwright
+- **Visibility**: Non-headless by default (visible browser)
+- **Viewport**: 1280x900
+- **Timeouts**: 30s navigation, 10s interactions
+- **Session**: Single persistent browser instance across tools
 
 ## Code Analysis (2 tools)
 
@@ -215,12 +338,14 @@ Search for files by glob pattern.
 | Optional Tools* | grep, find | 2 |
 | Code Analysis | code_structure, get_repo_map | 2 |
 | Web | web_search, web_fetch | 2 |
+| Browser Automation** | browser_navigate, browser_click, browser_fill, browser_screenshot, browser_get_text, browser_wait, browser_close | 7 |
 | Task Planning | todo_add, todo_list, todo_complete, todo_update, todo_remove, todo_clear | 6 |
 | Skills | list_skills, use_skill | 2 |
 | User Interaction | ask_user | 1 |
-| **Total** | | **20** |
+| **Total** | | **27** |
 
 *Optional tools are disabled by default (shell commands preferred)
+**Browser tools require `pip install patchpal[browser]` and are disabled if Playwright not installed
 
 ## Configuration
 
@@ -229,7 +354,7 @@ Search for files by glob pattern.
 - `PATCHPAL_MAX_FILE_SIZE` - Maximum file size for text files in read_file (default: 500KB)
 - `PATCHPAL_MAX_IMAGE_SIZE` - Maximum image file size for read_file (default: 10MB)
 - `PATCHPAL_BLOCK_IMAGES` - Block images from being sent to LLM (default: false)
-- `PATCHPAL_ENABLE_WEB` - Enable/disable web tools (default: true)
+- `PATCHPAL_ENABLE_WEB` - Enable/disable web tools (web_search, web_fetch, and browser_* tools) (default: true)
 - `PATCHPAL_ALLOW_SUDO` - Allow sudo/su commands (default: false)
 - `PATCHPAL_MINIMAL_TOOLS` - Use minimal tools mode: 4-6 core tools only (default: false)
 

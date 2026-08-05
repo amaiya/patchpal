@@ -67,6 +67,28 @@ from patchpal.tools.web_tools import (
     web_search,
 )
 
+# Browser tools (optional - only available if Playwright installed)
+try:
+    from patchpal.tools.browser_tools import (
+        PLAYWRIGHT_AVAILABLE,
+        browser_click,
+        browser_close,
+        browser_fill,
+        browser_get_text,
+        browser_navigate,
+        browser_screenshot,
+        browser_wait,
+    )
+except ImportError:
+    PLAYWRIGHT_AVAILABLE = False
+    browser_navigate = None
+    browser_click = None
+    browser_fill = None
+    browser_screenshot = None
+    browser_get_text = None
+    browser_wait = None
+    browser_close = None
+
 __all__ = [
     # File operations
     "read_file",
@@ -96,6 +118,15 @@ __all__ = [
     "web_fetch",
     "web_search",
     "get_url_tracker",
+    # Browser tools (optional)
+    "PLAYWRIGHT_AVAILABLE",
+    "browser_navigate",
+    "browser_click",
+    "browser_fill",
+    "browser_screenshot",
+    "browser_get_text",
+    "browser_wait",
+    "browser_close",
     # Shell tools
     "run_shell",
     # User interaction
