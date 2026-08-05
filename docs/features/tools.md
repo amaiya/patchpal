@@ -104,7 +104,9 @@ Fetch and read content from URLs.
 > ```
 > This installs both Playwright and nest-asyncio (required to prevent event loop conflicts).
 >
-> **Security Note:** Browser tools respect `PATCHPAL_ENABLE_WEB` environment variable. If web tools are disabled (`PATCHPAL_ENABLE_WEB=false`), browser tools are also disabled.
+> **Security Note:** Browser tools respect the `PATCHPAL_ENABLE_WEB` environment variable. If web tools are disabled (`PATCHPAL_ENABLE_WEB=false`), browser tools are also disabled.
+>
+> To disable **only** the browser tools while keeping `web_search`/`web_fetch`, set `PATCHPAL_ENABLE_BROWSER=false` (default: `true`).
 
 Interactive browser automation for JavaScript-heavy sites, forms, and dynamic content that `web_fetch` cannot handle.
 
@@ -119,6 +121,54 @@ Interactive browser automation for JavaScript-heavy sites, forms, and dynamic co
 | Forms with validation | `browser_*` | Interactive input |
 | Login flows | `browser_*` | Session management |
 | Dynamic content loading | `browser_*` | Wait for AJAX |
+
+### TLS / Certificate Handling (Corporate Proxies & Self-Signed Certs)
+
+Unlike `web_fetch`/`web_search` (which use `requests` and honor `PATCHPAL_VERIFY_SSL`, `SSL_CERT_FILE`, and `REQUESTS_CA_BUNDLE`), the Chromium browser launched by Playwright **does not** read a PEM CA-bundle file for page navigation. Setting `REQUESTS_CA_BUNDLE`, `SSL_CERT_FILE`, or `NODE_EXTRA_CA_CERTS` has **no effect** on the browser's page TLS (`NODE_EXTRA_CA_CERTS` only affects Node's HTTPS when *downloading* the browser binaries).
+
+By default the browser validates certificates against the OS/NSS trust store. If you are behind a corporate TLS-inspecting proxy or use self-signed certs, you have two options:
+
+**Option 1 — Trust your CA (secure, recommended).** Import the CA into the NSS database Chromium reads on Linux (this is [documented by Chromium](https://chromium.googlesource.com/chromium/src/+/main/docs/linux/cert_management.md)):
+
+```bash
+# 1. Install the NSS command-line tools
+sudo apt install libnss3-tools          # Debian/Ubuntu
+# sudo dnf install nss-tools            # Fedora
+# sudo zypper install mozilla-nss-tools # openSUSE
+
+# 2. Locate the NSS DB Chromium uses:
+#      - Chromium M146+ default: $HOME/.local/share/pki/nssdb
+#      - Older / if it already exists: $HOME/.pki/nssdb
+#    Chromium prefers an existing $HOME/.pki/nssdb if present.
+NSSDB="$HOME/.local/share/pki/nssdb"
+mkdir -p "$NSSDB"
+certutil -d "sql:$NSSDB" -N --empty-password 2>/dev/null || true   # init if empty
+
+# 3a. Import a single root CA (trust for issuing SSL server certs)
+certutil -d "sql:$NSSDB" -A -t "C,," -n corp-ca -i /path/to/corporate-ca.pem
+#     Intermediate CA:  use -t ",,"
+#     Self-signed *server* cert (not a CA): use -t "P,,"
+
+# 3b. If REQUESTS_CA_BUNDLE points at a bundle with MULTIPLE certs,
+#     split it and import each one (certutil imports one cert per call):
+csplit -z -f corpca- "$REQUESTS_CA_BUNDLE" '/-----BEGIN CERTIFICATE-----/' '{*}'
+i=0; for f in corpca-*; do certutil -d "sql:$NSSDB" -A -t "C,," -n "corp-ca-$i" -i "$f"; i=$((i+1)); done
+
+# 4. Verify
+certutil -d "sql:$NSSDB" -L
+```
+
+After importing, the browser will trust sites signed by that CA without any further configuration.
+
+**Option 2 — Bypass verification (insecure).** Accept any certificate in the browser:
+
+```bash
+export PATCHPAL_BROWSER_IGNORE_HTTPS_ERRORS=true   # browser-only bypass
+# (PATCHPAL_VERIFY_SSL=false also enables this, and additionally disables
+#  verification for web_search/web_fetch)
+```
+
+This is the quickest fix but disables certificate validation entirely (vulnerable to MITM), so prefer Option 1 in production.
 
 ### browser_navigate
 Navigate to a URL in a visible Chromium browser window.
