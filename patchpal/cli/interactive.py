@@ -575,6 +575,32 @@ Supported models: Any LiteLLM-supported model
                     pass  # Don't fail if audit logging fails
 
                 print("\nGoodbye!")
+
+                # Clean up the browser if it was opened during the session.
+                # An open Playwright browser keeps its own asyncio machinery
+                # alive; closing it here releases the browser process/loop so
+                # they don't linger into interpreter shutdown.
+                try:
+                    from patchpal.tools.browser_tools import _BrowserState
+
+                    if _BrowserState.is_open():
+                        _BrowserState.close(silent=True)
+                except Exception:
+                    pass  # Browser tools optional / already closed
+
+                # Suppress the benign "Task exception was never retrieved"
+                # warning that asyncio emits at shutdown: prompt_toolkit's
+                # pending Application.run_async() task gets cancelled with a
+                # KeyboardInterrupt during teardown, and nobody retrieves it.
+                # This is cosmetic and happens AFTER all work is done.
+                try:
+                    import asyncio
+
+                    _loop = asyncio.get_event_loop()
+                    _loop.set_exception_handler(lambda loop, context: None)
+                except Exception:
+                    pass
+
                 break
 
             # Handle /help command - show available commands

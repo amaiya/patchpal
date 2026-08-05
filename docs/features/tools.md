@@ -253,6 +253,36 @@ browser_screenshot("/tmp/submission.png")
 browser_close()
 ```
 
+### Example Prompt: Navigate, Search, and Extract
+
+You can drive the browser tools with a single natural-language prompt. For example:
+
+> Visit https://www.wikipedia.org, click on English, search for "Web scraping", and extract the first paragraph
+
+PatchPal will translate this into a sequence of browser tool calls, roughly:
+
+```python
+# Open the Wikipedia portal
+browser_navigate("https://www.wikipedia.org")
+
+# Enter the English edition
+browser_click("text=English")
+
+# Search for the topic
+browser_fill("#searchInput", "Web scraping")
+browser_click("button[type=submit]")
+
+# Wait for the article to render, then read the page
+browser_wait(3000, "#mw-content-text")
+browser_get_text()   # extract the article text (incl. the first paragraph)
+
+# Cleanup
+browser_close()
+```
+
+> **Tip:** If the target site uses a corporate/self-signed certificate, make sure
+> the CA is trusted first (see [TLS / Certificate Handling](#tls--certificate-handling-corporate-proxies--self-signed-certs) above), otherwise navigation will fail with `net::ERR_CERT_AUTHORITY_INVALID`.
+
 ### Security Features
 
 Browser tools inherit `web_fetch` security:
