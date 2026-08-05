@@ -278,8 +278,9 @@ agent = create_agent(
 # Enable/Disable Web Access
 export PATCHPAL_ENABLE_WEB=false             # Disable web search/fetch for air-gapped environments (default: true)
 
-# SSL Certificate Verification (for web_search)
-export PATCHPAL_VERIFY_SSL=true              # SSL verification for web searches (default: true)
+# SSL Certificate Verification
+# For web_search and web_fetch (requests/DDGS-based):
+export PATCHPAL_VERIFY_SSL=true              # SSL verification for web requests (default: true)
                                               # Set to 'false' to disable (not recommended for production)
                                               # Or set to path of CA bundle file for corporate certificates
                                               # Auto-detects SSL_CERT_FILE and REQUESTS_CA_BUNDLE if not set
@@ -287,6 +288,16 @@ export PATCHPAL_VERIFY_SSL=true              # SSL verification for web searches
                                               #   export PATCHPAL_VERIFY_SSL=false  # Disable verification
                                               #   export PATCHPAL_VERIFY_SSL=/path/to/ca-bundle.crt  # Custom CA bundle
                                               #   (Leave unset to auto-detect from SSL_CERT_FILE/REQUESTS_CA_BUNDLE)
+#
+# For browser tools (Playwright/Chromium): the launched browser does NOT honor
+# NODE_EXTRA_CA_CERTS / SSL_CERT_FILE / REQUESTS_CA_BUNDLE for page navigation.
+# Chromium validates page certificates against the OS/NSS trust store, so to
+# trust a corporate/self-signed CA you must install it into the OS trust store,
+# e.g. on Linux:
+#   certutil -d sql:$HOME/.pki/nssdb -A -t "C,," -n corp-ca -i /path/to/corp-ca.pem
+# To bypass browser certificate validation entirely (accept any cert):
+export PATCHPAL_BROWSER_IGNORE_HTTPS_ERRORS=false  # Set 'true' to ignore browser cert errors
+                                                    # (PATCHPAL_VERIFY_SSL=false also enables this)
 
 # Web Request Limits
 export PATCHPAL_WEB_TIMEOUT=60               # Web request timeout in seconds (default: 30)

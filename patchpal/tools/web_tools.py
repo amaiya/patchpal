@@ -25,6 +25,47 @@ from patchpal.tools.common import (
     extract_text_from_pptx,
 )
 
+
+def resolve_ssl_verify():
+    """Resolve SSL verification settings for web/browser tools.
+
+    Provides a single, consistent policy used by web_search, web_fetch, and the
+    browser tools so that all three honor the same environment variables.
+
+    Priority:
+      1. PATCHPAL_VERIFY_SSL:
+           - "false"/"0"/"no"  -> disable verification
+           - "true"/"1"/"yes"  -> force verification (system defaults)
+           - any other value    -> treated as a path to a custom CA bundle
+      2. SSL_CERT_FILE or REQUESTS_CA_BUNDLE (standard corporate-proxy env vars)
+      3. Default: verify using system/certifi defaults
+
+    Returns:
+        tuple (verify, ca_bundle):
+          verify:    value suitable for requests/DDGS `verify=` argument
+                     (True, False, or a path string to a CA bundle)
+          ca_bundle: path to a custom CA bundle if one was resolved, else None
+                     (useful for tools that need the path explicitly, e.g. the
+                     browser via NODE_EXTRA_CA_CERTS)
+    """
+    verify_ssl = config.VERIFY_SSL
+    if verify_ssl is not None:
+        lowered = verify_ssl.lower()
+        if lowered in ("false", "0", "no"):
+            return False, None
+        if lowered in ("true", "1", "yes"):
+            return True, None
+        # Treat as a path to a custom CA bundle
+        return verify_ssl, verify_ssl
+
+    # Fall back to standard corporate-proxy env vars
+    ca_bundle = os.getenv("SSL_CERT_FILE") or os.getenv("REQUESTS_CA_BUNDLE")
+    if ca_bundle:
+        return ca_bundle, ca_bundle
+
+    return True, None
+
+
 # ============================================================================
 # Security: Binary Detection via Magic Numbers
 # ============================================================================
@@ -384,6 +425,9 @@ def web_fetch(url: str, extract_text: bool = True) -> str:
     _domain_limiter.check_limit(hostname, config.WEB_RATE_LIMIT)
 
     try:
+        # Determine SSL verification setting (shared policy across web/browser tools)
+        verify, _ = resolve_ssl_verify()
+
         # Make request with timeout and browser-like headers
         response = requests.get(
             url,
@@ -391,6 +435,7 @@ def web_fetch(url: str, extract_text: bool = True) -> str:
             headers=WEB_HEADERS,
             stream=True,  # Stream to check size first
             allow_redirects=True,  # Follow redirects (including moved repos)
+            verify=verify,
         )
         response.raise_for_status()
 
@@ -503,6 +548,16 @@ def web_fetch(url: str, extract_text: bool = True) -> str:
 
     except requests.Timeout:
         raise ValueError(f"Request timed out after {config.WEB_TIMEOUT} seconds")
+    except requests.exceptions.SSLError as e:
+        raise ValueError(
+            "Failed to fetch URL: SSL certificate verification failed.\n"
+            f"{e}\n\n"
+            "If you are behind a corporate proxy that intercepts TLS, point PatchPal "
+            "at your organization's CA bundle:\n"
+            "  export SSL_CERT_FILE=/path/to/corporate-ca-bundle.pem\n"
+            "  (or REQUESTS_CA_BUNDLE, or PATCHPAL_VERIFY_SSL=/path/to/ca-bundle.pem)\n"
+            "To disable verification entirely (not recommended): PATCHPAL_VERIFY_SSL=false"
+        )
     except requests.RequestException as e:
         raise ValueError(f"Failed to fetch URL: {e}")
     except Exception as e:
@@ -535,21 +590,8 @@ def web_search(query: str, max_results: int = 5) -> str:
     max_results = min(max_results, 10)
 
     try:
-        # Determine SSL verification setting
-        # Priority: PATCHPAL_VERIFY_SSL env var > SSL_CERT_FILE > REQUESTS_CA_BUNDLE > default True
-        verify_ssl = config.VERIFY_SSL
-        if verify_ssl is not None:
-            # User explicitly set PATCHPAL_VERIFY_SSL
-            if verify_ssl.lower() in ("false", "0", "no"):
-                verify = False
-            elif verify_ssl.lower() in ("true", "1", "yes"):
-                verify = True
-            else:
-                # Treat as path to CA bundle
-                verify = verify_ssl
-        else:
-            # Use SSL_CERT_FILE or REQUESTS_CA_BUNDLE if set (for corporate environments)
-            verify = os.getenv("SSL_CERT_FILE") or os.getenv("REQUESTS_CA_BUNDLE") or True
+        # Determine SSL verification setting (shared policy across web/browser tools)
+        verify, _ = resolve_ssl_verify()
 
         # Perform search using DuckDuckGo
         with DDGS(verify=verify) as ddgs:

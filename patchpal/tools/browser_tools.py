@@ -7,6 +7,7 @@ Optional dependency: Install with `pip install patchpal[browser]` and run
 `python -m playwright install chromium` to use these tools.
 """
 
+import os
 import re
 from pathlib import Path
 from typing import Optional
@@ -106,6 +107,50 @@ class _BrowserState:
                         ) from e
                 raise
 
+            # Resolve SSL policy consistently with web_fetch / web_search.
+            #
+            # IMPORTANT: Unlike `requests` (web_fetch/web_search), the Chromium
+            # process launched by Playwright does NOT honor NODE_EXTRA_CA_CERTS,
+            # SSL_CERT_FILE, or REQUESTS_CA_BUNDLE for *page navigation* TLS.
+            # NODE_EXTRA_CA_CERTS only affects Node's own HTTPS (used when
+            # downloading browser binaries), not the launched browser. Chromium
+            # validates page certificates against the OS/NSS trust store instead.
+            # (Verified empirically: pointing NODE_EXTRA_CA_CERTS at a server's
+            # own cert still yields net::ERR_CERT_AUTHORITY_INVALID.)
+            #
+            # Therefore, to trust a corporate/self-signed CA in the browser you
+            # must install it into the OS trust store out-of-band, e.g. on Linux:
+            #   certutil -d sql:$HOME/.pki/nssdb -A -t "C,," -n corp-ca \
+            #            -i /path/to/corporate-ca.pem
+            #
+            # The only knob we can meaningfully control here is whether to bypass
+            # certificate validation entirely:
+            #   - PATCHPAL_VERIFY_SSL=false            -> accept ANY cert
+            #   - PATCHPAL_BROWSER_IGNORE_HTTPS_ERRORS=true -> accept ANY cert
+            #   - otherwise                            -> validate against OS trust store
+            ignore_https_errors = False
+            try:
+                from patchpal.tools.web_tools import resolve_ssl_verify
+
+                verify, _ca_bundle = resolve_ssl_verify()
+                if verify is False:
+                    # User explicitly opted out of verification
+                    ignore_https_errors = True
+            except Exception:
+                # If policy resolution fails for any reason, fall back to normal
+                # verification rather than silently accepting bad certs.
+                ignore_https_errors = False
+
+            # Dedicated opt-out for the browser (corporate proxies whose CA is
+            # not in the OS trust store). This is the browser equivalent of
+            # requests' verify=False and does NOT affect web_fetch/web_search.
+            if os.getenv("PATCHPAL_BROWSER_IGNORE_HTTPS_ERRORS", "").lower() in (
+                "true",
+                "1",
+                "yes",
+            ):
+                ignore_https_errors = True
+
             try:
                 cls._browser = cls._playwright.chromium.launch(
                     headless=False,  # Visible browser for user visibility
@@ -120,7 +165,7 @@ class _BrowserState:
                         "AppleWebKit/537.36 (KHTML, like Gecko) "
                         "Chrome/120.0.0.0 Safari/537.36"
                     ),
-                    ignore_https_errors=True,  # Ignore certificate errors for automation
+                    ignore_https_errors=ignore_https_errors,
                 )
                 cls._page = cls._context.new_page()
             except Exception:
