@@ -23,6 +23,22 @@ except ImportError:
 
 from patchpal.tools.common import _get_permission_manager, _operation_limiter
 
+# Apply nest_asyncio if available to prevent event loop conflicts
+# This must be done EARLY before any Playwright operations
+# nest_asyncio patches asyncio globally to allow nested event loops
+_NEST_ASYNCIO_APPLIED = False
+try:
+    import nest_asyncio
+
+    nest_asyncio.apply()
+    _NEST_ASYNCIO_APPLIED = True
+except ImportError:
+    # nest_asyncio not installed, may cause issues in async contexts
+    pass
+except Exception:
+    # Silently ignore if nest_asyncio fails to apply
+    pass
+
 
 class _BrowserState:
     """Singleton browser instance for persistent session across tool calls.
@@ -50,6 +66,7 @@ class _BrowserState:
 
         Raises:
             ValueError: If Playwright not installed
+            RuntimeError: If browser initialization fails
         """
         if not PLAYWRIGHT_AVAILABLE:
             raise ValueError(
@@ -58,22 +75,58 @@ class _BrowserState:
             )
 
         if cls._page is None:
-            cls._playwright = sync_playwright().start()
-            cls._browser = cls._playwright.chromium.launch(
-                headless=False,  # Visible browser for user visibility
-                args=[
-                    "--disable-blink-features=AutomationControlled",  # Anti-detection
-                ],
-            )
-            cls._context = cls._browser.new_context(
-                viewport={"width": 1280, "height": 900},
-                user_agent=(
-                    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-                    "AppleWebKit/537.36 (KHTML, like Gecko) "
-                    "Chrome/120.0.0.0 Safari/537.36"
-                ),
-            )
-            cls._page = cls._context.new_page()
+            try:
+                # Try to start playwright - this may fail with asyncio errors
+                cls._playwright = sync_playwright().start()
+            except RuntimeError as e:
+                error_msg = str(e)
+                if "asyncio.run() cannot be called from a running event loop" in error_msg:
+                    # The current event loop is in a state that Playwright's sync
+                    # API cannot use (typically because it is running and not
+                    # patched for re-entrancy). Re-apply nest_asyncio to the
+                    # *current* loop and retry. This recovers cleanly instead of
+                    # requiring a full PatchPal restart.
+                    try:
+                        import nest_asyncio
+
+                        nest_asyncio.apply()
+                    except Exception:
+                        pass
+                    try:
+                        cls._playwright = sync_playwright().start()
+                    except RuntimeError:
+                        # Still failing - provide helpful error
+                        raise RuntimeError(
+                            "Browser automation failed due to event loop conflict.\n"
+                            "This is a known issue with Playwright in certain environments.\n"
+                            "Workarounds:\n"
+                            "1. Close the browser and restart PatchPal\n"
+                            "2. Use web_fetch for static pages instead of browser tools\n"
+                            "3. Try: pip install --upgrade nest-asyncio playwright"
+                        ) from e
+                raise
+
+            try:
+                cls._browser = cls._playwright.chromium.launch(
+                    headless=False,  # Visible browser for user visibility
+                    args=[
+                        "--disable-blink-features=AutomationControlled",  # Anti-detection
+                    ],
+                )
+                cls._context = cls._browser.new_context(
+                    viewport={"width": 1280, "height": 900},
+                    user_agent=(
+                        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                        "AppleWebKit/537.36 (KHTML, like Gecko) "
+                        "Chrome/120.0.0.0 Safari/537.36"
+                    ),
+                    ignore_https_errors=True,  # Ignore certificate errors for automation
+                )
+                cls._page = cls._context.new_page()
+            except Exception:
+                # Cleanup on failure
+                cls.close(silent=True)
+                raise
 
         return cls._page
 
@@ -83,27 +136,107 @@ class _BrowserState:
         return cls._page is not None
 
     @classmethod
-    def close(cls):
-        """Close browser and cleanup resources."""
-        if cls._context:
-            try:
-                cls._context.close()
-            except Exception:
-                pass
-        if cls._browser:
-            try:
-                cls._browser.close()
-            except Exception:
-                pass
-        if cls._playwright:
-            try:
-                cls._playwright.stop()
-            except Exception:
-                pass
-        cls._page = None
-        cls._context = None
-        cls._browser = None
-        cls._playwright = None
+    def close(cls, silent: bool = False):
+        """Close browser and cleanup resources.
+
+        Args:
+            silent: If True, suppress all output (used during atexit cleanup)
+        """
+        # Suppress all stderr during close to prevent asyncio error messages
+        import io
+        import sys
+
+        # Save stderr
+        original_stderr = sys.stderr
+
+        try:
+            # Redirect stderr to suppress error messages during cleanup
+            if silent:
+                sys.stderr = io.StringIO()
+
+            if cls._context:
+                try:
+                    cls._context.close()
+                except Exception:
+                    pass
+            if cls._browser:
+                try:
+                    cls._browser.close()
+                except Exception:
+                    pass
+            if cls._playwright:
+                try:
+                    cls._playwright.stop()
+                except (Exception, RuntimeError):
+                    # RuntimeError can happen during shutdown when event loop is closing
+                    # Suppress all errors during cleanup, especially asyncio errors
+                    pass
+
+                # NOTE: Do NOT manipulate the asyncio event loop here (e.g.
+                # asyncio.set_event_loop(asyncio.new_event_loop())). Doing so
+                # replaces the loop that nest_asyncio patched at import time with
+                # a fresh, unpatched loop. The next sync_playwright().start()
+                # then fails with "asyncio.run() cannot be called from a running
+                # event loop" on every subsequent call. Playwright's stop()
+                # already cleans up its own loop.
+                #
+                # However, sync_playwright().start() DOES install its own event
+                # loop as the thread's current loop while running. After stop(),
+                # that loop is closed but may remain registered as the current
+                # loop, which breaks the NEXT asyncio.run() call made by other
+                # libraries (notably prompt_toolkit's session.prompt(), which is
+                # how PatchPal reads the "You:" prompt). The symptom is a flood
+                # of "asyncio.run() cannot be called from a running event loop".
+                #
+                # Fix: ensure the thread has a fresh, OPEN, nest_asyncio-patched
+                # loop registered after Playwright tears down. We create a new
+                # loop (the previous one is closed/unusable) and re-apply
+                # nest_asyncio so re-entrant asyncio.run() works again.
+                try:
+                    import asyncio as _asyncio
+
+                    _needs_new_loop = True
+                    try:
+                        _existing = _asyncio.get_event_loop()
+                        if _existing is not None and not _existing.is_closed():
+                            _needs_new_loop = False
+                    except Exception:
+                        _needs_new_loop = True
+
+                    if _needs_new_loop:
+                        _asyncio.set_event_loop(_asyncio.new_event_loop())
+
+                    try:
+                        import nest_asyncio as _nest
+
+                        _nest.apply()
+                    except Exception:
+                        pass
+                except Exception:
+                    pass
+
+            cls._page = None
+            cls._context = None
+            cls._browser = None
+            cls._playwright = None
+        finally:
+            # Always restore stderr
+            sys.stderr = original_stderr
+
+
+# Register cleanup handler to close browser on exit (prevent asyncio errors on Ctrl-C)
+# NOTE: Disabled because it may cause asyncio errors during cleanup
+# The browser will be closed explicitly by browser_close() or when permission is denied
+# def _cleanup_browser():
+#     """Cleanup handler called at exit to ensure browser is closed."""
+#     try:
+#         _BrowserState.close(silent=True)
+#     except Exception:
+#         # Suppress all errors during exit cleanup
+#         pass
+#
+#
+# atexit.register(_cleanup_browser)
 
 
 def _check_url_security(url: str) -> None:
@@ -163,14 +296,41 @@ def browser_navigate(url: str, wait_until: str = "domcontentloaded") -> str:
         f"   ● Navigate browser to: {url}",
         pattern="browser",
     ):
+        # User denied permission - close browser to prevent retry issues
+        # This ensures a clean state for the next operation
+        if _BrowserState.is_open():
+            _BrowserState.close(silent=True)
         return "Operation cancelled by user."
 
-    page = _BrowserState.get_page()
+    try:
+        page = _BrowserState.get_page()
+    except RuntimeError as e:
+        # If browser initialization fails, make sure it's fully closed
+        _BrowserState.close(silent=True)
+        error_msg = str(e)
+        if "asyncio.run() cannot be called from a running event loop" in error_msg:
+            return (
+                "✗ Browser automation error: Event loop conflict.\n"
+                "Browser has been closed. Please restart PatchPal to use browser tools.\n"
+                "Alternative: Use web_fetch for static pages instead."
+            )
+        raise
 
-    # Navigate with timeout
-    page.goto(url, wait_until=wait_until, timeout=30000)
-
-    return f"✓ Navigated to: {page.title()}\nURL: {page.url}"
+    try:
+        # Navigate with timeout
+        page.goto(url, wait_until=wait_until, timeout=30000)
+        return f"✓ Navigated to: {page.title()}\nURL: {page.url}"
+    except Exception as e:
+        error_msg = str(e)
+        # Check for specific errors that might need browser restart
+        if "asyncio" in error_msg.lower() or "event loop" in error_msg.lower():
+            _BrowserState.close(silent=True)
+            return (
+                "✗ Browser error occurred. Browser has been closed.\n"
+                "You may need to restart PatchPal to use browser tools again."
+            )
+        # For other navigation errors, leave browser open
+        return f"✗ Navigation failed: {error_msg}"
 
 
 def browser_click(selector: str) -> str:

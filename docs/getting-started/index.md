@@ -8,6 +8,16 @@ Install PatchPal from PyPI:
 pip install patchpal
 ```
 
+**Optional Features:** PatchPal has optional dependencies for additional functionality:
+
+```bash
+# Browser automation (7 additional tools for interactive web tasks)
+pip install patchpal[browser]
+python -m playwright install chromium
+```
+
+See [Built-In Tools](../features/tools.md#browser-automation-7-tools-optional) for details on browser automation features.
+
 **Supported Operating Systems:**  Linux, MacOS, MS Windows.
 
 

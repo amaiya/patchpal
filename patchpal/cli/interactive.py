@@ -495,6 +495,7 @@ Supported models: Any LiteLLM-supported model
     print(
         "\nType \033[1;33m'exit'\033[0m to quit or \033[1;33m'/help'\033[0m to see available commands.\n"
     )
+    print("\033[2m[patchpal build marker: async-fix-v2]\033[0m")
 
     while True:
         try:
@@ -1633,7 +1634,39 @@ Supported models: Any LiteLLM-supported model
             )
             continue
         except Exception as e:
-            print(f"\n\033[1;31mError:\033[0m {e}")
+            # Debug: Print full exception info to help diagnose asyncio errors
+            import traceback
+
+            error_str = str(e)
+            print(f"\n\033[1;31mError:\033[0m {error_str}")
+
+            # Always write the full traceback to a debug log so we can see the
+            # true origin of errors (e.g. event-loop errors from prompt_toolkit
+            # vs. Playwright). This is invaluable when the on-screen output does
+            # not include a stack trace.
+            try:
+                debug_path = os.path.expanduser("~/patchpal_error_debug.log")
+                with open(debug_path, "a") as _dbg:
+                    _dbg.write("\n" + "=" * 70 + "\n")
+                    _dbg.write(f"ERROR: {error_str}\n")
+                    _dbg.write(traceback.format_exc())
+                print(f"\033[2m[debug] full traceback appended to {debug_path}\033[0m")
+            except Exception:
+                pass
+
+            # If it's the asyncio error, print more debug info
+            if "asyncio.run() cannot be called from a running event loop" in error_str:
+                print("\n\033[1;33m[DEBUG] AsyncIO Error Details:\033[0m")
+                print(
+                    "This error occurs when asyncio.run() is called while an event loop is already running."
+                )
+                print("Stack trace:")
+                traceback.print_exc()
+                print(
+                    "\n\033[1;33m[DEBUG] If browser tools were just used, this may be a Playwright cleanup issue.\033[0m"
+                )
+                print("Try: Close any open browser windows and type 'exit' to restart PatchPal.\n")
+
             print("Please try again or type 'exit' to quit.")
 
 

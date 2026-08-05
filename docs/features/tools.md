@@ -102,6 +102,7 @@ Fetch and read content from URLs.
 > pip install patchpal[browser]
 > python -m playwright install chromium
 > ```
+> This installs both Playwright and nest-asyncio (required to prevent event loop conflicts).
 >
 > **Security Note:** Browser tools respect `PATCHPAL_ENABLE_WEB` environment variable. If web tools are disabled (`PATCHPAL_ENABLE_WEB=false`), browser tools are also disabled.
 
