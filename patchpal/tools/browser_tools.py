@@ -24,6 +24,70 @@ except ImportError:
 
 from patchpal.tools.common import _get_permission_manager, _operation_limiter
 
+
+def _dismiss_modals(page: Page):
+    """Automatically dismiss common modal overlays that block interaction.
+
+    Many sites (Zillow, real estate sites, news sites) show modals for:
+    - Login prompts
+    - Newsletter signups
+    - Cookie notices
+    - App download prompts
+    - Location permissions
+
+    This attempts to close them using common close button selectors.
+
+    Args:
+        page: Playwright page object
+    """
+    # Common selectors for modal close buttons
+    # Ordered by specificity (most specific first)
+    close_selectors = [
+        # ARIA labels (most semantic)
+        'button[aria-label*="close" i]',
+        'button[aria-label*="dismiss" i]',
+        '[role="button"][aria-label*="close" i]',
+        # Common class names
+        ".modal-close",
+        ".close-button",
+        ".dismiss-button",
+        ".popup-close",
+        '[class*="close"][class*="button"]',
+        '[class*="Close"][class*="Button"]',
+        # SVG/icon close buttons
+        'button svg[class*="close"]',
+        'button [class*="close-icon"]',
+        # X buttons
+        'button:has-text("×")',
+        'button:has-text("✕")',
+        '[aria-label="Close"]',
+        # Generic buttons in modals/dialogs
+        '[role="dialog"] button[class*="close"]',
+        '.modal button[class*="close"]',
+        # Data attributes
+        '[data-testid*="close"]',
+        '[data-testid*="dismiss"]',
+    ]
+
+    try:
+        for selector in close_selectors:
+            try:
+                # Check if element exists and is visible
+                element = page.locator(selector).first
+                if element.is_visible(timeout=100):  # Quick check
+                    element.click(timeout=500)
+                    # Wait briefly for modal to close
+                    page.wait_for_timeout(300)
+                    # Try to close more modals (some sites have multiple)
+                    continue
+            except Exception:
+                # Element doesn't exist or not clickable, try next selector
+                continue
+    except Exception:
+        # Silently fail if modal dismissal has issues
+        pass
+
+
 # Apply nest_asyncio if available to prevent event loop conflicts
 # This must be done EARLY before any Playwright operations
 # nest_asyncio patches asyncio globally to allow nested event loops
@@ -151,14 +215,21 @@ class _BrowserState:
             ):
                 ignore_https_errors = True
 
+            # Use persistent context to maintain cookies, localStorage, and browsing
+            # history between sessions. This makes automation less detectable and
+            # allows authenticated sessions to persist.
+            from pathlib import Path
+
+            user_data_dir = Path.home() / ".patchpal" / "browser_profile"
+            user_data_dir.mkdir(parents=True, exist_ok=True)
+
             try:
-                cls._browser = cls._playwright.chromium.launch(
+                cls._context = cls._playwright.chromium.launch_persistent_context(
+                    str(user_data_dir),
                     headless=False,  # Visible browser for user visibility
                     args=[
                         "--disable-blink-features=AutomationControlled",  # Anti-detection
                     ],
-                )
-                cls._context = cls._browser.new_context(
                     viewport={"width": 1280, "height": 900},
                     user_agent=(
                         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
@@ -167,7 +238,9 @@ class _BrowserState:
                     ),
                     ignore_https_errors=ignore_https_errors,
                 )
-                cls._page = cls._context.new_page()
+                # With persistent context, we get pages directly (no separate browser object)
+                cls._browser = None
+                cls._page = cls._context.pages[0] if cls._context.pages else cls._context.new_page()
             except Exception:
                 # Cleanup on failure
                 cls.close(silent=True)
@@ -204,11 +277,7 @@ class _BrowserState:
                     cls._context.close()
                 except Exception:
                     pass
-            if cls._browser:
-                try:
-                    cls._browser.close()
-                except Exception:
-                    pass
+            # No separate browser object with persistent context
             if cls._playwright:
                 try:
                     cls._playwright.stop()
@@ -364,6 +433,13 @@ def browser_navigate(url: str, wait_until: str = "domcontentloaded") -> str:
     try:
         # Navigate with timeout
         page.goto(url, wait_until=wait_until, timeout=30000)
+
+        # Wait a moment for any modals to appear
+        page.wait_for_timeout(1000)
+
+        # Auto-dismiss any modal overlays
+        _dismiss_modals(page)
+
         return f"✓ Navigated to: {page.title()}\nURL: {page.url}"
     except Exception as e:
         error_msg = str(e)
@@ -426,6 +502,13 @@ def browser_click(selector: str) -> str:
             page.locator(selector).first.click(timeout=10000)
     except Exception as e:
         return f"✗ Failed to click '{selector}': {e}\nTip: Use browser_get_text() to see available elements"
+
+    # Check for modals that might appear after clicking
+    try:
+        page.wait_for_timeout(500)
+        _dismiss_modals(page)
+    except Exception:
+        pass
 
     return f"✓ Clicked: {selector}\nCurrent URL: {page.url}"
 
@@ -624,6 +707,30 @@ def browser_close() -> str:
     return "✓ Browser closed"
 
 
+def browser_dismiss_modals() -> str:
+    """Manually dismiss modal overlays blocking interaction.
+
+    Many sites show modal popups (login prompts, newsletter signups, cookie notices,
+    app download prompts) that block clicks and form interactions. This tool attempts
+    to close them automatically.
+
+    browser_navigate() and browser_click() already try to auto-dismiss modals, but
+    use this tool if you still see modals blocking your actions.
+
+    Returns:
+        Confirmation message
+
+    Raises:
+        ValueError: If browser not open
+    """
+    if not _BrowserState.is_open():
+        raise ValueError("Browser not open. Use browser_navigate(url) first.")
+
+    page = _BrowserState.get_page()
+    _dismiss_modals(page)
+    return "✓ Attempted to dismiss modals. Check browser window to verify."
+
+
 # Public API - functions available to agent
 __all__ = [
     "browser_navigate",
@@ -632,6 +739,7 @@ __all__ = [
     "browser_screenshot",
     "browser_get_text",
     "browser_wait",
+    "browser_dismiss_modals",
     "browser_close",
     "PLAYWRIGHT_AVAILABLE",
 ]
