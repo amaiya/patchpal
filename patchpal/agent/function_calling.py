@@ -1496,6 +1496,46 @@ Repository root takes priority if both exist."""
                                     "\033[2m❓ Asking user a question...\033[0m",
                                     flush=True,
                                 )
+                            elif tool_name == "browser_navigate":
+                                print(
+                                    f"\033[2m🌐 Browser navigating: {tool_args.get('url', '')}\033[0m",
+                                    flush=True,
+                                )
+                            elif tool_name == "browser_click":
+                                print(
+                                    f"\033[2m🖱️  Browser clicking: {tool_args.get('selector', '')}\033[0m",
+                                    flush=True,
+                                )
+                            elif tool_name == "browser_fill":
+                                print(
+                                    f"\033[2m⌨️  Browser filling: {tool_args.get('selector', '')}\033[0m",
+                                    flush=True,
+                                )
+                            elif tool_name == "browser_screenshot":
+                                print(
+                                    f"\033[2m📸 Browser screenshot: {tool_args.get('path', '') or 'default path'}\033[0m",
+                                    flush=True,
+                                )
+                            elif tool_name == "browser_get_text":
+                                print(
+                                    "\033[2m📄 Browser extracting page text...\033[0m",
+                                    flush=True,
+                                )
+                            elif tool_name == "browser_wait":
+                                selector = tool_args.get("selector", "")
+                                if selector:
+                                    wait_desc = f"for '{selector}'"
+                                else:
+                                    wait_desc = f"{tool_args.get('milliseconds', 1000)}ms"
+                                print(
+                                    f"\033[2m⏳ Browser waiting {wait_desc}...\033[0m",
+                                    flush=True,
+                                )
+                            elif tool_name == "browser_close":
+                                print(
+                                    "\033[2m🚪 Closing browser...\033[0m",
+                                    flush=True,
+                                )
                             else:
                                 # Check if this is an MCP tool by looking for __mcp_server__ attribute
                                 if hasattr(tool_func, "__mcp_server__"):
