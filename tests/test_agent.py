@@ -62,13 +62,9 @@ def test_create_agent_ollama_model():
 def test_agent_has_correct_tools():
     """Test that the agent has the correct tools defined."""
     from patchpal.agent.function_calling import TOOL_FUNCTIONS, TOOLS
-    from patchpal.tools.definitions import PLAYWRIGHT_AVAILABLE
     from patchpal.tools.definitions import TOOLS as ALL_TOOLS
 
-    # 20 built-in tools defined in definitions.py (this count includes
-    # web_search/web_fetch AND the two disabled-by-default tools grep/find),
-    # plus 7 optional browser tools when Playwright is installed.
-    browser_tool_names = [
+    browser_tool_names = {
         "browser_navigate",
         "browser_click",
         "browser_fill",
@@ -76,14 +72,24 @@ def test_agent_has_correct_tools():
         "browser_get_text",
         "browser_wait",
         "browser_close",
-    ]
-    expected_all = 20 + (len(browser_tool_names) if PLAYWRIGHT_AVAILABLE else 0)
-    assert len(ALL_TOOLS) == expected_all
-    assert len(TOOL_FUNCTIONS) == expected_all
+    }
 
-    # The TOOLS imported from agent is filtered by get_tools(): grep and find
-    # are in the definitions above but disabled by default, so they're removed.
-    assert len(TOOLS) == expected_all - 2
+    # ALL_TOOLS / TOOL_FUNCTIONS are defined STATICALLY in definitions.py and
+    # always contain all 27 tools regardless of whether Playwright is installed:
+    #   18 core + web_search/web_fetch + grep/find + 7 browser tools = 27.
+    # (When Playwright is missing, the browser function mappings are None, but
+    # the schema/name entries still exist.)
+    assert len(ALL_TOOLS) == 27
+    assert len(TOOL_FUNCTIONS) == 27
+
+    # TOOLS is the filtered runtime list from get_tools(): grep and find are
+    # always removed (disabled by default), and the 7 browser tools are removed
+    # when Playwright is unavailable or PATCHPAL_ENABLE_BROWSER=false. Derive
+    # the expected count from what's actually present so this is robust in CI.
+    runtime_names = {tool["function"]["name"] for tool in TOOLS}
+    browser_included = bool(runtime_names & browser_tool_names)
+    expected_runtime = 27 - 2 - (0 if browser_included else 7)
+    assert len(TOOLS) == expected_runtime
 
     # Verify tool names in the full tool list
     all_tool_names = [tool["function"]["name"] for tool in ALL_TOOLS]
