@@ -62,14 +62,28 @@ def test_create_agent_ollama_model():
 def test_agent_has_correct_tools():
     """Test that the agent has the correct tools defined."""
     from patchpal.agent.function_calling import TOOL_FUNCTIONS, TOOLS
+    from patchpal.tools.definitions import PLAYWRIGHT_AVAILABLE
     from patchpal.tools.definitions import TOOLS as ALL_TOOLS
 
-    # Verify we have 20 built-in tools total (in definitions)
-    assert len(ALL_TOOLS) == 20
-    assert len(TOOL_FUNCTIONS) == 20
+    # 20 built-in tools defined in definitions.py (this count includes
+    # web_search/web_fetch AND the two disabled-by-default tools grep/find),
+    # plus 7 optional browser tools when Playwright is installed.
+    browser_tool_names = [
+        "browser_navigate",
+        "browser_click",
+        "browser_fill",
+        "browser_screenshot",
+        "browser_get_text",
+        "browser_wait",
+        "browser_close",
+    ]
+    expected_all = 20 + (len(browser_tool_names) if PLAYWRIGHT_AVAILABLE else 0)
+    assert len(ALL_TOOLS) == expected_all
+    assert len(TOOL_FUNCTIONS) == expected_all
 
-    # The TOOLS imported from agent is filtered (optional tools removed by get_tools())
-    assert len(TOOLS) == 18  # grep and find are filtered out by default
+    # The TOOLS imported from agent is filtered by get_tools(): grep and find
+    # are in the definitions above but disabled by default, so they're removed.
+    assert len(TOOLS) == expected_all - 2
 
     # Verify tool names in the full tool list
     all_tool_names = [tool["function"]["name"] for tool in ALL_TOOLS]
