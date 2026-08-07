@@ -14,7 +14,7 @@ Most agent frameworks are [built in TypeScript](https://news.ycombinator.com/ite
 - [Sandbox Mode](usage/sandbox.md) for secure container isolation
 - [Python SDK](usage/python-api.md) for flexibility and extensibility
 - [Built-In](features/tools.md) and [Custom Tools](features/custom-tools.md)
-- [Browser Automation](features/tools.md#browser-automation-14-tools) for interactive web tasks, form filling, and JavaScript-heavy sites
+- [Browser Automation](features/tools.md#browser-automation-14-tools-optional) for interactive web tasks, form filling, and JavaScript-heavy sites
 - [Skills System](features/skills.md) and [MCP Integration](features/mcp.md)
 - [Autopilot Mode](usage/autopilot.md) using [Ralph Wiggum loops](https://github.com/amaiya/patchpal/tree/main/examples/ralph/)
 - [Project Memory](features/memory.md) automatically loads project context from `MEMORY.md` (repository root or `~/.patchpal/repos/<repo-name>/MEMORY.md`) at startup.
