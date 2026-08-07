@@ -803,6 +803,7 @@ def get_tools(web_tools_enabled: bool = True):
             "browser_navigate",
             "browser_click",
             "browser_fill",
+            "browser_press_key",
             "browser_screenshot",
             "browser_get_text",
             "browser_get_html",
