@@ -121,13 +121,14 @@ class _BrowserState:
     _browser = None
     _context = None
     _page: Optional[Page] = None
+    _current_frame: Optional[Page] = None  # Current frame context (None = main page)
 
     @classmethod
     def get_page(cls) -> Page:
         """Get or create browser page.
 
         Returns:
-            Playwright Page object
+            Playwright Page object (or Frame if frame is selected)
 
         Raises:
             ValueError: If Playwright not installed
@@ -247,6 +248,29 @@ class _BrowserState:
                 raise
 
         return cls._page
+
+    @classmethod
+    def get_context(cls) -> Page:
+        """Get the current context (frame or page).
+
+        Returns the current frame if one is selected, otherwise returns the main page.
+        This is what browser tools should use for operations.
+
+        Returns:
+            Playwright Page or Frame object
+        """
+        if cls._current_frame is not None:
+            return cls._current_frame
+        return cls.get_page()
+
+    @classmethod
+    def set_frame(cls, frame: Optional[Page]) -> None:
+        """Set the current frame context.
+
+        Args:
+            frame: Frame to switch to, or None to switch back to main page
+        """
+        cls._current_frame = frame
 
     @classmethod
     def is_open(cls) -> bool:
@@ -434,6 +458,9 @@ def browser_navigate(url: str, wait_until: str = "domcontentloaded") -> str:
         # Navigate with timeout
         page.goto(url, wait_until=wait_until, timeout=30000)
 
+        # Reset frame context when navigating to new page
+        _BrowserState.set_frame(None)
+
         # Wait a moment for any modals to appear
         page.wait_for_timeout(1000)
 
@@ -484,7 +511,7 @@ def browser_click(selector: str) -> str:
     ):
         return "Operation cancelled by user."
 
-    page = _BrowserState.get_page()
+    page = _BrowserState.get_context()  # Use current frame context
 
     # Handle different selector types (OpenWorker pattern)
     try:
@@ -547,7 +574,7 @@ def browser_fill(selector: str, text: str, clear: bool = True) -> str:
     ):
         return "Operation cancelled by user."
 
-    page = _BrowserState.get_page()
+    page = _BrowserState.get_context()  # Use current frame context
 
     try:
         if selector.startswith("placeholder="):
@@ -572,6 +599,9 @@ def browser_fill(selector: str, text: str, clear: bool = True) -> str:
 def browser_screenshot(path: str = "") -> str:
     """Take a full-page screenshot of the current browser page.
 
+    Note: Screenshots are always taken of the entire page, not individual frames.
+    If you've switched to a frame, the screenshot will still capture the whole page.
+
     Args:
         path: Where to save screenshot. If empty, saves to /tmp/patchpal_screenshot.png
 
@@ -586,6 +616,7 @@ def browser_screenshot(path: str = "") -> str:
     if not _BrowserState.is_open():
         raise ValueError("Browser not open. Use browser_navigate(url) first to open a page.")
 
+    # Always use main page for screenshots (frames don't have screenshot method)
     page = _BrowserState.get_page()
 
     # Default path if not specified
@@ -608,6 +639,9 @@ def browser_get_text(max_chars: int = 20000) -> str:
     which only gets static HTML. Useful for single-page applications and
     dynamically loaded content.
 
+    Note: This extracts only visible text, not HTML structure. To see HTML with
+    element IDs/names for form interaction, use browser_get_html() instead.
+
     Args:
         max_chars: Maximum characters to return (default: 20000)
 
@@ -622,7 +656,7 @@ def browser_get_text(max_chars: int = 20000) -> str:
     if not _BrowserState.is_open():
         raise ValueError("Browser not open. Use browser_navigate(url) first to open a page.")
 
-    page = _BrowserState.get_page()
+    page = _BrowserState.get_context()  # Use current frame context
 
     # Extract text from body
     text = page.locator("body").inner_text(timeout=5000)
@@ -653,6 +687,52 @@ def browser_get_text(max_chars: int = 20000) -> str:
     return result
 
 
+def browser_get_html(max_chars: int = 50000) -> str:
+    """Get the HTML source code from the current browser page or frame.
+
+    Extracts the raw HTML, which is useful for finding element IDs, names, and
+    attributes needed for form interaction. Unlike browser_get_text(), this shows
+    the actual HTML structure with <input>, <select>, and other form elements.
+
+    Particularly useful for sites with complex forms or framesets where you need
+    to identify specific field names or IDs.
+
+    Args:
+        max_chars: Maximum characters to return (default: 50000)
+
+    Returns:
+        HTML source code with title and URL
+
+    Raises:
+        ValueError: If browser not open
+    """
+    _operation_limiter.check_limit("browser_get_html")
+
+    if not _BrowserState.is_open():
+        raise ValueError("Browser not open. Use browser_navigate(url) first to open a page.")
+
+    page = _BrowserState.get_context()  # Use current frame context
+
+    # Get HTML content
+    try:
+        html = page.content()
+    except Exception as e:
+        return f"✗ Failed to get HTML: {e}"
+
+    # Truncate if too long
+    truncated = False
+    if len(html) > max_chars:
+        html = html[:max_chars]
+        truncated = True
+
+    result = f"Title: {page.title()}\nURL: {page.url}\n\nHTML Content:\n{html}"
+
+    if truncated:
+        result += f"\n\n[... HTML truncated at {max_chars} characters ...]"
+
+    return result
+
+
 def browser_wait(milliseconds: int = 1000, selector: str = "") -> str:
     """Wait for a duration or for an element to appear.
 
@@ -673,7 +753,7 @@ def browser_wait(milliseconds: int = 1000, selector: str = "") -> str:
     if not _BrowserState.is_open():
         raise ValueError("Browser not open. Use browser_navigate(url) first to open a page.")
 
-    page = _BrowserState.get_page()
+    page = _BrowserState.get_context()  # Use current frame context
 
     # Cap wait time at 30 seconds
     wait_ms = max(100, min(int(milliseconds), 30000))
@@ -726,9 +806,123 @@ def browser_dismiss_modals() -> str:
     if not _BrowserState.is_open():
         raise ValueError("Browser not open. Use browser_navigate(url) first.")
 
-    page = _BrowserState.get_page()
+    page = _BrowserState.get_context()
     _dismiss_modals(page)
     return "✓ Attempted to dismiss modals. Check browser window to verify."
+
+
+def browser_list_frames() -> str:
+    """List all frames/iframes in the current page.
+
+    Many older government and enterprise sites use framesets or iframes to organize
+    content. This tool lists all available frames with their names, URLs, and indices,
+    which you can use with browser_switch_frame() to interact with content inside frames.
+
+    Returns:
+        Formatted list of frames with indices, names, and URLs
+
+    Raises:
+        ValueError: If browser not open
+    """
+    if not _BrowserState.is_open():
+        raise ValueError("Browser not open. Use browser_navigate(url) first.")
+
+    page = _BrowserState.get_page()  # Always use main page to list frames
+    frames = page.frames
+
+    if len(frames) <= 1:
+        return "✓ No frames found. Page uses standard layout (not framesets/iframes)."
+
+    result = f"✓ Found {len(frames)} frame(s):\n\n"
+    for i, frame in enumerate(frames):
+        name = frame.name or "(unnamed)"
+        url = frame.url or "(no URL)"
+        is_main = " [MAIN]" if i == 0 else ""
+        result += f"  [{i}] {name}{is_main}\n      URL: {url}\n\n"
+
+    result += (
+        "To interact with content in a frame, use:\n"
+        "  browser_switch_frame(index) - switch by index number\n"
+        "  browser_switch_frame(name='framename') - switch by frame name\n"
+        "  browser_switch_frame() - return to main page"
+    )
+
+    return result
+
+
+def browser_switch_frame(index: Optional[int] = None, name: Optional[str] = None) -> str:
+    """Switch to a frame/iframe for interaction.
+
+    Many sites (especially older government/enterprise sites) use framesets or iframes.
+    Normal browser_click(), browser_fill(), etc. only work in the current frame context.
+    Use this tool to switch to a specific frame before interacting with its content.
+
+    After switching, all subsequent browser operations will target that frame until you
+    switch back to the main page or to another frame.
+
+    Args:
+        index: Frame index from browser_list_frames() (0 is main page)
+        name: Frame name attribute (alternative to index)
+
+    Returns:
+        Confirmation message with frame details
+
+    Raises:
+        ValueError: If browser not open, or both/neither index and name specified
+
+    Examples:
+        browser_switch_frame(index=1)  # Switch to first frame
+        browser_switch_frame(name='content')  # Switch to frame named 'content'
+        browser_switch_frame()  # Return to main page (index=0)
+    """
+    _operation_limiter.check_limit("browser_switch_frame")
+
+    if not _BrowserState.is_open():
+        raise ValueError("Browser not open. Use browser_navigate(url) first.")
+
+    # Handle parameter validation
+    if index is not None and name is not None:
+        raise ValueError("Specify either 'index' or 'name', not both.")
+
+    page = _BrowserState.get_page()  # Always work from main page
+    frames = page.frames
+
+    # Default to main page if no arguments
+    if index is None and name is None:
+        index = 0
+
+    try:
+        if name is not None:
+            # Find frame by name
+            target_frame = None
+            for i, frame in enumerate(frames):
+                if frame.name == name:
+                    target_frame = frame
+                    index = i
+                    break
+            if target_frame is None:
+                available = [f.name or "(unnamed)" for f in frames]
+                return f"✗ Frame '{name}' not found. Available frames: {', '.join(available)}"
+        else:
+            # Use index
+            if index < 0 or index >= len(frames):
+                return f"✗ Invalid frame index {index}. Valid range: 0-{len(frames) - 1}\nUse browser_list_frames() to see available frames."
+            target_frame = frames[index]
+
+        # Switch context
+        if index == 0:
+            # Main page
+            _BrowserState.set_frame(None)
+            return f"✓ Switched to main page\nURL: {page.url}"
+        else:
+            # Frame
+            _BrowserState.set_frame(target_frame)
+            frame_name = target_frame.name or "(unnamed)"
+            frame_url = target_frame.url or "(no URL)"
+            return f"✓ Switched to frame [{index}] {frame_name}\nFrame URL: {frame_url}\n\nYou can now use browser_click(), browser_fill(), etc. to interact with this frame."
+
+    except Exception as e:
+        return f"✗ Failed to switch frame: {e}"
 
 
 # Public API - functions available to agent
@@ -738,8 +932,11 @@ __all__ = [
     "browser_fill",
     "browser_screenshot",
     "browser_get_text",
+    "browser_get_html",
     "browser_wait",
     "browser_dismiss_modals",
+    "browser_list_frames",
+    "browser_switch_frame",
     "browser_close",
     "PLAYWRIGHT_AVAILABLE",
 ]

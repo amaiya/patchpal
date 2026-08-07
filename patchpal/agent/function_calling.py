@@ -1521,6 +1521,11 @@ Repository root takes priority if both exist."""
                                     "\033[2m📄 Browser extracting page text...\033[0m",
                                     flush=True,
                                 )
+                            elif tool_name == "browser_get_html":
+                                print(
+                                    "\033[2m📋 Browser extracting HTML source...\033[0m",
+                                    flush=True,
+                                )
                             elif tool_name == "browser_wait":
                                 selector = tool_args.get("selector", "")
                                 if selector:
@@ -1534,6 +1539,28 @@ Repository root takes priority if both exist."""
                             elif tool_name == "browser_close":
                                 print(
                                     "\033[2m🚪 Closing browser...\033[0m",
+                                    flush=True,
+                                )
+                            elif tool_name == "browser_list_frames":
+                                print(
+                                    "\033[2m🖼️  Browser listing frames...\033[0m",
+                                    flush=True,
+                                )
+                            elif tool_name == "browser_switch_frame":
+                                frame_info = ""
+                                if "index" in tool_args and tool_args["index"] is not None:
+                                    frame_info = f"index {tool_args['index']}"
+                                elif "name" in tool_args and tool_args["name"] is not None:
+                                    frame_info = f"'{tool_args['name']}'"
+                                else:
+                                    frame_info = "main page"
+                                print(
+                                    f"\033[2m🖼️  Browser switching to frame: {frame_info}\033[0m",
+                                    flush=True,
+                                )
+                            elif tool_name == "browser_dismiss_modals":
+                                print(
+                                    "\033[2m🚫 Browser dismissing modals...\033[0m",
                                     flush=True,
                                 )
                             else:

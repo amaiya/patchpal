@@ -10,10 +10,14 @@ from patchpal.tools import (
     ask_user,
     browser_click,
     browser_close,
+    browser_dismiss_modals,
     browser_fill,
+    browser_get_html,
     browser_get_text,
+    browser_list_frames,
     browser_navigate,
     browser_screenshot,
+    browser_switch_frame,
     browser_wait,
     code_structure,
     edit_file,
@@ -316,8 +320,24 @@ Tip: Read README first for context when exploring repositories.""",
         "type": "function",
         "function": {
             "name": "browser_get_text",
-            "description": "Extract all visible text from the current browser page. Unlike web_fetch, this gets rendered content after JavaScript execution. Useful for SPAs and dynamic content.",
+            "description": "Extract all visible text from the current browser page. Unlike web_fetch, this gets rendered content after JavaScript execution. Useful for SPAs and dynamic content. To see HTML structure with element IDs/names, use browser_get_html() instead.",
             "parameters": {"type": "object", "properties": {}},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "browser_get_html",
+            "description": "Get the HTML source code from the current page or frame. Shows the actual HTML structure with <input>, <select>, and form element IDs/names. Particularly useful for identifying field selectors for browser_fill() on complex forms or framesets.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "max_chars": {
+                        "type": "integer",
+                        "description": "Maximum characters to return (default: 50000)",
+                    },
+                },
+            },
         },
     },
     {
@@ -346,6 +366,42 @@ Tip: Read README first for context when exploring repositories.""",
             "name": "browser_close",
             "description": "Close the browser window and cleanup resources. Safe to call even if browser is already closed.",
             "parameters": {"type": "object", "properties": {}},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "browser_dismiss_modals",
+            "description": "Manually dismiss modal overlays (login prompts, newsletter signups, cookie notices) blocking interaction. browser_navigate() and browser_click() already try to auto-dismiss modals, but use this if modals still block actions.",
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "browser_list_frames",
+            "description": "List all frames/iframes in the current page. Many older government and enterprise sites use framesets or iframes. This shows frame indices, names, and URLs which you can use with browser_switch_frame() to interact with content inside frames.",
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "browser_switch_frame",
+            "description": "Switch to a frame/iframe for interaction. Many sites (especially older government/enterprise sites) use framesets. Normal browser_click(), browser_fill(), etc. only work in the current frame context. Use this to switch to a specific frame before interacting with its content. Call with no arguments to return to main page.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "index": {
+                        "type": "integer",
+                        "description": "Frame index from browser_list_frames() (0 is main page). Use either index or name, not both.",
+                    },
+                    "name": {
+                        "type": "string",
+                        "description": "Frame name attribute (alternative to index). Use either index or name, not both.",
+                    },
+                },
+            },
         },
     },
     {
@@ -602,8 +658,12 @@ TOOL_FUNCTIONS = {
     "browser_fill": browser_fill,
     "browser_screenshot": browser_screenshot,
     "browser_get_text": browser_get_text,
+    "browser_get_html": browser_get_html,
     "browser_wait": browser_wait,
     "browser_close": browser_close,
+    "browser_dismiss_modals": browser_dismiss_modals,
+    "browser_list_frames": browser_list_frames,
+    "browser_switch_frame": browser_switch_frame,
     "list_skills": list_skills,
     "use_skill": use_skill,
     "todo_add": todo_add,
@@ -676,8 +736,12 @@ def get_tools(web_tools_enabled: bool = True):
             "browser_fill",
             "browser_screenshot",
             "browser_get_text",
+            "browser_get_html",
             "browser_wait",
             "browser_close",
+            "browser_dismiss_modals",
+            "browser_list_frames",
+            "browser_switch_frame",
         ]
         tools = [tool for tool in tools if tool["function"]["name"] not in browser_tool_names]
         functions = {k: v for k, v in functions.items() if k not in browser_tool_names}

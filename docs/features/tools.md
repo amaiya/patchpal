@@ -124,7 +124,38 @@ Interactive browser automation for JavaScript-heavy sites, forms, and dynamic co
 
 ### TLS / Certificate Handling (Corporate Proxies & Self-Signed Certs)
 
-Unlike `web_fetch`/`web_search` (which use `requests` and honor `PATCHPAL_VERIFY_SSL`, `SSL_CERT_FILE`, and `REQUESTS_CA_BUNDLE`), the Chromium browser launched by Playwright **does not** read a PEM CA-bundle file for page navigation. Setting `REQUESTS_CA_BUNDLE`, `SSL_CERT_FILE`, or `NODE_EXTRA_CA_CERTS` has **no effect** on the browser's page TLS (`NODE_EXTRA_CA_CERTS` only affects Node's HTTPS when *downloading* the browser binaries).
+#### Installing Playwright Behind Corporate Proxies
+
+When **installing** Playwright browser binaries (`python -m playwright install chromium`), Node.js downloads browser files over HTTPS. If behind a corporate proxy with self-signed certificates, you may see `SELF_SIGNED_CERT_IN_CHAIN` errors during installation.
+
+**Solution:** Set `NODE_EXTRA_CA_CERTS` to your corporate certificate bundle **before** installation:
+
+```bash
+# Linux/WSL:
+export NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
+python -m playwright install chromium
+
+# Windows (PowerShell):
+$env:NODE_EXTRA_CA_CERTS="C:\path\to\corporate-cert.crt"
+python -m playwright install chromium
+
+# Windows (CMD):
+set NODE_EXTRA_CA_CERTS=C:\path\to\corporate-cert.crt
+python -m playwright install chromium
+```
+
+For Windows, you may need to export your corporate certificate from the Windows Certificate Store:
+- Press `Win+R`, type `certmgr.msc`
+- Navigate to: **Trusted Root Certification Authorities** → **Certificates**
+- Find your corporate certificate, right-click → **All Tasks** → **Export**
+- Choose **Base-64 encoded X.509 (.CER)** and save
+- Set `NODE_EXTRA_CA_CERTS` to the exported file path
+
+See also `devsetup/win11.md` and `devsetup/wsl.md` for environment setup details.
+
+#### Using the Browser at Runtime
+
+Unlike `web_fetch`/`web_search` (which use `requests` and honor `PATCHPAL_VERIFY_SSL`, `SSL_CERT_FILE`, and `REQUESTS_CA_BUNDLE`), the Chromium browser launched by Playwright **does not** read a PEM CA-bundle file for page navigation. Setting `REQUESTS_CA_BUNDLE`, `SSL_CERT_FILE`, or `NODE_EXTRA_CA_CERTS` has **no effect** on the browser's page TLS (`NODE_EXTRA_CA_CERTS` only affects Node's HTTPS when *downloading* the browser binaries, not runtime).
 
 By default the browser validates certificates against the OS/NSS trust store. If you are behind a corporate TLS-inspecting proxy or use self-signed certs, you have two options:
 

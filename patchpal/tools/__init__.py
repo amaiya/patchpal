@@ -73,10 +73,14 @@ try:
         PLAYWRIGHT_AVAILABLE,
         browser_click,
         browser_close,
+        browser_dismiss_modals,
         browser_fill,
+        browser_get_html,
         browser_get_text,
+        browser_list_frames,
         browser_navigate,
         browser_screenshot,
+        browser_switch_frame,
         browser_wait,
     )
 except ImportError:
@@ -86,8 +90,12 @@ except ImportError:
     browser_fill = None
     browser_screenshot = None
     browser_get_text = None
+    browser_get_html = None
     browser_wait = None
     browser_close = None
+    browser_dismiss_modals = None
+    browser_list_frames = None
+    browser_switch_frame = None
 
 __all__ = [
     # File operations
@@ -125,8 +133,12 @@ __all__ = [
     "browser_fill",
     "browser_screenshot",
     "browser_get_text",
+    "browser_get_html",
     "browser_wait",
     "browser_close",
+    "browser_dismiss_modals",
+    "browser_list_frames",
+    "browser_switch_frame",
     # Shell tools
     "run_shell",
     # User interaction
