@@ -358,6 +358,23 @@ class PermissionManager:
         if self._check_grant_list(self.persistent_grants, tool_name, pattern, full_command):
             return True
 
+        # Special case: "browser" pattern applies across all browser tools
+        # If browser pattern was granted to ANY browser tool, apply to all
+        if pattern == "browser":
+            browser_tools = [
+                "browser_navigate",
+                "browser_click",
+                "browser_fill",
+                "browser_execute_script",
+            ]
+            for browser_tool in browser_tools:
+                if self._check_grant_list(self.session_grants, browser_tool, pattern, full_command):
+                    return True
+                if self._check_grant_list(
+                    self.persistent_grants, browser_tool, pattern, full_command
+                ):
+                    return True
+
         return False
 
     def _grant_permission(
