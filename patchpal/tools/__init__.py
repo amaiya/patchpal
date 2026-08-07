@@ -80,6 +80,7 @@ try:
         browser_get_text,
         browser_list_frames,
         browser_navigate,
+        browser_press_key,
         browser_screenshot,
         browser_scroll,
         browser_switch_frame,
@@ -95,6 +96,7 @@ except ImportError:
     browser_get_html = None
     browser_scroll = None
     browser_execute_script = None
+    browser_press_key = None
     browser_wait = None
     browser_close = None
     browser_dismiss_modals = None
@@ -140,6 +142,7 @@ __all__ = [
     "browser_get_html",
     "browser_scroll",
     "browser_execute_script",
+    "browser_press_key",
     "browser_wait",
     "browser_close",
     "browser_dismiss_modals",

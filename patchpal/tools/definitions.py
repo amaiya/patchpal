@@ -17,6 +17,7 @@ from patchpal.tools import (
     browser_get_text,
     browser_list_frames,
     browser_navigate,
+    browser_press_key,
     browser_screenshot,
     browser_scroll,
     browser_switch_frame,
@@ -387,6 +388,27 @@ Tip: Read README first for context when exploring repositories.""",
     {
         "type": "function",
         "function": {
+            "name": "browser_press_key",
+            "description": "Press a keyboard key, optionally on a specific element. Essential for submitting forms with Enter, dismissing modals with Escape, navigating dropdowns with arrow keys, or triggering keyboard shortcuts.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "key": {
+                        "type": "string",
+                        "description": "Key to press: Enter (submit forms), Escape (close modals), Tab (navigate), ArrowUp/ArrowDown/ArrowLeft/ArrowRight (navigate), Backspace, Delete, Space, or modifiers like Control+a, Shift+Tab",
+                    },
+                    "selector": {
+                        "type": "string",
+                        "description": "Optional CSS selector to focus element before pressing key. If omitted, presses key on currently focused element or page.",
+                    },
+                },
+                "required": ["key"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "browser_wait",
             "description": "Wait for a duration (milliseconds) or for an element to appear. Useful for waiting for dynamic content to load or animations to complete.",
             "parameters": {
@@ -705,6 +727,7 @@ TOOL_FUNCTIONS = {
     "browser_get_html": browser_get_html,
     "browser_scroll": browser_scroll,
     "browser_execute_script": browser_execute_script,
+    "browser_press_key": browser_press_key,
     "browser_wait": browser_wait,
     "browser_close": browser_close,
     "browser_dismiss_modals": browser_dismiss_modals,

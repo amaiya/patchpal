@@ -908,6 +908,58 @@ def browser_execute_script(script: str) -> str:
         return f"✗ Script execution failed: {e}\nTip: Make sure the script returns a serializable value (string, number, array, object)"
 
 
+def browser_press_key(key: str, selector: str = "") -> str:
+    """Press a keyboard key, optionally on a specific element.
+
+    Useful for submitting forms (Enter), dismissing modals (Escape), navigating
+    dropdowns (ArrowDown/ArrowUp), or triggering keyboard shortcuts.
+
+    Args:
+        key: Key to press - common keys include:
+             - Enter (submit forms)
+             - Escape (close modals/dialogs)
+             - Tab (navigate fields)
+             - Backspace, Delete
+             - ArrowUp, ArrowDown, ArrowLeft, ArrowRight
+             - Space
+             - For modifiers: Control+a, Shift+Tab, etc.
+        selector: Optional CSS selector to focus element before pressing key.
+                 If omitted, presses key on currently focused element or page.
+
+    Returns:
+        Confirmation message
+
+    Raises:
+        ValueError: If browser not open or element not found
+
+    Examples:
+        browser_press_key("Enter", "input[name='search']")  # Submit search form
+        browser_press_key("Escape")  # Close modal dialog
+        browser_press_key("ArrowDown", "select[name='country']")  # Navigate dropdown
+    """
+    _operation_limiter.check_limit(f"browser_press_key({key})")
+
+    if not _BrowserState.is_open():
+        raise ValueError("Browser not open. Use browser_navigate(url) first to open a page.")
+
+    page = _BrowserState.get_context()  # Use current frame context
+
+    try:
+        # If selector provided, focus that element first
+        if selector:
+            locator = page.locator(selector).first
+            locator.focus(timeout=5000)
+            # Press key on the focused element
+            locator.press(key, timeout=5000)
+            return f"✓ Pressed '{key}' on '{selector}'\nCurrent URL: {page.url}"
+        else:
+            # Press key on page (currently focused element or page itself)
+            page.keyboard.press(key)
+            return f"✓ Pressed '{key}'\nCurrent URL: {page.url}"
+    except Exception as e:
+        return f"✗ Failed to press key '{key}': {e}\nTip: Common keys are Enter, Escape, Tab, ArrowDown, etc."
+
+
 def browser_wait(milliseconds: int = 1000, selector: str = "") -> str:
     """Wait for a duration or for an element to appear.
 

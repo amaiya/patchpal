@@ -1,6 +1,6 @@
 # Built-In Tools
 
-PatchPal provides 33 built-in tools for file operations, code analysis, web access, browser automation, task planning, and user interaction.
+PatchPal provides 34 built-in tools for file operations, code analysis, web access, browser automation, task planning, and user interaction.
 
 > **For Local Models:** Set `PATCHPAL_MINIMAL_TOOLS=true` and `PATCHPAL_ENABLE_WEB=false` to use only 5 essential tools (`read_file`, `read_lines`, `write_file`, `edit_file`, `run_shell`), reducing tool confusion with smaller models.
 
@@ -255,6 +255,18 @@ Wait for a duration or element to appear.
 - Useful for waiting for dynamic content to load
 - Maximum wait time: 30 seconds
 
+### browser_press_key
+Press a keyboard key, optionally on a specific element.
+
+- **Examples**:
+  - `browser_press_key("Enter", "input[name='search']")` - Submit search form
+  - `browser_press_key("Escape")` - Close modal dialog
+  - `browser_press_key("ArrowDown", "select[name='country']")` - Navigate dropdown
+  - `browser_press_key("Tab")` - Move to next field
+- Essential for submitting forms with Enter key
+- Useful for dismissing modals (Escape), navigating with arrow keys
+- Supports modifiers: `Control+a`, `Shift+Tab`, etc.
+
 ### browser_close
 Close the browser and cleanup resources.
 
@@ -373,7 +385,7 @@ browser_click("text=English")
 
 # Search for the topic
 browser_fill("#searchInput", "Web scraping")
-browser_click("button[type=submit]")
+browser_press_key("Enter", "#searchInput")  # Submit form with Enter key
 
 # Wait for the article to render, then read the page
 browser_wait(3000, "#mw-content-text")
@@ -522,11 +534,11 @@ Search for files by glob pattern.
 | Optional Tools* | grep, find | 2 |
 | Code Analysis | code_structure, get_repo_map | 2 |
 | Web | web_search, web_fetch | 2 |
-| Browser Automation** | browser_navigate, browser_click, browser_fill, browser_screenshot, browser_get_text, browser_get_html, browser_list_frames, browser_switch_frame, browser_scroll, browser_execute_script, browser_wait, browser_dismiss_modals, browser_close | 13 |
+| Browser Automation** | browser_navigate, browser_click, browser_fill, browser_press_key, browser_screenshot, browser_get_text, browser_get_html, browser_list_frames, browser_switch_frame, browser_scroll, browser_execute_script, browser_wait, browser_dismiss_modals, browser_close | 14 |
 | Task Planning | todo_add, todo_list, todo_complete, todo_update, todo_remove, todo_clear | 6 |
 | Skills | list_skills, use_skill | 2 |
 | User Interaction | ask_user | 1 |
-| **Total** | | **33** |
+| **Total** | | **34** |
 
 *Optional tools are disabled by default (shell commands preferred)
 **Browser tools require `pip install patchpal[browser]` and are disabled if Playwright not installed
