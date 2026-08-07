@@ -11,12 +11,14 @@ from patchpal.tools import (
     browser_click,
     browser_close,
     browser_dismiss_modals,
+    browser_execute_script,
     browser_fill,
     browser_get_html,
     browser_get_text,
     browser_list_frames,
     browser_navigate,
     browser_screenshot,
+    browser_scroll,
     browser_switch_frame,
     browser_wait,
     code_structure,
@@ -343,6 +345,48 @@ Tip: Read README first for context when exploring repositories.""",
     {
         "type": "function",
         "function": {
+            "name": "browser_scroll",
+            "description": "Scroll the browser page to load lazy-loaded content or navigate long pages. Essential for infinite scroll sites (Twitter, Reddit, Unsplash, social media feeds) and dynamically loaded content. Can scroll by direction, amount, or to a specific element.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "direction": {
+                        "type": "string",
+                        "description": "Scroll direction: 'down', 'up', 'bottom', 'top' (default: 'down')",
+                        "enum": ["down", "up", "bottom", "top"],
+                    },
+                    "amount": {
+                        "type": "integer",
+                        "description": "Pixels to scroll (0 = scroll by viewport height). Ignored for 'bottom'/'top'. Default: 0",
+                    },
+                    "selector": {
+                        "type": "string",
+                        "description": "Optional CSS selector to scroll to a specific element",
+                    },
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "browser_execute_script",
+            "description": "Execute JavaScript code in the current browser page and return the result. Allows direct DOM manipulation, counting elements, extracting data, or complex interactions. Useful for counting images on Unsplash, session keep-alive, or tasks beyond standard browser tools.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "script": {
+                        "type": "string",
+                        "description": "JavaScript code to execute (must return a serializable value: string, number, array, or object)",
+                    },
+                },
+                "required": ["script"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "browser_wait",
             "description": "Wait for a duration (milliseconds) or for an element to appear. Useful for waiting for dynamic content to load or animations to complete.",
             "parameters": {
@@ -659,6 +703,8 @@ TOOL_FUNCTIONS = {
     "browser_screenshot": browser_screenshot,
     "browser_get_text": browser_get_text,
     "browser_get_html": browser_get_html,
+    "browser_scroll": browser_scroll,
+    "browser_execute_script": browser_execute_script,
     "browser_wait": browser_wait,
     "browser_close": browser_close,
     "browser_dismiss_modals": browser_dismiss_modals,
@@ -737,6 +783,8 @@ def get_tools(web_tools_enabled: bool = True):
             "browser_screenshot",
             "browser_get_text",
             "browser_get_html",
+            "browser_scroll",
+            "browser_execute_script",
             "browser_wait",
             "browser_close",
             "browser_dismiss_modals",

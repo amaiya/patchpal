@@ -1,6 +1,6 @@
 # Built-In Tools
 
-PatchPal provides 27 built-in tools for file operations, code analysis, web access, browser automation, task planning, and user interaction.
+PatchPal provides 33 built-in tools for file operations, code analysis, web access, browser automation, task planning, and user interaction.
 
 > **For Local Models:** Set `PATCHPAL_MINIMAL_TOOLS=true` and `PATCHPAL_ENABLE_WEB=false` to use only 5 essential tools (`read_file`, `read_lines`, `write_file`, `edit_file`, `run_shell`), reducing tool confusion with smaller models.
 
@@ -95,7 +95,7 @@ Fetch and read content from URLs.
 - Supports plain text, JSON, XML, and other text formats
 - Warns about unsupported binary formats (images, videos, archives)
 
-## Browser Automation (7 tools - optional)
+## Browser Automation (13 tools - optional)
 
 > **Optional Feature:** Browser automation tools require Playwright. Install with:
 > ```bash
@@ -108,7 +108,7 @@ Fetch and read content from URLs.
 >
 > To disable **only** the browser tools while keeping `web_search`/`web_fetch`, set `PATCHPAL_ENABLE_BROWSER=false` (default: `true`).
 
-Interactive browser automation for JavaScript-heavy sites, forms, and dynamic content that `web_fetch` cannot handle.
+Interactive browser automation for JavaScript-heavy sites, forms, dynamic content, and complex web interactions that `web_fetch` cannot handle.
 
 ### When to Use Browser Tools vs web_fetch
 
@@ -261,6 +261,78 @@ Close the browser and cleanup resources.
 - **Example**: `browser_close()`
 - Safe to call even if browser is already closed
 - Releases browser process and memory
+
+### browser_get_html
+Get the HTML source code from the current page or frame.
+
+- **Example**: `browser_get_html()`
+- Shows actual HTML structure with `<input>`, `<select>`, and form element IDs/names
+- Particularly useful for identifying field selectors for `browser_fill()` on complex forms
+- Unlike `browser_get_text()` which shows only visible text, this shows raw HTML
+- Essential for sites with framesets or complex form structures
+- Returns HTML content (truncated at 50KB by default)
+
+### browser_list_frames
+List all frames/iframes in the current page.
+
+- **Example**: `browser_list_frames()`
+- Shows frame indices, names, and URLs
+- Essential for older government and enterprise sites using framesets
+- Use with `browser_switch_frame()` to interact with content inside frames
+- Returns "No frames found" if page uses standard layout
+
+### browser_switch_frame
+Switch to a frame/iframe for interaction.
+
+- **Examples**:
+  - `browser_switch_frame(index=1)` - Switch to first frame
+  - `browser_switch_frame(name='content')` - Switch by frame name
+  - `browser_switch_frame()` - Return to main page
+- Many older sites (especially government/enterprise) use framesets
+- Normal browser tools only work in the current frame context
+- After switching, all subsequent operations target that frame
+- Essential for sites like DoD portals, legacy enterprise applications
+
+### browser_scroll
+Scroll the page to load lazy-loaded content or navigate long pages.
+
+- **Examples**:
+  - `browser_scroll(direction="down")` - Scroll down one viewport
+  - `browser_scroll(direction="down", amount=500)` - Scroll 500px
+  - `browser_scroll(direction="bottom")` - Scroll to page bottom
+  - `browser_scroll(selector="#footer")` - Scroll to specific element
+- Essential for infinite scroll sites (Twitter, Reddit, Unsplash, social media feeds)
+- Waits 1 second after scrolling for lazy content to load
+- Returns scroll position and page height information
+- Directions: `down`, `up`, `bottom`, `top`
+
+### browser_dismiss_modals
+Manually dismiss modal overlays blocking interaction.
+
+- **Example**: `browser_dismiss_modals()`
+- Attempts to close login prompts, newsletter signups, cookie notices, app download prompts
+- `browser_navigate()` and `browser_click()` already auto-dismiss modals
+- Use this if modals still block actions after navigation/clicking
+- Tries common close button selectors (ARIA labels, class names, X buttons)
+
+### browser_execute_script
+Execute JavaScript code in the current page and return the result.
+
+- **Examples**:
+  - `browser_execute_script("document.querySelectorAll('img').length")` - Count images
+  - `browser_execute_script("document.title")` - Get page title
+  - `browser_execute_script("document.querySelector('#email').value = 'test@example.com'")` - Fill form directly
+  - `browser_execute_script("Array.from(document.querySelectorAll('a')).map(a => a.href)")` - Get all link URLs
+- Allows direct DOM manipulation, querying elements, counting items
+- Useful for complex interactions beyond standard browser tools
+- Script must return a serializable value (string, number, array, object)
+- Essential for:
+  - Counting elements on infinite scroll sites
+  - Complex form interactions
+  - Triggering custom JavaScript events
+  - Extracting structured data from the page
+  - Session keep-alive for timeout-sensitive sites
+- Returns formatted result (JSON for arrays/objects)
 
 ### Example Workflow: Form Submission
 
@@ -450,11 +522,11 @@ Search for files by glob pattern.
 | Optional Tools* | grep, find | 2 |
 | Code Analysis | code_structure, get_repo_map | 2 |
 | Web | web_search, web_fetch | 2 |
-| Browser Automation** | browser_navigate, browser_click, browser_fill, browser_screenshot, browser_get_text, browser_wait, browser_close | 7 |
+| Browser Automation** | browser_navigate, browser_click, browser_fill, browser_screenshot, browser_get_text, browser_get_html, browser_list_frames, browser_switch_frame, browser_scroll, browser_execute_script, browser_wait, browser_dismiss_modals, browser_close | 13 |
 | Task Planning | todo_add, todo_list, todo_complete, todo_update, todo_remove, todo_clear | 6 |
 | Skills | list_skills, use_skill | 2 |
 | User Interaction | ask_user | 1 |
-| **Total** | | **27** |
+| **Total** | | **33** |
 
 *Optional tools are disabled by default (shell commands preferred)
 **Browser tools require `pip install patchpal[browser]` and are disabled if Playwright not installed

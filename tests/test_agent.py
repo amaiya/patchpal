@@ -71,32 +71,38 @@ def test_agent_has_correct_tools():
         "browser_fill",
         "browser_screenshot",
         "browser_get_text",
+        "browser_get_html",
+        "browser_list_frames",
+        "browser_switch_frame",
+        "browser_scroll",
+        "browser_execute_script",
         "browser_wait",
+        "browser_dismiss_modals",
         "browser_close",
     }
 
-    # The STATIC definitions in definitions.py always contain all 27 tools,
+    # The STATIC definitions in definitions.py always contain all 33 tools,
     # regardless of whether Playwright is installed:
-    #   18 core + web_search/web_fetch + grep/find + 7 browser tools = 27.
+    #   18 core + web_search/web_fetch + grep/find + 13 browser tools = 33.
     # (When Playwright is missing, the browser function mappings are None, but
     # the schema/name entries still exist.)
-    assert len(ALL_TOOLS) == 27
-    assert len(ALL_TOOL_FUNCTIONS) == 27
+    assert len(ALL_TOOLS) == 33
+    assert len(ALL_TOOL_FUNCTIONS) == 33
 
     # TOOLS / TOOL_FUNCTIONS imported from the agent are the FILTERED runtime
     # results of get_tools():
     #   - grep and find are removed from TOOLS (disabled by default), and
-    #   - the 7 browser tools are removed from BOTH when Playwright is
+    #   - the 13 browser tools are removed from BOTH when Playwright is
     #     unavailable or PATCHPAL_ENABLE_BROWSER=false.
     # Derive expectations from what's actually present so this is robust in CI
     # (where Playwright may not be installed).
     runtime_tool_names = {tool["function"]["name"] for tool in TOOLS}
     browser_included = bool(runtime_tool_names & browser_tool_names)
 
-    # 27 total - 2 (grep/find filtered from schema list) - 7 browser (if absent)
-    assert len(TOOLS) == 27 - 2 - (0 if browser_included else 7)
+    # 33 total - 2 (grep/find filtered from schema list) - 13 browser (if absent)
+    assert len(TOOLS) == 33 - 2 - (0 if browser_included else 13)
     # functions keep grep/find but drop browser tools when unavailable
-    assert len(TOOL_FUNCTIONS) == 27 - (0 if browser_included else 7)
+    assert len(TOOL_FUNCTIONS) == 33 - (0 if browser_included else 13)
 
     # Verify tool names in the full tool list
     all_tool_names = [tool["function"]["name"] for tool in ALL_TOOLS]

@@ -733,6 +733,161 @@ def browser_get_html(max_chars: int = 50000) -> str:
     return result
 
 
+def browser_scroll(direction: str = "down", amount: int = 0, selector: str = "") -> str:
+    """Scroll the browser page to load lazy-loaded content or navigate long pages.
+
+    Useful for infinite scroll sites (Twitter, Reddit, Unsplash), long articles,
+    or revealing content that loads dynamically as you scroll.
+
+    Args:
+        direction: Scroll direction - "down", "up", "bottom", "top"
+        amount: Pixels to scroll (0 = scroll by viewport height). Ignored for "bottom"/"top".
+        selector: Optional CSS selector to scroll to a specific element
+
+    Returns:
+        Confirmation message with scroll position
+
+    Raises:
+        ValueError: If browser not open or invalid direction
+
+    Examples:
+        browser_scroll(direction="down")  # Scroll down one viewport
+        browser_scroll(direction="down", amount=500)  # Scroll down 500px
+        browser_scroll(direction="bottom")  # Scroll to bottom of page
+        browser_scroll(selector="#footer")  # Scroll to specific element
+    """
+    _operation_limiter.check_limit("browser_scroll")
+
+    if not _BrowserState.is_open():
+        raise ValueError("Browser not open. Use browser_navigate(url) first to open a page.")
+
+    page = _BrowserState.get_context()  # Use current frame context
+
+    # Validate direction
+    valid_directions = ["down", "up", "bottom", "top"]
+    if direction not in valid_directions:
+        return f"✗ Invalid direction '{direction}'. Use: {', '.join(valid_directions)}"
+
+    try:
+        if selector:
+            # Scroll to specific element
+            page.locator(selector).first.scroll_into_view_if_needed(timeout=5000)
+            return f"✓ Scrolled to element: {selector}\nCurrent URL: {page.url}"
+
+        if direction == "bottom":
+            # Scroll to absolute bottom
+            page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+        elif direction == "top":
+            # Scroll to absolute top
+            page.evaluate("window.scrollTo(0, 0)")
+        else:
+            # Relative scroll (down/up)
+            if amount == 0:
+                # Default: scroll by viewport height
+                viewport_height = page.evaluate("window.innerHeight")
+                amount = viewport_height
+
+            if direction == "down":
+                page.evaluate(f"window.scrollBy(0, {amount})")
+            elif direction == "up":
+                page.evaluate(f"window.scrollBy(0, -{amount})")
+
+        # Wait a moment for lazy content to load
+        page.wait_for_timeout(1000)
+
+        # Get new scroll position
+        scroll_y_after = page.evaluate("window.pageYOffset")
+        scroll_height = page.evaluate("document.body.scrollHeight")
+
+        return (
+            f"✓ Scrolled {direction}"
+            + (f" {amount}px" if amount > 0 and direction in ["down", "up"] else "")
+            + f"\nScroll position: {int(scroll_y_after)}px (page height: {int(scroll_height)}px)"
+            + f"\nCurrent URL: {page.url}"
+        )
+
+    except Exception as e:
+        return f"✗ Failed to scroll: {e}"
+
+
+def browser_execute_script(script: str) -> str:
+    """Execute JavaScript code in the current browser page and return the result.
+
+    Allows direct DOM manipulation, querying elements, counting items, or executing
+    complex interactions that aren't possible with standard browser tools. The script
+    runs in the page context and can access all page variables and functions.
+
+    Useful for:
+    - Counting elements (e.g., images on Unsplash)
+    - Complex form interactions
+    - Triggering custom JavaScript events
+    - Extracting structured data from the page
+    - Session keep-alive for timeout-sensitive sites
+
+    Args:
+        script: JavaScript code to execute (must return a serializable value)
+
+    Returns:
+        String representation of the script's return value
+
+    Raises:
+        ValueError: If browser not open or script execution fails
+
+    Examples:
+        # Count images
+        browser_execute_script("document.querySelectorAll('img').length")
+
+        # Get page title
+        browser_execute_script("document.title")
+
+        # Fill form directly
+        browser_execute_script("document.querySelector('#email').value = 'test@example.com'")
+
+        # Get all link URLs
+        browser_execute_script("Array.from(document.querySelectorAll('a')).map(a => a.href)")
+    """
+    _operation_limiter.check_limit("browser_execute_script")
+
+    if not _BrowserState.is_open():
+        raise ValueError("Browser not open. Use browser_navigate(url) first to open a page.")
+
+    permission_manager = _get_permission_manager()
+    # Truncate long scripts for display
+    script_display = script if len(script) <= 200 else script[:197] + "..."
+    if not permission_manager.request_permission(
+        "browser_execute_script",
+        f"   ● Execute JavaScript:\n      {script_display}",
+        pattern="browser",
+    ):
+        return "Operation cancelled by user."
+
+    page = _BrowserState.get_context()  # Use current frame context
+
+    try:
+        result = page.evaluate(script)
+
+        # Convert result to string representation
+        if result is None:
+            return "✓ Script executed (returned: null)"
+        elif isinstance(result, (str, int, float, bool)):
+            return f"✓ Script result: {result}"
+        elif isinstance(result, (list, dict)):
+            import json
+
+            result_str = json.dumps(result, indent=2)
+            # Truncate very long results
+            if len(result_str) > 5000:
+                result_str = (
+                    result_str[:5000] + f"\n... [truncated, total length: {len(result_str)}]"
+                )
+            return f"✓ Script result:\n{result_str}"
+        else:
+            return f"✓ Script result: {str(result)}"
+
+    except Exception as e:
+        return f"✗ Script execution failed: {e}\nTip: Make sure the script returns a serializable value (string, number, array, object)"
+
+
 def browser_wait(milliseconds: int = 1000, selector: str = "") -> str:
     """Wait for a duration or for an element to appear.
 
@@ -933,6 +1088,8 @@ __all__ = [
     "browser_screenshot",
     "browser_get_text",
     "browser_get_html",
+    "browser_scroll",
+    "browser_execute_script",
     "browser_wait",
     "browser_dismiss_modals",
     "browser_list_frames",

@@ -74,12 +74,14 @@ try:
         browser_click,
         browser_close,
         browser_dismiss_modals,
+        browser_execute_script,
         browser_fill,
         browser_get_html,
         browser_get_text,
         browser_list_frames,
         browser_navigate,
         browser_screenshot,
+        browser_scroll,
         browser_switch_frame,
         browser_wait,
     )
@@ -91,6 +93,8 @@ except ImportError:
     browser_screenshot = None
     browser_get_text = None
     browser_get_html = None
+    browser_scroll = None
+    browser_execute_script = None
     browser_wait = None
     browser_close = None
     browser_dismiss_modals = None
@@ -134,6 +138,8 @@ __all__ = [
     "browser_screenshot",
     "browser_get_text",
     "browser_get_html",
+    "browser_scroll",
+    "browser_execute_script",
     "browser_wait",
     "browser_close",
     "browser_dismiss_modals",

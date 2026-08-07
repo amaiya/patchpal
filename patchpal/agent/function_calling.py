@@ -1526,6 +1526,25 @@ Repository root takes priority if both exist."""
                                     "\033[2m📋 Browser extracting HTML source...\033[0m",
                                     flush=True,
                                 )
+                            elif tool_name == "browser_scroll":
+                                direction = tool_args.get("direction", "down")
+                                selector = tool_args.get("selector", "")
+                                if selector:
+                                    scroll_desc = f"to '{selector}'"
+                                else:
+                                    scroll_desc = direction
+                                print(
+                                    f"\033[2m📜 Browser scrolling {scroll_desc}...\033[0m",
+                                    flush=True,
+                                )
+                            elif tool_name == "browser_execute_script":
+                                script_preview = tool_args.get("script", "")[:50]
+                                if len(tool_args.get("script", "")) > 50:
+                                    script_preview += "..."
+                                print(
+                                    f"\033[2m⚡ Browser executing script: {script_preview}\033[0m",
+                                    flush=True,
+                                )
                             elif tool_name == "browser_wait":
                                 selector = tool_args.get("selector", "")
                                 if selector:
