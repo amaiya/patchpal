@@ -11,7 +11,7 @@ pip install patchpal
 **Optional Features:** PatchPal has optional dependencies for additional functionality:
 
 ```bash
-# Browser automation (7 additional tools for interactive web tasks)
+# Browser automation (13 additional tools for interactive web tasks)
 pip install patchpal[browser]
 python -m playwright install chromium
 ```

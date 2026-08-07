@@ -60,7 +60,7 @@ docker run -it --rm \
 
 ## Setup
 0. **Install**: `pip install patchpal`
-   - **Optional**: For browser automation (7 additional tools): `pip install patchpal[browser] && python -m playwright install chromium`
+   - **Optional**: For browser automation (13 additional tools): `pip install patchpal[browser] && python -m playwright install chromium`
 1. **Get an API key or a Local LLM Engine**:
    - **[Cloud]** For Anthropic models (default): Sign up at https://console.anthropic.com/
    - **[Cloud]** For OpenAI models: Get a key from https://platform.openai.com/
