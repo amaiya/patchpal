@@ -513,6 +513,9 @@ def browser_click(selector: str) -> str:
 
     page = _BrowserState.get_context()  # Use current frame context
 
+    # Capture URL before click to detect navigation
+    old_url = page.url
+
     # Handle different selector types (OpenWorker pattern)
     try:
         if selector.startswith("text="):
@@ -536,6 +539,23 @@ def browser_click(selector: str) -> str:
         _dismiss_modals(page)
     except Exception:
         pass
+
+    # Check if click caused navigation - apply rate limiting to prevent abuse
+    # (e.g., rapidly clicking "Next Page" links to spider a site)
+    new_url = page.url
+    if old_url != new_url:
+        try:
+            from urllib.parse import urlparse
+
+            from patchpal.tools.web_tools import _domain_limiter
+
+            parsed = urlparse(new_url)
+            if parsed.hostname:
+                # Navigation occurred - apply same rate limiting as browser_navigate
+                _domain_limiter.check_limit(parsed.hostname, config.WEB_RATE_LIMIT)
+        except Exception:
+            # Don't fail the click if rate limiting check has issues
+            pass
 
     return f"✓ Clicked: {selector}\nCurrent URL: {page.url}"
 
