@@ -7,10 +7,11 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
-## 0.24.0 (TBD)
+## 0.24.0 (2026-08-07)
 
 ### new:
-- **Browser Tools**: PatchPal now supports browser automation (`pip install patchpal[browser]`)
+- **Browser Automation**: PatchPal now supports browser automation
+  for interactive web tasks, form filling, and JavaScript-heavy sites
 
 ### changed:
 - N/A
