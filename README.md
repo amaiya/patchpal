@@ -14,6 +14,7 @@ Most agent frameworks are [built in TypeScript](https://news.ycombinator.com/ite
 - [Sandbox Mode](https://amaiya.github.io/patchpal/usage/sandbox/) for secure container isolation
 - [Python SDK](https://amaiya.github.io/patchpal/usage/python-api/) for flexibility and extensibility
 - [Built-In](https://amaiya.github.io/patchpal/features/tools/) and [Custom Tools](https://amaiya.github.io/patchpal/features/custom-tools/)
+- [Browser Automation](https://amaiya.github.io/patchpal/features/tools/#browser-automation-14-tools) for information extraction and UI testing
 - [Skills System](https://amaiya.github.io/patchpal/features/skills/) and [MCP Integration](https://amaiya.github.io/patchpal/features/mcp/)
 - [Autopilot Mode](https://amaiya.github.io/patchpal/usage/autopilot/) using [Ralph Wiggum loops](https://github.com/amaiya/patchpal/tree/main/examples/ralph/)
 - [Project Memory](https://amaiya.github.io/patchpal/features/memory/) automatically loads project context from `MEMORY.md` (repository root or `~/.patchpal/repos/<repo-name>/MEMORY.md`) at startup.

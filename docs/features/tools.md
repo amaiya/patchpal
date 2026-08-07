@@ -95,7 +95,7 @@ Fetch and read content from URLs.
 - Supports plain text, JSON, XML, and other text formats
 - Warns about unsupported binary formats (images, videos, archives)
 
-## Browser Automation (13 tools - optional)
+## Browser Automation (14 tools - optional)
 
 > **Optional Feature:** Browser automation tools require Playwright. Install with:
 > ```bash
