@@ -679,6 +679,44 @@ def test_web_fetch_invalid_url():
         web_fetch("not-a-url")
 
 
+def test_url_extraction_with_punctuation():
+    """Test that URLs followed by punctuation are extracted correctly."""
+    from patchpal.tools.web_tools import URLContextTracker
+
+    tracker = URLContextTracker()
+
+    # Test URL followed by comma (the bug that was fixed)
+    tracker.clear()
+    tracker.add_urls_from_text("Based on https://en.wikipedia.org/robots.txt, is this okay?")
+    assert tracker.is_url_in_context("https://en.wikipedia.org/robots.txt")
+
+    # Test URL followed by period
+    tracker.clear()
+    tracker.add_urls_from_text("Check out https://example.com. It's great!")
+    assert tracker.is_url_in_context("https://example.com")
+
+    # Test URL followed by semicolon
+    tracker.clear()
+    tracker.add_urls_from_text("Visit https://docs.python.org; it has good info.")
+    assert tracker.is_url_in_context("https://docs.python.org")
+
+    # Test URL in parentheses
+    tracker.clear()
+    tracker.add_urls_from_text("Link (https://www.google.com) is here.")
+    assert tracker.is_url_in_context("https://www.google.com")
+
+    # Test multiple URLs with different punctuation
+    tracker.clear()
+    tracker.add_urls_from_text("Multiple: https://site1.com, https://site2.com.")
+    assert tracker.is_url_in_context("https://site1.com")
+    assert tracker.is_url_in_context("https://site2.com")
+
+    # Test URL with apostrophe (should be preserved - part of URL)
+    tracker.clear()
+    tracker.add_urls_from_text("URL: https://en.wikipedia.org/wiki/O'Brien works")
+    assert tracker.is_url_in_context("https://en.wikipedia.org/wiki/O'Brien")
+
+
 def test_web_fetch_content_too_large(monkeypatch):
     """Test that large content is rejected."""
     from unittest.mock import Mock

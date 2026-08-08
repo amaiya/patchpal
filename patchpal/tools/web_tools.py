@@ -289,9 +289,21 @@ class URLContextTracker:
         # Note: Apostrophes (') are allowed in URLs (e.g., Wikipedia article titles)
         import re
 
-        url_pattern = r"https?://[^\s<>\"\)]*"
+        url_pattern = r"https?://[^\s<>\"]*"
         urls = re.findall(url_pattern, text)
-        self.seen_urls.update(urls)
+
+        # Strip trailing punctuation that commonly follows URLs in natural language
+        # but is not part of the URL itself
+        cleaned_urls = []
+        for url in urls:
+            # Strip trailing punctuation: , ; . ! ? )
+            # but preserve these characters if they appear mid-URL
+            while url and url[-1] in ".,;!?)":
+                url = url[:-1]
+            if url:  # Only add non-empty URLs
+                cleaned_urls.append(url)
+
+        self.seen_urls.update(cleaned_urls)
 
     def is_url_in_context(self, url: str) -> bool:
         """Check if URL has appeared in conversation context.
