@@ -234,11 +234,12 @@ export OLLAMA_CONTEXT_LENGTH=32768
 # Start Ollama
 ollama serve
 
-# In another terminal, use with PatchPal
+# In another terminal, configure PatchPal to match and run
+export PATCHPAL_CONTEXT_LIMIT=32000
 patchpal --model ollama_chat/qwen3.5:4b
 ```
 
-This automatically configures all models to use a 32K context window, which gives reasoning models enough room for their internal thought process.
+**Important:** You must also set `PATCHPAL_CONTEXT_LIMIT` to match your Ollama context window. This tells PatchPal how much context is actually available, preventing premature context compaction. Set it slightly below `OLLAMA_CONTEXT_LENGTH` (e.g., 32000 for a 32768 window) to leave headroom.
 
 **Alternative: Custom Modelfile (For Fine-Tuned Control):**
 
@@ -274,6 +275,8 @@ This creates a new model variant called `qwen-agent` with your custom configurat
 **3. Run PatchPal with the Configured Model**
 
 ```bash
+# Set PatchPal's context limit to match
+export PATCHPAL_CONTEXT_LIMIT=32000
 patchpal --model ollama_chat/qwen-agent
 ```
 
