@@ -215,6 +215,107 @@ docker exec -it ollama ollama run glm-4.7-flash:q4_K_M
 - `qwen3.5` - Qwen3.5 model with good agentic capabilities
 - `qwen3-coder-next` - Specialized for coding tasks
 
+### Configuring Ollama for Reasoning Models (Qwen3.5, DeepSeek-R1, etc.)
+
+Reasoning models like **Qwen3.5:4b** generate internal "Chain of Thought" (CoT) reasoning in hidden `<think>` tags before producing their final answer. This dramatically increases token consumption. **By default, Ollama's context window (`num_ctx`) is only 2048-4096 tokens**, which is insufficient for reasoning models—they will run out of space mid-thought and cut off before calling tools or writing code.
+
+**Critical Requirement: Increase Context Window Size**
+
+To use reasoning models with PatchPal, you **must increase `num_ctx` to at least 32768**. Ollama already defaults to unlimited output generation (`num_predict=-1`), so the context window is the primary constraint.
+
+**Setting up with OLLAMA_CONTEXT_LENGTH (Simplest Method):**
+
+The easiest approach is to set the environment variable before starting Ollama:
+
+```bash
+# Set context window to 32K (recommended for reasoning models)
+export OLLAMA_CONTEXT_LENGTH=32768
+
+# Start Ollama
+ollama serve
+
+# In another terminal, use with PatchPal
+patchpal --model ollama_chat/qwen3.5:4b
+```
+
+This automatically configures all models to use a 32K context window, which gives reasoning models enough room for their internal thought process.
+
+**Alternative: Custom Modelfile (For Fine-Tuned Control):**
+
+If you want model-specific configuration or need to adjust the system prompt, create a custom Modelfile:
+
+**1. Create a Modelfile**
+
+Create a file named `Modelfile` (no extension):
+
+```dockerfile
+FROM qwen3.5:4b
+
+# Set the context window (input + output + reasoning)
+PARAMETER num_ctx 32768
+
+# Optional: System prompt to guide reasoning behavior
+SYSTEM "You are a terminal agent. Keep reasoning structured and brief before executing tools."
+```
+
+**Key parameters explained:**
+- `num_ctx 32768` - Total context window (includes input, output, and reasoning tokens)
+- `SYSTEM` prompt - Can help prevent excessive reasoning loops on simple tasks
+- Note: `num_predict` (max output tokens) defaults to `-1` (unlimited, auto-capped at `10 * num_ctx`), so you typically don't need to set it
+
+**2. Build the Custom Model**
+
+```bash
+ollama create qwen-agent -f ./Modelfile
+```
+
+This creates a new model variant called `qwen-agent` with your custom configuration.
+
+**3. Run PatchPal with the Configured Model**
+
+```bash
+patchpal --model ollama_chat/qwen-agent
+```
+
+**Common Issues Without Proper Configuration:**
+
+With default low context (2048-4096 tokens), reasoning models may:
+- ❌ Cut off mid-reasoning when context fills up
+- ❌ Fail to invoke tools or write code
+- ❌ Lose conversation history too quickly
+- ❌ Appear to "stall" or produce incomplete responses
+
+With adequate context (32K+):
+- ✅ Complete reasoning before generating responses
+- ✅ Reliably invoke PatchPal tools
+- ✅ Generate complete code blocks
+- ✅ Maintain multi-turn conversation context
+
+**Advanced: Constraining Output Length (Optional):**
+
+In rare cases where you want to limit output length (e.g., to prevent extremely long responses), you can set `num_predict`:
+
+```dockerfile
+FROM qwen3.5:4b
+PARAMETER num_ctx 32768
+PARAMETER num_predict 8192  # Limit output to 8K tokens
+```
+
+However, this is typically unnecessary since Ollama auto-caps output at `10 * num_ctx`.
+
+**Other Reasoning Models:**
+
+This configuration applies to any model with internal CoT reasoning:
+- `qwen3.5` (all variants: 4b, 8b, 14b, 32b)
+- `deepseek-r1` (DeepSeek's reasoning model)
+- `qwen-coder` series
+- Any model using `<think>` tags or similar reasoning patterns
+
+**Additional Resources:**
+- [Reddit: Qwen3.5 on Apple Silicon - 2x faster with proper config](https://www.reddit.com/r/LocalLLaMA/comments/1rezq19/qwen3535b_on_apple_silicon_how_i_got_2x_faster/)
+- [Ollama GitHub: num_predict defaults to -1 (unlimited)](https://github.com/ollama/ollama/issues/7691)
+- [Medium: Ollama options explained](https://medium.com/@laurentkubaski/ollama-model-options-0eee31c902d3)
+
 **Performance Note:**
 
 While Ollama now works with proper configuration, vLLM is still recommended for production use due to:
