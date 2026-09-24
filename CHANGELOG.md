@@ -17,6 +17,7 @@ Most recent releases are shown at the top. Each release shows:
 
 ### fixed:
 - Fixed URL extraction in `web_fetch` for URLs embedded in natural language
+- Fixed issue with not splitting on newlines in shell commands when inspecting them
 
 
 ## 0.24.0 (2026-08-07)

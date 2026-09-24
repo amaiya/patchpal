@@ -48,6 +48,34 @@ def test_shell_command_pattern_with_cd():
     assert wd == "/tmp"
 
 
+def test_shell_command_pattern_newline_separated():
+    """Regression test: newline-separated commands must not bypass permission checks.
+
+    Bug: _extract_shell_command_info() only split on &&, ||, and ; - not newlines.
+    A command like "cd /tmp\npython evil.py" (cd and the real command on separate
+    lines, with no shell operator joining them) was tokenized as a single blob and
+    misidentified as just "cd", which is on the harmless auto-grant list. This let
+    an arbitrary second-line command execute without ever triggering a permission
+    prompt. See conversation history for full root-cause analysis.
+    """
+    from patchpal.tools.shell_tools import _extract_shell_command_info
+
+    # Basic two-line case: cd on line 1, real command on line 2
+    cmd, wd = _extract_shell_command_info("cd /tmp\npython evil.py")
+    assert cmd == "python"  # Must NOT be "cd"
+    assert wd == "/tmp"
+
+    # Multi-line with || fallback on line 1 (the exact bypass pattern reported)
+    cmd, wd = _extract_shell_command_info(
+        'cd /repo/a 2>/dev/null || cd /repo/b\npython3 -c "print(1)"'
+    )
+    assert cmd == "python3"  # Must NOT be "cd"
+
+    # Newline-separated dangerous command must also be detected (not swallowed as "cd")
+    cmd, wd = _extract_shell_command_info("cd /tmp\nrm -rf /")
+    assert cmd == "rm"  # Must NOT be "cd" - "rm" must surface so DANGEROUS_PATTERNS can catch it
+
+
 def test_shell_command_pattern_with_pipes():
     """Test shell command pattern extraction with pipes."""
     from patchpal.tools.shell_tools import _extract_shell_command_info

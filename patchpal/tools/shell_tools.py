@@ -169,7 +169,11 @@ def _extract_shell_command_info(cmd: str) -> tuple[Optional[str], Optional[str]]
 
     # Shell operators that indicate compound commands
     # Split by && and || first (they group tighter than ;)
-    compound_operators = ["&&", "||", ";"]
+    # IMPORTANT: newline is also a command separator - without splitting on it, a
+    # multi-line command like "cd /tmp\npython evil.py" would be tokenized as one
+    # blob and misidentified as just "cd" (which is auto-granted as harmless),
+    # completely bypassing the permission check for the real command on the second line.
+    compound_operators = ["&&", "||", ";", "\n"]
 
     # Split by compound operators to find all sub-commands
     commands = [cmd]
