@@ -7,7 +7,7 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
-## 0.24.1 (TBD)
+## 0.24.1 (2026-09-24)
 
 ### new:
 - N/A
@@ -18,6 +18,7 @@ Most recent releases are shown at the top. Each release shows:
 ### fixed:
 - Fixed URL extraction in `web_fetch` for URLs embedded in natural language
 - Fixed issue with not splitting on newlines in shell commands when inspecting them
+- Fixed issue in `patchpal-sandbox` where `--env` wasn't being processed correctly (#87)
 
 
 ## 0.24.0 (2026-08-07)

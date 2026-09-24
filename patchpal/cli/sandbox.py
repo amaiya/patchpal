@@ -18,10 +18,16 @@ import sys
 
 
 def load_env_file(env_file):
-    """Load environment variables from .env file."""
+    """Load environment variables from .env file.
+
+    Returns:
+        set: Keys of the environment variables that were loaded from the file.
+    """
     if not os.path.exists(env_file):
         print(f"❌ Error: .env file not found: {env_file}", file=sys.stderr)
         sys.exit(1)
+
+    loaded_keys = set()
 
     with open(env_file, "r") as f:
         for line in f:
@@ -43,6 +49,9 @@ def load_env_file(env_file):
                     value = value[1:-1]
 
                 os.environ[key] = value
+                loaded_keys.add(key)
+
+    return loaded_keys
 
 
 def detect_runtime():
@@ -354,8 +363,17 @@ echo ""
     return script
 
 
-def build_container_args(sandbox_args, patchpal_args):
-    """Build container runtime arguments."""
+def build_container_args(sandbox_args, patchpal_args, env_file_keys=None):
+    """Build container runtime arguments.
+
+    Args:
+        sandbox_args: Parsed sandbox CLI arguments
+        patchpal_args: Arguments to pass through to patchpal
+        env_file_keys: Set of env var names loaded from --env-file (if any).
+                       These are forwarded into the container even though the
+                       rest of the host environment is not (isolation mode).
+    """
+    env_file_keys = env_file_keys or set()
     runtime = detect_runtime()
     if not runtime:
         print("❌ Error: Neither Docker nor Podman found", file=sys.stderr)
@@ -456,8 +474,12 @@ def build_container_args(sandbox_args, patchpal_args):
     if sandbox_args.cpus:
         container_args.extend(["--cpus", str(sandbox_args.cpus)])
 
-    # Pass through environment variables from host ONLY if --env-file is NOT provided
-    # This provides better isolation - when using --env-file, only those specific vars are used
+    # Pass through environment variables.
+    # WITHOUT --env-file: pass through matching vars from the full host environment.
+    # WITH --env-file: isolate from the host, but still forward the vars that were
+    #                  explicitly loaded from the file itself (previously these were
+    #                  loaded into os.environ but never forwarded into the container,
+    #                  causing credentials in --env-file to be silently dropped).
     if not sandbox_args.env_file:
         # Pass through PATCHPAL_* environment variables
         for key, value in os.environ.items():
@@ -495,6 +517,12 @@ def build_container_args(sandbox_args, patchpal_args):
         # The container will automatically receive OLLAMA_API_BASE environment variable.
         for key, value in os.environ.items():
             if key.startswith("OLLAMA_"):
+                container_args.extend(["-e", f"{key}={value}"])
+    else:
+        # Isolated mode: only forward the specific vars loaded from --env-file
+        for key in env_file_keys:
+            value = os.environ.get(key)
+            if value is not None:
                 container_args.extend(["-e", f"{key}={value}"])
 
     # Track mounted paths to avoid duplicates
@@ -1002,9 +1030,10 @@ def main():
         sandbox_args.network = "host"
 
     # Load .env file if specified
+    env_file_keys = set()
     if sandbox_args.env_file:
         print(f"Loading environment variables from: {sandbox_args.env_file}")
-        load_env_file(sandbox_args.env_file)
+        env_file_keys = load_env_file(sandbox_args.env_file)
 
     # If LITELLM_KWARGS contains AWS params, normalize env var names to uppercase
     # This must happen before endpoint detection for AWS Bedrock auto-detection to work
@@ -1023,6 +1052,7 @@ def main():
                     upper_key = key.upper()
                     if upper_key not in os.environ:
                         os.environ[upper_key] = value
+                    env_file_keys.add(upper_key)
         except (json.JSONDecodeError, ValueError):
             # Not JSON, check if individual env vars exist (comma-separated format)
             for key, value in list(os.environ.items()):
@@ -1030,6 +1060,7 @@ def main():
                     upper_key = key.upper()
                     if upper_key not in os.environ:
                         os.environ[upper_key] = value
+                    env_file_keys.add(upper_key)
 
     # Auto-detect LLM endpoints if network restrictions are enabled
     detected_endpoints = []
@@ -1060,7 +1091,7 @@ def main():
             )
 
     # Build container command
-    container_args, runtime = build_container_args(sandbox_args, patchpal_argv)
+    container_args, runtime = build_container_args(sandbox_args, patchpal_argv, env_file_keys)
 
     # Show what we're doing
     print(f"Using container runtime: {runtime}")
