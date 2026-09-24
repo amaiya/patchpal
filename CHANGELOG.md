@@ -19,7 +19,7 @@ Most recent releases are shown at the top. Each release shows:
 - Fixed URL extraction in `web_fetch` for URLs embedded in natural language
 - Fixed issue with not splitting on newlines in shell commands when inspecting them
 - Fixed issue in `patchpal-sandbox` where `--env` wasn't being processed correctly (#87)
-- Added `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24:true` to GitHub workflows
+- Added `Node.js 20 is deprecated` warning in GitHub workflows
 
 
 ## 0.24.0 (2026-08-07)
