@@ -16,6 +16,7 @@ Most recent releases are shown at the top. Each release shows:
 - N/A
 
 ### fixed:
+- **SECURITY**: Fixed DNS tunneling vulnerability in `patchpal-sandbox --restrict-network` mode. DNS queries are now locked to the container's resolver IP (from `/etc/resolv.conf`) instead of allowing DNS packets to ANY destination.
 - Fixed `patchpal-sandbox --restrict-network` hanging at "Detecting model capabilities..." when using AWS Bedrock application inference profiles. Added automatic detection and whitelisting of Bedrock control plane API endpoints (required for model metadata), VPC endpoint derivation for private networks, and FIPS endpoint support. Handles all AWS regions (commercial, GovCloud, China) and deployment scenarios.
 
 
