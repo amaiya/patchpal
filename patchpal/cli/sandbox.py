@@ -144,6 +144,7 @@ def detect_llm_endpoints_from_env():
         "ANTHROPIC_API_BASE",
         "AWS_BEDROCK_ENDPOINT",
         "AWS_ENDPOINT_URL_BEDROCK_RUNTIME",
+        "AWS_ENDPOINT_URL_BEDROCK",  # Control plane endpoint
         "AWS_ENDPOINT_URL",
         "AWS_BEDROCK_RUNTIME_ENDPOINT",
         "AZURE_OPENAI_ENDPOINT",
@@ -162,6 +163,18 @@ def detect_llm_endpoints_from_env():
             # Ensure it's a valid URL
             if value.startswith("http://") or value.startswith("https://"):
                 detected_urls.append(value)
+
+                # CRITICAL FIX: For Bedrock VPC endpoints, derive control plane endpoint
+                # Scenario: User has VPC endpoint for runtime API (e.g., AWS GovCloud private network)
+                # Problem: Model capability detection needs control plane API (get_inference_profile)
+                #          but boto3 doesn't automatically derive control plane from runtime endpoint
+                # VPC endpoint pattern:
+                #   Runtime:        vpce-{id}.bedrock-runtime.{region}.vpce.amazonaws.com
+                #   Control plane:  vpce-{id}.bedrock.{region}.vpce.amazonaws.com
+                # Without this, capability detection hangs trying to reach public control plane endpoint
+                if "bedrock-runtime" in value and ".vpce.amazonaws.com" in value:
+                    control_plane_url = value.replace("bedrock-runtime", "bedrock")
+                    detected_urls.append(control_plane_url)
             else:
                 # Assume https if no protocol specified
                 detected_urls.append(f"https://{value}")
@@ -177,18 +190,37 @@ def detect_llm_endpoints_from_env():
     if aws_region and (
         os.environ.get("AWS_ACCESS_KEY_ID") or os.environ.get("AWS_SECRET_ACCESS_KEY")
     ):
-        # Add Bedrock endpoint for the region
+        # Add Bedrock endpoints for the region
         # Support both GovCloud and standard regions
         # Also support AWS China regions
+
+        # IMPORTANT: boto3 uses standard endpoint names by default, even in GovCloud
+        # Only use -fips suffix if AWS_USE_FIPS_ENDPOINT=true is explicitly set
+        # Scenario 1: Standard GovCloud → bedrock.us-gov-east-1.amazonaws.com (boto3 default)
+        # Scenario 2: FIPS required → bedrock-fips.us-gov-east-1.amazonaws.com (explicit opt-in)
+        use_fips = os.environ.get("AWS_USE_FIPS_ENDPOINT", "").lower() == "true"
+
         if "gov" in aws_region:
-            # GovCloud regions use FIPS endpoints
-            detected_urls.append(f"https://bedrock-runtime-fips.{aws_region}.amazonaws.com")
+            # GovCloud regions
+            # Add both runtime (for LLM inference) and control plane (for model capability detection)
+            if use_fips:
+                # FIPS endpoints (only when explicitly requested via AWS_USE_FIPS_ENDPOINT=true)
+                detected_urls.append(f"https://bedrock-runtime-fips.{aws_region}.amazonaws.com")
+                detected_urls.append(f"https://bedrock-fips.{aws_region}.amazonaws.com")
+            else:
+                # Standard GovCloud endpoints (boto3 default behavior)
+                # This is what boto3 uses unless FIPS is explicitly configured
+                detected_urls.append(f"https://bedrock-runtime.{aws_region}.amazonaws.com")
+                detected_urls.append(f"https://bedrock.{aws_region}.amazonaws.com")
         elif "cn-" in aws_region:
-            # AWS China regions use .amazonaws.com.cn
+            # AWS China regions use .amazonaws.com.cn domain
             detected_urls.append(f"https://bedrock-runtime.{aws_region}.amazonaws.com.cn")
+            detected_urls.append(f"https://bedrock.{aws_region}.amazonaws.com.cn")
         else:
-            # Standard commercial regions
+            # Standard commercial regions (us-east-1, eu-west-1, etc.)
+            # Add both runtime (for LLM inference) and control plane (for model capability detection)
             detected_urls.append(f"https://bedrock-runtime.{aws_region}.amazonaws.com")
+            detected_urls.append(f"https://bedrock.{aws_region}.amazonaws.com")
 
     # Azure OpenAI: Extract from resource name if AZURE_OPENAI_KEY is set
     azure_key = os.environ.get("AZURE_OPENAI_KEY") or os.environ.get("AZURE_API_KEY")

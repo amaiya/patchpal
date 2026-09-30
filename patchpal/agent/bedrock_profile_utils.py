@@ -29,8 +29,33 @@ def _extract_model_from_arn(arn: str) -> str | None:
         else:
             region = os.getenv("AWS_REGION_NAME") or os.getenv("AWS_REGION") or "us-east-1"
 
+        # Check for custom Bedrock endpoint (VPC endpoint, custom domain, etc.)
+        # The control plane and runtime may use the same VPC endpoint base
+        custom_endpoint = (
+            os.getenv("AWS_BEDROCK_ENDPOINT")
+            or os.getenv("AWS_ENDPOINT_URL_BEDROCK")
+            or os.getenv("AWS_ENDPOINT_URL")
+        )
+
+        # CRITICAL FIX: Derive control plane endpoint from runtime VPC endpoint
+        # Scenario: User has VPC endpoint for runtime but not explicit control plane endpoint
+        # Problem: boto3.client("bedrock") defaults to public endpoint, not VPC endpoint
+        # Solution: Automatically derive control plane VPC endpoint from runtime endpoint
+        # VPC endpoint pattern:
+        #   Runtime:        vpce-{id}.bedrock-runtime.{region}.vpce.amazonaws.com
+        #   Control plane:  vpce-{id}.bedrock.{region}.vpce.amazonaws.com
+        # This matches the automatic derivation in sandbox.py endpoint detection
+        if custom_endpoint and "bedrock-runtime" in custom_endpoint:
+            # Try to construct control plane VPC endpoint by removing -runtime
+            control_endpoint = custom_endpoint.replace("bedrock-runtime", "bedrock")
+        else:
+            control_endpoint = custom_endpoint
+
         # Create bedrock client
-        bedrock = boto3.client("bedrock", region_name=region)
+        if control_endpoint:
+            bedrock = boto3.client("bedrock", region_name=region, endpoint_url=control_endpoint)
+        else:
+            bedrock = boto3.client("bedrock", region_name=region)
 
         # Get inference profile details
         response = bedrock.get_inference_profile(inferenceProfileIdentifier=arn)

@@ -7,6 +7,18 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
+## 0.24.2 (TBD)
+
+### new:
+- N/A
+
+### changed:
+- N/A
+
+### fixed:
+- Fixed `patchpal-sandbox --restrict-network` hanging at "Detecting model capabilities..." when using AWS Bedrock application inference profiles. Added automatic detection and whitelisting of Bedrock control plane API endpoints (required for model metadata), VPC endpoint derivation for private networks, and FIPS endpoint support. Handles all AWS regions (commercial, GovCloud, China) and deployment scenarios.
+
+
 ## 0.24.1 (2026-09-24)
 
 ### new:
