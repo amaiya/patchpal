@@ -308,9 +308,28 @@ fi
 # Configure iptables
 echo "Configuring firewall rules..."
 
-# Allow DNS (required for hostname resolution)
-iptables -A OUTPUT -p udp --dport 53 -j ACCEPT
-iptables -A OUTPUT -p tcp --dport 53 -j ACCEPT
+# Extract DNS resolver IP(s) from /etc/resolv.conf
+# This locks DNS queries to only the container's configured resolver,
+# preventing agents from directly querying attacker-controlled DNS servers
+RESOLVER_IPS=$(grep '^nameserver' /etc/resolv.conf | awk '{print $2}')
+
+if [ -z "$RESOLVER_IPS" ]; then
+    echo "❌ ERROR: Could not detect DNS resolver from /etc/resolv.conf"
+    echo "Cannot configure secure DNS filtering without a resolver"
+    exit 1
+fi
+
+# Allow DNS ONLY to detected resolver IPs (SECURITY FIX)
+# This prevents the OpenAI-style DNS tunneling attack where agents
+# send DNS packets directly to attacker-controlled DNS servers
+echo "Locking DNS queries to container's resolver(s):"
+while IFS= read -r RESOLVER_IP; do
+    if [ -n "$RESOLVER_IP" ]; then
+        echo "  $RESOLVER_IP (DNS)"
+        iptables -A OUTPUT -d $RESOLVER_IP -p udp --dport 53 -j ACCEPT
+        iptables -A OUTPUT -d $RESOLVER_IP -p tcp --dport 53 -j ACCEPT
+    fi
+done <<< "$RESOLVER_IPS"
 
 # Allow localhost
 iptables -A OUTPUT -d 127.0.0.1/8 -j ACCEPT
