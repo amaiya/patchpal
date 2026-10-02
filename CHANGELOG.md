@@ -7,6 +7,18 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
+## 0.24.3 (TBD)
+
+### new:
+- N/A
+
+### changed:
+- N/A
+
+### fixed:
+- Hardening of `patchpal-sandbox` to better prevent DNS tunneling
+
+
 ## 0.24.2 (2026-09-29)
 
 ### new:

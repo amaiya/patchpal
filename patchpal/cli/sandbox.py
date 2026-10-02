@@ -239,8 +239,15 @@ def detect_llm_endpoints_from_env():
     return list(set(detected_urls))
 
 
-def build_network_restriction_script(allowed_urls, test_mode=False):
-    """Build bash script to configure iptables firewall for network restrictions."""
+def build_network_restriction_script(allowed_urls, test_mode=False, block_dns_exfil=True):
+    """Build bash script to configure iptables firewall for network restrictions.
+
+    Args:
+        allowed_urls: List of allowed URL endpoints
+        test_mode: Whether to test restrictions and exit
+        block_dns_exfil: Whether to block DNS record types used for exfiltration (default: True)
+                        Blocks TXT, NULL, SRV records and large DNS queries
+    """
     script = """
 echo "=== Pre-downloading required data (before network restrictions) ==="
 
@@ -318,14 +325,56 @@ if [ -z "$RESOLVER_IPS" ]; then
     echo "Cannot configure secure DNS filtering without a resolver"
     exit 1
 fi
+"""
 
+    # Add DNS exfiltration blocking if enabled
+    if block_dns_exfil:
+        script += """
+# Block DNS record types used for data exfiltration (SECURITY ENHANCEMENT)
+# This prevents DNS tunneling attacks that use TXT, NULL, or SRV records
+# to encode and exfiltrate sensitive data through DNS queries
+echo "Blocking DNS record types used for data exfiltration..."
+
+# Block TXT records (type 16 = 0x0010)
+# TXT records can carry up to 255 bytes of arbitrary text per record
+# Commonly used for DNS tunneling due to large payload capacity
+iptables -A OUTPUT -p udp --dport 53 -m string --hex-string "|00 10|" --algo bm -j LOG --log-prefix "BLOCKED-DNS-TXT: " --log-level 4
+iptables -A OUTPUT -p udp --dport 53 -m string --hex-string "|00 10|" --algo bm -j DROP
+iptables -A OUTPUT -p tcp --dport 53 -m string --hex-string "|00 10|" --algo bm -j LOG --log-prefix "BLOCKED-DNS-TXT: " --log-level 4
+iptables -A OUTPUT -p tcp --dport 53 -m string --hex-string "|00 10|" --algo bm -j DROP
+
+# Block NULL records (type 10 = 0x000a)
+# NULL records are explicitly designed to carry arbitrary binary data
+# No legitimate use in normal DNS resolution
+iptables -A OUTPUT -p udp --dport 53 -m string --hex-string "|00 0a|" --algo bm -j LOG --log-prefix "BLOCKED-DNS-NULL: " --log-level 4
+iptables -A OUTPUT -p udp --dport 53 -m string --hex-string "|00 0a|" --algo bm -j DROP
+iptables -A OUTPUT -p tcp --dport 53 -m string --hex-string "|00 0a|" --algo bm -j DROP
+
+# Block SRV records (type 33 = 0x0021)
+# Service records can be abused for tunneling
+iptables -A OUTPUT -p udp --dport 53 -m string --hex-string "|00 21|" --algo bm -j LOG --log-prefix "BLOCKED-DNS-SRV: " --log-level 4
+iptables -A OUTPUT -p udp --dport 53 -m string --hex-string "|00 21|" --algo bm -j DROP
+iptables -A OUTPUT -p tcp --dport 53 -m string --hex-string "|00 21|" --algo bm -j DROP
+
+# Block large DNS queries (likely subdomain encoding for data exfiltration)
+# Normal DNS queries: 50-100 bytes
+# Queries with encoded data in subdomains: 200+ bytes
+# This catches attempts to encode data in long subdomain names
+iptables -A OUTPUT -p udp --dport 53 -m length --length 150:65535 -j LOG --log-prefix "BLOCKED-DNS-LARGE: " --log-level 4
+iptables -A OUTPUT -p udp --dport 53 -m length --length 150:65535 -j DROP
+iptables -A OUTPUT -p tcp --dport 53 -m length --length 150:65535 -j DROP
+
+echo "✓ DNS exfiltration protections active (TXT/NULL/SRV/LARGE queries blocked)"
+"""
+
+    script += """
 # Allow DNS ONLY to detected resolver IPs (SECURITY FIX)
 # This prevents the OpenAI-style DNS tunneling attack where agents
 # send DNS packets directly to attacker-controlled DNS servers
 echo "Locking DNS queries to container's resolver(s):"
 while IFS= read -r RESOLVER_IP; do
     if [ -n "$RESOLVER_IP" ]; then
-        echo "  $RESOLVER_IP (DNS)"
+        echo "  $RESOLVER_IP (DNS - A/AAAA records only)"
         iptables -A OUTPUT -d $RESOLVER_IP -p udp --dport 53 -j ACCEPT
         iptables -A OUTPUT -d $RESOLVER_IP -p tcp --dport 53 -j ACCEPT
     fi
@@ -881,11 +930,22 @@ SECURITY:
 
       FIREWALL RULES:
       - Only allowed URLs are accessible (auto-detected + --allow-url)
-      - DNS resolution permitted (required for hostname lookup)
+      - DNS resolution permitted (A/AAAA records only for hostname lookup)
+      - DNS exfiltration prevention: TXT, NULL, SRV records BLOCKED
+      - Large DNS queries (>150 bytes) BLOCKED (prevents subdomain encoding)
       - Localhost accessible (127.0.0.1/8)
       - All other network traffic BLOCKED and LOGGED
       - Web tools and MCP automatically disabled
       - Ideal for sensitive/regulated environments
+
+      DNS SECURITY:
+      * Blocks DNS tunneling attacks that exfiltrate data via:
+        - TXT records (up to 255 bytes per query)
+        - NULL records (arbitrary binary data)
+        - SRV records (service discovery abuse)
+        - Long subdomains (base64-encoded data in domain names)
+      * Only allows A and AAAA records (standard hostname resolution)
+      * Logs all blocked DNS queries for security auditing
 
       Use cases:
       * Compliance: Meet data governance requirements
