@@ -7,7 +7,7 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
-## 0.24.4 (TBD)
+## 0.24.4 (2026-10-05)
 
 ### new:
 - N/A
@@ -16,7 +16,7 @@ Most recent releases are shown at the top. Each release shows:
 - N/A
 
 ### fixed:
-- Forward PATCHPAL_* env vars to container in isolated mode with --env-file
+- Forward `PATCHPAL_*` env vars to container in isolated mode with --env-file
 
 
 ## 0.24.3 (2026-10-02)
