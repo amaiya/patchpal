@@ -625,6 +625,13 @@ def build_container_args(sandbox_args, patchpal_args, env_file_keys=None):
             if value is not None:
                 container_args.extend(["-e", f"{key}={value}"])
 
+        # Always forward PATCHPAL_* environment variables even in isolated mode
+        # These are configuration variables that control PatchPal behavior, not secrets
+        # (e.g., PATCHPAL_AUTOPILOT_CONFIRMED, PATCHPAL_STREAM_OUTPUT, PATCHPAL_ENABLED_TOOLS)
+        for key, value in os.environ.items():
+            if key.startswith("PATCHPAL_") and key not in env_file_keys:
+                container_args.extend(["-e", f"{key}={value}"])
+
     # Track mounted paths to avoid duplicates
     mounted_paths = set()
 
