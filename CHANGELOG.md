@@ -7,6 +7,18 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
+## 0.24.5 (2026-10-06)
+
+### new:
+- N/A
+
+### changed:
+- N/A
+
+### fixed:
+- Fixed model inspection for GovCloud Bedrock.
+
+
 ## 0.24.4 (2026-10-05)
 
 ### new:

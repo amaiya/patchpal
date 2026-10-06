@@ -29,32 +29,56 @@ def _extract_model_from_arn(arn: str) -> str | None:
         else:
             region = os.getenv("AWS_REGION_NAME") or os.getenv("AWS_REGION") or "us-east-1"
 
-        # Check for custom Bedrock endpoint (VPC endpoint, custom domain, etc.)
-        # The control plane and runtime may use the same VPC endpoint base
-        custom_endpoint = (
-            os.getenv("AWS_BEDROCK_ENDPOINT")
-            or os.getenv("AWS_ENDPOINT_URL_BEDROCK")
-            or os.getenv("AWS_ENDPOINT_URL")
+        # Check for custom Bedrock RUNTIME endpoint (for reference/debugging only)
+        # Note: We don't use runtime endpoint for control plane API
+        runtime_endpoint = (
+            os.getenv("AWS_BEDROCK_ENDPOINT")  # PatchPal-specific (runtime only)
+            or os.getenv("AWS_ENDPOINT_URL_BEDROCK_RUNTIME")  # AWS SDK standard (runtime)
         )
 
-        # CRITICAL FIX: Derive control plane endpoint from runtime VPC endpoint
-        # Scenario: User has VPC endpoint for runtime but not explicit control plane endpoint
-        # Problem: boto3.client("bedrock") defaults to public endpoint, not VPC endpoint
-        # Solution: Automatically derive control plane VPC endpoint from runtime endpoint
-        # VPC endpoint pattern:
-        #   Runtime:        vpce-{id}.bedrock-runtime.{region}.vpce.amazonaws.com
-        #   Control plane:  vpce-{id}.bedrock.{region}.vpce.amazonaws.com
-        # This matches the automatic derivation in sandbox.py endpoint detection
-        if custom_endpoint and "bedrock-runtime" in custom_endpoint:
-            # Try to construct control plane VPC endpoint by removing -runtime
-            control_endpoint = custom_endpoint.replace("bedrock-runtime", "bedrock")
-        else:
-            control_endpoint = custom_endpoint
+        # Determine control plane endpoint for get_inference_profile API
+        # Priority order:
+        # 1. Explicit control plane endpoint variables
+        # 2. None (let boto3 use default public endpoint)
+        control_endpoint = (
+            os.getenv("AWS_ENDPOINT_URL_BEDROCK")  # AWS SDK standard (control plane)
+            or os.getenv("AWS_BEDROCK_CONTROL_ENDPOINT")  # PatchPal-specific (control plane)
+        )
+
+        # If no explicit control plane endpoint, let boto3 use default endpoint resolution
+        # This handles:
+        # - Standard AWS regions (bedrock.us-east-1.amazonaws.com)
+        # - GovCloud regions (bedrock.us-gov-east-1.amazonaws.com)
+        # - FIPS endpoints (if configured in boto3)
+        #
+        # IMPORTANT: Even if user has AWS_BEDROCK_ENDPOINT (runtime VPC endpoint),
+        # we DON'T use it for control plane because:
+        # 1. AWS_BEDROCK_ENDPOINT is runtime-only (for inference)
+        # 2. Many users only create runtime VPC endpoint
+        # 3. Control plane API is read-only and less sensitive
+        # 4. Public control plane endpoint is often acceptable
+        # 5. If user needs control plane VPC endpoint, they should set:
+        #    AWS_ENDPOINT_URL_BEDROCK or AWS_BEDROCK_CONTROL_ENDPOINT
+
+        # Debug output
+        if os.getenv("PATCHPAL_DEBUG") == "true":
+            import sys
+
+            print("\n\033[2m[DEBUG] Control plane endpoint determination:\033[0m", file=sys.stderr)
+            print(
+                f"\033[2m[DEBUG]   Runtime endpoint (not used): {runtime_endpoint or 'None'}\033[0m",
+                file=sys.stderr,
+            )
+            print(
+                f"\033[2m[DEBUG]   Control endpoint: {control_endpoint or 'boto3 default (public)'}\033[0m",
+                file=sys.stderr,
+            )
 
         # Create bedrock client
         if control_endpoint:
             bedrock = boto3.client("bedrock", region_name=region, endpoint_url=control_endpoint)
         else:
+            # Let boto3 use default endpoint resolution (public endpoint)
             bedrock = boto3.client("bedrock", region_name=region)
 
         # Get inference profile details
@@ -77,8 +101,36 @@ def _extract_model_from_arn(arn: str) -> str | None:
                         return parts[1]
 
         return None
-    except Exception:
-        # API call failed or boto3 not available
+    except ImportError as e:
+        # boto3 not available - can't query AWS API
+        import os
+
+        if os.getenv("PATCHPAL_DEBUG") == "true":
+            import sys
+
+            print(
+                f"\n\033[2m[DEBUG] boto3 not available, cannot extract model from ARN: {e}\033[0m",
+                file=sys.stderr,
+            )
+        return None
+    except Exception as e:
+        # API call failed
+        # Add debug logging for troubleshooting
+        import os
+
+        if os.getenv("PATCHPAL_DEBUG") == "true":
+            import sys
+
+            print(f"\n\033[2m[DEBUG] Failed to extract model from ARN: {e}\033[0m", file=sys.stderr)
+            print(f"\033[2m[DEBUG] ARN: {arn}\033[0m", file=sys.stderr)
+            print(
+                f"\033[2m[DEBUG] Region: {region if 'region' in locals() else 'unknown'}\033[0m",
+                file=sys.stderr,
+            )
+            print(
+                f"\033[2m[DEBUG] Control endpoint: {control_endpoint if 'control_endpoint' in locals() else 'unknown'}\033[0m",
+                file=sys.stderr,
+            )
         return None
 
 
@@ -141,6 +193,20 @@ def detect_model_capabilities(
         # Extract just the ARN (remove bedrock/converse/ prefix if present)
         arn = model_id.replace("bedrock/converse/", "").replace("bedrock/", "")
         detected_model = _extract_model_from_arn(arn)
+
+        # Debug output
+        import os
+
+        if os.getenv("PATCHPAL_DEBUG") == "true":
+            import sys
+
+            print(
+                "\n\033[2m[DEBUG] Attempting to extract model from ARN via AWS API\033[0m",
+                file=sys.stderr,
+            )
+            print(f"\033[2m[DEBUG] Full model_id: {model_id}\033[0m", file=sys.stderr)
+            print(f"\033[2m[DEBUG] Extracted ARN: {arn}\033[0m", file=sys.stderr)
+            print(f"\033[2m[DEBUG] Result from AWS API: {detected_model}\033[0m", file=sys.stderr)
 
     try:
         # Try with Anthropic-style cache_control AND tools (matches real usage)
