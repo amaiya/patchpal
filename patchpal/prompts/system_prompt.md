@@ -31,4 +31,4 @@ Assistant: "I found the issue at line 45. The timeout is set to 0 instead of 360
 
 ## Project Memory
 
-If project memory is included in your context, use that information throughout the session. When you learn important new information (architecture decisions, deployment details, conventions), suggest updating `~/.patchpal/repos/<repo-name>/MEMORY.md` to maintain continuity across sessions.
+If project memory is included in your context, use that information throughout the session. When you learn important new information (architecture decisions, deployment details, conventions), suggest updating the project's `MEMORY.md` file to maintain continuity across sessions.

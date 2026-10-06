@@ -6,7 +6,22 @@ from tool names to their implementation functions.
 
 from patchpal.config import config
 from patchpal.tools import (
+    PLAYWRIGHT_AVAILABLE,
     ask_user,
+    browser_click,
+    browser_close,
+    browser_dismiss_modals,
+    browser_execute_script,
+    browser_fill,
+    browser_get_html,
+    browser_get_text,
+    browser_list_frames,
+    browser_navigate,
+    browser_press_key,
+    browser_screenshot,
+    browser_scroll,
+    browser_switch_frame,
+    browser_wait,
     code_structure,
     edit_file,
     find,
@@ -230,6 +245,228 @@ Tip: Read README first for context when exploring repositories.""",
                     },
                 },
                 "required": ["url"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "browser_navigate",
+            "description": "Navigate visible browser to a URL. Opens Chromium window if not already open. Browser stays open for subsequent browser_* actions (click, fill, screenshot, etc). Useful for JavaScript-heavy sites and interactive tasks.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "url": {
+                        "type": "string",
+                        "description": "URL to visit (must start with http:// or https://)",
+                    },
+                },
+                "required": ["url"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "browser_click",
+            "description": "Click an element in the browser. Supports CSS selectors (#id, .class), text content (text=Login), and ARIA roles (role=button:Submit). Browser must be open first.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "selector": {
+                        "type": "string",
+                        "description": "Element selector (CSS, text=..., or role=...)",
+                    },
+                },
+                "required": ["selector"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "browser_fill",
+            "description": "Fill a form field with text. Supports CSS selectors, placeholder text (placeholder=Email), and label text (label=Username). Browser must be open first.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "selector": {
+                        "type": "string",
+                        "description": "Field selector (CSS, placeholder=..., or label=...)",
+                    },
+                    "text": {
+                        "type": "string",
+                        "description": "Text to enter into the field",
+                    },
+                },
+                "required": ["selector", "text"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "browser_screenshot",
+            "description": "Take a full-page screenshot of the current browser page and save to file. Useful for debugging or capturing visual state.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "Where to save screenshot (default: /tmp/patchpal_screenshot.png)",
+                    },
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "browser_get_text",
+            "description": "Extract all visible text from the current browser page. Unlike web_fetch, this gets rendered content after JavaScript execution. Useful for SPAs and dynamic content. To see HTML structure with element IDs/names, use browser_get_html() instead.",
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "browser_get_html",
+            "description": "Get the HTML source code from the current page or frame. Shows the actual HTML structure with <input>, <select>, and form element IDs/names. Particularly useful for identifying field selectors for browser_fill() on complex forms or framesets.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "max_chars": {
+                        "type": "integer",
+                        "description": "Maximum characters to return (default: 50000)",
+                    },
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "browser_scroll",
+            "description": "Scroll the browser page to load lazy-loaded content or navigate long pages. Essential for infinite scroll sites (Twitter, Reddit, Unsplash, social media feeds) and dynamically loaded content. Can scroll by direction, amount, or to a specific element.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "direction": {
+                        "type": "string",
+                        "description": "Scroll direction: 'down', 'up', 'bottom', 'top' (default: 'down')",
+                        "enum": ["down", "up", "bottom", "top"],
+                    },
+                    "amount": {
+                        "type": "integer",
+                        "description": "Pixels to scroll (0 = scroll by viewport height). Ignored for 'bottom'/'top'. Default: 0",
+                    },
+                    "selector": {
+                        "type": "string",
+                        "description": "Optional CSS selector to scroll to a specific element",
+                    },
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "browser_execute_script",
+            "description": "Execute JavaScript code in the current browser page and return the result. Allows direct DOM manipulation, counting elements, extracting data, or complex interactions. Useful for counting images on Unsplash, session keep-alive, or tasks beyond standard browser tools.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "script": {
+                        "type": "string",
+                        "description": "JavaScript code to execute (must return a serializable value: string, number, array, or object)",
+                    },
+                },
+                "required": ["script"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "browser_press_key",
+            "description": "Press a keyboard key, optionally on a specific element. Essential for submitting forms with Enter, dismissing modals with Escape, navigating dropdowns with arrow keys, or triggering keyboard shortcuts.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "key": {
+                        "type": "string",
+                        "description": "Key to press: Enter (submit forms), Escape (close modals), Tab (navigate), ArrowUp/ArrowDown/ArrowLeft/ArrowRight (navigate), Backspace, Delete, Space, or modifiers like Control+a, Shift+Tab",
+                    },
+                    "selector": {
+                        "type": "string",
+                        "description": "Optional CSS selector to focus element before pressing key. If omitted, presses key on currently focused element or page.",
+                    },
+                },
+                "required": ["key"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "browser_wait",
+            "description": "Wait for a duration (milliseconds) or for an element to appear. Useful for waiting for dynamic content to load or animations to complete.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "milliseconds": {
+                        "type": "integer",
+                        "description": "How long to wait in milliseconds (default: 1000, max: 30000)",
+                    },
+                    "selector": {
+                        "type": "string",
+                        "description": "Optional CSS selector to wait for. If provided, waits for element to appear.",
+                    },
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "browser_close",
+            "description": "Close the browser window and cleanup resources. Safe to call even if browser is already closed.",
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "browser_dismiss_modals",
+            "description": "Manually dismiss modal overlays (login prompts, newsletter signups, cookie notices) blocking interaction. browser_navigate() and browser_click() already try to auto-dismiss modals, but use this if modals still block actions.",
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "browser_list_frames",
+            "description": "List all frames/iframes in the current page. Many older government and enterprise sites use framesets or iframes. This shows frame indices, names, and URLs which you can use with browser_switch_frame() to interact with content inside frames.",
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "browser_switch_frame",
+            "description": "Switch to a frame/iframe for interaction. Many sites (especially older government/enterprise sites) use framesets. Normal browser_click(), browser_fill(), etc. only work in the current frame context. Use this to switch to a specific frame before interacting with its content. Call with no arguments to return to main page.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "index": {
+                        "type": "integer",
+                        "description": "Frame index from browser_list_frames() (0 is main page). Use either index or name, not both.",
+                    },
+                    "name": {
+                        "type": "string",
+                        "description": "Frame name attribute (alternative to index). Use either index or name, not both.",
+                    },
+                },
             },
         },
     },
@@ -482,6 +719,20 @@ TOOL_FUNCTIONS = {
     "write_file": write_file,
     "web_search": web_search,
     "web_fetch": web_fetch,
+    "browser_navigate": browser_navigate,
+    "browser_click": browser_click,
+    "browser_fill": browser_fill,
+    "browser_screenshot": browser_screenshot,
+    "browser_get_text": browser_get_text,
+    "browser_get_html": browser_get_html,
+    "browser_scroll": browser_scroll,
+    "browser_execute_script": browser_execute_script,
+    "browser_press_key": browser_press_key,
+    "browser_wait": browser_wait,
+    "browser_close": browser_close,
+    "browser_dismiss_modals": browser_dismiss_modals,
+    "browser_list_frames": browser_list_frames,
+    "browser_switch_frame": browser_switch_frame,
     "list_skills": list_skills,
     "use_skill": use_skill,
     "todo_add": todo_add,
@@ -542,6 +793,30 @@ def get_tools(web_tools_enabled: bool = True):
             tool for tool in tools if tool["function"]["name"] not in ("web_search", "web_fetch")
         ]
         functions = {k: v for k, v in functions.items() if k not in ("web_search", "web_fetch")}
+
+    # Filter out browser tools if:
+    #   - Playwright is not installed, OR
+    #   - web tools are disabled (browser requires web access), OR
+    #   - browser tools are explicitly disabled via PATCHPAL_ENABLE_BROWSER=false
+    if not PLAYWRIGHT_AVAILABLE or not web_tools_enabled or not config.ENABLE_BROWSER:
+        browser_tool_names = [
+            "browser_navigate",
+            "browser_click",
+            "browser_fill",
+            "browser_press_key",
+            "browser_screenshot",
+            "browser_get_text",
+            "browser_get_html",
+            "browser_scroll",
+            "browser_execute_script",
+            "browser_wait",
+            "browser_close",
+            "browser_dismiss_modals",
+            "browser_list_frames",
+            "browser_switch_frame",
+        ]
+        tools = [tool for tool in tools if tool["function"]["name"] not in browser_tool_names]
+        functions = {k: v for k, v in functions.items() if k not in browser_tool_names}
 
     # Load MCP tools dynamically (unless disabled via environment variable)
     if config.ENABLE_MCP:

@@ -1,6 +1,6 @@
 # Built-In Tools
 
-PatchPal provides 20 built-in tools for file operations, code analysis, web access, task planning, and user interaction.
+PatchPal provides 34 built-in tools for file operations, code analysis, web access, browser automation, task planning, and user interaction.
 
 > **For Local Models:** Set `PATCHPAL_MINIMAL_TOOLS=true` and `PATCHPAL_ENABLE_WEB=false` to use only 5 essential tools (`read_file`, `read_lines`, `write_file`, `edit_file`, `run_shell`), reducing tool confusion with smaller models.
 
@@ -94,6 +94,325 @@ Fetch and read content from URLs.
 - Extract text from HTML, PDF, DOCX (Word), and PPTX (PowerPoint)
 - Supports plain text, JSON, XML, and other text formats
 - Warns about unsupported binary formats (images, videos, archives)
+
+## Browser Automation (14 tools - optional)
+
+> **Optional Feature:** Browser automation tools require Playwright. Install with:
+> ```bash
+> pip install patchpal[browser]
+> python -m playwright install chromium
+> ```
+> This installs both Playwright and nest-asyncio (required to prevent event loop conflicts).
+>
+> **Security Note:** Browser tools respect the `PATCHPAL_ENABLE_WEB` environment variable. If web tools are disabled (`PATCHPAL_ENABLE_WEB=false`), browser tools are also disabled.
+>
+> To disable **only** the browser tools while keeping `web_search`/`web_fetch`, set `PATCHPAL_ENABLE_BROWSER=false` (default: `true`).
+
+Interactive browser automation for JavaScript-heavy sites, forms, dynamic content, and complex web interactions that `web_fetch` cannot handle.
+
+### When to Use Browser Tools vs web_fetch
+
+| Use Case | Tool | Why |
+|----------|------|-----|
+| Static HTML pages | `web_fetch` | Faster, lighter |
+| REST APIs / JSON | `web_fetch` | Direct HTTP request |
+| Documentation sites | `web_fetch` | Static content |
+| Single-page applications (React, Vue) | `browser_*` | Needs JS execution |
+| Forms with validation | `browser_*` | Interactive input |
+| Login flows | `browser_*` | Session management |
+| Dynamic content loading | `browser_*` | Wait for AJAX |
+
+### TLS / Certificate Handling (Corporate Proxies & Self-Signed Certs)
+
+#### Installing Playwright Behind Corporate Proxies
+
+When **installing** Playwright browser binaries (`python -m playwright install chromium`), Node.js downloads browser files over HTTPS. If behind a corporate proxy with self-signed certificates, you may see `SELF_SIGNED_CERT_IN_CHAIN` errors during installation.
+
+**Solution:** Set `NODE_EXTRA_CA_CERTS` to your corporate certificate bundle **before** installation:
+
+```bash
+# Linux/WSL:
+export NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
+python -m playwright install chromium
+
+# Windows (PowerShell):
+$env:NODE_EXTRA_CA_CERTS="C:\path\to\corporate-cert.crt"
+python -m playwright install chromium
+
+# Windows (CMD):
+set NODE_EXTRA_CA_CERTS=C:\path\to\corporate-cert.crt
+python -m playwright install chromium
+```
+
+For Windows, you may need to export your corporate certificate from the Windows Certificate Store:
+- Press `Win+R`, type `certmgr.msc`
+- Navigate to: **Trusted Root Certification Authorities** → **Certificates**
+- Find your corporate certificate, right-click → **All Tasks** → **Export**
+- Choose **Base-64 encoded X.509 (.CER)** and save
+- Set `NODE_EXTRA_CA_CERTS` to the exported file path
+
+See also `devsetup/win11.md` and `devsetup/wsl.md` for environment setup details.
+
+#### Using the Browser at Runtime
+
+Unlike `web_fetch`/`web_search` (which use `requests` and honor `PATCHPAL_VERIFY_SSL`, `SSL_CERT_FILE`, and `REQUESTS_CA_BUNDLE`), the Chromium browser launched by Playwright **does not** read a PEM CA-bundle file for page navigation. Setting `REQUESTS_CA_BUNDLE`, `SSL_CERT_FILE`, or `NODE_EXTRA_CA_CERTS` has **no effect** on the browser's page TLS (`NODE_EXTRA_CA_CERTS` only affects Node's HTTPS when *downloading* the browser binaries, not runtime).
+
+By default the browser validates certificates against the OS/NSS trust store. If you are behind a corporate TLS-inspecting proxy or use self-signed certs, you have two options:
+
+**Option 1 — Trust your CA (secure, recommended).** Import the CA into the NSS database Chromium reads on Linux (this is [documented by Chromium](https://chromium.googlesource.com/chromium/src/+/main/docs/linux/cert_management.md)):
+
+```bash
+# 1. Install the NSS command-line tools
+sudo apt install libnss3-tools          # Debian/Ubuntu
+# sudo dnf install nss-tools            # Fedora
+# sudo zypper install mozilla-nss-tools # openSUSE
+
+# 2. Locate the NSS DB Chromium uses:
+#      - Chromium M146+ default: $HOME/.local/share/pki/nssdb
+#      - Older / if it already exists: $HOME/.pki/nssdb
+#    Chromium prefers an existing $HOME/.pki/nssdb if present.
+NSSDB="$HOME/.local/share/pki/nssdb"
+mkdir -p "$NSSDB"
+certutil -d "sql:$NSSDB" -N --empty-password 2>/dev/null || true   # init if empty
+
+# 3a. Import a single root CA (trust for issuing SSL server certs)
+certutil -d "sql:$NSSDB" -A -t "C,," -n corp-ca -i /path/to/corporate-ca.pem
+#     Intermediate CA:  use -t ",,"
+#     Self-signed *server* cert (not a CA): use -t "P,,"
+
+# 3b. If REQUESTS_CA_BUNDLE points at a bundle with MULTIPLE certs,
+#     split it and import each one (certutil imports one cert per call):
+csplit -z -f corpca- "$REQUESTS_CA_BUNDLE" '/-----BEGIN CERTIFICATE-----/' '{*}'
+i=0; for f in corpca-*; do certutil -d "sql:$NSSDB" -A -t "C,," -n "corp-ca-$i" -i "$f"; i=$((i+1)); done
+
+# 4. Verify
+certutil -d "sql:$NSSDB" -L
+```
+
+After importing, the browser will trust sites signed by that CA without any further configuration.
+
+**Option 2 — Bypass verification (insecure).** Accept any certificate in the browser:
+
+```bash
+export PATCHPAL_BROWSER_IGNORE_HTTPS_ERRORS=true   # browser-only bypass
+# (PATCHPAL_VERIFY_SSL=false also enables this, and additionally disables
+#  verification for web_search/web_fetch)
+```
+
+This is the quickest fix but disables certificate validation entirely (vulnerable to MITM), so prefer Option 1 in production.
+
+### browser_navigate
+Navigate to a URL in a visible Chromium browser window.
+
+- **Example**: `browser_navigate("https://example.com")`
+- Browser stays open for subsequent operations (stateful session)
+- Applies same security checks as `web_fetch` (domain filtering, rate limiting)
+- Returns page title and URL confirmation
+
+### browser_click
+Click an element using flexible selectors.
+
+- **Examples**:
+  - `browser_click("#submit-button")` - CSS selector
+  - `browser_click("text=Login")` - Text content
+  - `browser_click("role=button:Submit")` - ARIA role
+- Browser must be open first via `browser_navigate`
+- Returns confirmation with current URL
+
+### browser_fill
+Fill form fields with text.
+
+- **Examples**:
+  - `browser_fill("#email", "user@example.com")` - CSS selector
+  - `browser_fill("placeholder=Email", "user@example.com")` - Placeholder text
+  - `browser_fill("label=Password", "secret123")` - Label text
+- Clears existing content by default
+- Browser must be open first
+
+### browser_screenshot
+Take a full-page screenshot.
+
+- **Example**: `browser_screenshot("/tmp/page.png")`
+- Saves as PNG file
+- Useful for debugging or capturing visual state
+- Returns path to saved screenshot
+
+### browser_get_text
+Extract all visible text from the page after JavaScript execution.
+
+- **Example**: `browser_get_text()`
+- Unlike `web_fetch`, this gets rendered content (post-JS)
+- Useful for single-page applications and dynamically loaded content
+- Returns title, URL, and page text (truncated at 20KB by default)
+- Integrates with web_fetch's URL tracking for security
+
+### browser_wait
+Wait for a duration or element to appear.
+
+- **Examples**:
+  - `browser_wait(2000)` - Wait 2 seconds
+  - `browser_wait(5000, "#results")` - Wait up to 5s for element
+- Useful for waiting for dynamic content to load
+- Maximum wait time: 30 seconds
+
+### browser_press_key
+Press a keyboard key, optionally on a specific element.
+
+- **Examples**:
+  - `browser_press_key("Enter", "input[name='search']")` - Submit search form
+  - `browser_press_key("Escape")` - Close modal dialog
+  - `browser_press_key("ArrowDown", "select[name='country']")` - Navigate dropdown
+  - `browser_press_key("Tab")` - Move to next field
+- Essential for submitting forms with Enter key
+- Useful for dismissing modals (Escape), navigating with arrow keys
+- Supports modifiers: `Control+a`, `Shift+Tab`, etc.
+
+### browser_close
+Close the browser and cleanup resources.
+
+- **Example**: `browser_close()`
+- Safe to call even if browser is already closed
+- Releases browser process and memory
+
+### browser_get_html
+Get the HTML source code from the current page or frame.
+
+- **Example**: `browser_get_html()`
+- Shows actual HTML structure with `<input>`, `<select>`, and form element IDs/names
+- Particularly useful for identifying field selectors for `browser_fill()` on complex forms
+- Unlike `browser_get_text()` which shows only visible text, this shows raw HTML
+- Essential for sites with framesets or complex form structures
+- Returns HTML content (truncated at 50KB by default)
+
+### browser_list_frames
+List all frames/iframes in the current page.
+
+- **Example**: `browser_list_frames()`
+- Shows frame indices, names, and URLs
+- Essential for older government and enterprise sites using framesets
+- Use with `browser_switch_frame()` to interact with content inside frames
+- Returns "No frames found" if page uses standard layout
+
+### browser_switch_frame
+Switch to a frame/iframe for interaction.
+
+- **Examples**:
+  - `browser_switch_frame(index=1)` - Switch to first frame
+  - `browser_switch_frame(name='content')` - Switch by frame name
+  - `browser_switch_frame()` - Return to main page
+- Many older sites (especially government/enterprise) use framesets
+- Normal browser tools only work in the current frame context
+- After switching, all subsequent operations target that frame
+- Essential for sites like DoD portals, legacy enterprise applications
+
+### browser_scroll
+Scroll the page to load lazy-loaded content or navigate long pages.
+
+- **Examples**:
+  - `browser_scroll(direction="down")` - Scroll down one viewport
+  - `browser_scroll(direction="down", amount=500)` - Scroll 500px
+  - `browser_scroll(direction="bottom")` - Scroll to page bottom
+  - `browser_scroll(selector="#footer")` - Scroll to specific element
+- Essential for infinite scroll sites (Twitter, Reddit, Unsplash, social media feeds)
+- Waits 1 second after scrolling for lazy content to load
+- Returns scroll position and page height information
+- Directions: `down`, `up`, `bottom`, `top`
+
+### browser_dismiss_modals
+Manually dismiss modal overlays blocking interaction.
+
+- **Example**: `browser_dismiss_modals()`
+- Attempts to close login prompts, newsletter signups, cookie notices, app download prompts
+- `browser_navigate()` and `browser_click()` already auto-dismiss modals
+- Use this if modals still block actions after navigation/clicking
+- Tries common close button selectors (ARIA labels, class names, X buttons)
+
+### browser_execute_script
+Execute JavaScript code in the current page and return the result.
+
+- **Examples**:
+  - `browser_execute_script("document.querySelectorAll('img').length")` - Count images
+  - `browser_execute_script("document.title")` - Get page title
+  - `browser_execute_script("document.querySelector('#email').value = 'test@example.com'")` - Fill form directly
+  - `browser_execute_script("Array.from(document.querySelectorAll('a')).map(a => a.href)")` - Get all link URLs
+- Allows direct DOM manipulation, querying elements, counting items
+- Useful for complex interactions beyond standard browser tools
+- Script must return a serializable value (string, number, array, object)
+- Essential for:
+  - Counting elements on infinite scroll sites
+  - Complex form interactions
+  - Triggering custom JavaScript events
+  - Extracting structured data from the page
+  - Session keep-alive for timeout-sensitive sites
+- Returns formatted result (JSON for arrays/objects)
+
+### Example Workflow: Form Submission
+
+```python
+# Navigate to form
+browser_navigate("https://example.com/contact")
+
+# Fill fields
+browser_fill("label=Name", "John Doe")
+browser_fill("label=Email", "john@example.com")
+browser_fill("label=Message", "Test message")
+
+# Submit and wait for confirmation
+browser_click("text=Submit")
+browser_wait(3000, ".success-message")
+
+# Capture proof
+browser_screenshot("/tmp/submission.png")
+
+# Cleanup
+browser_close()
+```
+
+### Example Prompt: Navigate, Search, and Extract
+
+You can drive the browser tools with a single natural-language prompt. For example:
+
+> Visit https://www.wikipedia.org, click on English, search for "Web scraping", and extract the first paragraph
+
+PatchPal will translate this into a sequence of browser tool calls, roughly:
+
+```python
+# Open the Wikipedia portal
+browser_navigate("https://www.wikipedia.org")
+
+# Enter the English edition
+browser_click("text=English")
+
+# Search for the topic
+browser_fill("#searchInput", "Web scraping")
+browser_press_key("Enter", "#searchInput")  # Submit form with Enter key
+
+# Wait for the article to render, then read the page
+browser_wait(3000, "#mw-content-text")
+browser_get_text()   # extract the article text (incl. the first paragraph)
+
+# Cleanup
+browser_close()
+```
+
+> **Tip:** If the target site uses a corporate/self-signed certificate, make sure
+> the CA is trusted first (see [TLS / Certificate Handling](#tls--certificate-handling-corporate-proxies--self-signed-certs) above), otherwise navigation will fail with `net::ERR_CERT_AUTHORITY_INVALID`.
+
+### Security Features
+
+Browser tools inherit `web_fetch` security:
+- Domain filtering (`PATCHPAL_WEB_ALLOWED_DOMAINS`, `PATCHPAL_WEB_BLOCKED_DOMAINS`)
+- Rate limiting (`PATCHPAL_WEB_RATE_LIMIT`)
+- Permission system (requires approval like other tools)
+- URL validation (must start with `http://` or `https://`)
+
+### Implementation Details
+
+- **Browser**: Chromium via Playwright
+- **Visibility**: Non-headless by default (visible browser)
+- **Viewport**: 1280x900
+- **Timeouts**: 30s navigation, 10s interactions
+- **Session**: Single persistent browser instance across tools
 
 ## Code Analysis (2 tools)
 
@@ -215,12 +534,14 @@ Search for files by glob pattern.
 | Optional Tools* | grep, find | 2 |
 | Code Analysis | code_structure, get_repo_map | 2 |
 | Web | web_search, web_fetch | 2 |
+| Browser Automation** | browser_navigate, browser_click, browser_fill, browser_press_key, browser_screenshot, browser_get_text, browser_get_html, browser_list_frames, browser_switch_frame, browser_scroll, browser_execute_script, browser_wait, browser_dismiss_modals, browser_close | 14 |
 | Task Planning | todo_add, todo_list, todo_complete, todo_update, todo_remove, todo_clear | 6 |
 | Skills | list_skills, use_skill | 2 |
 | User Interaction | ask_user | 1 |
-| **Total** | | **20** |
+| **Total** | | **34** |
 
 *Optional tools are disabled by default (shell commands preferred)
+**Browser tools require `pip install patchpal[browser]` and are disabled if Playwright not installed
 
 ## Configuration
 
@@ -229,7 +550,7 @@ Search for files by glob pattern.
 - `PATCHPAL_MAX_FILE_SIZE` - Maximum file size for text files in read_file (default: 500KB)
 - `PATCHPAL_MAX_IMAGE_SIZE` - Maximum image file size for read_file (default: 10MB)
 - `PATCHPAL_BLOCK_IMAGES` - Block images from being sent to LLM (default: false)
-- `PATCHPAL_ENABLE_WEB` - Enable/disable web tools (default: true)
+- `PATCHPAL_ENABLE_WEB` - Enable/disable web tools (web_search, web_fetch, and browser_* tools) (default: true)
 - `PATCHPAL_ALLOW_SUDO` - Allow sudo/su commands (default: false)
 - `PATCHPAL_MINIMAL_TOOLS` - Use minimal tools mode: 4-6 core tools only (default: false)
 

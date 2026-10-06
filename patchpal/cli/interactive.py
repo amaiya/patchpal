@@ -575,6 +575,32 @@ Supported models: Any LiteLLM-supported model
                     pass  # Don't fail if audit logging fails
 
                 print("\nGoodbye!")
+
+                # Clean up the browser if it was opened during the session.
+                # An open Playwright browser keeps its own asyncio machinery
+                # alive; closing it here releases the browser process/loop so
+                # they don't linger into interpreter shutdown.
+                try:
+                    from patchpal.tools.browser_tools import _BrowserState
+
+                    if _BrowserState.is_open():
+                        _BrowserState.close(silent=True)
+                except Exception:
+                    pass  # Browser tools optional / already closed
+
+                # Suppress the benign "Task exception was never retrieved"
+                # warning that asyncio emits at shutdown: prompt_toolkit's
+                # pending Application.run_async() task gets cancelled with a
+                # KeyboardInterrupt during teardown, and nobody retrieves it.
+                # This is cosmetic and happens AFTER all work is done.
+                try:
+                    import asyncio
+
+                    _loop = asyncio.get_event_loop()
+                    _loop.set_exception_handler(lambda loop, context: None)
+                except Exception:
+                    pass
+
                 break
 
             # Handle /help command - show available commands
@@ -1633,7 +1659,25 @@ Supported models: Any LiteLLM-supported model
             )
             continue
         except Exception as e:
-            print(f"\n\033[1;31mError:\033[0m {e}")
+            # Debug: Print full exception info to help diagnose asyncio errors
+            import traceback
+
+            error_str = str(e)
+            print(f"\n\033[1;31mError:\033[0m {error_str}")
+
+            # If it's the asyncio error, print more debug info
+            if "asyncio.run() cannot be called from a running event loop" in error_str:
+                print("\n\033[1;33m[DEBUG] AsyncIO Error Details:\033[0m")
+                print(
+                    "This error occurs when asyncio.run() is called while an event loop is already running."
+                )
+                print("Stack trace:")
+                traceback.print_exc()
+                print(
+                    "\n\033[1;33m[DEBUG] If browser tools were just used, this may be a Playwright cleanup issue.\033[0m"
+                )
+                print("Try: Close any open browser windows and type 'exit' to restart PatchPal.\n")
+
             print("Please try again or type 'exit' to quit.")
 
 

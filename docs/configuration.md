@@ -277,9 +277,17 @@ agent = create_agent(
 ```bash
 # Enable/Disable Web Access
 export PATCHPAL_ENABLE_WEB=false             # Disable web search/fetch for air-gapped environments (default: true)
+                                              # Note: disabling web also disables browser tools
 
-# SSL Certificate Verification (for web_search)
-export PATCHPAL_VERIFY_SSL=true              # SSL verification for web searches (default: true)
+# Enable/Disable Browser Automation Tools
+export PATCHPAL_ENABLE_BROWSER=false         # Disable browser tools (Playwright/Chromium) while keeping
+                                              # web_search/web_fetch (default: true)
+                                              # Browser tools also require Playwright to be installed and
+                                              # PATCHPAL_ENABLE_WEB=true
+
+# SSL Certificate Verification
+# For web_search and web_fetch (requests/DDGS-based):
+export PATCHPAL_VERIFY_SSL=true              # SSL verification for web requests (default: true)
                                               # Set to 'false' to disable (not recommended for production)
                                               # Or set to path of CA bundle file for corporate certificates
                                               # Auto-detects SSL_CERT_FILE and REQUESTS_CA_BUNDLE if not set
@@ -287,6 +295,19 @@ export PATCHPAL_VERIFY_SSL=true              # SSL verification for web searches
                                               #   export PATCHPAL_VERIFY_SSL=false  # Disable verification
                                               #   export PATCHPAL_VERIFY_SSL=/path/to/ca-bundle.crt  # Custom CA bundle
                                               #   (Leave unset to auto-detect from SSL_CERT_FILE/REQUESTS_CA_BUNDLE)
+#
+# For browser tools (Playwright/Chromium): the launched browser does NOT honor
+# NODE_EXTRA_CA_CERTS / SSL_CERT_FILE / REQUESTS_CA_BUNDLE for page navigation.
+# Chromium validates page certificates against the OS/NSS trust store, so to
+# trust a corporate/self-signed CA you must import it into the NSS DB Chromium
+# reads on Linux (needs libnss3-tools). The NSS DB is $HOME/.local/share/pki/nssdb
+# on Chromium M146+, or $HOME/.pki/nssdb on older versions (used if it exists):
+#   certutil -d sql:$HOME/.local/share/pki/nssdb -A -t "C,," -n corp-ca -i /path/to/corp-ca.pem
+# See docs/features/tools.md ("TLS / Certificate Handling") for full steps,
+# including how to import a multi-cert REQUESTS_CA_BUNDLE.
+# To bypass browser certificate validation entirely (accept any cert):
+export PATCHPAL_BROWSER_IGNORE_HTTPS_ERRORS=false  # Set 'true' to ignore browser cert errors
+                                                    # (PATCHPAL_VERIFY_SSL=false also enables this)
 
 # Web Request Limits
 export PATCHPAL_WEB_TIMEOUT=60               # Web request timeout in seconds (default: 30)

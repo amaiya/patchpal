@@ -62,14 +62,48 @@ def test_create_agent_ollama_model():
 def test_agent_has_correct_tools():
     """Test that the agent has the correct tools defined."""
     from patchpal.agent.function_calling import TOOL_FUNCTIONS, TOOLS
+    from patchpal.tools.definitions import TOOL_FUNCTIONS as ALL_TOOL_FUNCTIONS
     from patchpal.tools.definitions import TOOLS as ALL_TOOLS
 
-    # Verify we have 20 built-in tools total (in definitions)
-    assert len(ALL_TOOLS) == 20
-    assert len(TOOL_FUNCTIONS) == 20
+    browser_tool_names = {
+        "browser_navigate",
+        "browser_click",
+        "browser_fill",
+        "browser_press_key",
+        "browser_screenshot",
+        "browser_get_text",
+        "browser_get_html",
+        "browser_list_frames",
+        "browser_switch_frame",
+        "browser_scroll",
+        "browser_execute_script",
+        "browser_wait",
+        "browser_dismiss_modals",
+        "browser_close",
+    }
 
-    # The TOOLS imported from agent is filtered (optional tools removed by get_tools())
-    assert len(TOOLS) == 18  # grep and find are filtered out by default
+    # The STATIC definitions in definitions.py always contain all 34 tools,
+    # regardless of whether Playwright is installed:
+    #   18 core + web_search/web_fetch + grep/find + 14 browser tools = 34.
+    # (When Playwright is missing, the browser function mappings are None, but
+    # the schema/name entries still exist.)
+    assert len(ALL_TOOLS) == 34
+    assert len(ALL_TOOL_FUNCTIONS) == 34
+
+    # TOOLS / TOOL_FUNCTIONS imported from the agent are the FILTERED runtime
+    # results of get_tools():
+    #   - grep and find are removed from TOOLS (disabled by default), and
+    #   - the 14 browser tools are removed from BOTH when Playwright is
+    #     unavailable or PATCHPAL_ENABLE_BROWSER=false.
+    # Derive expectations from what's actually present so this is robust in CI
+    # (where Playwright may not be installed).
+    runtime_tool_names = {tool["function"]["name"] for tool in TOOLS}
+    browser_included = bool(runtime_tool_names & browser_tool_names)
+
+    # 34 total - 2 (grep/find filtered from schema list) - 14 browser (if absent)
+    assert len(TOOLS) == 34 - 2 - (0 if browser_included else 14)
+    # functions keep grep/find but drop browser tools when unavailable
+    assert len(TOOL_FUNCTIONS) == 34 - (0 if browser_included else 14)
 
     # Verify tool names in the full tool list
     all_tool_names = [tool["function"]["name"] for tool in ALL_TOOLS]

@@ -643,38 +643,33 @@ class PatchPalAgent:
     def _load_project_memory(self):
         """Load MEMORY.md file at session start if it has non-template content."""
         try:
-            from patchpal.tools.common import MEMORY_FILE
+            from patchpal.tools.common import get_memory_info
 
-            # Always tell the agent where MEMORY.md is located
-            if not MEMORY_FILE.exists():
+            info = get_memory_info()
+
+            if not info["exists"]:
                 return
 
-            memory_content = MEMORY_FILE.read_text(encoding="utf-8")
-
-            # Check if user has added content after the "---" separator
-            has_user_content = False
-            if "---" in memory_content:
-                parts = memory_content.split("---", 1)
-                if len(parts) > 1:
-                    user_content = parts[1].strip()
-                    if user_content and len(user_content) > 10:
-                        has_user_content = True
-
             # Build the message - include full content if user added info, otherwise just location
-            if has_user_content:
+            if info["has_content"]:
                 memory_msg = f"""# Project Memory (from MEMORY.md)
 
-{memory_content}
+{info["content"]}
 
-The information above is from {MEMORY_FILE} and persists across sessions.
-To update it, use edit_file("{MEMORY_FILE}", ...) or write_file("{MEMORY_FILE}", ...)."""
+The information above is from MEMORY.md ({info["location_note"]}) and persists across sessions.
+To update it, use edit_file("{info["path"]}", ...) or write_file("{info["path"]}", ...)."""
             else:
                 # Empty template - just inform agent
                 memory_msg = f"""# Project Memory (MEMORY.md)
 
-Your project memory file is located at: {MEMORY_FILE}
+Your project memory file is located at: {info["path"]}
 
-It's currently empty (just the template). The file is automatically loaded at session start."""
+It's currently empty (just the template). The file is automatically loaded at session start.
+
+Note: You can use MEMORY.md in either location:
+- Repository root: MEMORY.md (can be version controlled)
+- Home directory: ~/.patchpal/repos/<repo-name>/MEMORY.md (default)
+Repository root takes priority if both exist."""
 
             # Add as a system message at the start
             self.messages.insert(
@@ -1499,6 +1494,92 @@ It's currently empty (just the template). The file is automatically loaded at se
                             elif tool_name == "ask_user":
                                 print(
                                     "\033[2m❓ Asking user a question...\033[0m",
+                                    flush=True,
+                                )
+                            elif tool_name == "browser_navigate":
+                                print(
+                                    f"\033[2m🌐 Browser navigating: {tool_args.get('url', '')}\033[0m",
+                                    flush=True,
+                                )
+                            elif tool_name == "browser_click":
+                                print(
+                                    f"\033[2m🖱️  Browser clicking: {tool_args.get('selector', '')}\033[0m",
+                                    flush=True,
+                                )
+                            elif tool_name == "browser_fill":
+                                print(
+                                    f"\033[2m⌨️  Browser filling: {tool_args.get('selector', '')}\033[0m",
+                                    flush=True,
+                                )
+                            elif tool_name == "browser_screenshot":
+                                print(
+                                    f"\033[2m📸 Browser screenshot: {tool_args.get('path', '') or 'default path'}\033[0m",
+                                    flush=True,
+                                )
+                            elif tool_name == "browser_get_text":
+                                print(
+                                    "\033[2m📄 Browser extracting page text...\033[0m",
+                                    flush=True,
+                                )
+                            elif tool_name == "browser_get_html":
+                                print(
+                                    "\033[2m📋 Browser extracting HTML source...\033[0m",
+                                    flush=True,
+                                )
+                            elif tool_name == "browser_scroll":
+                                direction = tool_args.get("direction", "down")
+                                selector = tool_args.get("selector", "")
+                                if selector:
+                                    scroll_desc = f"to '{selector}'"
+                                else:
+                                    scroll_desc = direction
+                                print(
+                                    f"\033[2m📜 Browser scrolling {scroll_desc}...\033[0m",
+                                    flush=True,
+                                )
+                            elif tool_name == "browser_execute_script":
+                                script_preview = tool_args.get("script", "")[:50]
+                                if len(tool_args.get("script", "")) > 50:
+                                    script_preview += "..."
+                                print(
+                                    f"\033[2m⚡ Browser executing script: {script_preview}\033[0m",
+                                    flush=True,
+                                )
+                            elif tool_name == "browser_wait":
+                                selector = tool_args.get("selector", "")
+                                if selector:
+                                    wait_desc = f"for '{selector}'"
+                                else:
+                                    wait_desc = f"{tool_args.get('milliseconds', 1000)}ms"
+                                print(
+                                    f"\033[2m⏳ Browser waiting {wait_desc}...\033[0m",
+                                    flush=True,
+                                )
+                            elif tool_name == "browser_close":
+                                print(
+                                    "\033[2m🚪 Closing browser...\033[0m",
+                                    flush=True,
+                                )
+                            elif tool_name == "browser_list_frames":
+                                print(
+                                    "\033[2m🖼️  Browser listing frames...\033[0m",
+                                    flush=True,
+                                )
+                            elif tool_name == "browser_switch_frame":
+                                frame_info = ""
+                                if "index" in tool_args and tool_args["index"] is not None:
+                                    frame_info = f"index {tool_args['index']}"
+                                elif "name" in tool_args and tool_args["name"] is not None:
+                                    frame_info = f"'{tool_args['name']}'"
+                                else:
+                                    frame_info = "main page"
+                                print(
+                                    f"\033[2m🖼️  Browser switching to frame: {frame_info}\033[0m",
+                                    flush=True,
+                                )
+                            elif tool_name == "browser_dismiss_modals":
+                                print(
+                                    "\033[2m🚫 Browser dismissing modals...\033[0m",
                                     flush=True,
                                 )
                             else:

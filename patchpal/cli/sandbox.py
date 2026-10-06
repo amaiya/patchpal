@@ -18,10 +18,16 @@ import sys
 
 
 def load_env_file(env_file):
-    """Load environment variables from .env file."""
+    """Load environment variables from .env file.
+
+    Returns:
+        set: Keys of the environment variables that were loaded from the file.
+    """
     if not os.path.exists(env_file):
         print(f"❌ Error: .env file not found: {env_file}", file=sys.stderr)
         sys.exit(1)
+
+    loaded_keys = set()
 
     with open(env_file, "r") as f:
         for line in f:
@@ -43,6 +49,9 @@ def load_env_file(env_file):
                     value = value[1:-1]
 
                 os.environ[key] = value
+                loaded_keys.add(key)
+
+    return loaded_keys
 
 
 def detect_runtime():
@@ -135,6 +144,7 @@ def detect_llm_endpoints_from_env():
         "ANTHROPIC_API_BASE",
         "AWS_BEDROCK_ENDPOINT",
         "AWS_ENDPOINT_URL_BEDROCK_RUNTIME",
+        "AWS_ENDPOINT_URL_BEDROCK",  # Control plane endpoint
         "AWS_ENDPOINT_URL",
         "AWS_BEDROCK_RUNTIME_ENDPOINT",
         "AZURE_OPENAI_ENDPOINT",
@@ -153,6 +163,18 @@ def detect_llm_endpoints_from_env():
             # Ensure it's a valid URL
             if value.startswith("http://") or value.startswith("https://"):
                 detected_urls.append(value)
+
+                # CRITICAL FIX: For Bedrock VPC endpoints, derive control plane endpoint
+                # Scenario: User has VPC endpoint for runtime API (e.g., AWS GovCloud private network)
+                # Problem: Model capability detection needs control plane API (get_inference_profile)
+                #          but boto3 doesn't automatically derive control plane from runtime endpoint
+                # VPC endpoint pattern:
+                #   Runtime:        vpce-{id}.bedrock-runtime.{region}.vpce.amazonaws.com
+                #   Control plane:  vpce-{id}.bedrock.{region}.vpce.amazonaws.com
+                # Without this, capability detection hangs trying to reach public control plane endpoint
+                if "bedrock-runtime" in value and ".vpce.amazonaws.com" in value:
+                    control_plane_url = value.replace("bedrock-runtime", "bedrock")
+                    detected_urls.append(control_plane_url)
             else:
                 # Assume https if no protocol specified
                 detected_urls.append(f"https://{value}")
@@ -168,18 +190,37 @@ def detect_llm_endpoints_from_env():
     if aws_region and (
         os.environ.get("AWS_ACCESS_KEY_ID") or os.environ.get("AWS_SECRET_ACCESS_KEY")
     ):
-        # Add Bedrock endpoint for the region
+        # Add Bedrock endpoints for the region
         # Support both GovCloud and standard regions
         # Also support AWS China regions
+
+        # IMPORTANT: boto3 uses standard endpoint names by default, even in GovCloud
+        # Only use -fips suffix if AWS_USE_FIPS_ENDPOINT=true is explicitly set
+        # Scenario 1: Standard GovCloud → bedrock.us-gov-east-1.amazonaws.com (boto3 default)
+        # Scenario 2: FIPS required → bedrock-fips.us-gov-east-1.amazonaws.com (explicit opt-in)
+        use_fips = os.environ.get("AWS_USE_FIPS_ENDPOINT", "").lower() == "true"
+
         if "gov" in aws_region:
-            # GovCloud regions use FIPS endpoints
-            detected_urls.append(f"https://bedrock-runtime-fips.{aws_region}.amazonaws.com")
+            # GovCloud regions
+            # Add both runtime (for LLM inference) and control plane (for model capability detection)
+            if use_fips:
+                # FIPS endpoints (only when explicitly requested via AWS_USE_FIPS_ENDPOINT=true)
+                detected_urls.append(f"https://bedrock-runtime-fips.{aws_region}.amazonaws.com")
+                detected_urls.append(f"https://bedrock-fips.{aws_region}.amazonaws.com")
+            else:
+                # Standard GovCloud endpoints (boto3 default behavior)
+                # This is what boto3 uses unless FIPS is explicitly configured
+                detected_urls.append(f"https://bedrock-runtime.{aws_region}.amazonaws.com")
+                detected_urls.append(f"https://bedrock.{aws_region}.amazonaws.com")
         elif "cn-" in aws_region:
-            # AWS China regions use .amazonaws.com.cn
+            # AWS China regions use .amazonaws.com.cn domain
             detected_urls.append(f"https://bedrock-runtime.{aws_region}.amazonaws.com.cn")
+            detected_urls.append(f"https://bedrock.{aws_region}.amazonaws.com.cn")
         else:
-            # Standard commercial regions
+            # Standard commercial regions (us-east-1, eu-west-1, etc.)
+            # Add both runtime (for LLM inference) and control plane (for model capability detection)
             detected_urls.append(f"https://bedrock-runtime.{aws_region}.amazonaws.com")
+            detected_urls.append(f"https://bedrock.{aws_region}.amazonaws.com")
 
     # Azure OpenAI: Extract from resource name if AZURE_OPENAI_KEY is set
     azure_key = os.environ.get("AZURE_OPENAI_KEY") or os.environ.get("AZURE_API_KEY")
@@ -198,8 +239,15 @@ def detect_llm_endpoints_from_env():
     return list(set(detected_urls))
 
 
-def build_network_restriction_script(allowed_urls, test_mode=False):
-    """Build bash script to configure iptables firewall for network restrictions."""
+def build_network_restriction_script(allowed_urls, test_mode=False, block_dns_exfil=True):
+    """Build bash script to configure iptables firewall for network restrictions.
+
+    Args:
+        allowed_urls: List of allowed URL endpoints
+        test_mode: Whether to test restrictions and exit
+        block_dns_exfil: Whether to block DNS record types used for exfiltration (default: True)
+                        Blocks TXT, NULL, SRV records and large DNS queries
+    """
     script = """
 echo "=== Pre-downloading required data (before network restrictions) ==="
 
@@ -267,9 +315,70 @@ fi
 # Configure iptables
 echo "Configuring firewall rules..."
 
-# Allow DNS (required for hostname resolution)
-iptables -A OUTPUT -p udp --dport 53 -j ACCEPT
-iptables -A OUTPUT -p tcp --dport 53 -j ACCEPT
+# Extract DNS resolver IP(s) from /etc/resolv.conf
+# This locks DNS queries to only the container's configured resolver,
+# preventing agents from directly querying attacker-controlled DNS servers
+RESOLVER_IPS=$(grep '^nameserver' /etc/resolv.conf | awk '{print $2}')
+
+if [ -z "$RESOLVER_IPS" ]; then
+    echo "❌ ERROR: Could not detect DNS resolver from /etc/resolv.conf"
+    echo "Cannot configure secure DNS filtering without a resolver"
+    exit 1
+fi
+"""
+
+    # Add DNS exfiltration blocking if enabled
+    if block_dns_exfil:
+        script += """
+# Block DNS record types used for data exfiltration (SECURITY ENHANCEMENT)
+# This prevents DNS tunneling attacks that use TXT, NULL, or SRV records
+# to encode and exfiltrate sensitive data through DNS queries
+echo "Blocking DNS record types used for data exfiltration..."
+
+# Block TXT records (type 16 = 0x0010)
+# TXT records can carry up to 255 bytes of arbitrary text per record
+# Commonly used for DNS tunneling due to large payload capacity
+iptables -A OUTPUT -p udp --dport 53 -m string --hex-string "|00 10|" --algo bm -j LOG --log-prefix "BLOCKED-DNS-TXT: " --log-level 4
+iptables -A OUTPUT -p udp --dport 53 -m string --hex-string "|00 10|" --algo bm -j DROP
+iptables -A OUTPUT -p tcp --dport 53 -m string --hex-string "|00 10|" --algo bm -j LOG --log-prefix "BLOCKED-DNS-TXT: " --log-level 4
+iptables -A OUTPUT -p tcp --dport 53 -m string --hex-string "|00 10|" --algo bm -j DROP
+
+# Block NULL records (type 10 = 0x000a)
+# NULL records are explicitly designed to carry arbitrary binary data
+# No legitimate use in normal DNS resolution
+iptables -A OUTPUT -p udp --dport 53 -m string --hex-string "|00 0a|" --algo bm -j LOG --log-prefix "BLOCKED-DNS-NULL: " --log-level 4
+iptables -A OUTPUT -p udp --dport 53 -m string --hex-string "|00 0a|" --algo bm -j DROP
+iptables -A OUTPUT -p tcp --dport 53 -m string --hex-string "|00 0a|" --algo bm -j DROP
+
+# Block SRV records (type 33 = 0x0021)
+# Service records can be abused for tunneling
+iptables -A OUTPUT -p udp --dport 53 -m string --hex-string "|00 21|" --algo bm -j LOG --log-prefix "BLOCKED-DNS-SRV: " --log-level 4
+iptables -A OUTPUT -p udp --dport 53 -m string --hex-string "|00 21|" --algo bm -j DROP
+iptables -A OUTPUT -p tcp --dport 53 -m string --hex-string "|00 21|" --algo bm -j DROP
+
+# Block large DNS queries (likely subdomain encoding for data exfiltration)
+# Normal DNS queries: 50-100 bytes
+# Queries with encoded data in subdomains: 200+ bytes
+# This catches attempts to encode data in long subdomain names
+iptables -A OUTPUT -p udp --dport 53 -m length --length 150:65535 -j LOG --log-prefix "BLOCKED-DNS-LARGE: " --log-level 4
+iptables -A OUTPUT -p udp --dport 53 -m length --length 150:65535 -j DROP
+iptables -A OUTPUT -p tcp --dport 53 -m length --length 150:65535 -j DROP
+
+echo "✓ DNS exfiltration protections active (TXT/NULL/SRV/LARGE queries blocked)"
+"""
+
+    script += """
+# Allow DNS ONLY to detected resolver IPs (SECURITY FIX)
+# This prevents the OpenAI-style DNS tunneling attack where agents
+# send DNS packets directly to attacker-controlled DNS servers
+echo "Locking DNS queries to container's resolver(s):"
+while IFS= read -r RESOLVER_IP; do
+    if [ -n "$RESOLVER_IP" ]; then
+        echo "  $RESOLVER_IP (DNS - A/AAAA records only)"
+        iptables -A OUTPUT -d $RESOLVER_IP -p udp --dport 53 -j ACCEPT
+        iptables -A OUTPUT -d $RESOLVER_IP -p tcp --dport 53 -j ACCEPT
+    fi
+done <<< "$RESOLVER_IPS"
 
 # Allow localhost
 iptables -A OUTPUT -d 127.0.0.1/8 -j ACCEPT
@@ -354,8 +463,17 @@ echo ""
     return script
 
 
-def build_container_args(sandbox_args, patchpal_args):
-    """Build container runtime arguments."""
+def build_container_args(sandbox_args, patchpal_args, env_file_keys=None):
+    """Build container runtime arguments.
+
+    Args:
+        sandbox_args: Parsed sandbox CLI arguments
+        patchpal_args: Arguments to pass through to patchpal
+        env_file_keys: Set of env var names loaded from --env-file (if any).
+                       These are forwarded into the container even though the
+                       rest of the host environment is not (isolation mode).
+    """
+    env_file_keys = env_file_keys or set()
     runtime = detect_runtime()
     if not runtime:
         print("❌ Error: Neither Docker nor Podman found", file=sys.stderr)
@@ -456,8 +574,12 @@ def build_container_args(sandbox_args, patchpal_args):
     if sandbox_args.cpus:
         container_args.extend(["--cpus", str(sandbox_args.cpus)])
 
-    # Pass through environment variables from host ONLY if --env-file is NOT provided
-    # This provides better isolation - when using --env-file, only those specific vars are used
+    # Pass through environment variables.
+    # WITHOUT --env-file: pass through matching vars from the full host environment.
+    # WITH --env-file: isolate from the host, but still forward the vars that were
+    #                  explicitly loaded from the file itself (previously these were
+    #                  loaded into os.environ but never forwarded into the container,
+    #                  causing credentials in --env-file to be silently dropped).
     if not sandbox_args.env_file:
         # Pass through PATCHPAL_* environment variables
         for key, value in os.environ.items():
@@ -495,6 +617,19 @@ def build_container_args(sandbox_args, patchpal_args):
         # The container will automatically receive OLLAMA_API_BASE environment variable.
         for key, value in os.environ.items():
             if key.startswith("OLLAMA_"):
+                container_args.extend(["-e", f"{key}={value}"])
+    else:
+        # Isolated mode: only forward the specific vars loaded from --env-file
+        for key in env_file_keys:
+            value = os.environ.get(key)
+            if value is not None:
+                container_args.extend(["-e", f"{key}={value}"])
+
+        # Always forward PATCHPAL_* environment variables even in isolated mode
+        # These are configuration variables that control PatchPal behavior, not secrets
+        # (e.g., PATCHPAL_AUTOPILOT_CONFIRMED, PATCHPAL_STREAM_OUTPUT, PATCHPAL_ENABLED_TOOLS)
+        for key, value in os.environ.items():
+            if key.startswith("PATCHPAL_") and key not in env_file_keys:
                 container_args.extend(["-e", f"{key}={value}"])
 
     # Track mounted paths to avoid duplicates
@@ -802,11 +937,22 @@ SECURITY:
 
       FIREWALL RULES:
       - Only allowed URLs are accessible (auto-detected + --allow-url)
-      - DNS resolution permitted (required for hostname lookup)
+      - DNS resolution permitted (A/AAAA records only for hostname lookup)
+      - DNS exfiltration prevention: TXT, NULL, SRV records BLOCKED
+      - Large DNS queries (>150 bytes) BLOCKED (prevents subdomain encoding)
       - Localhost accessible (127.0.0.1/8)
       - All other network traffic BLOCKED and LOGGED
       - Web tools and MCP automatically disabled
       - Ideal for sensitive/regulated environments
+
+      DNS SECURITY:
+      * Blocks DNS tunneling attacks that exfiltrate data via:
+        - TXT records (up to 255 bytes per query)
+        - NULL records (arbitrary binary data)
+        - SRV records (service discovery abuse)
+        - Long subdomains (base64-encoded data in domain names)
+      * Only allows A and AAAA records (standard hostname resolution)
+      * Logs all blocked DNS queries for security auditing
 
       Use cases:
       * Compliance: Meet data governance requirements
@@ -1002,9 +1148,10 @@ def main():
         sandbox_args.network = "host"
 
     # Load .env file if specified
+    env_file_keys = set()
     if sandbox_args.env_file:
         print(f"Loading environment variables from: {sandbox_args.env_file}")
-        load_env_file(sandbox_args.env_file)
+        env_file_keys = load_env_file(sandbox_args.env_file)
 
     # If LITELLM_KWARGS contains AWS params, normalize env var names to uppercase
     # This must happen before endpoint detection for AWS Bedrock auto-detection to work
@@ -1023,6 +1170,7 @@ def main():
                     upper_key = key.upper()
                     if upper_key not in os.environ:
                         os.environ[upper_key] = value
+                    env_file_keys.add(upper_key)
         except (json.JSONDecodeError, ValueError):
             # Not JSON, check if individual env vars exist (comma-separated format)
             for key, value in list(os.environ.items()):
@@ -1030,6 +1178,7 @@ def main():
                     upper_key = key.upper()
                     if upper_key not in os.environ:
                         os.environ[upper_key] = value
+                    env_file_keys.add(upper_key)
 
     # Auto-detect LLM endpoints if network restrictions are enabled
     detected_endpoints = []
@@ -1060,7 +1209,7 @@ def main():
             )
 
     # Build container command
-    container_args, runtime = build_container_args(sandbox_args, patchpal_argv)
+    container_args, runtime = build_container_args(sandbox_args, patchpal_argv, env_file_keys)
 
     # Show what we're doing
     print(f"Using container runtime: {runtime}")

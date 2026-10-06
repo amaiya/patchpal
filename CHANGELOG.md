@@ -7,6 +7,95 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
+## 0.24.4 (2026-10-05)
+
+### new:
+- N/A
+
+### changed:
+- N/A
+
+### fixed:
+- Forward `PATCHPAL_*` env vars to container in isolated mode with --env-file
+
+
+## 0.24.3 (2026-10-02)
+
+### new:
+- N/A
+
+### changed:
+- N/A
+
+### fixed:
+- Hardening of `patchpal-sandbox` to better prevent DNS tunneling
+
+
+## 0.24.2 (2026-09-29)
+
+### new:
+- N/A
+
+### changed:
+- N/A
+
+### fixed:
+- **SECURITY**: Fixed DNS tunneling vulnerability in `patchpal-sandbox --restrict-network` mode. DNS queries are now locked to the container's resolver IP (from `/etc/resolv.conf`) instead of allowing DNS packets to ANY destination.
+- Fixed `patchpal-sandbox --restrict-network` hanging at "Detecting model capabilities..." when using AWS Bedrock application inference profiles. Added automatic detection and whitelisting of Bedrock control plane API endpoints (required for model metadata), VPC endpoint derivation for private networks, and FIPS endpoint support. Handles all AWS regions (commercial, GovCloud, China) and deployment scenarios.
+
+
+## 0.24.1 (2026-09-24)
+
+### new:
+- N/A
+
+### changed:
+- N/A
+
+### fixed:
+- Fixed URL extraction in `web_fetch` for URLs embedded in natural language
+- Fixed issue with not splitting on newlines in shell commands when inspecting them
+- Fixed issue in `patchpal-sandbox` where `--env` wasn't being processed correctly (#87)
+- Added `Node.js 20 is deprecated` warning in GitHub workflows
+
+
+## 0.24.0 (2026-08-07)
+
+### new:
+- **Browser Automation**: PatchPal now supports browser automation
+  for interactive web tasks, form filling, and JavaScript-heavy sites
+
+### changed:
+- N/A
+
+### fixed:
+- N/A
+
+
+## 0.23.2 (2026-07-31)
+
+### new:
+- N/A
+
+### changed:
+- N/A
+
+### fixed:
+- Fixed bug with web fetch security check.
+
+
+## 0.23.1 (2026-07-15)
+
+### new:
+- N/A
+
+### changed:
+- Allow `MEMORY.md` to be loaded from repo folder (for management by git)
+
+### fixed:
+- N/A
+
+
 ## 0.23.0 (2026-06-09)
 
 ### new:

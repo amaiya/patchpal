@@ -174,28 +174,25 @@ class ReActAgent:
 
     def _load_project_memory(self):
         """Load project memory file if it exists."""
-        from pathlib import Path
+        try:
+            from patchpal.tools.common import get_memory_info
 
-        repo_root = Path(".").resolve()
-        home = Path.home()
-        memory_path = home / ".patchpal" / "repos" / repo_root.name / "MEMORY.md"
+            info = get_memory_info()
 
-        if memory_path.exists():
-            try:
-                with open(memory_path, "r", encoding="utf-8") as f:
-                    memory_content = f.read().strip()
-                    if memory_content and not memory_content.startswith(
-                        "# Project Memory\n\nThis file"
-                    ):
-                        # Only add if there's actual content (not just the template)
-                        self.messages.append(
-                            {
-                                "role": "system",
-                                "content": f"# Project Memory (MEMORY.md)\n\n{memory_content}",
-                            }
-                        )
-            except Exception:
-                pass  # Silently skip if can't read
+            # Only add if there's actual content beyond the template
+            if info["has_content"]:
+                self.messages.append(
+                    {
+                        "role": "system",
+                        "content": f"""# Project Memory (from MEMORY.md)
+
+{info["content"]}
+
+The information above is from MEMORY.md ({info["location_note"]}) and persists across sessions.""",
+                    }
+                )
+        except Exception:
+            pass  # Silently skip if can't read
 
     def _build_system_prompt(self, custom_instructions: str) -> str:
         """Build the ReAct system prompt with tool descriptions.

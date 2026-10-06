@@ -14,9 +14,10 @@ Most agent frameworks are [built in TypeScript](https://news.ycombinator.com/ite
 - [Sandbox Mode](https://amaiya.github.io/patchpal/usage/sandbox/) for secure container isolation
 - [Python SDK](https://amaiya.github.io/patchpal/usage/python-api/) for flexibility and extensibility
 - [Built-In](https://amaiya.github.io/patchpal/features/tools/) and [Custom Tools](https://amaiya.github.io/patchpal/features/custom-tools/)
+- [Browser Automation](https://amaiya.github.io/patchpal/features/tools/#browser-automation-14-tools-optional) for interactive web tasks, form filling, and JavaScript-heavy sites
 - [Skills System](https://amaiya.github.io/patchpal/features/skills/) and [MCP Integration](https://amaiya.github.io/patchpal/features/mcp/)
 - [Autopilot Mode](https://amaiya.github.io/patchpal/usage/autopilot/) using [Ralph Wiggum loops](https://github.com/amaiya/patchpal/tree/main/examples/ralph/)
-- [Project Memory](https://amaiya.github.io/patchpal/features/memory/) automatically loads project context from `~/.patchpal/repos/<repo-name>/MEMORY.md` at startup.
+- [Project Memory](https://amaiya.github.io/patchpal/features/memory/) automatically loads project context from `MEMORY.md` (repository root or `~/.patchpal/repos/<repo-name>/MEMORY.md`) at startup.
 
 PatchPal prioritizes customizability: custom tools, custom skills, a flexible Python API, and support for any tool-calling LLM.
 
@@ -60,6 +61,7 @@ docker run -it --rm \
 
 ## Setup
 0. **Install**: `pip install patchpal`
+   - **Optional**: For browser automation (13 additional tools): `pip install patchpal[browser] && python -m playwright install chromium`
 1. **Get an API key or a Local LLM Engine**:
    - **[Cloud]** For Anthropic models (default): Sign up at https://console.anthropic.com/
    - **[Cloud]** For OpenAI models: Get a key from https://platform.openai.com/
@@ -128,6 +130,10 @@ While originally designed for software development, PatchPal is also a general-p
 1. Most agent harnesses are in TypeScript. We wanted [something in Python](https://amaiya.github.io/patchpal/usage/python-api/) that we could easily extend for our custom workflows.
 2. PatchPal includes a [unique guardrails system](https://amaiya.github.io/patchpal/safety/) that is better suited to privacy-conscious use cases involving sensitive data.
 3. We needed an agent harness that seamlessly works with [both local and cloud models](https://amaiya.github.io/patchpal/models/overview/#supported-models), including AWS GovCloud Bedrock models.
+
+> I noticed there's another package called PatchPal on GitLab. Are they related?
+
+No, they're separate projects. The [project with the same name on GitLab](https://gitlab.com/patchpal-ai) is unrelated to this one.
 
 > On Windows Subsystem for Linux (WSL), why is it stalling intermittently at "Thinking..."?
 

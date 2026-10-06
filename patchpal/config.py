@@ -80,6 +80,16 @@ class Config:
         return _get_env_bool("PATCHPAL_ENABLE_WEB", "true")
 
     @property
+    def ENABLE_BROWSER(self) -> bool:
+        """Enable browser automation tools (default: true).
+
+        Browser tools require web access, so they are only available when
+        ENABLE_WEB is also true (and Playwright is installed). Set this to
+        false to disable the browser tools while keeping web_search/web_fetch.
+        """
+        return _get_env_bool("PATCHPAL_ENABLE_BROWSER", "true")
+
+    @property
     def ENABLE_MCP(self) -> bool:
         """Enable Model Context Protocol tools (default: true)."""
         return _get_env_bool("PATCHPAL_ENABLE_MCP", "true")
