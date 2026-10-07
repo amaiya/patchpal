@@ -10,8 +10,8 @@
 - **Quick fix:** Run `/prune` to remove old tool outputs, or `/compact` to compact the conversation history.
 - Use `/status` to check your context window usage and see how close you are to the limit.
 - If auto-compaction is disabled, re-enable it: `unset PATCHPAL_DISABLE_AUTOCOMPACT`
-- Context is automatically managed at 75% capacity through pruning and compaction.
-- **Note:** Token estimation may be slightly inaccurate compared to the model's actual counting. If you see this error despite auto-compaction being enabled, the 75% threshold may need to be lowered further for your workload. You can adjust it with `export PATCHPAL_COMPACT_THRESHOLD=0.70` (or lower).
+- Context is automatically managed at 80% capacity through pruning and compaction.
+- **Note:** Token estimation may be slightly inaccurate compared to the model's actual counting. If you see this error despite auto-compaction being enabled, the 80% threshold may need to be lowered further for your workload. You can adjust it with `export PATCHPAL_COMPACT_THRESHOLD=0.70` (or lower).
 - See [Configuration](https://github.com/amaiya/patchpal?tab=readme-ov-file#configuration) for context management settings.
 
 **Reducing API Costs via Token Optimization**
@@ -48,7 +48,7 @@ When using cloud LLM providers (Anthropic, OpenAI, etc.), token usage directly i
 - Lower threshold = more frequent compaction = smaller context = lower per-request costs
 - Higher threshold = fewer compaction calls = larger context = higher per-request costs
   ```bash
-  # More aggressive compaction (compact at 60% instead of 75%)
+  # More aggressive compaction (compact at 60% instead of 80%)
   export PATCHPAL_COMPACT_THRESHOLD=0.60
   ```
 - Find the sweet spot for your workload (balance between compaction frequency and context size)

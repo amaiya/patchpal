@@ -143,7 +143,7 @@ export PATCHPAL_LLM_TIMEOUT=300              # LLM API timeout in seconds (defau
 ```bash
 # Auto-Compaction
 export PATCHPAL_DISABLE_AUTOCOMPACT=true     # Disable auto-compaction (default: false - enabled)
-export PATCHPAL_COMPACT_THRESHOLD=0.75       # Trigger compaction at % full (default: 0.75 = 75%)
+export PATCHPAL_COMPACT_THRESHOLD=0.80       # Trigger compaction at % full (default: 0.80 = 80%)
 
 # Context Limits
 export PATCHPAL_CONTEXT_LIMIT=100000         # Override model's context limit (for testing)
@@ -355,7 +355,7 @@ patchpal
 **Testing Context Management:**
 ```bash
 export PATCHPAL_CONTEXT_LIMIT=10000          # Small limit to trigger compaction quickly
-export PATCHPAL_COMPACT_THRESHOLD=0.75       # Trigger at 75% instead of 85%
+export PATCHPAL_COMPACT_THRESHOLD=0.70       # Trigger at 70% instead of 80%
 export PATCHPAL_PRUNE_PROTECT=500            # Keep only last 500 tokens
 patchpal
 ```
