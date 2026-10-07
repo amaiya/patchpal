@@ -1807,7 +1807,14 @@ Repository root takes priority if both exist."""
                 ):
                     self._perform_auto_compaction()
 
-                return assistant_message.content or "Task completed"
+                # Return content if available, otherwise indicate model didn't respond
+                if assistant_message.content:
+                    return assistant_message.content
+                else:
+                    # Model returned no content and no tool calls
+                    # This can happen with some local models (e.g., GPT-OSS-120B)
+                    # Using "NO_RESPONSE:" prefix for programmatic detection
+                    return "NO_RESPONSE: Model returned empty response. Try rephrasing your request or type 'continue' to prompt again."
 
         # Max iterations reached
         return (

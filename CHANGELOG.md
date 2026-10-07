@@ -7,6 +7,19 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
+## 0.24.6 (2026-10-07)
+
+### new:
+- N/A
+
+### changed:
+- N/A
+
+### fixed:
+- Remove/change `Task completed` message when local models
+  do not return a response or tool call
+
+
 ## 0.24.5 (2026-10-06)
 
 ### new:
