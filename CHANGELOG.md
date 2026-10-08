@@ -13,7 +13,7 @@ Most recent releases are shown at the top. Each release shows:
 - N/A
 
 ### changed:
-- N/A
+- Use `monkeypatch.setenv` in `enabled_tools` tests to avoid env-var pollution
 
 ### fixed:
 - Fixed `enabled_tools` argument in `create_agent` to correctly disable tools
