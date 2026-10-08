@@ -1358,13 +1358,36 @@ Repository root takes priority if both exist."""
                         print(f"\033[1;31m✗ {tool_name}: Invalid arguments\033[0m\n", flush=True)
                     else:
                         # Get the tool function (check custom tools first, then built-in)
-                        tool_func = self.custom_tool_funcs.get(tool_name) or TOOL_FUNCTIONS.get(
-                            tool_name
-                        )
-                        if tool_func is None:
+                        tool_func = self.custom_tool_funcs.get(tool_name)
+                        tool_disabled = False  # Track if tool was disabled
+
+                        # If not a custom tool, check built-in tools with enabled_tools filter
+                        if tool_func is None and tool_name in TOOL_FUNCTIONS:
+                            # Only execute built-in tool if it's enabled
+                            # (enabled_tools=None means all enabled, otherwise check the list)
+                            if self.enabled_tools is None or tool_name in self.enabled_tools:
+                                tool_func = TOOL_FUNCTIONS.get(tool_name)
+                            else:
+                                # Tool is not enabled - reject with clear error
+                                tool_disabled = True
+                                available = (
+                                    ", ".join(self.enabled_tools)
+                                    if self.enabled_tools
+                                    else "none (custom tools only)"
+                                )
+                                tool_result = f"Error: Tool '{tool_name}' is not enabled. Available built-in tools: {available}"
+                                print(
+                                    f"\033[1;31m✗ {tool_name}: Tool not enabled\033[0m\n",
+                                    flush=True,
+                                )
+
+                        # Only mark as unknown if tool wasn't found AND wasn't disabled
+                        if tool_func is None and not tool_disabled:
                             tool_result = f"Error: Unknown tool {tool_name}"
                             print(f"\033[1;31m✗ Unknown tool: {tool_name}\033[0m\n", flush=True)
-                        else:
+
+                        # Only execute if we have a function and tool wasn't disabled
+                        if tool_func is not None and not tool_disabled:
                             # Show tool call message
                             if tool_name in self.custom_tool_funcs:
                                 # Custom tool - show generic message with args
