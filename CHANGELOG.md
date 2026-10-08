@@ -10,7 +10,7 @@ Most recent releases are shown at the top. Each release shows:
 ## 0.25.0 (2026-10-08)
 
 ### new:
-- N/A
+- Pre-install IPython in the sandbox image for interactive use in `--shell --restrict-network`
 
 ### changed:
 - Use `monkeypatch.setenv` in `enabled_tools` tests to avoid env-var pollution
