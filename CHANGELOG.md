@@ -7,6 +7,19 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
+## 0.25.1 (2026-10-12)
+
+### new:
+- N/A
+
+### changed:
+- N/A
+
+### fixed:
+- Sandbox `--restrict-network` now drops `CAP_NET_ADMIN`/`CAP_NET_RAW` before starting the agent, so the root agent can no longer flush the iptables firewall and bypass network restrictions.
+
+
+
 ## 0.25.0 (2026-10-08)
 
 ### new:

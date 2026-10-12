@@ -106,6 +106,13 @@ def is_interactive_command(patchpal_args):
             return False
 
     # Check for autopilot
+    # NOTE: Only patchpal_args[0] is checked (not a scan of the whole list) by
+    # design. The "--" convention guarantees everything after it is passed to
+    # patchpal, and the autopilot subcommand, when present, is always the first
+    # of those args (e.g. `... -- autopilot --prompt-file task.md`). A later
+    # occurrence of the word "autopilot" would be a value/argument, not the
+    # subcommand, so it must not flip interactivity. Do not "fix" this into a
+    # full-list scan.
     if patchpal_args[0] in ["autopilot", "patchpal-autopilot"]:
         return False
 
@@ -790,12 +797,35 @@ def build_container_args(sandbox_args, patchpal_args, env_file_keys=None):
     if sandbox_args.restrict_network:
         # Use launch-agent-sandbox pattern: model from env var
         # Falls back to PATCHPAL_MODEL if MODEL not set
+        #
+        # SECURITY: Drop CAP_NET_ADMIN / CAP_NET_RAW before handing control to the
+        # agent. The container runs as root (UID 0) and keeps the capability that
+        # was used to build the iptables firewall. Without dropping it, an agent
+        # that can execute shell commands could simply run `iptables -F OUTPUT`
+        # (or `iptables -P OUTPUT ACCEPT`) and dismantle the very network
+        # restrictions that --restrict-network is supposed to enforce.
+        #
+        # We drop the capabilities from BOTH the inheritable and bounding sets via
+        # setpriv. For a root process this also clears them from the effective and
+        # permitted sets, and removing them from the bounding set means they cannot
+        # be re-raised afterwards. The firewall rules remain in force, but the
+        # agent process can no longer modify netfilter. (setpriv ships with
+        # util-linux and is present in the sandbox image; if it is somehow missing
+        # we fall back to a plain exec and warn loudly.)
         shell_cmd_parts.append(f"""
 echo ""
 echo "=== Starting PatchPal ==="
 echo "Model: ${{MODEL:-$PATCHPAL_MODEL}}"
 echo ""
-exec {patchpal_cmd} --model "${{MODEL:-$PATCHPAL_MODEL}}"
+if command -v setpriv >/dev/null 2>&1; then
+    echo "Dropping CAP_NET_ADMIN/CAP_NET_RAW before starting agent (firewall now tamper-resistant)"
+    exec setpriv --inh-caps -net_admin,-net_raw --bounding-set -net_admin,-net_raw \\
+        {patchpal_cmd} --model "${{MODEL:-$PATCHPAL_MODEL}}"
+else
+    echo "⚠️  WARNING: setpriv not found - cannot drop network capabilities."
+    echo "⚠️  The agent runs as root and could tamper with the iptables firewall."
+    exec {patchpal_cmd} --model "${{MODEL:-$PATCHPAL_MODEL}}"
+fi
 """)
     else:
         # Normal mode: use $@ to pass all arguments

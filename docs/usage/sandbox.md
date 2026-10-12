@@ -258,6 +258,26 @@ For maximum security:
 - Use restrictive IAM policies (minimum required permissions)
 - Monitor AWS CloudTrail for unexpected API calls
 
+#### Firewall tamper-resistance
+
+The agent process runs as `root` inside the container. Setting up the iptables
+firewall requires network-admin privileges (`CAP_NET_ADMIN`), and if the agent
+retained that privilege it could simply flush the firewall (`iptables -F OUTPUT`)
+and bypass `--restrict-network`.
+
+To prevent this, the sandbox configures the firewall **first** (as root with the
+required capability) and then **permanently drops `CAP_NET_ADMIN`/`CAP_NET_RAW`**
+(via `setpriv`) before launching the agent. The capabilities are removed from the
+inheritable and bounding sets so they cannot be re-raised. The firewall rules stay
+in force for the whole session, but the agent can no longer modify netfilter — so
+the network restrictions are enforced, not merely advisory.
+
+> **Note on rootless Podman**: granting `CAP_NET_ADMIN` to a rootless container is
+> not always sufficient to run iptables, so the sandbox falls back to `--privileged`
+> for the brief firewall-setup phase. Those elevated privileges are only held while
+> the (sandbox-controlled) setup script runs; they are dropped before any agent code
+> executes. On Docker/rootful Podman, only `--cap-add=NET_ADMIN` is used.
+
 ## Advanced Options
 
 ### Container Runtime Selection
