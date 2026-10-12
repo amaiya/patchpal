@@ -13,10 +13,13 @@ Most recent releases are shown at the top. Each release shows:
 - N/A
 
 ### changed:
-- N/A
+- Sandbox `patchpal-sandbox` now supports `-v/--volume` and `-e/--env` passthrough flags for extra mounts and environment variables.
 
 ### fixed:
 - Sandbox `--restrict-network` now drops `CAP_NET_ADMIN`/`CAP_NET_RAW` before starting the agent, so the root agent can no longer flush the iptables firewall and bypass network restrictions.
+- Sandbox `--restrict-network` no longer drops the autopilot subcommand and extra args (e.g. `--prompt-file`, `--max-iterations`); all args are now passed through.
+- Sandbox auto-detects the Google endpoint from `GEMINI_API_KEY` (in addition to `GOOGLE_API_KEY`) under `--restrict-network`.
+- Sandbox docs corrected to match actual behavior (runtime auto-detection, single `--env-file`, SSL cert paths).
 
 
 

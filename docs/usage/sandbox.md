@@ -120,12 +120,13 @@ After completing these steps, `patchpal-sandbox` should work correctly.
 # Using .env file for API keys
 patchpal-sandbox --env-file .env -- --model anthropic/claude-sonnet-4-5
 
-# Passing API key directly
+# Passing an API key (or any env var) directly
 patchpal-sandbox -e ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY -- --model anthropic/claude-sonnet-4-5
-
-# Using multiple .env files (later files override earlier)
-patchpal-sandbox --env-file .env --env-file .env.local -- --model openai/gpt-4o
 ```
+
+**Note**: `--env-file` accepts a single file. Use `-e KEY=VALUE` (repeatable) to pass
+individual variables, or rely on your host environment (see
+[Environment Variables](#environment-variables)).
 
 In interactive mode, permissions are enabled and you'll be prompted before destructive operations.
 
@@ -282,17 +283,13 @@ the network restrictions are enforced, not merely advisory.
 
 ### Container Runtime Selection
 
-```bash
-# Force Docker (default: auto-detect)
-patchpal-sandbox --runtime docker -- --model anthropic/claude-sonnet-4-5
+The container runtime is auto-detected — there is no flag to select it manually:
 
-# Force Podman
-patchpal-sandbox --runtime podman -- --model groq/llama-3.3-70b-versatile
-```
+1. Check if `podman` is available → use Podman (rootless)
+2. Otherwise fall back to `docker`
 
-**Auto-detection logic**:
-1. Check if `podman` is available → use Podman rootless
-2. Fallback to `docker`
+If you need to force a specific runtime, make only that runtime available on your
+`PATH` (e.g. temporarily rename or remove the other).
 
 ### Custom Container Image
 
@@ -426,10 +423,25 @@ patchpal-sandbox \
   -- --model anthropic/claude-sonnet-4-5
 ```
 
-SSL certificates are auto-mounted from:
-- `/etc/ssl/certs/ca-certificates.crt`
-- `/etc/pki/tls/certs/ca-bundle.crt`
-- `/etc/ssl/ca-bundle.pem`
+SSL certificates are auto-mounted when present on the host:
+- `/etc/ssl/certs/ca-certificates.crt` (Debian/Ubuntu system trust store)
+- `/usr/local/share/ca-certificates/` (additional custom CA certificates)
+
+The sandbox container is Debian-based, so these Debian paths map directly into the
+container's trust store. On other distributions (e.g. RHEL/Fedora/SUSE), set a cert
+environment variable and the sandbox will mount it into the container and point
+Python/requests/curl at it automatically:
+
+```bash
+# RHEL/Fedora
+export SSL_CERT_FILE=/etc/pki/tls/certs/ca-bundle.crt
+# SUSE
+export SSL_CERT_FILE=/etc/ssl/ca-bundle.pem
+
+patchpal-sandbox -- --model anthropic/claude-sonnet-4-5
+```
+
+`SSL_CERT_FILE`, `REQUESTS_CA_BUNDLE`, and `CURL_CA_BUNDLE` are all honored this way.
 
 For Windows Podman with corporate firewalls, see the [Windows Setup](#windows-setup-podman) section above.
 

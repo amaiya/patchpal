@@ -131,6 +131,9 @@ def detect_llm_endpoints_from_env():
     standard_endpoints = {
         "OPENAI_API_KEY": "https://api.openai.com",
         "ANTHROPIC_API_KEY": "https://api.anthropic.com",
+        # Google Gemini: LiteLLM commonly uses GEMINI_API_KEY; GOOGLE_API_KEY is
+        # also supported. Both map to the same generative language endpoint.
+        "GEMINI_API_KEY": "https://generativelanguage.googleapis.com",
         "GOOGLE_API_KEY": "https://generativelanguage.googleapis.com",
         "GROQ_API_KEY": "https://api.groq.com",
         "COHERE_API_KEY": "https://api.cohere.ai",
@@ -581,6 +584,14 @@ def build_container_args(sandbox_args, patchpal_args, env_file_keys=None):
     if sandbox_args.cpus:
         container_args.extend(["--cpus", str(sandbox_args.cpus)])
 
+    # Forward user-specified volume mounts (-v/--volume) and environment
+    # variables (-e/--env). These are passed through verbatim to the container
+    # runtime, mirroring docker/podman's own -v and -e semantics.
+    for volume in getattr(sandbox_args, "volume", []) or []:
+        container_args.extend(["-v", volume])
+    for env_var in getattr(sandbox_args, "env", []) or []:
+        container_args.extend(["-e", env_var])
+
     # Pass through environment variables.
     # WITHOUT --env-file: pass through matching vars from the full host environment.
     # WITH --env-file: isolate from the host, but still forward the vars that were
@@ -795,8 +806,11 @@ def build_container_args(sandbox_args, patchpal_args, env_file_keys=None):
 
     # Add main patchpal command
     if sandbox_args.restrict_network:
-        # Use launch-agent-sandbox pattern: model from env var
-        # Falls back to PATCHPAL_MODEL if MODEL not set
+        # Pass through all patchpal args via "$@" (identical to normal mode) so that
+        # the autopilot subcommand and flags like --prompt-file / --max-iterations are
+        # preserved. The model is included in "$@" when --model was given on the command
+        # line. If no --model was provided, fall back to the MODEL/PATCHPAL_MODEL env var
+        # (launch-agent-sandbox pattern).
         #
         # SECURITY: Drop CAP_NET_ADMIN / CAP_NET_RAW before handing control to the
         # agent. The container runs as root (UID 0) and keeps the capability that
@@ -812,19 +826,27 @@ def build_container_args(sandbox_args, patchpal_args, env_file_keys=None):
         # agent process can no longer modify netfilter. (setpriv ships with
         # util-linux and is present in the sandbox image; if it is somehow missing
         # we fall back to a plain exec and warn loudly.)
+        if model_arg:
+            # --model is already present in the pass-through args
+            model_display = model_arg
+            run_cmd = f'{patchpal_cmd} "$@"'
+        else:
+            # No --model on command line; supply it from the env var fallback
+            model_display = "${MODEL:-$PATCHPAL_MODEL}"
+            run_cmd = f'{patchpal_cmd} --model "${{MODEL:-$PATCHPAL_MODEL}}" "$@"'
         shell_cmd_parts.append(f"""
 echo ""
 echo "=== Starting PatchPal ==="
-echo "Model: ${{MODEL:-$PATCHPAL_MODEL}}"
+echo "Model: {model_display}"
 echo ""
 if command -v setpriv >/dev/null 2>&1; then
     echo "Dropping CAP_NET_ADMIN/CAP_NET_RAW before starting agent (firewall now tamper-resistant)"
     exec setpriv --inh-caps -net_admin,-net_raw --bounding-set -net_admin,-net_raw \\
-        {patchpal_cmd} --model "${{MODEL:-$PATCHPAL_MODEL}}"
+        {run_cmd}
 else
     echo "⚠️  WARNING: setpriv not found - cannot drop network capabilities."
     echo "⚠️  The agent runs as root and could tamper with the iptables firewall."
-    exec {patchpal_cmd} --model "${{MODEL:-$PATCHPAL_MODEL}}"
+    exec {run_cmd}
 fi
 """)
     else:
@@ -843,13 +865,9 @@ exec {patchpal_cmd} "$@"
     # Add set -e at the beginning to exit on any error
     shell_cmd = "set -e\n" + "\n".join(shell_cmd_parts)
 
-    # Pass arguments differently based on network restrictions
-    if sandbox_args.restrict_network:
-        # With restrictions: model passed as env var, no additional args needed
-        container_args.extend(["bash", "-c", shell_cmd])
-    else:
-        # Without restrictions: pass args after -- separator
-        container_args.extend(["bash", "-c", shell_cmd, "--"] + patchpal_cmd_args)
+    # Pass patchpal args after the "--" separator so they populate "$@" in the
+    # bash script. This applies to both restricted and unrestricted modes.
+    container_args.extend(["bash", "-c", shell_cmd, "--"] + patchpal_cmd_args)
 
     return container_args, runtime
 
@@ -883,14 +901,20 @@ SCRIPT OPTIONS:
     --host-network      Use host network (for local Ollama/vLLM servers on localhost)
     --memory LIMIT      Memory limit (e.g., 2g, 4g) - optional, no limit by default
     --cpus NUM          CPU limit (e.g., 2, 4) - optional, no limit by default
-    --env-file FILE     Load environment variables from .env file
+    --env-file FILE     Load environment variables from .env file (single file)
+    -v, --volume HOST:CONTAINER[:ro]
+                        Mount an additional volume (can be specified multiple times)
+                        Example: -v /path/to/data:/data:ro
+    -e, --env KEY=VALUE Pass an additional environment variable into the container
+                        (can be specified multiple times)
+                        Example: -e MY_VAR=value
     --restrict-network  Enable iptables firewall for network isolation
                         Automatically detects LLM endpoints from environment variables:
                         * OpenAI (OPENAI_API_KEY)
                         * Anthropic (ANTHROPIC_API_KEY)
                         * AWS Bedrock (AWS_REGION + AWS_ACCESS_KEY_ID)
                         * Azure OpenAI (AZURE_OPENAI_KEY + AZURE_OPENAI_RESOURCE)
-                        * Google AI (GOOGLE_API_KEY)
+                        * Google AI (GEMINI_API_KEY or GOOGLE_API_KEY)
                         * Groq, Cohere, Together, Replicate, etc.
                         Custom endpoints also detected from *_BASE_URL env vars
     --allow-url URL     Allow network access to specific URL (can be specified multiple times)
@@ -1155,6 +1179,24 @@ def main():
         "--shell",
         action="store_true",
         help="Drop into bash shell instead of running patchpal (for debugging)",
+    )
+    parser.add_argument(
+        "-v",
+        "--volume",
+        action="append",
+        default=[],
+        metavar="HOST:CONTAINER[:ro]",
+        help="Mount an additional volume into the container (can be specified multiple times). "
+        "Example: -v /path/to/data:/data:ro",
+    )
+    parser.add_argument(
+        "-e",
+        "--env",
+        action="append",
+        default=[],
+        metavar="KEY=VALUE",
+        help="Pass an additional environment variable into the container "
+        "(can be specified multiple times). Example: -e MY_VAR=value",
     )
 
     try:
