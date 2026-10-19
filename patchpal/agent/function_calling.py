@@ -1161,6 +1161,12 @@ Repository root takes priority if both exist."""
             The agent's final response
         """
         # Agent loop
+        # Track consecutive empty responses (no content + no tool calls).
+        # Common with some local models (e.g., GPT-OSS-120B on vLLM) due to
+        # intermittent harmony-format parsing hiccups. A bounded retry usually
+        # recovers since the failure is probabilistic.
+        empty_response_retries = 0
+        empty_response_max_retries = int(os.environ.get("PATCHPAL_EMPTY_RETRY_MAX", "2"))
         for iteration in range(max_iterations):
             # Clear any stale pending images from previous iteration (safety check)
             # Images should already be injected, but this prevents accumulation on error
@@ -1335,6 +1341,8 @@ Repository root takes priority if both exist."""
 
             # Check if there are tool calls
             if hasattr(assistant_message, "tool_calls") and assistant_message.tool_calls:
+                # A non-empty turn succeeded; reset the empty-response retry budget
+                empty_response_retries = 0
                 # Print explanation text before executing tools (render as markdown)
                 if assistant_message.content and assistant_message.content.strip():
                     console = Console()
@@ -1834,9 +1842,25 @@ Repository root takes priority if both exist."""
                 if assistant_message.content:
                     return assistant_message.content
                 else:
-                    # Model returned no content and no tool calls
-                    # This can happen with some local models (e.g., GPT-OSS-120B)
-                    # Using "NO_RESPONSE:" prefix for programmatic detection
+                    # Model returned no content and no tool calls.
+                    # This happens intermittently with some local models
+                    # (e.g., GPT-OSS-120B on vLLM) due to harmony-format parsing
+                    # hiccups. Because the failure is probabilistic, retry the turn
+                    # a bounded number of times before giving up.
+                    if empty_response_retries < empty_response_max_retries:
+                        empty_response_retries += 1
+                        # Drop the empty assistant message so it doesn't pollute history
+                        if self.messages and self.messages[-1] is assistant_msg:
+                            self.messages.pop()
+                        print(
+                            f"\033[2m↻ Empty response from model; retrying "
+                            f"({empty_response_retries}/{empty_response_max_retries})...\033[0m",
+                            flush=True,
+                        )
+                        continue
+
+                    # Retries exhausted: surface the honest failure.
+                    # Using "NO_RESPONSE:" prefix for programmatic detection.
                     return "NO_RESPONSE: Model returned empty response. Try rephrasing your request or type 'continue' to prompt again."
 
         # Max iterations reached

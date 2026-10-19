@@ -7,6 +7,23 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
+## 0.25.2 (2026-10-19)
+
+### new:
+- N/A
+
+### changed:
+- Agent loop now automatically retries empty model responses (no content and no
+  tool calls) before giving up. This recovers from intermittent harmony-format
+  parsing hiccups seen with some local models (e.g., GPT-OSS-120B on vLLM).
+  Configurable via `PATCHPAL_EMPTY_RETRY_MAX` (default: 2). After retries are
+  exhausted, the existing `NO_RESPONSE:` message is returned.
+
+### fixed:
+- N/A
+
+
+
 ## 0.25.1 (2026-10-12)
 
 ### new:

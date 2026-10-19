@@ -136,6 +136,15 @@ export PATCHPAL_MAX_ITERATIONS=150           # Max agent iterations per task (de
                                               # Increase for complex multi-file tasks
 export PATCHPAL_LLM_TIMEOUT=300              # LLM API timeout in seconds (default: 300 = 5 minutes)
                                               # Prevents indefinite stalls when API is unresponsive
+export PATCHPAL_EMPTY_RETRY_MAX=2            # Retries when the model returns an empty response (default: 2)
+                                              # An empty response = no content AND no tool calls.
+                                              # Seen with some local models/engines due to inference
+                                              # parsing/template bugs, e.g. GPT-OSS-120B on vLLM
+                                              # (harmony parsing) and Gemma4 MoE on older Ollama.
+                                              # Often triggers after a tool result or on long prompts;
+                                              # a re-prompt usually recovers. After retries are
+                                              # exhausted, a "NO_RESPONSE:" message is returned.
+                                              # Set to 0 to disable retries.
 ```
 
 ### Context Window Management
