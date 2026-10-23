@@ -7,6 +7,23 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
+## 0.25.3 (2026-10-23)
+
+### new:
+- N/A
+
+### changed:
+- Sandbox mode now supports AWS SSO/ADFS authentication for Bedrock: the host
+  `~/.aws` directory is mounted read-only into the container (so the SSO profile
+  and cached token resolve inside the sandbox), and Bedrock endpoints are added
+  to the `--restrict-network` firewall allowlist when `AWS_PROFILE` is set (not
+  only when static `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY` are present).
+  Documented `AWS_PROFILE`/SSO setup in the configuration and sandbox guides.
+
+### fixed:
+- N/A
+
+
 ## 0.25.2 (2026-10-19)
 
 ### new:

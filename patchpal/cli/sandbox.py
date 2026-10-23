@@ -198,7 +198,14 @@ def detect_llm_endpoints_from_env():
         or os.environ.get("AWS_REGION_NAME")  # LiteLLM-specific
     )
     if aws_region and (
-        os.environ.get("AWS_ACCESS_KEY_ID") or os.environ.get("AWS_SECRET_ACCESS_KEY")
+        os.environ.get("AWS_ACCESS_KEY_ID")
+        or os.environ.get("AWS_SECRET_ACCESS_KEY")
+        # SSO/ADFS profiles (created via `aws configure sso`) authenticate via a
+        # named profile and a cached SSO token instead of static access keys.
+        # In that case AWS_PROFILE is set but AWS_ACCESS_KEY_ID is not, so detect
+        # it here too — otherwise Bedrock endpoints would be omitted from the
+        # firewall allowlist and traffic would be blocked.
+        or os.environ.get("AWS_PROFILE")
     ):
         # Add Bedrock endpoints for the region
         # Support both GovCloud and standard regions
@@ -658,6 +665,19 @@ def build_container_args(sandbox_args, patchpal_args, env_file_keys=None):
     if os.path.isdir(patchpal_dir):
         container_args.extend(["-v", f"{patchpal_dir}:/root/.patchpal"])
         mounted_paths.add(patchpal_dir)
+
+    # Mount ~/.aws if it exists (read-only).
+    # Required for AWS SSO/ADFS authentication: credentials for a named profile
+    # (created via `aws configure sso`) are resolved from ~/.aws/config, and the
+    # short-lived SSO token is cached under ~/.aws/sso/cache/. Mounting this
+    # directory lets boto3/LiteLLM inside the container resolve AWS_PROFILE just
+    # as it would on the host. It also covers static shared-credential setups
+    # (~/.aws/credentials). Mounted read-only; refresh the token on the host with
+    # `aws sso login --profile <name>` when it expires.
+    aws_dir = os.path.expanduser("~/.aws")
+    if os.path.isdir(aws_dir) and aws_dir not in mounted_paths:
+        container_args.extend(["-v", f"{aws_dir}:/root/.aws:ro"])
+        mounted_paths.add(aws_dir)
 
     # Development mode: mount local patchpal source code
     dev_mode = False

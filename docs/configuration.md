@@ -13,9 +13,41 @@ export PATCHPAL_LITELLM_KWARGS='{"reasoning_effort": "high", "temperature": 0.7}
 # Use for: reasoning models (gpt-oss, deepseek-reasoner), temperature, max_tokens, etc.
 # See: https://docs.litellm.ai/docs/completion/input
 
-# AWS GovCloud Bedrock example
+# AWS GovCloud Bedrock example (static access keys)
 export PATCHPAL_LITELLM_KWARGS='{"aws_region_name": "fill in", "aws_bedrock_runtime_endpoint": "fill in", "aws_access_key_id": "fill in", "aws_secret_access_key": "fill in"}'
 ```
+
+#### AWS Bedrock with SSO / ADFS
+
+PatchPal uses LiteLLM for all LLM connections, and LiteLLM delegates AWS authentication to
+boto3's standard credential chain. This means **AWS SSO/ADFS works out of the box** — no
+PatchPal-specific configuration or `aws_*` keys are required. Just set up a named profile and
+point `AWS_PROFILE` at it:
+
+```bash
+# One-time: create an SSO profile (e.g., named "Bedrock")
+aws configure sso
+
+# Authenticate (SSO sessions typically last ~8 hours; re-run when it expires)
+aws sso login --profile Bedrock
+
+# Tell PatchPal/LiteLLM/boto3 which profile to use
+export AWS_PROFILE=Bedrock
+export AWS_REGION=us-gov-east-1   # or your Bedrock region
+
+patchpal --model bedrock/<your-model-or-inference-profile-arn>
+```
+
+boto3 reads `AWS_PROFILE` automatically and resolves the SSO credentials (and the cached SSO
+token) from `~/.aws`. Static access keys (`AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY`) remain
+fully supported for non-SSO environments.
+
+!!! note "Sandbox mode"
+    When running in [sandbox mode](../usage/sandbox.md), PatchPal automatically mounts your
+    host `~/.aws` directory (read-only) into the container so the SSO profile and token are
+    available inside the sandbox. With `--restrict-network`, Bedrock endpoints are also added to
+    the firewall allowlist when `AWS_PROFILE` is set. Refresh the SSO token on the host with
+    `aws sso login --profile <name>` when it expires.
 
 ### Security & Permissions
 

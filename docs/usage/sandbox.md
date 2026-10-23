@@ -199,7 +199,7 @@ The sandbox automatically detects and allows these endpoints based on your envir
 | OpenAI | `OPENAI_API_KEY` | `https://api.openai.com` |
 | Anthropic | `ANTHROPIC_API_KEY` | `https://api.anthropic.com` |
 | Google AI | `GEMINI_API_KEY` | `https://generativelanguage.googleapis.com` |
-| AWS Bedrock | `AWS_REGION` | Region-specific endpoint |
+| AWS Bedrock | `AWS_REGION` (+ `AWS_ACCESS_KEY_ID` or `AWS_PROFILE`) | Region-specific endpoint |
 | Azure OpenAI | `AZURE_OPENAI_RESOURCE` | `https://<resource>.openai.azure.com` |
 | Groq | `GROQ_API_KEY` | `https://api.groq.com` |
 | Cohere | `COHERE_API_KEY` | `https://api.cohere.ai` |
@@ -245,6 +245,38 @@ patchpal-sandbox \
 ```
 
 The sandbox automatically detects `us-gov-east-1` and allows `https://bedrock-runtime.us-gov-east-1.amazonaws.com`.
+
+### AWS Bedrock with SSO / ADFS
+
+If your organization authenticates to AWS via SSO/ADFS (instead of static access keys), set up
+a named profile on the host and let the sandbox pick it up:
+
+```bash
+# One-time: create an SSO profile, then authenticate on the HOST
+aws configure sso                       # e.g., profile name "Bedrock"
+aws sso login --profile Bedrock         # refresh when the ~8h session expires
+
+export AWS_PROFILE=Bedrock
+export AWS_REGION=us-gov-east-1
+
+patchpal-sandbox \
+  --restrict-network \
+  -- autopilot \
+  --model bedrock/arn:aws-us-gov:bedrock:us-gov-east-1::inference-profile/us-gov.anthropic.claude-sonnet-4-5-20250929-v1:0 \
+  --prompt-file task.md
+```
+
+The sandbox automatically:
+
+- **Mounts your host `~/.aws` directory (read-only)** into the container, so boto3/LiteLLM can
+  resolve the profile config (`~/.aws/config`) and the cached SSO token (`~/.aws/sso/cache/`).
+- **Allowlists the Bedrock endpoints** for the detected region when `AWS_PROFILE` is set (not
+  only when static `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY` are present).
+
+Because the SSO token is short-lived, run `aws sso login --profile Bedrock` on the **host**
+before launching the sandbox (and again when it expires). With `--env-file` (isolated mode),
+remember to include `AWS_PROFILE` and `AWS_REGION` in the env file, since host environment
+variables are otherwise excluded.
 
 ### Security Considerations
 
