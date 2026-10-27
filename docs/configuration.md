@@ -42,6 +42,25 @@ boto3 reads `AWS_PROFILE` automatically and resolves the SSO credentials (and th
 token) from `~/.aws`. Static access keys (`AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY`) remain
 fully supported for non-SSO environments.
 
+!!! warning "Static access keys override `AWS_PROFILE`"
+    boto3's credential chain ranks `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY` environment
+    variables **above** `AWS_PROFILE`. If those variables are set (sometimes injected by other
+    tooling), they win — and PatchPal authenticates as that IAM user instead of your SSO role.
+    A common symptom is a Bedrock error like:
+
+    ```
+    User: arn:aws-us-gov:iam::...:user/<name> is not authorized to perform:
+    bedrock:InvokeModel on resource: arn:aws-us-gov:bedrock:...:inference-profile/...
+    ```
+
+    If you intend to use SSO, unset the static keys first:
+
+    ```bash
+    unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY
+    export AWS_PROFILE=Bedrock
+    aws sso login --profile Bedrock
+    ```
+
 !!! note "Sandbox mode"
     When running in [sandbox mode](../usage/sandbox.md), PatchPal automatically mounts your
     host `~/.aws` directory (read-only) into the container so the SSO profile and token are
