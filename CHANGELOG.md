@@ -7,6 +7,18 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
+## 0.25.4 (2026-11-02)
+
+### new:
+- N/A
+
+### changed:
+- N/A
+
+### fixed:
+- Fixed prompt-caching inefficiency where the volatile per-call date/time was placed inside the cached prefix, invalidating the cache every call and wasting an AWS Bedrock cache breakpoint. The static system prompt is now the stable cacheable prefix and the date/time is appended as a trailing (uncached) system message, reducing per-call input token cost on cache-supporting providers.
+
+
 ## 0.25.3 (2026-10-23)
 
 ### new:

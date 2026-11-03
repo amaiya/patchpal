@@ -645,6 +645,78 @@ def test_prompt_caching_idempotent():
     assert len([k for k in cached_twice[1]["content"][0].keys() if "cache" in k]) == 1
 
 
+def _has_cache_marker(message):
+    """Return True if a message's content carries a cache_control/cachePoint marker."""
+    content = message.get("content")
+    if not isinstance(content, list):
+        return False
+    return any(
+        isinstance(block, dict) and ("cache_control" in block or "cachePoint" in block)
+        for block in content
+    )
+
+
+def test_prompt_caching_excludes_trailing_datetime_system_message():
+    """Regression test for the prompt-caching cost fix.
+
+    The volatile per-call date/time is appended as a TRAILING system message
+    (after the conversation), while the static SYSTEM_PROMPT is the FIRST
+    system message. Only the first system message forms a stable, cacheable
+    prefix; a breakpoint on the trailing date/time would change every call,
+    invalidating the cached prefix and wasting a (Bedrock-limited) breakpoint.
+
+    This test locks in that invariant: _apply_prompt_caching must mark the
+    first system message but must NOT mark a trailing system message.
+    See DATETIME_CACHE_PREFIX_FIX.md / COST_RECOMMENDATIONS_RANKED.md (Tier 2).
+    """
+    from patchpal.agent.function_calling import _apply_prompt_caching
+
+    # Mirrors the message assembly in PatchPalAgent.run(): static SYSTEM_PROMPT
+    # first, conversation in the middle, volatile date/time appended last.
+    messages = [
+        {"role": "system", "content": "STATIC SYSTEM PROMPT (cacheable)"},
+        {"role": "user", "content": "Hello"},
+        {"role": "assistant", "content": "Hi there!"},
+        {"role": "user", "content": "How are you?"},
+        {"role": "system", "content": "## Current Date and Time\nToday is ..."},
+    ]
+
+    cached = _apply_prompt_caching(messages.copy(), "anthropic/claude-sonnet-4-5")
+
+    # First (static) system message MUST be cached.
+    assert cached[0]["role"] == "system"
+    assert _has_cache_marker(cached[0]), "static SYSTEM_PROMPT should be cached"
+
+    # Trailing (volatile) date/time system message MUST NOT be cached.
+    assert cached[-1]["role"] == "system"
+    assert not _has_cache_marker(cached[-1]), (
+        "trailing per-call date/time must never receive a cache breakpoint"
+    )
+
+    # Exactly one system message should carry a marker (the static prefix).
+    cached_system_count = sum(
+        1 for m in cached if m.get("role") == "system" and _has_cache_marker(m)
+    )
+    assert cached_system_count == 1
+
+
+def test_datetime_message_distinct_from_system_prompt():
+    """The date/time message must be a separate string from SYSTEM_PROMPT.
+
+    The fix depends on keeping the volatile date/time OUT of the static
+    SYSTEM_PROMPT so the latter stays byte-identical (and cacheable) across
+    calls. This guards against a future refactor folding the date/time back
+    into the system prompt.
+    """
+    from patchpal.agent.function_calling import SYSTEM_PROMPT, _get_current_datetime_message
+
+    datetime_msg = _get_current_datetime_message()
+
+    assert "Current Date and Time" in datetime_msg
+    # The static prompt must not embed the volatile date/time header.
+    assert "Current Date and Time" not in SYSTEM_PROMPT
+
+
 def test_agent_handles_keyboard_interrupt_during_tool_execution(monkeypatch):
     """Test that agent properly cleans up conversation state when interrupted during tool execution."""
     from patchpal.agent import create_agent

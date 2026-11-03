@@ -311,7 +311,9 @@ def _apply_prompt_caching(messages: List[Dict[str, Any]], model_id: str) -> List
     """Apply prompt caching markers to messages following OpenCode's strategy.
 
     Caches:
-    - System messages (first 1-2 messages with role="system")
+    - The FIRST system message only (the static SYSTEM_PROMPT). The volatile
+      per-call date/time is appended as a trailing system message and is
+      deliberately NOT cached (its content changes every call).
     - Last 2 non-system messages (recent context, any role except system)
 
     IMPORTANT: AWS Bedrock enforces a hard limit of 4 cache control blocks per request.
@@ -389,6 +391,13 @@ def _apply_prompt_caching(messages: List[Dict[str, Any]], model_id: str) -> List
     # Find system messages (usually at the start)
     system_messages = [i for i, msg in enumerate(messages) if msg.get("role") == "system"]
 
+    # Only the FIRST system message (the static SYSTEM_PROMPT) is a stable cache
+    # prefix. A trailing system message (the per-call date/time, appended at the
+    # end of the list) must NOT be cached: its content changes every call, so a
+    # breakpoint there is wasted and can invalidate the prefix. Restrict caching
+    # to the first system message only.
+    system_messages = system_messages[:1]
+
     # Find last 2 non-system messages (recent context)
     non_system_messages = [i for i, msg in enumerate(messages) if msg.get("role") != "system"]
     last_two_indices = (
@@ -401,8 +410,10 @@ def _apply_prompt_caching(messages: List[Dict[str, Any]], model_id: str) -> List
     # Build list of candidate indices to cache (prioritize system messages)
     candidates = []
 
-    # Add system messages first (up to 2)
-    for idx in system_messages[:2]:
+    # Add the (single, static) system message first. `system_messages` was
+    # already restricted to the first system message above; the trailing
+    # per-call datetime is deliberately excluded.
+    for idx in system_messages:
         msg = messages[idx]
         # Check if this message already has any cache markers
         has_cache = False
@@ -1176,12 +1187,19 @@ Repository root takes priority if both exist."""
             # Show thinking message
             print("\033[2m🤔 Thinking...\033[0m", flush=True)
 
-            # Prepare messages with system prompt and dynamic date/time
-            # Date/time is regenerated on each call to prevent staleness in long sessions
-            messages = [
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "system", "content": _get_current_datetime_message()},
-            ] + self.messages
+            # Prepare messages with system prompt and dynamic date/time.
+            # The static SYSTEM_PROMPT is kept FIRST so it (plus the tools block)
+            # forms a stable, byte-identical cacheable prefix across every call.
+            # The volatile date/time is appended at the END instead of in a second
+            # cached system block: placing a per-call-changing string inside the
+            # cached prefix previously invalidated the prefix every call and wasted
+            # a breakpoint (see COST_RECOMMENDATIONS_RANKED.md, Tier 2 fix).
+            # Date/time is regenerated on each call to prevent staleness in long sessions.
+            messages = (
+                [{"role": "system", "content": SYSTEM_PROMPT}]
+                + self.messages
+                + [{"role": "system", "content": _get_current_datetime_message()}]
+            )
 
             # Filter images if BLOCK_IMAGES is enabled (for non-vision models or user preference)
             messages = self.image_handler.filter_images_if_blocked(messages)
@@ -1267,6 +1285,24 @@ Repository root takes priority if both exist."""
                         and response.usage.cache_read_input_tokens
                     ):
                         self.cumulative_cache_read_tokens += response.usage.cache_read_input_tokens
+
+                    # Per-call cache instrumentation (Tier 2 #6): logs this call's
+                    # write/read split so the suffix-rewrite / datetime-breakpoint
+                    # hypotheses can be confirmed with data instead of inference.
+                    # Zero overhead unless PATCHPAL_DEBUG_CACHE=true.
+                    if os.environ.get("PATCHPAL_DEBUG_CACHE") == "true":
+                        _call_writes = (
+                            getattr(response.usage, "cache_creation_input_tokens", 0) or 0
+                        )
+                        _call_reads = getattr(response.usage, "cache_read_input_tokens", 0) or 0
+                        _call_prompt = getattr(response.usage, "prompt_tokens", 0) or 0
+                        _denom = _call_writes + _call_reads
+                        _hit = (_call_reads / _denom * 100) if _denom else 0.0
+                        print(
+                            f"[CACHE DEBUG] call #{self.total_llm_calls}: "
+                            f"prompt={_call_prompt} write={_call_writes} "
+                            f"read={_call_reads} this-call-hit={_hit:.1f}%"
+                        )
 
                     # Track OpenAI cache tokens (prompt_tokens_details.cached_tokens)
                     # Only track for OpenAI models to avoid LiteLLM cross-contamination
