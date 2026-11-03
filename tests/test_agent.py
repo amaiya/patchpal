@@ -153,9 +153,9 @@ def test_agent_system_prompt():
     assert "security" in SYSTEM_PROMPT.lower()
     assert "concise" in SYSTEM_PROMPT.lower()
 
-    # Verify dynamic date/time message function works correctly
+    # Verify dynamic date message function works correctly
     datetime_msg = _get_current_datetime_message()
-    assert "Current Date and Time" in datetime_msg
+    assert "Current Date" in datetime_msg
     assert "Today is" in datetime_msg
 
 
@@ -712,9 +712,9 @@ def test_datetime_message_distinct_from_system_prompt():
 
     datetime_msg = _get_current_datetime_message()
 
-    assert "Current Date and Time" in datetime_msg
-    # The static prompt must not embed the volatile date/time header.
-    assert "Current Date and Time" not in SYSTEM_PROMPT
+    assert "Current Date" in datetime_msg
+    # The static prompt must not embed the volatile date.
+    assert "Current Date" not in SYSTEM_PROMPT
 
 
 def test_agent_handles_keyboard_interrupt_during_tool_execution(monkeypatch):

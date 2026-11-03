@@ -203,21 +203,26 @@ if WEB_TOOLS_ENABLED:
 
 
 def _get_current_datetime_message() -> str:
-    """Generate current date/time system message.
+    """Generate current date system message.
 
-    Called dynamically on each LLM API call to ensure date/time is always current.
+    Called dynamically on each LLM API call to ensure the date is always current.
+
+    Date granularity ONLY (no minute-resolution time): the datetime is sent as a
+    trailing system message after the conversation cache breakpoint, and any
+    change to that trailing suffix invalidates the most-recent prompt-cache write
+    on Bedrock/Anthropic. A minute-resolution clock changed the suffix on every
+    minute rollover, collapsing cache reads to the system-prefix floor on ~every
+    other turn. A date-only string changes at most once per day, so the suffix is
+    byte-identical across a session and the cache is not perturbed. Minute-level
+    precision is not needed for the agent's purposes.
 
     Returns:
-        Formatted date/time string for injection into system messages
+        Formatted date string for injection into system messages
     """
     now = datetime.now()
     current_date = now.strftime("%A, %B %d, %Y")  # e.g., "Wednesday, January 15, 2026"
-    current_time = now.strftime("%I:%M %p %Z").strip()  # e.g., "03:45 PM EST"
-    if not current_time.endswith(("EST", "CST", "MST", "PST", "UTC")):
-        # If no timezone abbreviation, just show time without timezone
-        current_time = now.strftime("%I:%M %p").strip()
 
-    return f"## Current Date and Time\nToday is {current_date}. Current time is {current_time}."
+    return f"## Current Date\nToday is {current_date}."
 
 
 def _load_system_prompt() -> str:

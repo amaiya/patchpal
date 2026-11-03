@@ -7,6 +7,18 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
+## 0.26.0 (2026-11-03)
+
+### new:
+- N/A
+
+### changed:
+- N/A
+
+### fixed:
+- Fixed prompt-cache invalidation on cache-supporting providers (e.g. AWS Bedrock): the dynamic system message is now date-only instead of minute-resolution, so its trailing (uncached) suffix no longer changes every minute and invalidates the cache. (Follow-up to the 0.25.4 cache fix.)
+
+
 ## 0.25.4 (2026-11-02)
 
 ### new:
