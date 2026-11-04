@@ -71,6 +71,65 @@ class Config:
         return os.getenv("PATCHPAL_LITELLM_KWARGS")
 
     # ============================================================================
+    # Prompt Cache Configuration
+    # ============================================================================
+
+    @property
+    def CACHE_WARMING(self) -> str:
+        """Prompt cache warming mode (default: "idle").
+
+        Keeps a prompt cache entry alive by re-sending its request with a
+        one-token output cap just before the entry's TTL expires, converting
+        would-be cache misses (full-price prefix re-writes) into cheap reads.
+
+        Modes:
+        - "idle" (default): warm between turns while waiting on the human (covers
+          the "walked away from the desk" gap) AND during active multi-step turns.
+          This is the most useful mode for interactive use, where the real
+          multi-minute gaps occur between turns. Gated on a lower continuation
+          probability so it only fires when the expected savings justify it.
+        - "streaming": warm only while the agent is actively working through a
+          multi-step turn. Note: under PatchPal's default tool timeouts (~30s),
+          consecutive LLM calls within a turn already refresh the cache well
+          inside the TTL, so this mode rarely fires in practice — it only matters
+          when a single tool blocks longer than the TTL (e.g. a long shell command
+          with a raised PATCHPAL_SHELL_TIMEOUT, a slow MCP/browser step, or an
+          ask_user prompt the human takes minutes to answer).
+        - "off": disable cache warming entirely.
+
+        Only ever does work for providers with refreshable, priced TTL caching
+        (Anthropic/Bedrock); self-disables on others (unknown pricing => no warm).
+
+        Invalid values fall back to the default ("idle").
+        """
+        value = os.getenv("PATCHPAL_CACHE_WARMING", "idle").lower()
+        if value not in ("streaming", "idle", "off"):
+            return "idle"
+        return value
+
+    @property
+    def CACHE_WARMING_MIN_SAVINGS(self) -> float:
+        """Minimum expected USD savings required to fire a warming replay (default: 0.05)."""
+        return float(os.getenv("PATCHPAL_CACHE_WARMING_MIN_SAVINGS", "0.05"))
+
+    @property
+    def CACHE_TTL(self) -> str:
+        """Prompt cache retention / TTL (default: "5m").
+
+        - "5m": default ephemeral cache (~5 minute TTL, ~1.25x write cost).
+        - "1h": extended 1-hour TTL (opt-in). Writes cost ~2x but avoid full
+          re-writes when turns are spaced more than 5 minutes apart. Only helps
+          slow, widely-spaced sessions; not recommended as a default because it
+          raises write cost on every call regardless of cadence.
+
+        Gated on model capability at apply time. Invalid values fall back to "5m".
+        """
+        value = os.getenv("PATCHPAL_CACHE_TTL", "5m").lower()
+        if value not in ("5m", "1h"):
+            return "5m"
+        return value
+
+    # ============================================================================
     # Tool Configuration
     # ============================================================================
 

@@ -576,6 +576,14 @@ Supported models: Any LiteLLM-supported model
 
                 print("\nGoodbye!")
 
+                # Cancel any pending prompt-cache warming timer so a background
+                # replay can't fire during interpreter shutdown.
+                try:
+                    if getattr(agent, "cache_warmer", None) is not None:
+                        agent.cache_warmer.cancel()
+                except Exception:
+                    pass  # Best-effort; warming is optional
+
                 # Clean up the browser if it was opened during the session.
                 # An open Playwright browser keeps its own asyncio machinery
                 # alive; closing it here releases the browser process/loop so

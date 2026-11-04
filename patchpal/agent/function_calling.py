@@ -341,12 +341,24 @@ def _apply_prompt_caching(messages: List[Dict[str, Any]], model_id: str) -> List
     # Nova models use cachePoint
     # For Bedrock ARNs without model name, default to cache_control (most common)
     if model_id.startswith("bedrock/") and "amazon.nova" in model_id.lower():
-        # Nova models explicitly use cachePoint
+        # Nova models explicitly use cachePoint (no configurable TTL field)
         cache_marker = {"cachePoint": {"type": "default"}}
     else:
         # Anthropic models (direct or via Bedrock) use cache_control
         # Also default for Bedrock ARNs (most use Anthropic/Claude)
-        cache_marker = {"cache_control": {"type": "ephemeral"}}
+        ephemeral: Dict[str, Any] = {"type": "ephemeral"}
+        # Opt-in extended 1-hour TTL (PATCHPAL_CACHE_TTL=1h). The `ttl` field is
+        # part of Anthropic's NATIVE API spec only. Bedrock uses a different
+        # prompt-caching format and rejects/ignores a `ttl` inside cache_control
+        # (see BerriAI/litellm#17250), silently falling back to the default 5m
+        # TTL. So only emit `ttl` for the Anthropic-direct path; on Bedrock it
+        # would be a no-op at best and a 400 at worst.
+        is_anthropic_direct = model_id.startswith("anthropic/") and not model_id.startswith(
+            "bedrock/"
+        )
+        if config.CACHE_TTL == "1h" and is_anthropic_direct:
+            ephemeral["ttl"] = "1h"
+        cache_marker = {"cache_control": ephemeral}
 
     # Count existing cache markers across all messages
     def count_cache_markers(msgs):
@@ -644,6 +656,57 @@ class PatchPalAgent:
             self.prompt_caching_supported = True
         else:
             self.prompt_caching_supported = False
+
+        # Determine the EFFECTIVE cache TTL the provider will actually honor.
+        # The 1h option only takes effect on the Anthropic-native API path; on
+        # Bedrock the `ttl` field is ignored/rejected (see _apply_prompt_caching
+        # and BerriAI/litellm#17250), so the real TTL there stays 5 minutes.
+        is_anthropic_direct = self.model_id.startswith(
+            "anthropic/"
+        ) and not self.model_id.startswith("bedrock/")
+        if config.CACHE_TTL == "1h" and not is_anthropic_direct:
+            print(
+                "\033[2m⚠  PATCHPAL_CACHE_TTL=1h is only honored on the Anthropic-native API; "
+                "this model uses Bedrock, which ignores it. Falling back to the 5-minute TTL. "
+                "Use PATCHPAL_CACHE_WARMING=idle to keep the cache alive between turns instead.\033[0m",
+                flush=True,
+            )
+        effective_ttl_1h = config.CACHE_TTL == "1h" and is_anthropic_direct
+
+        # Initialize prompt-cache warmer (keeps the cached prefix alive across
+        # long tool-running turns and idle gaps). Only constructed when the model
+        # actually supports refreshable TTL caching; otherwise it would never do
+        # work. The warmer is further self-gating on pricing, so it is a no-op on
+        # providers without priced cache rates (OpenAI/local models).
+        self.cache_warmer = None
+        if self.prompt_caching_supported and config.CACHE_WARMING != "off":
+            try:
+                from patchpal.agent.cache_warmer import CacheWarmer
+
+                # Fire at ~90% of the TTL the provider will ACTUALLY honor, not
+                # the requested one — otherwise a 1h schedule on a 5m Bedrock
+                # cache would warm far too late and every post-5m turn would miss.
+                ttl_seconds = 3600 if effective_ttl_1h else 300
+                # Invoke with the exact model id the real calls use (the ARN for
+                # inference profiles) so the replay hits a valid endpoint and the
+                # same cache entry. Use the resolved model name only for pricing,
+                # since Bedrock ARNs aren't in LiteLLM's cost map.
+                pricing_model_id = (
+                    f"bedrock/{self.detected_model_name}"
+                    if self.detected_model_name
+                    else self.model_id
+                )
+                self.cache_warmer = CacheWarmer(
+                    model_id=self.model_id,
+                    mode=config.CACHE_WARMING,
+                    ttl_seconds=ttl_seconds,
+                    min_savings=config.CACHE_WARMING_MIN_SAVINGS,
+                    litellm_kwargs=self.litellm_kwargs,
+                    pricing_model_id=pricing_model_id,
+                )
+            except Exception:
+                # Warming is a best-effort optimization; never fail init over it.
+                self.cache_warmer = None
 
         # Load MEMORY.md if it exists and has non-template content
         self._load_project_memory()
@@ -1101,6 +1164,11 @@ Repository root takes priority if both exist."""
 
             get_url_tracker().add_urls_from_text(user_message)
 
+        # A real turn supersedes any pending idle-warming replay: cancel it so a
+        # background warm can't collide with the live request we're about to make.
+        if self.cache_warmer is not None:
+            self.cache_warmer.cancel()
+
         # Add user message to history
         self.messages.append({"role": "user", "content": user_message})
 
@@ -1112,7 +1180,13 @@ Repository root takes priority if both exist."""
 
         # Agent loop with interrupt handling
         try:
-            return self._run_agent_loop(max_iterations)
+            result = self._run_agent_loop(max_iterations)
+            # Turn finished: arm idle warming so the cached prefix stays alive
+            # while we wait on the human (only honored in "idle" mode; a no-op in
+            # "streaming" mode and when economically not worthwhile).
+            if self.cache_warmer is not None:
+                self.cache_warmer.arm(warming_streaming=False)
+            return result
         except KeyboardInterrupt:
             # Clean up conversation state if interrupted mid-execution
             self._cleanup_interrupted_state()
@@ -1129,6 +1203,11 @@ Repository root takes priority if both exist."""
         """
         # Clear any pending images that weren't injected
         self.image_handler.clear_pending_images()
+
+        # Cancel any pending warming replay; the interrupted conversation state
+        # no longer matches the recorded snapshot.
+        if self.cache_warmer is not None:
+            self.cache_warmer.cancel()
 
         if not self.messages:
             return
@@ -1184,6 +1263,12 @@ Repository root takes priority if both exist."""
         empty_response_retries = 0
         empty_response_max_retries = int(os.environ.get("PATCHPAL_EMPTY_RETRY_MAX", "2"))
         for iteration in range(max_iterations):
+            # A new real LLM call is about to be made: cancel any pending warming
+            # replay so it can't fire against a stale snapshot or collide with the
+            # live call we're about to issue.
+            if self.cache_warmer is not None:
+                self.cache_warmer.cancel()
+
             # Clear any stale pending images from previous iteration (safety check)
             # Images should already be injected, but this prevents accumulation on error
             if self.image_handler.has_pending_images():
@@ -1321,6 +1406,21 @@ Repository root takes priority if both exist."""
 
                 # Track cost from this LLM call
                 self._calculate_cost(response)
+
+                # Record this request for prompt-cache warming and arm a
+                # streaming warm. `messages` already carries the cache_control /
+                # cachePoint markers and `tools` is the exact tool list sent, so
+                # a replay reads the identical cache entry. Streaming mode keeps
+                # the prefix warm across long multi-step (tool-running) turns that
+                # would otherwise outlive the TTL between intra-turn round-trips.
+                # Best-effort: warming must never turn a successful real call into
+                # an error, so any failure here is swallowed.
+                if self.cache_warmer is not None and getattr(response, "usage", None):
+                    try:
+                        self.cache_warmer.record_request(messages, tools, response.usage)
+                        self.cache_warmer.arm(warming_streaming=True)
+                    except Exception:
+                        pass
 
             except Exception as e:
                 # Clean up any pending images before returning error

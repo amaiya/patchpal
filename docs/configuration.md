@@ -216,6 +216,67 @@ export PATCHPAL_PRUNE_PROTECT=40000          # Keep last N tokens of tool output
 export PATCHPAL_PRUNE_MINIMUM=20000          # Minimum tokens to prune (default: 20000)
 ```
 
+### Prompt Caching
+
+For models that support prompt caching (Anthropic Claude, including via AWS Bedrock),
+PatchPal keeps a stable prefix — the system prompt, tool definitions, and recent
+conversation — in the provider's prompt cache. Cache **reads** are far cheaper than
+re-sending (writing) the prefix, so maximizing the cache **hit rate** directly lowers
+cost. These settings only do work on providers with priced, refreshable caching; they
+are safe no-ops elsewhere (e.g. OpenAI's automatic caching and local models).
+
+```bash
+# Cache Warming
+export PATCHPAL_CACHE_WARMING=idle           # Keep the cached prefix alive by replaying
+                                              # the last request with a 1-token output cap
+                                              # just before the TTL expires, turning would-be
+                                              # cache misses (full-price prefix re-writes)
+                                              # into cheap reads. Modes:
+                                              #   idle (default) - warm between turns while
+                                              #     waiting on you (covers "walked away from
+                                              #     the desk") AND during active turns. Best
+                                              #     for interactive use.
+                                              #   streaming - warm only during active multi-step
+                                              #     turns. Rarely fires under default ~30s tool
+                                              #     timeouts (each LLM call already refreshes the
+                                              #     cache); only useful when a single tool blocks
+                                              #     longer than the TTL (raised PATCHPAL_SHELL_TIMEOUT,
+                                              #     slow MCP/browser step, or a slow ask_user reply).
+                                              #   off - disable cache warming entirely
+export PATCHPAL_CACHE_WARMING_MIN_SAVINGS=0.05  # Minimum expected USD savings required before
+                                                 # a warming replay fires (default: 0.05).
+                                                 # Warming is skipped when the math doesn't
+                                                 # justify it, so small prompts never warm.
+
+# Cache TTL / Retention
+export PATCHPAL_CACHE_TTL=5m                  # Prompt cache retention (default: 5m):
+                                              #   5m - default ephemeral cache (~1.25x write cost)
+                                              #   1h - extended 1-hour TTL (opt-in). Writes cost
+                                              #        ~2x but avoid full re-writes when turns are
+                                              #        spaced >5 min apart. Only helps slow,
+                                              #        widely-spaced sessions; NOT recommended as a
+                                              #        default because it raises write cost on every
+                                              #        call regardless of cadence.
+```
+
+!!! warning "1h TTL works on the Anthropic-native API only — not Bedrock"
+    The `ttl: "1h"` directive is part of Anthropic's native API spec. **AWS Bedrock uses a
+    different prompt-caching format and ignores (or rejects) the `ttl` field**, silently
+    falling back to the 5-minute TTL (see
+    [BerriAI/litellm#17250](https://github.com/BerriAI/litellm/issues/17250)). PatchPal
+    therefore only emits `ttl: "1h"` for `anthropic/...` models and prints a warning if you
+    set `PATCHPAL_CACHE_TTL=1h` on a Bedrock model. On Bedrock, use **cache warming**
+    (especially `PATCHPAL_CACHE_WARMING=idle`) to survive gaps longer than 5 minutes.
+
+!!! tip "Which should I use?"
+    The default (`idle`) is the right choice for most interactive sessions: it keeps the
+    cache alive across the gaps between turns (where the real multi-minute waits happen) and
+    pays a tiny read cost *only when it saves money*. `streaming` mode rarely fires under the
+    default ~30s tool timeouts and is mainly for turns that stall on a single long-running
+    tool. Reach for `PATCHPAL_CACHE_TTL=1h` only when using the **Anthropic-native API** and
+    your turns are consistently more than 5 minutes apart (e.g. slow manual review between
+    prompts), since the 1-hour TTL pays a ~2x write premium on every call.
+
 ### MCP (Model Context Protocol) Integration
 
 ```bash
