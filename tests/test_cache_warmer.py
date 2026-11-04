@@ -42,13 +42,19 @@ def _usage(prompt=8000, read=7000, write=1000):
     )
 
 
-def _make_warmer(mode="streaming", ttl=300, min_savings=0.05, model="anthropic/claude-sonnet-4-5"):
+def _make_warmer(
+    mode="streaming",
+    ttl=300,
+    min_savings=0.05,
+    model="anthropic/claude-sonnet-4-5",
+    litellm_kwargs=None,
+):
     return _cw().CacheWarmer(
         model_id=model,
         mode=mode,
         ttl_seconds=ttl,
         min_savings=min_savings,
-        litellm_kwargs={},
+        litellm_kwargs=litellm_kwargs or {},
     )
 
 
@@ -58,6 +64,56 @@ def test_off_mode_is_disabled():
     # record/arm are no-ops in off mode
     w.record_request([{"role": "user", "content": "hi"}], None, _usage())
     assert w._messages is None
+
+
+def test_is_replayable_no_thinking_is_safe():
+    """Without any thinking/reasoning directive, every model is replayable."""
+    _is_replayable = _cw()._is_replayable
+    assert _is_replayable("anthropic/claude-sonnet-4-5", {}) is True
+    assert _is_replayable("bedrock/anthropic.claude-sonnet-4-5", {}) is True
+    assert _is_replayable("openai/gpt-4o", {}) is True
+
+
+def test_is_replayable_anthropic_thinking_is_unsafe():
+    """Thinking on Anthropic (direct or Bedrock) is NOT safely replayable."""
+    _is_replayable = _cw()._is_replayable
+    thinking = {"thinking": {"type": "enabled", "budget_tokens": 2000}}
+    assert _is_replayable("anthropic/claude-sonnet-4-5", thinking) is False
+    assert _is_replayable("bedrock/anthropic.claude-sonnet-4-5", thinking) is False
+    # reasoning_effort form also counts as thinking requested.
+    assert _is_replayable("anthropic/claude-sonnet-4-5", {"reasoning_effort": "high"}) is False
+
+
+def test_is_replayable_opaque_arn_with_thinking_is_unsafe():
+    """An opaque Bedrock inference-profile ARN + thinking is treated as unsafe."""
+    _is_replayable = _cw()._is_replayable
+    arn = "arn:aws:bedrock:us-east-1:123:application-inference-profile/abc123"
+    assert _is_replayable(arn, {"thinking": {"budget_tokens": 1}}) is False
+    # ...but with no thinking requested it's replayable.
+    assert _is_replayable(arn, {}) is True
+
+
+def test_is_replayable_known_non_anthropic_thinking_is_safe():
+    """Known non-Anthropic reasoning providers stay replayable even with thinking."""
+    _is_replayable = _cw()._is_replayable
+    assert _is_replayable("openai/o3", {"reasoning_effort": "high"}) is True
+    assert _is_replayable("gemini/gemini-2.5-pro", {"reasoning": {"effort": "high"}}) is True
+
+
+def test_unreplayable_warmer_is_disabled_and_noop():
+    """A warmer built for an unreplayable config must disable itself."""
+    w = _make_warmer(
+        mode="idle",
+        model="anthropic/claude-sonnet-4-5",
+        litellm_kwargs={"thinking": {"type": "enabled", "budget_tokens": 2000}},
+    )
+    assert w.enabled is False
+    # record_request is a no-op (enabled gate), so nothing is captured and arm
+    # schedules no timer.
+    w.record_request([{"role": "user", "content": "hi"}], None, _usage(read=100000))
+    assert w._messages is None
+    w.arm(warming_streaming=True)
+    assert w._timer is None
 
 
 def test_record_request_captures_snapshot():
@@ -179,7 +235,10 @@ def test_arm_stops_past_safety_horizon():
 
 def test_fire_sends_one_token_replay():
     """When the timer fires, it issues a max_tokens=1 completion with the snapshot."""
-    w = _make_warmer(ttl=1, min_savings=0.0)  # tiny TTL so it fires fast
+    # Small TTL so it fires fast, but large enough that delay = min(ttl*0.9, ttl-10)
+    # leaves a non-zero refresh-deadline margin ((ttl-delay)/2). ttl=12 -> delay=2s,
+    # margin=5s, so the warm dispatches well inside the deadline.
+    w = _make_warmer(ttl=12, min_savings=0.0)
     msgs = [{"role": "user", "content": "hi"}]
     tools = [{"type": "function", "function": {"name": "x"}}]
     w.record_request(msgs, tools, _usage(read=100000))
@@ -200,8 +259,8 @@ def test_fire_sends_one_token_replay():
         mock.patch("patchpal.agent.cache_warmer.litellm.completion", side_effect=fake_completion),
     ):
         w.arm(warming_streaming=True)
-        # TTL=1 -> delay = min(0.9, 1-10) floored at 1.0s; wait a bit longer.
-        time.sleep(1.5)
+        # ttl=12 -> delay=2s; wait a bit longer for the timer to fire.
+        time.sleep(3)
 
     assert len(calls) == 1
     assert calls[0]["max_tokens"] == 1
@@ -211,7 +270,7 @@ def test_fire_sends_one_token_replay():
 
 def test_fire_swallows_errors():
     """A failing warm replay must never raise."""
-    w = _make_warmer(ttl=1, min_savings=0.0)
+    w = _make_warmer(ttl=12, min_savings=0.0)
     w.record_request([{"role": "user", "content": "hi"}], None, _usage(read=100000))
 
     def boom(**kwargs):
@@ -226,13 +285,13 @@ def test_fire_swallows_errors():
         mock.patch("patchpal.agent.cache_warmer.litellm.completion", side_effect=boom),
     ):
         w.arm(warming_streaming=True)
-        time.sleep(1.5)  # should not raise; errors are swallowed
+        time.sleep(3)  # should not raise; errors are swallowed
     # If we got here without an exception, the best-effort contract holds.
 
 
 def test_superseded_timer_does_not_fire():
     """A timer invalidated by a newer cancel/arm must not issue a replay."""
-    w = _make_warmer(ttl=1, min_savings=0.0)
+    w = _make_warmer(ttl=12, min_savings=0.0)
     w.record_request([{"role": "user", "content": "hi"}], None, _usage(read=100000))
 
     calls = []
@@ -248,7 +307,35 @@ def test_superseded_timer_does_not_fire():
     ):
         w.arm(warming_streaming=True)
         w.cancel()  # supersede immediately
-        time.sleep(1.5)
+        time.sleep(3)
+    assert calls == []
+
+
+def test_fire_past_refresh_deadline_does_not_warm():
+    """A timer that fires after the refresh deadline must not send a warm.
+
+    Simulates a late fire (machine sleep / blocked loop) where the cache entry has
+    likely already expired. Sending the replay then would be a full-price cache
+    WRITE, so the warmer must abort instead (ported from pi-mono's
+    refreshDeadlineMissed).
+    """
+    w = _make_warmer(mode="streaming", ttl=300, min_savings=0.0)
+    w.record_request([{"role": "user", "content": "hi"}], None, _usage(read=100000))
+    # Make this generation current so the supersede check passes.
+    w._generation = 7
+
+    calls = []
+    with mock.patch(
+        "patchpal.agent.cache_warmer.litellm.completion",
+        side_effect=lambda **k: calls.append(k),
+    ):
+        # refresh_deadline is in the past -> must skip without warming.
+        w._fire(
+            generation=7,
+            warming_streaming=True,
+            armed_at=time.monotonic(),
+            refresh_deadline=time.monotonic() - 1.0,
+        )
     assert calls == []
 
 

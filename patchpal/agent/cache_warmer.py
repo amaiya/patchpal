@@ -90,6 +90,22 @@ class CacheWarmer:
         self.min_savings = float(min_savings)
         self.litellm_kwargs = dict(litellm_kwargs or {})
 
+        # A max_tokens=1 replay is NOT safe to send for Anthropic budget-based
+        # thinking: Anthropic derives `budget_tokens` from `max_tokens` and keys
+        # the message cache on it, so the replay would (a) read a DIFFERENT cache
+        # entry (defeating the warm) and (b) could still think for thousands of
+        # tokens at full price. When thinking/reasoning is requested on an
+        # Anthropic model we therefore refuse to warm (ported from pi-mono's
+        # isReplayable). Computed once: model_id and litellm_kwargs are fixed for
+        # the warmer's lifetime.
+        self._replayable = _is_replayable(self.model_id, self.litellm_kwargs)
+        if not self._replayable:
+            _debug(
+                "disabled: request is not safely replayable (thinking/reasoning "
+                "enabled on an Anthropic model); max_tokens=1 warm would miss the "
+                "cache and may incur thinking cost"
+            )
+
         self._lock = threading.Lock()
         self._timer: Optional[threading.Timer] = None
         self._generation = 0  # bumped on every arm()/cancel() to invalidate stale fires
@@ -103,8 +119,12 @@ class CacheWarmer:
 
     @property
     def enabled(self) -> bool:
-        """True if warming is active (mode is 'streaming' or 'idle')."""
-        return self.mode in ("streaming", "idle")
+        """True if warming is active.
+
+        Requires a warming mode ('streaming' or 'idle') AND a request that can be
+        safely replayed with a one-token output cap (see ``_is_replayable``).
+        """
+        return self.mode in ("streaming", "idle") and self._replayable
 
     def record_request(
         self,
@@ -213,13 +233,25 @@ class CacheWarmer:
         # Fire at ~90% of TTL, leaving margin for timer slop.
         delay = max(1.0, min(self.ttl_seconds * 0.9, self.ttl_seconds - 10))
 
+        # Latest safe wall-clock time to actually dispatch this warm. A timer can
+        # run late (machine sleep, blocked event loop); if it fires after the
+        # cache entry has likely expired, the replay lands as a full-price cache
+        # WRITE instead of a cheap read — the opposite of what warming is for. We
+        # keep half of the pre-expiry margin (ttl - delay) for timer slop and
+        # request dispatch, and abort the warm if that deadline has passed (ported
+        # from pi-mono's refreshDeadlineAt). ``now`` was captured above for the
+        # safety-horizon check and is reused here.
+        refresh_deadline = now + delay + max(0.0, (self.ttl_seconds - delay) / 2.0)
+
         with self._lock:
             self._generation += 1
             generation = self._generation
             if self._timer is not None:
                 self._timer.cancel()
             self._timer = threading.Timer(
-                delay, self._fire, args=(generation, warming_streaming, origin)
+                delay,
+                self._fire,
+                args=(generation, warming_streaming, origin, refresh_deadline),
             )
             self._timer.daemon = True
             self._timer.start()
@@ -236,7 +268,13 @@ class CacheWarmer:
                 self._timer.cancel()
                 self._timer = None
 
-    def _fire(self, generation: int, warming_streaming: bool, armed_at: float) -> None:
+    def _fire(
+        self,
+        generation: int,
+        warming_streaming: bool,
+        armed_at: float,
+        refresh_deadline: float,
+    ) -> None:
         """Timer callback: send a 1-token replay to refresh the cache entry.
 
         Best-effort: any failure is swallowed so a bad warm never disrupts the run.
@@ -247,10 +285,22 @@ class CacheWarmer:
                 _debug("fire: superseded, skipping")
                 return
 
+        now = time.monotonic()
+
         # Respect the safety horizon.
         max_age = _MAX_STREAMING_WARMING_AGE_S if warming_streaming else _MAX_IDLE_WARMING_AGE_S
-        if time.monotonic() - armed_at > max_age:
+        if now - armed_at > max_age:
             _debug("fire: past safety horizon, skipping")
+            return
+
+        # Abort if the timer fired so late that the cache entry has likely already
+        # expired (machine sleep, blocked event loop). Sending the warm now would
+        # land as a full-price cache WRITE rather than a cheap read — strictly
+        # worse than doing nothing. Do NOT re-arm: the recorded prefix is stale and
+        # the next real turn will re-establish the cache (ported from pi-mono's
+        # refreshDeadlineMissed).
+        if now > refresh_deadline:
+            _debug("fire: past refresh deadline (cache likely expired), skipping")
             return
 
         messages = self._messages
@@ -287,6 +337,53 @@ class CacheWarmer:
             still_current = generation == self._generation
         if still_current:
             self.arm(warming_streaming, chain_start=armed_at)
+
+
+# ---------------------------------------------------------------------------
+# Replayability
+# ---------------------------------------------------------------------------
+
+# Keys in litellm_kwargs that indicate thinking/reasoning is requested. PatchPal
+# never sets these itself; they only arrive via PATCHPAL_LITELLM_KWARGS.
+_THINKING_KEYS = ("thinking", "reasoning", "reasoning_effort")
+
+
+def _is_replayable(model_id: str, litellm_kwargs: Dict[str, Any]) -> bool:
+    """Whether a max_tokens=1 replay safely re-reads the same cache entry.
+
+    Unsafe only for Anthropic (direct or via Bedrock) when thinking/reasoning is
+    enabled: Anthropic derives ``budget_tokens`` from ``max_tokens`` and keys the
+    message cache on it, so a one-token replay would read a different entry
+    (defeating the warm) and could still incur thinking cost. For every other
+    case — no thinking requested, or non-Anthropic providers — the replay is safe.
+
+    Ported from pi-mono's ``isReplayable``.
+    """
+    thinking_requested = any(litellm_kwargs.get(key) for key in _THINKING_KEYS)
+    if not thinking_requested:
+        return True
+
+    # Thinking is requested. It's only safe to replay for providers we can
+    # positively identify as NOT using Anthropic budget-based thinking. Known
+    # non-Anthropic reasoning providers (OpenAI, Gemini, xAI, DeepSeek, etc.)
+    # don't tie the cache key to max_tokens, so their replay is safe. Anything
+    # else — including opaque Bedrock inference-profile ARNs that hide the
+    # underlying model — is treated as potentially Anthropic and NOT replayed,
+    # because a wrong "safe" guess risks a cache-missing, thinking-billed warm.
+    mid = model_id.lower()
+    known_safe_prefixes = (
+        "openai/",
+        "azure/",
+        "gemini/",
+        "vertex_ai/",
+        "xai/",
+        "deepseek/",
+        "groq/",
+        "mistral/",
+        "ollama/",
+        "openrouter/",
+    )
+    return mid.startswith(known_safe_prefixes)
 
 
 # ---------------------------------------------------------------------------
