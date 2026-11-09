@@ -184,6 +184,7 @@ def log_action_blocked(
     reason: str,
     pattern: Optional[str] = None,
     context: Optional[dict] = None,
+    operation_num: Optional[int] = None,
 ):
     """Log a blocked/rejected action.
 
@@ -193,6 +194,8 @@ def log_action_blocked(
         reason: Why the action was blocked (e.g., 'user_rejected', 'dangerous_command', 'sensitive_file')
         pattern: Optional pattern that was blocked (e.g., command pattern, file path)
         context: Optional additional context dictionary
+        operation_num: Optional operation number linking this event to the
+            corresponding TOOL_EXECUTION and ACTION_RESULT entries
     """
     entry = {
         "timestamp": datetime.utcnow().isoformat() + "Z",
@@ -211,6 +214,9 @@ def log_action_blocked(
     if context:
         entry["context"] = context
 
+    if operation_num is not None:
+        entry["operation_num"] = operation_num
+
     _log_entry(entry)
 
 
@@ -220,6 +226,7 @@ def log_action_approved(
     approval_type: str = "user_approved",
     pattern: Optional[str] = None,
     context: Optional[dict] = None,
+    operation_num: Optional[int] = None,
 ):
     """Log an approved action.
 
@@ -229,6 +236,8 @@ def log_action_approved(
         approval_type: Type of approval (e.g., 'user_approved', 'session_granted', 'auto_granted')
         pattern: Optional pattern that was approved
         context: Optional additional context dictionary
+        operation_num: Optional operation number linking this event to the
+            corresponding TOOL_EXECUTION and ACTION_RESULT entries
     """
     entry = {
         "timestamp": datetime.utcnow().isoformat() + "Z",
@@ -247,6 +256,9 @@ def log_action_approved(
     if context:
         entry["context"] = context
 
+    if operation_num is not None:
+        entry["operation_num"] = operation_num
+
     _log_entry(entry)
 
 
@@ -256,6 +268,7 @@ def log_action_result(
     success: bool,
     error: Optional[str] = None,
     context: Optional[dict] = None,
+    operation_num: Optional[int] = None,
 ):
     """Log the result of an action execution.
 
@@ -265,6 +278,8 @@ def log_action_result(
         success: Whether the action succeeded
         error: Optional error message if action failed
         context: Optional additional context dictionary
+        operation_num: Optional operation number linking this event to the
+            corresponding TOOL_EXECUTION and ACTION_APPROVED/BLOCKED entries
     """
     entry = {
         "timestamp": datetime.utcnow().isoformat() + "Z",
@@ -281,6 +296,9 @@ def log_action_result(
 
     if context:
         entry["context"] = context
+
+    if operation_num is not None:
+        entry["operation_num"] = operation_num
 
     _log_entry(entry)
 
@@ -333,9 +351,9 @@ def log_user_prompt(prompt: str):
     Args:
         prompt: The user's prompt/request
     """
-    # Truncate very long prompts for logging
+    # Truncate very long prompts for logging (unless full logging is enabled)
     max_length = 1000
-    if len(prompt) > max_length:
+    if not config.AUDIT_LOG_FULL and len(prompt) > max_length:
         prompt = prompt[:max_length] + "... (truncated)"
 
     entry = {
@@ -356,9 +374,9 @@ def log_agent_response(response: str, success: bool = True):
         response: The agent's response
         success: Whether the response was successful
     """
-    # Truncate very long responses for logging
+    # Truncate very long responses for logging (unless full logging is enabled)
     max_length = 1000
-    if len(response) > max_length:
+    if not config.AUDIT_LOG_FULL and len(response) > max_length:
         response = response[:max_length] + "... (truncated)"
 
     entry = {
@@ -390,10 +408,10 @@ def log_tool_execution(tool_name: str, parameters: dict = None, operation_num: i
     }
 
     if parameters:
-        # Truncate large parameter values
+        # Truncate large parameter values (unless full logging is enabled)
         truncated_params = {}
         for key, value in parameters.items():
-            if isinstance(value, str) and len(value) > 200:
+            if not config.AUDIT_LOG_FULL and isinstance(value, str) and len(value) > 200:
                 truncated_params[key] = value[:200] + "... (truncated)"
             else:
                 truncated_params[key] = value

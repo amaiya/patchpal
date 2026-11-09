@@ -273,6 +273,17 @@ class Config:
         """Enable audit logging (default: true)."""
         return _get_env_bool("PATCHPAL_AUDIT_LOG", "true")
 
+    @property
+    def AUDIT_LOG_FULL(self) -> bool:
+        """Disable truncation of audit log fields (default: false).
+
+        When true, prompts, responses, and tool parameters are logged in full
+        rather than being truncated. Intended for research/analysis use cases
+        (e.g., causal-graph reconstruction) where truncated file paths or
+        arguments would drop causal signal. May produce large log files.
+        """
+        return _get_env_bool("PATCHPAL_AUDIT_LOG_FULL", "false")
+
     # ============================================================================
     # Resource Limits
     # ============================================================================
