@@ -174,8 +174,11 @@ export PATCHPAL_MAX_OUTPUT_LINES=500         # Max lines of shell output (defaul
 ```bash
 # Logging & Auditing
 export PATCHPAL_AUDIT_LOG=false              # Log operations to ~/.patchpal/repos/<repo-name>/audit.log (default: true)
-export PATCHPAL_AUDIT_LOG_FULL=true          # Log prompts/responses/tool parameters in full, without truncation (default: false)
-                                              # For research/analysis use cases; may produce large log files
+export PATCHPAL_AUDIT_LOG_FULL=true          # Log prompts and responses in full, without truncation (default: false)
+                                              # Also lifts the secondary length cap on logged tool parameters.
+                                              # Note: tool parameters are still summarized at the call site (e.g.
+                                              # commands/paths are abbreviated), so this does not capture complete
+                                              # tool arguments. For research/analysis use cases; may produce large logs.
 export PATCHPAL_ENABLE_BACKUPS=true          # Auto-backup files before modification (default: false)
 
 # Streaming Output

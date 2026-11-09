@@ -10,7 +10,7 @@ Most recent releases are shown at the top. Each release shows:
 ## 0.27.0 (TBD)
 
 ### new:
-- Added `PATCHPAL_AUDIT_LOG_FULL` (`config.AUDIT_LOG_FULL`, default `false`) to disable truncation of prompts, responses, and tool parameters in the audit log, for research/analysis use cases.
+- Added `PATCHPAL_AUDIT_LOG_FULL` (`config.AUDIT_LOG_FULL`, default `false`) to disable truncation of prompts and responses in the audit log (and lift the secondary length cap on logged tool parameters), for research/analysis use cases. Note that tool parameters are still summarized at their call sites, so this does not capture complete tool arguments.
 - Added an optional `operation_num` argument to the `log_action_blocked`/`log_action_approved`/`log_action_result` audit functions so an action's events can be joined with its `TOOL_EXECUTION` entry.
 
 ### changed:

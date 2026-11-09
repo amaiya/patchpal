@@ -277,10 +277,12 @@ class Config:
     def AUDIT_LOG_FULL(self) -> bool:
         """Disable truncation of audit log fields (default: false).
 
-        When true, prompts, responses, and tool parameters are logged in full
-        rather than being truncated. Intended for research/analysis use cases
-        (e.g., causal-graph reconstruction) where truncated file paths or
-        arguments would drop causal signal. May produce large log files.
+        When true, prompts and responses are logged in full rather than being
+        truncated, and the secondary length cap on logged tool parameters is
+        lifted. Note that tool parameters are still summarized at their call
+        sites (e.g. commands and paths are abbreviated before reaching the
+        logger), so this does not capture complete tool arguments. Intended for
+        research/analysis use cases. May produce large log files.
         """
         return _get_env_bool("PATCHPAL_AUDIT_LOG_FULL", "false")
 
