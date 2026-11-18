@@ -7,6 +7,130 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
+## 0.27.0 (TBD)
+
+### new:
+- Added `PATCHPAL_AUDIT_LOG_FULL` (`config.AUDIT_LOG_FULL`, default `false`) to disable truncation of prompts and responses in the audit log (and lift the secondary length cap on logged tool parameters), for research/analysis use cases. Note that tool parameters are still summarized at their call sites, so this does not capture complete tool arguments.
+- Added an optional `operation_num` argument to the `log_action_blocked`/`log_action_approved`/`log_action_result` audit functions so an action's events can be joined with its `TOOL_EXECUTION` entry.
+
+### changed:
+- N/A
+
+### fixed:
+- Browser tools now apply `nest_asyncio` lazily (on first browser use) instead of at import time, preventing intermittent "Unhandled exception in event loop" errors in the interactive CLI.
+
+
+## 0.26.0 (2026-11-03)
+
+### new:
+- N/A
+
+### changed:
+- N/A
+
+### fixed:
+- Fixed prompt-cache invalidation on cache-supporting providers (e.g. AWS Bedrock): the dynamic system message is now date-only instead of minute-resolution, so its trailing (uncached) suffix no longer changes every minute and invalidates the cache. (Follow-up to the 0.25.4 cache fix.)
+
+
+## 0.25.4 (2026-11-02)
+
+### new:
+- N/A
+
+### changed:
+- N/A
+
+### fixed:
+- Fixed prompt-caching inefficiency where the volatile per-call date/time was placed inside the cached prefix, invalidating the cache every call and wasting an AWS Bedrock cache breakpoint. The static system prompt is now the stable cacheable prefix and the date/time is appended as a trailing (uncached) system message, reducing per-call input token cost on cache-supporting providers.
+
+
+## 0.25.3 (2026-10-23)
+
+### new:
+- N/A
+
+### changed:
+- Sandbox mode now supports AWS SSO/ADFS authentication for Bedrock: the host
+  `~/.aws` directory is mounted read-only into the container (so the SSO profile
+  and cached token resolve inside the sandbox), and Bedrock endpoints are added
+  to the `--restrict-network` firewall allowlist when `AWS_PROFILE` is set (not
+  only when static `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY` are present).
+  Documented `AWS_PROFILE`/SSO setup in the configuration and sandbox guides.
+
+### fixed:
+- N/A
+
+
+## 0.25.2 (2026-10-19)
+
+### new:
+- N/A
+
+### changed:
+- Agent loop now automatically retries empty model responses (no content and no
+  tool calls) before giving up. This recovers from intermittent harmony-format
+  parsing hiccups seen with some local models (e.g., GPT-OSS-120B on vLLM).
+  Configurable via `PATCHPAL_EMPTY_RETRY_MAX` (default: 2). After retries are
+  exhausted, the existing `NO_RESPONSE:` message is returned.
+
+### fixed:
+- N/A
+
+
+
+## 0.25.1 (2026-10-12)
+
+### new:
+- N/A
+
+### changed:
+- Sandbox `patchpal-sandbox` now supports `-v/--volume` and `-e/--env` passthrough flags for extra mounts and environment variables.
+
+### fixed:
+- Sandbox `--restrict-network` now drops `CAP_NET_ADMIN`/`CAP_NET_RAW` before starting the agent, so the root agent can no longer flush the iptables firewall and bypass network restrictions.
+- Sandbox `--restrict-network` no longer drops the autopilot subcommand and extra args (e.g. `--prompt-file`, `--max-iterations`); all args are now passed through.
+- Sandbox auto-detects the Google endpoint from `GEMINI_API_KEY` (in addition to `GOOGLE_API_KEY`) under `--restrict-network`.
+- Sandbox docs corrected to match actual behavior (runtime auto-detection, single `--env-file`, SSL cert paths).
+
+
+
+## 0.25.0 (2026-10-08)
+
+### new:
+- Pre-install IPython in the sandbox image for interactive use in `--shell --restrict-network`
+
+### changed:
+- Use `monkeypatch.setenv` in `enabled_tools` tests to avoid env-var pollution
+
+### fixed:
+- Fixed `enabled_tools` argument in `create_agent` to correctly disable tools
+
+
+## 0.24.6 (2026-10-07)
+
+### new:
+- N/A
+
+### changed:
+- N/A
+
+### fixed:
+- Remove/change `Task completed` message when local models
+  do not return a response or tool call
+
+
+## 0.24.5 (2026-10-06)
+
+### new:
+- N/A
+
+### changed:
+- N/A
+
+### fixed:
+- Fixed model inspection for GovCloud Bedrock.
+
+
 ## 0.24.4 (2026-10-05)
 
 ### new:

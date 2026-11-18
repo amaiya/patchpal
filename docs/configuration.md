@@ -13,9 +13,60 @@ export PATCHPAL_LITELLM_KWARGS='{"reasoning_effort": "high", "temperature": 0.7}
 # Use for: reasoning models (gpt-oss, deepseek-reasoner), temperature, max_tokens, etc.
 # See: https://docs.litellm.ai/docs/completion/input
 
-# AWS GovCloud Bedrock example
+# AWS GovCloud Bedrock example (static access keys)
 export PATCHPAL_LITELLM_KWARGS='{"aws_region_name": "fill in", "aws_bedrock_runtime_endpoint": "fill in", "aws_access_key_id": "fill in", "aws_secret_access_key": "fill in"}'
 ```
+
+#### AWS Bedrock with SSO / ADFS
+
+PatchPal uses LiteLLM for all LLM connections, and LiteLLM delegates AWS authentication to
+boto3's standard credential chain. This means **AWS SSO/ADFS works out of the box** — no
+PatchPal-specific configuration or `aws_*` keys are required. Just set up a named profile and
+point `AWS_PROFILE` at it:
+
+```bash
+# One-time: create an SSO profile (e.g., named "Bedrock")
+aws configure sso
+
+# Authenticate (SSO sessions typically last ~8 hours; re-run when it expires)
+aws sso login --profile Bedrock
+
+# Tell PatchPal/LiteLLM/boto3 which profile to use
+export AWS_PROFILE=Bedrock
+export AWS_REGION=us-gov-east-1   # or your Bedrock region
+
+patchpal --model bedrock/<your-model-or-inference-profile-arn>
+```
+
+boto3 reads `AWS_PROFILE` automatically and resolves the SSO credentials (and the cached SSO
+token) from `~/.aws`. Static access keys (`AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY`) remain
+fully supported for non-SSO environments.
+
+!!! warning "Static access keys override `AWS_PROFILE`"
+    boto3's credential chain ranks `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY` environment
+    variables **above** `AWS_PROFILE`. If those variables are set (sometimes injected by other
+    tooling), they win — and PatchPal authenticates as that IAM user instead of your SSO role.
+    A common symptom is a Bedrock error like:
+
+    ```
+    User: arn:aws-us-gov:iam::...:user/<name> is not authorized to perform:
+    bedrock:InvokeModel on resource: arn:aws-us-gov:bedrock:...:inference-profile/...
+    ```
+
+    If you intend to use SSO, unset the static keys first:
+
+    ```bash
+    unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY
+    export AWS_PROFILE=Bedrock
+    aws sso login --profile Bedrock
+    ```
+
+!!! note "Sandbox mode"
+    When running in [sandbox mode](../usage/sandbox.md), PatchPal automatically mounts your
+    host `~/.aws` directory (read-only) into the container so the SSO profile and token are
+    available inside the sandbox. With `--restrict-network`, Bedrock endpoints are also added to
+    the firewall allowlist when `AWS_PROFILE` is set. Refresh the SSO token on the host with
+    `aws sso login --profile <name>` when it expires.
 
 ### Security & Permissions
 
@@ -123,6 +174,11 @@ export PATCHPAL_MAX_OUTPUT_LINES=500         # Max lines of shell output (defaul
 ```bash
 # Logging & Auditing
 export PATCHPAL_AUDIT_LOG=false              # Log operations to ~/.patchpal/repos/<repo-name>/audit.log (default: true)
+export PATCHPAL_AUDIT_LOG_FULL=true          # Log prompts and responses in full, without truncation (default: false)
+                                              # Also lifts the secondary length cap on logged tool parameters.
+                                              # Note: tool parameters are still summarized at the call site (e.g.
+                                              # commands/paths are abbreviated), so this does not capture complete
+                                              # tool arguments. For research/analysis use cases; may produce large logs.
 export PATCHPAL_ENABLE_BACKUPS=true          # Auto-backup files before modification (default: false)
 
 # Streaming Output
@@ -136,6 +192,15 @@ export PATCHPAL_MAX_ITERATIONS=150           # Max agent iterations per task (de
                                               # Increase for complex multi-file tasks
 export PATCHPAL_LLM_TIMEOUT=300              # LLM API timeout in seconds (default: 300 = 5 minutes)
                                               # Prevents indefinite stalls when API is unresponsive
+export PATCHPAL_EMPTY_RETRY_MAX=2            # Retries when the model returns an empty response (default: 2)
+                                              # An empty response = no content AND no tool calls.
+                                              # Seen with some local models/engines due to inference
+                                              # parsing/template bugs, e.g. GPT-OSS-120B on vLLM
+                                              # (harmony parsing) and Gemma4 MoE on older Ollama.
+                                              # Often triggers after a tool result or on long prompts;
+                                              # a re-prompt usually recovers. After retries are
+                                              # exhausted, a "NO_RESPONSE:" message is returned.
+                                              # Set to 0 to disable retries.
 ```
 
 ### Context Window Management
@@ -143,7 +208,7 @@ export PATCHPAL_LLM_TIMEOUT=300              # LLM API timeout in seconds (defau
 ```bash
 # Auto-Compaction
 export PATCHPAL_DISABLE_AUTOCOMPACT=true     # Disable auto-compaction (default: false - enabled)
-export PATCHPAL_COMPACT_THRESHOLD=0.75       # Trigger compaction at % full (default: 0.75 = 75%)
+export PATCHPAL_COMPACT_THRESHOLD=0.80       # Trigger compaction at % full (default: 0.80 = 80%)
 
 # Context Limits
 export PATCHPAL_CONTEXT_LIMIT=100000         # Override model's context limit (for testing)
@@ -355,7 +420,7 @@ patchpal
 **Testing Context Management:**
 ```bash
 export PATCHPAL_CONTEXT_LIMIT=10000          # Small limit to trigger compaction quickly
-export PATCHPAL_COMPACT_THRESHOLD=0.75       # Trigger at 75% instead of 85%
+export PATCHPAL_COMPACT_THRESHOLD=0.70       # Trigger at 70% instead of 80%
 export PATCHPAL_PRUNE_PROTECT=500            # Keep only last 500 tokens
 patchpal
 ```

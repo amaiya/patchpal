@@ -99,6 +99,19 @@ export HOSTED_VLLM_API_KEY=token-abc123
 patchpal --model hosted_vllm/openai/gpt-oss-20b
 ```
 
+!!! tip "Occasional empty responses"
+    Some local models can intermittently return an empty response (no content
+    and no tool call), often after a tool result or on long/complex prompts.
+    This is typically an inference-engine parsing/template bug, not a PatchPal
+    issue — e.g. gpt-oss on vLLM (harmony-format parsing) or Gemma4 MoE on older
+    Ollama ([ollama#15428](https://github.com/ollama/ollama/issues/15428), fixed
+    in Ollama 0.21+). The best fix is to run a recent inference engine (vLLM
+    >= 0.10.2 / newer; Ollama >= 0.21). As a client-side safety net, PatchPal
+    automatically retries empty responses before giving up — controlled by
+    `PATCHPAL_EMPTY_RETRY_MAX` (default: 2; set to 0 to disable). If retries are
+    exhausted, PatchPal returns a `NO_RESPONSE:` message rather than a misleading
+    "task completed".
+
 **Example with llama.cpp:**
 ```bash
 # Start llama.cpp server with Unsloth template

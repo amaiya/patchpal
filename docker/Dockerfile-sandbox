@@ -7,6 +7,12 @@ RUN apt-get update && apt-get install -y \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
+# Install IPython for an interactive REPL in restricted-network shells
+# (e.g. `patchpal-sandbox --shell --restrict-network`, where pip is blocked).
+# Jupyter is intentionally omitted: it's a web server and not useful in a
+# headless, network-restricted shell.
+RUN pip install --no-cache-dir ipython
+
 # Build arg to force cache invalidation on new releases
 ARG CACHEBUST=1
 

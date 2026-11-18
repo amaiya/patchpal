@@ -120,12 +120,13 @@ After completing these steps, `patchpal-sandbox` should work correctly.
 # Using .env file for API keys
 patchpal-sandbox --env-file .env -- --model anthropic/claude-sonnet-4-5
 
-# Passing API key directly
+# Passing an API key (or any env var) directly
 patchpal-sandbox -e ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY -- --model anthropic/claude-sonnet-4-5
-
-# Using multiple .env files (later files override earlier)
-patchpal-sandbox --env-file .env --env-file .env.local -- --model openai/gpt-4o
 ```
+
+**Note**: `--env-file` accepts a single file. Use `-e KEY=VALUE` (repeatable) to pass
+individual variables, or rely on your host environment (see
+[Environment Variables](#environment-variables)).
 
 In interactive mode, permissions are enabled and you'll be prompted before destructive operations.
 
@@ -198,7 +199,7 @@ The sandbox automatically detects and allows these endpoints based on your envir
 | OpenAI | `OPENAI_API_KEY` | `https://api.openai.com` |
 | Anthropic | `ANTHROPIC_API_KEY` | `https://api.anthropic.com` |
 | Google AI | `GEMINI_API_KEY` | `https://generativelanguage.googleapis.com` |
-| AWS Bedrock | `AWS_REGION` | Region-specific endpoint |
+| AWS Bedrock | `AWS_REGION` (+ `AWS_ACCESS_KEY_ID` or `AWS_PROFILE`) | Region-specific endpoint |
 | Azure OpenAI | `AZURE_OPENAI_RESOURCE` | `https://<resource>.openai.azure.com` |
 | Groq | `GROQ_API_KEY` | `https://api.groq.com` |
 | Cohere | `COHERE_API_KEY` | `https://api.cohere.ai` |
@@ -245,6 +246,38 @@ patchpal-sandbox \
 
 The sandbox automatically detects `us-gov-east-1` and allows `https://bedrock-runtime.us-gov-east-1.amazonaws.com`.
 
+### AWS Bedrock with SSO / ADFS
+
+If your organization authenticates to AWS via SSO/ADFS (instead of static access keys), set up
+a named profile on the host and let the sandbox pick it up:
+
+```bash
+# One-time: create an SSO profile, then authenticate on the HOST
+aws configure sso                       # e.g., profile name "Bedrock"
+aws sso login --profile Bedrock         # refresh when the ~8h session expires
+
+export AWS_PROFILE=Bedrock
+export AWS_REGION=us-gov-east-1
+
+patchpal-sandbox \
+  --restrict-network \
+  -- autopilot \
+  --model bedrock/arn:aws-us-gov:bedrock:us-gov-east-1::inference-profile/us-gov.anthropic.claude-sonnet-4-5-20250929-v1:0 \
+  --prompt-file task.md
+```
+
+The sandbox automatically:
+
+- **Mounts your host `~/.aws` directory (read-only)** into the container, so boto3/LiteLLM can
+  resolve the profile config (`~/.aws/config`) and the cached SSO token (`~/.aws/sso/cache/`).
+- **Allowlists the Bedrock endpoints** for the detected region when `AWS_PROFILE` is set (not
+  only when static `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY` are present).
+
+Because the SSO token is short-lived, run `aws sso login --profile Bedrock` on the **host**
+before launching the sandbox (and again when it expires). With `--env-file` (isolated mode),
+remember to include `AWS_PROFILE` and `AWS_REGION` in the env file, since host environment
+variables are otherwise excluded.
+
 ### Security Considerations
 
 ⚠️ **Container credentials**: AWS credentials passed via `--env-file` are visible to the container. However:
@@ -258,21 +291,37 @@ For maximum security:
 - Use restrictive IAM policies (minimum required permissions)
 - Monitor AWS CloudTrail for unexpected API calls
 
+#### Firewall tamper-resistance
+
+The agent process runs as `root` inside the container. Setting up the iptables
+firewall requires network-admin privileges (`CAP_NET_ADMIN`), and if the agent
+retained that privilege it could simply flush the firewall (`iptables -F OUTPUT`)
+and bypass `--restrict-network`.
+
+To prevent this, the sandbox configures the firewall **first** (as root with the
+required capability) and then **permanently drops `CAP_NET_ADMIN`/`CAP_NET_RAW`**
+(via `setpriv`) before launching the agent. The capabilities are removed from the
+inheritable and bounding sets so they cannot be re-raised. The firewall rules stay
+in force for the whole session, but the agent can no longer modify netfilter — so
+the network restrictions are enforced, not merely advisory.
+
+> **Note on rootless Podman**: granting `CAP_NET_ADMIN` to a rootless container is
+> not always sufficient to run iptables, so the sandbox falls back to `--privileged`
+> for the brief firewall-setup phase. Those elevated privileges are only held while
+> the (sandbox-controlled) setup script runs; they are dropped before any agent code
+> executes. On Docker/rootful Podman, only `--cap-add=NET_ADMIN` is used.
+
 ## Advanced Options
 
 ### Container Runtime Selection
 
-```bash
-# Force Docker (default: auto-detect)
-patchpal-sandbox --runtime docker -- --model anthropic/claude-sonnet-4-5
+The container runtime is auto-detected — there is no flag to select it manually:
 
-# Force Podman
-patchpal-sandbox --runtime podman -- --model groq/llama-3.3-70b-versatile
-```
+1. Check if `podman` is available → use Podman (rootless)
+2. Otherwise fall back to `docker`
 
-**Auto-detection logic**:
-1. Check if `podman` is available → use Podman rootless
-2. Fallback to `docker`
+If you need to force a specific runtime, make only that runtime available on your
+`PATH` (e.g. temporarily rename or remove the other).
 
 ### Custom Container Image
 
@@ -406,10 +455,25 @@ patchpal-sandbox \
   -- --model anthropic/claude-sonnet-4-5
 ```
 
-SSL certificates are auto-mounted from:
-- `/etc/ssl/certs/ca-certificates.crt`
-- `/etc/pki/tls/certs/ca-bundle.crt`
-- `/etc/ssl/ca-bundle.pem`
+SSL certificates are auto-mounted when present on the host:
+- `/etc/ssl/certs/ca-certificates.crt` (Debian/Ubuntu system trust store)
+- `/usr/local/share/ca-certificates/` (additional custom CA certificates)
+
+The sandbox container is Debian-based, so these Debian paths map directly into the
+container's trust store. On other distributions (e.g. RHEL/Fedora/SUSE), set a cert
+environment variable and the sandbox will mount it into the container and point
+Python/requests/curl at it automatically:
+
+```bash
+# RHEL/Fedora
+export SSL_CERT_FILE=/etc/pki/tls/certs/ca-bundle.crt
+# SUSE
+export SSL_CERT_FILE=/etc/ssl/ca-bundle.pem
+
+patchpal-sandbox -- --model anthropic/claude-sonnet-4-5
+```
+
+`SSL_CERT_FILE`, `REQUESTS_CA_BUNDLE`, and `CURL_CA_BUNDLE` are all honored this way.
 
 For Windows Podman with corporate firewalls, see the [Windows Setup](#windows-setup-podman) section above.
 

@@ -6,7 +6,7 @@ PatchPal automatically manages the context window to prevent "input too long" er
 **Features:**
 - **Automatic token tracking**: Monitors context usage in real-time
 - **Smart pruning**: Removes old tool outputs (keeps last 40k tokens) before resorting to full compaction
-- **Auto-compaction**: Summarizes conversation history when approaching 75% capacity
+- **Auto-compaction**: Summarizes conversation history when approaching 80% capacity
 - **Manual control**: Check status with `/status`, compact with `/compact`, prune with `/prune`
 
 **Commands:**
@@ -77,9 +77,9 @@ You can test the context management system with small values to trigger compacti
 ```bash
 # Set up small context window for testing
 export PATCHPAL_CONTEXT_LIMIT=10000      # Force 10k token limit (instead of 200k for Claude)
-export PATCHPAL_COMPACT_THRESHOLD=0.75   # Trigger at 75% (default, but shown for clarity)
+export PATCHPAL_COMPACT_THRESHOLD=0.80   # Trigger at 80% (default, but shown for clarity)
                                          # Note: System prompt + output reserve = ~6.4k tokens baseline
-                                         # So 75% of 10k = 7.5k, leaving ~1k for conversation
+                                         # So 80% of 10k = 8k, leaving ~1.6k for conversation
 export PATCHPAL_PRUNE_PROTECT=500        # Keep only last 500 tokens of tool outputs
 export PATCHPAL_PRUNE_MINIMUM=100        # Prune if we can save 100+ tokens
 
@@ -97,9 +97,9 @@ You: /status
 # Continue - should see pruning messages
 You: search for "context" in all files
 # You should see:
-# ⚠️  Context window at 75% capacity. Compacting...
+# ⚠️  Context window at 80% capacity. Compacting...
 #    Pruned old tool outputs (saved ~400 tokens)
-# ✓ Compaction complete. Saved 850 tokens (75% → 58%)
+# ✓ Compaction complete. Saved 850 tokens (80% → 62%)
 ```
 
 **How It Works:**
@@ -130,7 +130,7 @@ Context Window Status
   Usage: 80%
   [████████████████████████████████████████░░░░░░░░░]
 
-  Auto-compaction: Enabled (triggers at 75%)
+  Auto-compaction: Enabled (triggers at 80%)
 ======================================================================
 ```
 

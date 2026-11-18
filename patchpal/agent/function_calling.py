@@ -203,21 +203,26 @@ if WEB_TOOLS_ENABLED:
 
 
 def _get_current_datetime_message() -> str:
-    """Generate current date/time system message.
+    """Generate current date system message.
 
-    Called dynamically on each LLM API call to ensure date/time is always current.
+    Called dynamically on each LLM API call to ensure the date is always current.
+
+    Date granularity ONLY (no minute-resolution time): the datetime is sent as a
+    trailing system message after the conversation cache breakpoint, and any
+    change to that trailing suffix invalidates the most-recent prompt-cache write
+    on Bedrock/Anthropic. A minute-resolution clock changed the suffix on every
+    minute rollover, collapsing cache reads to the system-prefix floor on ~every
+    other turn. A date-only string changes at most once per day, so the suffix is
+    byte-identical across a session and the cache is not perturbed. Minute-level
+    precision is not needed for the agent's purposes.
 
     Returns:
-        Formatted date/time string for injection into system messages
+        Formatted date string for injection into system messages
     """
     now = datetime.now()
     current_date = now.strftime("%A, %B %d, %Y")  # e.g., "Wednesday, January 15, 2026"
-    current_time = now.strftime("%I:%M %p %Z").strip()  # e.g., "03:45 PM EST"
-    if not current_time.endswith(("EST", "CST", "MST", "PST", "UTC")):
-        # If no timezone abbreviation, just show time without timezone
-        current_time = now.strftime("%I:%M %p").strip()
 
-    return f"## Current Date and Time\nToday is {current_date}. Current time is {current_time}."
+    return f"## Current Date\nToday is {current_date}."
 
 
 def _load_system_prompt() -> str:
@@ -311,7 +316,9 @@ def _apply_prompt_caching(messages: List[Dict[str, Any]], model_id: str) -> List
     """Apply prompt caching markers to messages following OpenCode's strategy.
 
     Caches:
-    - System messages (first 1-2 messages with role="system")
+    - The FIRST system message only (the static SYSTEM_PROMPT). The volatile
+      per-call date/time is appended as a trailing system message and is
+      deliberately NOT cached (its content changes every call).
     - Last 2 non-system messages (recent context, any role except system)
 
     IMPORTANT: AWS Bedrock enforces a hard limit of 4 cache control blocks per request.
@@ -389,6 +396,13 @@ def _apply_prompt_caching(messages: List[Dict[str, Any]], model_id: str) -> List
     # Find system messages (usually at the start)
     system_messages = [i for i, msg in enumerate(messages) if msg.get("role") == "system"]
 
+    # Only the FIRST system message (the static SYSTEM_PROMPT) is a stable cache
+    # prefix. A trailing system message (the per-call date/time, appended at the
+    # end of the list) must NOT be cached: its content changes every call, so a
+    # breakpoint there is wasted and can invalidate the prefix. Restrict caching
+    # to the first system message only.
+    system_messages = system_messages[:1]
+
     # Find last 2 non-system messages (recent context)
     non_system_messages = [i for i, msg in enumerate(messages) if msg.get("role") != "system"]
     last_two_indices = (
@@ -401,8 +415,10 @@ def _apply_prompt_caching(messages: List[Dict[str, Any]], model_id: str) -> List
     # Build list of candidate indices to cache (prioritize system messages)
     candidates = []
 
-    # Add system messages first (up to 2)
-    for idx in system_messages[:2]:
+    # Add the (single, static) system message first. `system_messages` was
+    # already restricted to the first system message above; the trailing
+    # per-call datetime is deliberately excluded.
+    for idx in system_messages:
         msg = messages[idx]
         # Check if this message already has any cache markers
         has_cache = False
@@ -1161,6 +1177,12 @@ Repository root takes priority if both exist."""
             The agent's final response
         """
         # Agent loop
+        # Track consecutive empty responses (no content + no tool calls).
+        # Common with some local models (e.g., GPT-OSS-120B on vLLM) due to
+        # intermittent harmony-format parsing hiccups. A bounded retry usually
+        # recovers since the failure is probabilistic.
+        empty_response_retries = 0
+        empty_response_max_retries = int(os.environ.get("PATCHPAL_EMPTY_RETRY_MAX", "2"))
         for iteration in range(max_iterations):
             # Clear any stale pending images from previous iteration (safety check)
             # Images should already be injected, but this prevents accumulation on error
@@ -1170,12 +1192,19 @@ Repository root takes priority if both exist."""
             # Show thinking message
             print("\033[2m🤔 Thinking...\033[0m", flush=True)
 
-            # Prepare messages with system prompt and dynamic date/time
-            # Date/time is regenerated on each call to prevent staleness in long sessions
-            messages = [
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "system", "content": _get_current_datetime_message()},
-            ] + self.messages
+            # Prepare messages with system prompt and dynamic date/time.
+            # The static SYSTEM_PROMPT is kept FIRST so it (plus the tools block)
+            # forms a stable, byte-identical cacheable prefix across every call.
+            # The volatile date/time is appended at the END instead of in a second
+            # cached system block: placing a per-call-changing string inside the
+            # cached prefix previously invalidated the prefix every call and wasted
+            # a breakpoint (see COST_RECOMMENDATIONS_RANKED.md, Tier 2 fix).
+            # Date/time is regenerated on each call to prevent staleness in long sessions.
+            messages = (
+                [{"role": "system", "content": SYSTEM_PROMPT}]
+                + self.messages
+                + [{"role": "system", "content": _get_current_datetime_message()}]
+            )
 
             # Filter images if BLOCK_IMAGES is enabled (for non-vision models or user preference)
             messages = self.image_handler.filter_images_if_blocked(messages)
@@ -1262,6 +1291,24 @@ Repository root takes priority if both exist."""
                     ):
                         self.cumulative_cache_read_tokens += response.usage.cache_read_input_tokens
 
+                    # Per-call cache instrumentation (Tier 2 #6): logs this call's
+                    # write/read split so the suffix-rewrite / datetime-breakpoint
+                    # hypotheses can be confirmed with data instead of inference.
+                    # Zero overhead unless PATCHPAL_DEBUG_CACHE=true.
+                    if os.environ.get("PATCHPAL_DEBUG_CACHE") == "true":
+                        _call_writes = (
+                            getattr(response.usage, "cache_creation_input_tokens", 0) or 0
+                        )
+                        _call_reads = getattr(response.usage, "cache_read_input_tokens", 0) or 0
+                        _call_prompt = getattr(response.usage, "prompt_tokens", 0) or 0
+                        _denom = _call_writes + _call_reads
+                        _hit = (_call_reads / _denom * 100) if _denom else 0.0
+                        print(
+                            f"[CACHE DEBUG] call #{self.total_llm_calls}: "
+                            f"prompt={_call_prompt} write={_call_writes} "
+                            f"read={_call_reads} this-call-hit={_hit:.1f}%"
+                        )
+
                     # Track OpenAI cache tokens (prompt_tokens_details.cached_tokens)
                     # Only track for OpenAI models to avoid LiteLLM cross-contamination
                     if self._is_openai_model() and hasattr(response.usage, "prompt_tokens_details"):
@@ -1335,6 +1382,8 @@ Repository root takes priority if both exist."""
 
             # Check if there are tool calls
             if hasattr(assistant_message, "tool_calls") and assistant_message.tool_calls:
+                # A non-empty turn succeeded; reset the empty-response retry budget
+                empty_response_retries = 0
                 # Print explanation text before executing tools (render as markdown)
                 if assistant_message.content and assistant_message.content.strip():
                     console = Console()
@@ -1358,13 +1407,36 @@ Repository root takes priority if both exist."""
                         print(f"\033[1;31m✗ {tool_name}: Invalid arguments\033[0m\n", flush=True)
                     else:
                         # Get the tool function (check custom tools first, then built-in)
-                        tool_func = self.custom_tool_funcs.get(tool_name) or TOOL_FUNCTIONS.get(
-                            tool_name
-                        )
-                        if tool_func is None:
+                        tool_func = self.custom_tool_funcs.get(tool_name)
+                        tool_disabled = False  # Track if tool was disabled
+
+                        # If not a custom tool, check built-in tools with enabled_tools filter
+                        if tool_func is None and tool_name in TOOL_FUNCTIONS:
+                            # Only execute built-in tool if it's enabled
+                            # (enabled_tools=None means all enabled, otherwise check the list)
+                            if self.enabled_tools is None or tool_name in self.enabled_tools:
+                                tool_func = TOOL_FUNCTIONS.get(tool_name)
+                            else:
+                                # Tool is not enabled - reject with clear error
+                                tool_disabled = True
+                                available = (
+                                    ", ".join(self.enabled_tools)
+                                    if self.enabled_tools
+                                    else "none (custom tools only)"
+                                )
+                                tool_result = f"Error: Tool '{tool_name}' is not enabled. Available built-in tools: {available}"
+                                print(
+                                    f"\033[1;31m✗ {tool_name}: Tool not enabled\033[0m\n",
+                                    flush=True,
+                                )
+
+                        # Only mark as unknown if tool wasn't found AND wasn't disabled
+                        if tool_func is None and not tool_disabled:
                             tool_result = f"Error: Unknown tool {tool_name}"
                             print(f"\033[1;31m✗ Unknown tool: {tool_name}\033[0m\n", flush=True)
-                        else:
+
+                        # Only execute if we have a function and tool wasn't disabled
+                        if tool_func is not None and not tool_disabled:
                             # Show tool call message
                             if tool_name in self.custom_tool_funcs:
                                 # Custom tool - show generic message with args
@@ -1807,7 +1879,30 @@ Repository root takes priority if both exist."""
                 ):
                     self._perform_auto_compaction()
 
-                return assistant_message.content or "Task completed"
+                # Return content if available, otherwise indicate model didn't respond
+                if assistant_message.content:
+                    return assistant_message.content
+                else:
+                    # Model returned no content and no tool calls.
+                    # This happens intermittently with some local models
+                    # (e.g., GPT-OSS-120B on vLLM) due to harmony-format parsing
+                    # hiccups. Because the failure is probabilistic, retry the turn
+                    # a bounded number of times before giving up.
+                    if empty_response_retries < empty_response_max_retries:
+                        empty_response_retries += 1
+                        # Drop the empty assistant message so it doesn't pollute history
+                        if self.messages and self.messages[-1] is assistant_msg:
+                            self.messages.pop()
+                        print(
+                            f"\033[2m↻ Empty response from model; retrying "
+                            f"({empty_response_retries}/{empty_response_max_retries})...\033[0m",
+                            flush=True,
+                        )
+                        continue
+
+                    # Retries exhausted: surface the honest failure.
+                    # Using "NO_RESPONSE:" prefix for programmatic detection.
+                    return "NO_RESPONSE: Model returned empty response. Try rephrasing your request or type 'continue' to prompt again."
 
         # Max iterations reached
         return (

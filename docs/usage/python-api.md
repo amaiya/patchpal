@@ -142,7 +142,19 @@ minimal_agent = create_agent(
     enabled_tools=["read_file"],  # Only this built-in tool
     custom_tools=[my_calculator]   # Plus custom tools (always added)
 )
+
+# Custom-tools-only agent: disable ALL built-in tools
+custom_only_agent = create_agent(
+    enabled_tools=[],              # Empty list blocks every built-in tool
+    custom_tools=[my_calculator]   # Only custom tools are available
+)
 ```
+
+**Note:** Passing an empty list (`enabled_tools=[]`) disables **all** built-in
+tools, leaving only your `custom_tools` available. This is enforced at execution
+time, so a disabled built-in tool is rejected even if the model attempts to call
+it. Omit the parameter entirely (`enabled_tools=None`, the default) to keep all
+tools enabled.
 
 **Available Built-in Tools:**
 - `read_file`, `read_lines`, `write_file`, `edit_file` - File operations

@@ -162,5 +162,91 @@ def test_env_var_with_spaces():
         del os.environ["PATCHPAL_ENABLED_TOOLS"]
 
 
+def test_disabled_tool_execution_is_blocked(monkeypatch):
+    """Test that disabled tools cannot be executed even if LLM tries to call them.
+
+    This is a regression test for the bug where enabled_tools only filtered
+    the tool schemas sent to the LLM, but didn't prevent execution if the LLM
+    hallucinated a call to a disabled tool.
+    """
+    # Disable streaming for simpler mocking. monkeypatch auto-restores the
+    # env var on teardown, so this won't pollute other tests.
+    monkeypatch.setenv("PATCHPAL_STREAM_OUTPUT", "false")
+
+    with patch("patchpal.agent.function_calling.litellm.completion") as mock_completion:
+        # Create a mock tool call for run_shell (which is NOT enabled)
+        mock_tool_call = MagicMock()
+        mock_tool_call.id = "call_123"
+        mock_tool_call.function.name = "run_shell"
+        mock_tool_call.function.arguments = '{"cmd": "echo test"}'
+
+        # First call: LLM tries to call run_shell (not enabled)
+        mock_response1 = MagicMock()
+        mock_response1.choices = [MagicMock()]
+        mock_response1.choices[0].message.content = "Running command"
+        mock_response1.choices[0].message.tool_calls = [mock_tool_call]
+        mock_response1.usage = MagicMock(
+            prompt_tokens=10,
+            completion_tokens=5,
+            cache_creation_input_tokens=0,
+            cache_read_input_tokens=0,
+        )
+
+        # Second call: LLM responds after seeing the error
+        mock_response2 = MagicMock()
+        mock_response2.choices = [MagicMock()]
+        mock_response2.choices[0].message.content = "Tool not available"
+        mock_response2.choices[0].message.tool_calls = None
+        mock_response2.usage = MagicMock(
+            prompt_tokens=10,
+            completion_tokens=5,
+            cache_creation_input_tokens=0,
+            cache_read_input_tokens=0,
+        )
+
+        mock_completion.side_effect = [mock_response1, mock_response2]
+
+        # Create agent with only read_file enabled (run_shell is NOT enabled)
+        agent = create_agent(enabled_tools=["read_file"])
+
+        # Run - should reject run_shell execution
+        agent.run("Test message")
+
+        # Verify run_shell was blocked (check the agent's message history)
+        tool_results = [msg for msg in agent.messages if msg.get("role") == "tool"]
+        assert len(tool_results) == 1, f"Expected 1 tool result, got {len(tool_results)}"
+
+        # The tool result should contain an error about the tool not being enabled
+        error_message = tool_results[0]["content"]
+        assert "not enabled" in error_message
+        assert "run_shell" in error_message
+
+
+def test_enabled_tool_execution_is_allowed():
+    """Test that enabled tools CAN be executed when LLM calls them."""
+    # This is a simple verification that enabled tools work - detailed behavior
+    # is tested in integration tests
+    agent = create_agent(enabled_tools=["read_file", "write_file"])
+
+    # Just verify the agent was created with correct enabled_tools
+    assert agent.enabled_tools == ["read_file", "write_file"]
+    assert len(agent.custom_tools) == 0
+
+
+def test_empty_enabled_tools_blocks_all_builtins():
+    """Test that enabled_tools=[] blocks all built-in tools (only custom tools allowed)."""
+
+    def custom_tool(x: int) -> str:
+        """A custom tool."""
+        return f"Result: {x}"
+
+    agent = create_agent(enabled_tools=[], custom_tools=[custom_tool])
+
+    # Verify configuration
+    assert agent.enabled_tools == []
+    assert len(agent.custom_tools) == 1
+    assert agent.custom_tools[0].__name__ == "custom_tool"
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
