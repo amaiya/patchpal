@@ -88,21 +88,30 @@ def _dismiss_modals(page: Page):
         pass
 
 
-# Apply nest_asyncio if available to prevent event loop conflicts
-# This must be done EARLY before any Playwright operations
-# nest_asyncio patches asyncio globally to allow nested event loops
+# nest_asyncio patches asyncio globally to allow nested event loops, which the
+# synchronous Playwright API needs. We apply it LAZILY (only when a browser tool
+# is actually used) instead of at import time, because patching asyncio globally
+# at import can interfere with prompt_toolkit's event loop in the interactive
+# CLI and surface as intermittent "Unhandled exception in event loop" errors.
 _NEST_ASYNCIO_APPLIED = False
-try:
-    import nest_asyncio
 
-    nest_asyncio.apply()
-    _NEST_ASYNCIO_APPLIED = True
-except ImportError:
-    # nest_asyncio not installed, may cause issues in async contexts
-    pass
-except Exception:
-    # Silently ignore if nest_asyncio fails to apply
-    pass
+
+def _ensure_nest_asyncio():
+    """Apply nest_asyncio once, on first browser use. Safe to call repeatedly."""
+    global _NEST_ASYNCIO_APPLIED
+    if _NEST_ASYNCIO_APPLIED:
+        return
+    try:
+        import nest_asyncio
+
+        nest_asyncio.apply()
+        _NEST_ASYNCIO_APPLIED = True
+    except ImportError:
+        # nest_asyncio not installed, may cause issues in async contexts
+        pass
+    except Exception:
+        # Silently ignore if nest_asyncio fails to apply
+        pass
 
 
 class _BrowserState:
@@ -141,6 +150,8 @@ class _BrowserState:
             )
 
         if cls._page is None:
+            # Apply nest_asyncio lazily, only now that a browser tool is in use.
+            _ensure_nest_asyncio()
             try:
                 # Try to start playwright - this may fail with asyncio errors
                 cls._playwright = sync_playwright().start()

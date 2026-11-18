@@ -17,7 +17,7 @@ Most recent releases are shown at the top. Each release shows:
 - N/A
 
 ### fixed:
-- N/A
+- Browser tools now apply `nest_asyncio` lazily (on first browser use) instead of at import time, preventing intermittent "Unhandled exception in event loop" errors in the interactive CLI.
 
 
 ## 0.26.0 (2026-11-03)
