@@ -429,6 +429,79 @@ def test_agent_returns_immediately_on_cancellation(monkeypatch):
         TOOL_FUNCTIONS["run_shell"] = original_run_shell
 
 
+def test_cancellation_skips_rest_of_tool_call_batch(monkeypatch):
+    """Cancelling one call in a batch skips the remaining calls instead of prompting for each.
+
+    Regression: pressing Ctrl-C at a permission prompt cancelled that call, but the next
+    call in the same batch immediately showed another prompt (once per remaining call).
+    """
+    from patchpal.agent import create_agent
+    from patchpal.agent.function_calling import TOOL_FUNCTIONS
+
+    monkeypatch.setenv("PATCHPAL_REQUIRE_PERMISSION", "false")
+    monkeypatch.setenv("PATCHPAL_STREAM_OUTPUT", "false")
+
+    executed = []
+
+    def make_tool_call(call_id, name, args):
+        tc = MagicMock()
+        tc.id = call_id
+        tc.function.name = name
+        tc.function.arguments = args
+        return tc
+
+    def mock_completion(*args, **kwargs):
+        mock_response = MagicMock()
+        mock_response.choices = [MagicMock()]
+        mock_response.choices[0].message = MagicMock()
+        mock_response.choices[0].message.content = ""
+        mock_response.choices[0].message.tool_calls = [
+            make_tool_call(
+                "call_1", "edit_file", '{"path": "a.py", "old_string": "x", "new_string": "y"}'
+            ),
+            make_tool_call(
+                "call_2", "edit_file", '{"path": "b.py", "old_string": "x", "new_string": "y"}'
+            ),
+            make_tool_call("call_3", "read_file", '{"path": "c.py"}'),
+        ]
+        return mock_response
+
+    def mock_edit_file(path, old_string, new_string):
+        executed.append(("edit_file", path))
+        if path == "a.py":
+            return "Operation cancelled by user."  # User pressed Ctrl-C at the prompt
+        return f"Edited {path}"
+
+    def mock_read_file(path):
+        executed.append(("read_file", path))  # No permission needed, so it would run silently
+        return "contents"
+
+    originals = {name: TOOL_FUNCTIONS[name] for name in ("edit_file", "read_file")}
+    TOOL_FUNCTIONS["edit_file"] = mock_edit_file
+    TOOL_FUNCTIONS["read_file"] = mock_read_file
+
+    try:
+        with patch(
+            "patchpal.agent.function_calling.litellm.completion", side_effect=mock_completion
+        ) as completion:
+            agent = create_agent()
+            result = agent.run("Make some edits")
+
+        # Only the cancelled call ran; the rest of the batch was skipped
+        assert executed == [("edit_file", "a.py")]
+        assert result == "Operation cancelled by user."
+        assert completion.call_count == 1  # Returned without another LLM call
+
+        # Every tool call still has exactly one result (required by Bedrock/Anthropic)
+        tool_results = [m for m in agent.messages if m.get("role") == "tool"]
+        assert [m["tool_call_id"] for m in tool_results] == ["call_1", "call_2", "call_3"]
+        assert tool_results[0]["content"] == "Operation cancelled by user."
+        for skipped in tool_results[1:]:
+            assert skipped["content"].startswith("Skipped: a previous operation")
+    finally:
+        TOOL_FUNCTIONS.update(originals)
+
+
 def test_agent_doesnt_trigger_on_file_containing_cancellation_text(monkeypatch):
     """Test that reading a file containing 'Operation cancelled by user' doesn't trigger early exit."""
     from patchpal.agent.function_calling import TOOL_FUNCTIONS, create_agent

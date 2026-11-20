@@ -1433,6 +1433,20 @@ Repository root takes priority if both exist."""
                     tool_name = tool_call.function.name
                     tool_args_str = tool_call.function.arguments
 
+                    # Once the user cancels one call (Ctrl-C or "No" at a permission prompt),
+                    # skip the rest of this batch instead of prompting for each one. Every call
+                    # still gets a tool result, which Bedrock/Anthropic require.
+                    if operation_cancelled:
+                        self.messages.append(
+                            {
+                                "role": "tool",
+                                "tool_call_id": tool_call.id,
+                                "name": tool_name,
+                                "content": "Skipped: a previous operation in this batch was cancelled by the user.",
+                            }
+                        )
+                        continue
+
                     # Parse arguments
                     try:
                         tool_args = json.loads(tool_args_str)
