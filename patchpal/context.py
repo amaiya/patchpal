@@ -247,6 +247,31 @@ available when we continue, so include:
 
 Be comprehensive but concise. The goal is to continue work seamlessly without losing context."""
 
+    # Handoff compaction prompt for small context windows (see create_handoff).
+    # Adapted from "You don't need long context" (arXiv:2611.05306, Appendix G): the best
+    # compactions are briefs for the work yet to be done, not narratives of the history.
+    HANDOFF_PROMPT = """Stop work. Write only a concise handoff note; do not call tools.
+
+The conversation will be reset to the system prompt, the user's current request, and this note.
+Files and the environment persist; anything else not in this note will be lost.
+
+Record:
+1. Objective - one line describing the result the user wants. If the latest user message
+   refers to earlier discussion (e.g., "yes" or "do that"), spell out what it refers to.
+2. User instructions and preferences - constraints, decisions, and preferences the user stated.
+3. Established facts - exact paths, relevant symbols or commands, observed values, and
+   important errors/output. Separate observations from unverified ideas.
+4. Applied changes - each changed/created file, what changed, and whether it was verified.
+5. Verification - exact checks run and their outcomes.
+6. Dead ends - failed approaches that should not be repeated.
+7. Remaining plan - outstanding steps in order, the immediate next action, and the
+   condition for completion. If the request is already complete, say so.
+8. Already read - files and line ranges already read, with what they contained, so they
+   aren't re-read.
+
+If needed output was truncated or omitted, give a narrow command to retrieve it.
+Be brief: stay under {max_words} words. Do not repeat the request or this prompt."""
+
     def __init__(self, model_id: str, system_prompt: str):
         """Initialize context manager.
 
@@ -729,3 +754,32 @@ Be comprehensive but concise. The goal is to continue work seamlessly without lo
         }
 
         return summary_message, summary_text
+
+    def create_handoff(
+        self,
+        messages: List[Dict[str, Any]],
+        completion_func: Callable,
+        max_tokens: int,
+    ) -> str:
+        """Ask the LLM for a structured handoff note for continuing the work.
+
+        Used by handoff compaction for small context windows: the conversation is
+        replaced with the current request plus this note.
+
+        Args:
+            messages: Conversation to hand off (without the memory message)
+            completion_func: Function to call the LLM, accepting (messages, max_tokens)
+            max_tokens: Maximum tokens for the note
+
+        Returns:
+            Handoff note text
+
+        Raises:
+            Exception: If the LLM call fails or returns an empty note
+        """
+        prompt = self.HANDOFF_PROMPT.format(max_words=max(50, int(max_tokens * 0.6)))
+        response = completion_func(messages + [{"role": "user", "content": prompt}], max_tokens)
+        note = (response.choices[0].message.content or "").strip()
+        if not note:
+            raise ValueError("Empty handoff note")
+        return note

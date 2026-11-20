@@ -66,7 +66,7 @@ The `/status` command shows cumulative token usage:
 See the [Configuration](https://github.com/amaiya/patchpal?tab=readme-ov-file#configuration) section for context management settings including:
 - `PATCHPAL_DISABLE_AUTOCOMPACT` - Disable auto-compaction
 - `PATCHPAL_COMPACT_THRESHOLD` - Adjust compaction threshold
-- `PATCHPAL_CONTEXT_LIMIT` - Override context limit for testing
+- `PATCHPAL_CONTEXT_LIMIT` - Override context limit (for testing, or to match a local server's window size; see [Small Context Windows](#small-context-windows-tinyagent))
 - `PATCHPAL_PROACTIVE_PRUNING` - Prune tool outputs proactively after calls (default: true, uses smart summarization)
 - `PATCHPAL_PRUNE_PROTECT` / `PATCHPAL_PRUNE_MINIMUM` - Pruning controls
 
@@ -135,3 +135,36 @@ Context Window Status
 ```
 
 The system ensures you can work for extended periods without hitting context limits.
+
+## Small Context Windows (TinyAgent)
+
+Models with small context windows (64K tokens or less, e.g. many local models) use `TinyAgent`, a version of the standard agent built for small windows. Instead of trying to fit everything in the context, it compacts often into a short handoff note and reads only the parts of files it needs.
+
+**When it is used:**
+
+- Automatically, when the model's context limit is at or below `PATCHPAL_SMALL_CONTEXT_THRESHOLD` (default: 65,536 tokens; set to `0` to disable)
+- `PATCHPAL_TINY_MODE=true` forces it on and `PATCHPAL_TINY_MODE=false` forces it off, whatever the context size
+
+!!! note "Local models"
+    PatchPal detects context limits from the model name, not from the server, so it can't see `OLLAMA_CONTEXT_LENGTH` or vLLM's `--max-model-len`. Most local models (Qwen, Llama, GLM, etc.) are detected as 128K or more. Set `PATCHPAL_CONTEXT_LIMIT` to the window size you're actually serving (e.g., `export PATCHPAL_CONTEXT_LIMIT=32000` for a 32,768 window, leaving some headroom). That makes compaction trigger at the right point and selects TinyAgent for windows of 64K or less.
+
+**What it does differently:**
+
+1. **Fewer tools by default**: Only `read_file`, `read_lines`, `edit_file`, `write_file`, and `run_shell` are enabled (plus `web_search`/`web_fetch` if web access is enabled), because full tool descriptions alone can fill much of a small window. `PATCHPAL_ENABLED_TOOLS` or `enabled_tools` overrides this.
+2. **Tool output capped to the window**: One tool result can be at most about 15% of the context window (minimum 2,000 characters).
+3. **Selective reading prompt**: The system prompt tells the model to find the right lines first (with `grep`, `wc -l`, or `head`) and then read small ranges with `read_lines`. It also says not to dump whole files or re-read ranges it has already seen.
+4. **Handoff compaction**: When the context fills up, the agent does not keep a summary plus the last turns. It replaces the whole conversation with:
+    - Project memory (`MEMORY.md`)
+    - The current request plus a structured handoff note written by the LLM (capped at about 10% of the window)
+    - The last assistant reply, if the turn just ended (so a follow-up like "yes" still makes sense)
+
+    The full pre-compaction history is saved to `~/.patchpal/repos/<repo>/history/handoff_<timestamp>.md`, so the agent can find details later with `grep` or `read_lines`. If the handoff note can't be created, PatchPal falls back to pruning tool outputs and suggests running `/clear`.
+
+**Python API:**
+
+```python
+from patchpal.agent import create_tiny_agent
+
+agent = create_tiny_agent(model_id="ollama_chat/qwen3:8b")
+response = agent.run("Fix the failing test in tests/test_utils.py")
+```

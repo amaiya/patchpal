@@ -12,7 +12,7 @@ from prompt_toolkit.history import InMemoryHistory
 from rich.console import Console
 from rich.markdown import Markdown
 
-from patchpal.agent import create_agent, create_react_agent
+from patchpal.agent import PatchPalAgent, create_agent, create_react_agent
 from patchpal.config import config
 from patchpal.tools import audit_logger, set_require_permission_for_all
 from patchpal.tools.common import reset_operation_counter
@@ -433,6 +433,18 @@ Supported models: Any LiteLLM-supported model
             litellm_kwargs=litellm_kwargs,
         )
 
+        # Use TinyAgent for small context windows (PATCHPAL_TINY_MODE forces on/off).
+        # Checked after creation so the limit reflects model detection (e.g., Bedrock ARNs).
+        from patchpal.agent.tiny import TinyAgent, should_use_tiny_agent
+
+        context_limit = getattr(getattr(agent, "context_manager", None), "context_limit", None)
+        if (
+            isinstance(agent, PatchPalAgent)
+            and isinstance(context_limit, int)
+            and should_use_tiny_agent(context_limit)
+        ):
+            agent = TinyAgent.from_agent(agent)
+
     # Get max iterations from environment variable or use default
     max_iterations = config.MAX_ITERATIONS
 
@@ -455,6 +467,19 @@ Supported models: Any LiteLLM-supported model
     print(" ║  PatchPal - AI Coding and Automation Assistant  🤖        ║")
     print(" ╚═══════════════════════════════════════════════════════════╝")
     print(f"\nUsing model: {model_id}")
+
+    # Show tiny agent indicator if active
+    from patchpal.agent.tiny import TinyAgent
+
+    if isinstance(agent, TinyAgent):
+        reason = (
+            "PATCHPAL_TINY_MODE=true"
+            if config.TINY_MODE
+            else f"context window {agent.context_manager.context_limit:,} ≤ {config.SMALL_CONTEXT_THRESHOLD:,}"
+        )
+        tool_names = ", ".join(t["function"]["name"] for t in agent._build_tools())
+        print(f"\033[1;36m🔧 Tiny agent ({reason}): handoff compaction, selective reading\033[0m")
+        print(f"\033[2m   Tools: {tool_names}\033[0m")
 
     # Show custom tools info if any were loaded
     if custom_tools_message:

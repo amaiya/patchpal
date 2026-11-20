@@ -552,7 +552,7 @@ Search for files by glob pattern.
 - `PATCHPAL_BLOCK_IMAGES` - Block images from being sent to LLM (default: false)
 - `PATCHPAL_ENABLE_WEB` - Enable/disable web tools (web_search, web_fetch, and browser_* tools) (default: true)
 - `PATCHPAL_ALLOW_SUDO` - Allow sudo/su commands (default: false)
-- `PATCHPAL_MINIMAL_TOOLS` - Use minimal tools mode: 4-6 core tools only (default: false)
+- `PATCHPAL_MINIMAL_TOOLS` - Use minimal tools mode: 5 core tools, or 7 with web tools (default: false)
 
 ### Minimal Tools Mode
 
@@ -560,7 +560,9 @@ When `PATCHPAL_MINIMAL_TOOLS=true`, only these tools are available:
 - `read_file`, `read_lines`, `write_file`, `edit_file`, `run_shell`
 - `web_search`, `web_fetch` (if `PATCHPAL_ENABLE_WEB=true`)
 
-This reduces tool count to 4-6 for local models with tool confusion issues. Harmless shell commands still work without permission prompts.
+This reduces tool count to 5 (or 7 with web tools) for local models with tool confusion issues. Harmless shell commands still work without permission prompts.
+
+[TinyAgent](../context-management.md#small-context-windows-tinyagent), used for context windows of 64K or less, applies the same tool set by default without this setting.
 
 ## Permission System
 

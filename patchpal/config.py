@@ -325,6 +325,23 @@ class Config:
         return float(os.getenv("PATCHPAL_COMPACT_THRESHOLD", "0.80"))
 
     @property
+    def SMALL_CONTEXT_THRESHOLD(self) -> int:
+        """Use TinyAgent automatically for context windows at or below N tokens (default: 65,536).
+
+        TinyAgent uses handoff compaction and selective reading, which suit small windows.
+        Set to 0 to disable automatic selection (PATCHPAL_TINY_MODE still applies).
+        """
+        return int(os.getenv("PATCHPAL_SMALL_CONTEXT_THRESHOLD", "65536"))
+
+    @property
+    def TINY_MODE(self) -> Optional[bool]:
+        """Force TinyAgent on (true) or off (false); unset = automatic by context size."""
+        value = os.getenv("PATCHPAL_TINY_MODE")
+        if value is None or value.strip() == "":
+            return None
+        return value.strip().lower() in ("true", "1", "yes")
+
+    @property
     def PROACTIVE_PRUNING(self) -> bool:
         """Proactively prune after tool calls when outputs exceed PRUNE_PROTECT (default: true)."""
         return _get_env_bool("PATCHPAL_PROACTIVE_PRUNING", "true")

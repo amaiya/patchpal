@@ -211,7 +211,8 @@ export PATCHPAL_DISABLE_AUTOCOMPACT=true     # Disable auto-compaction (default:
 export PATCHPAL_COMPACT_THRESHOLD=0.80       # Trigger compaction at % full (default: 0.80 = 80%)
 
 # Context Limits
-export PATCHPAL_CONTEXT_LIMIT=100000         # Override model's context limit (for testing)
+export PATCHPAL_CONTEXT_LIMIT=100000         # Override model's context limit (for testing, or to match
+                                              # a local server's window, e.g. OLLAMA_CONTEXT_LENGTH)
                                               # Leave unset to use model's actual capacity
 
 # Pruning Controls
@@ -219,7 +220,15 @@ export PATCHPAL_PROACTIVE_PRUNING=true       # Prune tool outputs after calls wh
                                               # Uses intelligent summarization to preserve context
 export PATCHPAL_PRUNE_PROTECT=40000          # Keep last N tokens of tool outputs (default: 40000)
 export PATCHPAL_PRUNE_MINIMUM=20000          # Minimum tokens to prune (default: 20000)
+
+# Small Context Windows (TinyAgent)
+export PATCHPAL_SMALL_CONTEXT_THRESHOLD=65536 # Use TinyAgent automatically for context windows <= N tokens
+                                              # (default: 65536; set to 0 to disable automatic selection)
+export PATCHPAL_TINY_MODE=true               # Force TinyAgent on (true) or off (false)
+                                              # Leave unset to choose automatically by context size
 ```
+
+See [Small Context Windows](context-management.md#small-context-windows-tinyagent) for details.
 
 ### MCP (Model Context Protocol) Integration
 
@@ -237,11 +246,14 @@ export PATCHPAL_ENABLE_MCP=false             # Disable MCP tool loading (default
 ```bash
 # Limit to Essential Tools Only
 export PATCHPAL_MINIMAL_TOOLS=true           # Enable minimal tools mode (default: false)
-                                              # Limits agent to 5 essential tools: read_file, edit_file, write_file, run_shell, grep
+                                              # Limits agent to 5 essential tools: read_file, read_lines, edit_file, write_file, run_shell
+                                              # (plus web_search and web_fetch if PATCHPAL_ENABLE_WEB=true)
                                               # Recommended for: local models <20B params, models that struggle with tool selection
                                               # Improves: decision speed (2-3s vs 10-30s), tool accuracy (~95% vs ~60%)
-                                              # Trade-off: No code_structure, web tools, TODO tools, etc.
+                                              # Trade-off: No code_structure, TODO tools, etc.
 ```
+
+For context windows of 64K or less, [TinyAgent](context-management.md#small-context-windows-tinyagent) uses this tool set by default.
 
 #### Limiting Available Tools (enabled_tools)
 

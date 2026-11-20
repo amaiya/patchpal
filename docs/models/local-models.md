@@ -11,6 +11,8 @@ vLLM provides:
 
 **For models without native function calling support**, PatchPal includes a [ReAct agent mode](#react-mode-for-models-without-function-calling) that uses text-based tool invocation instead of native function calling APIs.
 
+**For small context windows** (64K or less, common with local servers), PatchPal uses [TinyAgent](#small-context-windows-tinyagent) once you set `PATCHPAL_CONTEXT_LIMIT` to your window size.
+
 ## vLLM (Recommended for Local Models)
 
 vLLM is significantly faster than Ollama due to optimized inference with continuous batching and PagedAttention.
@@ -154,7 +156,11 @@ For better performance with local models (both Ollama and vLLM), especially smal
 
 ```bash
 # Reduce tool confusion by limiting to 5 essential tools
+# (only needed above 64K; TinyAgent uses these tools by default)
 export PATCHPAL_MINIMAL_TOOLS=true
+
+# Match your served context window (enables TinyAgent; see "Small Context Windows" below)
+export PATCHPAL_CONTEXT_LIMIT=32000
 
 # Disable web tools for offline/faster operation
 export PATCHPAL_ENABLE_WEB=false
@@ -252,7 +258,7 @@ export PATCHPAL_CONTEXT_LIMIT=32000
 patchpal --model ollama_chat/qwen3.5:4b
 ```
 
-**Important:** You must also set `PATCHPAL_CONTEXT_LIMIT` to match your Ollama context window. This tells PatchPal how much context is actually available, preventing premature context compaction. Set it slightly below `OLLAMA_CONTEXT_LENGTH` (e.g., 32000 for a 32768 window) to leave headroom.
+**Important:** You must also set `PATCHPAL_CONTEXT_LIMIT` to match your Ollama context window. This tells PatchPal how much context is actually available, preventing premature context compaction. Set it slightly below `OLLAMA_CONTEXT_LENGTH` (e.g., 32000 for a 32768 window) to leave headroom. This also enables [TinyAgent](#small-context-windows-tinyagent).
 
 **Alternative: Custom Modelfile (For Fine-Tuned Control):**
 
@@ -351,6 +357,23 @@ patchpal --model ollama_chat/glm-4.7-flash:q4_K_M
 # vLLM (recommended for production)
 patchpal --model hosted_vllm/openai/gpt-oss-120b
 ```
+
+## Small Context Windows (TinyAgent)
+
+Local models are often served with small context windows (e.g., `OLLAMA_CONTEXT_LENGTH=32768`). When `PATCHPAL_CONTEXT_LIMIT` is 64K or less, PatchPal automatically uses **TinyAgent**, which:
+
+- Uses minimal tools by default
+- Caps tool output to the window size and prompts the model to read selectively
+- Compacts into a short handoff note when the context fills up
+
+PatchPal can't detect your server's window size, so set `PATCHPAL_CONTEXT_LIMIT` to match it (slightly below, to leave headroom):
+
+```bash
+export PATCHPAL_CONTEXT_LIMIT=32000
+patchpal --model ollama_chat/qwen3.5:4b   # Shows "🔧 Tiny agent (context window 32,000 ≤ 65,536): ..."
+```
+
+`PATCHPAL_TINY_MODE=true` forces it on. TinyAgent doesn't apply in [ReAct mode](#react-mode-for-models-without-function-calling), which keeps its own compaction. See [Small Context Windows](../context-management.md#small-context-windows-tinyagent) for details.
 
 ## ReAct Mode for Models Without Function Calling
 

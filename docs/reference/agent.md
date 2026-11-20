@@ -14,6 +14,11 @@ The core agent implementation for PatchPal, providing the main interface for int
       show_root_heading: true
       heading_level: 3
 
+::: patchpal.agent.create_tiny_agent
+    options:
+      show_root_heading: true
+      heading_level: 3
+
 !!! note "ReAct Agent for Local Models"
     For local models that don't support native function calling, use `create_react_agent()` instead of `create_agent()`.
     See [Local Models - ReAct Mode](../models/local-models.md#react-mode-for-models-without-function-calling) for details.
@@ -40,6 +45,16 @@ The core agent implementation for PatchPal, providing the main interface for int
       members:
         - __init__
         - run
+
+### TinyAgent (Small Context Windows)
+
+::: patchpal.agent.TinyAgent
+    options:
+      show_root_heading: true
+      heading_level: 4
+      members:
+        - __init__
+        - from_agent
 
 ## Usage Example
 
