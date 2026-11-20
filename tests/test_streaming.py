@@ -172,3 +172,103 @@ def test_stream_renderer_configuration():
     assert StreamRenderer.TOKEN_DISPLAY_THRESHOLD == 20
     assert StreamRenderer.SLOW_RESPONSE_THRESHOLD == 5.0
     assert len(StreamRenderer.SPINNER_FRAMES) == 10
+
+
+# ---------------------------------------------------------------------------
+# Tool call accumulation across streamed chunks. LiteLLM normalizes every provider
+# to OpenAI-style chunks, but providers differ in how a tool call is split up.
+# ---------------------------------------------------------------------------
+
+
+def _chunk(tool_calls=None, content=None):
+    """Build a LiteLLM-style streaming chunk with the given tool call deltas."""
+    from litellm.types.utils import Delta, ModelResponseStream, StreamingChoices
+
+    return ModelResponseStream(
+        choices=[StreamingChoices(index=0, delta=Delta(content=content, tool_calls=tool_calls))]
+    )
+
+
+def _tc(index, id=None, name=None, arguments=None):
+    return {
+        "index": index,
+        "id": id,
+        "type": "function",
+        "function": {"name": name, "arguments": arguments},
+    }
+
+
+def _stream(chunks):
+    """Run chunks through stream_completion()'s streaming path and return the tool calls."""
+
+    def completion_call(stream):
+        # stream_completion falls back to a blocking call if streaming raises; fail
+        # loudly instead so a broken accumulator can't pass by falling back
+        assert stream, "fell back to non-streaming"
+        return iter(chunks)
+
+    response = stream_completion(completion_call, show_progress=True)
+    calls = response.choices[0].message.tool_calls or []
+    return [(c.id, c.function.name, c.function.arguments) for c in calls]
+
+
+def test_stream_tool_calls_anthropic_style():
+    """Anthropic (via LiteLLM): id + name on the first chunk, then argument pieces
+    with id=None; each call has its own index."""
+    calls = _stream(
+        [
+            _chunk([_tc(0, "toolu_1", "read_file", "")]),
+            _chunk([_tc(0, None, None, '{"path": ')]),
+            _chunk([_tc(0, None, None, '"a.md"}')]),
+            _chunk([_tc(1, "toolu_2", "read_file", "")]),
+            _chunk([_tc(1, None, None, '{"path": "b.md"}')]),
+        ]
+    )
+    assert calls == [
+        ("toolu_1", "read_file", '{"path": "a.md"}'),
+        ("toolu_2", "read_file", '{"path": "b.md"}'),
+    ]
+
+
+def test_stream_tool_calls_openai_style():
+    """OpenAI / vLLM: one call's arguments split across chunks with the same index."""
+    calls = _stream(
+        [
+            _chunk([_tc(0, "call_1", "run_shell", '{"cmd"')]),
+            _chunk([_tc(0, None, None, ': "ls')]),
+            _chunk([_tc(0, None, None, ' -la"}')]),
+        ]
+    )
+    assert calls == [("call_1", "run_shell", '{"cmd": "ls -la"}')]
+
+
+def test_stream_tool_calls_same_id_repeated():
+    """A provider that repeats the same id on every chunk of one call still yields one call."""
+    calls = _stream(
+        [
+            _chunk([_tc(0, "call_1", "read_file", '{"path": ')]),
+            _chunk([_tc(0, "call_1", None, '"a.md"}')]),
+        ]
+    )
+    assert calls == [("call_1", "read_file", '{"path": "a.md"}')]
+
+
+def test_stream_tool_calls_ollama_style_parallel_calls_not_merged():
+    """Ollama (via LiteLLM): each complete call arrives in its own chunk, all with index 0
+    but a new id. These must stay separate calls.
+
+    Regression: with qwen3.5:4b, parallel read_file calls were merged into one invalid
+    arguments string ('{"path": "a.md"}{"path": "b.md"}...'), so every read failed.
+    """
+    calls = _stream(
+        [
+            _chunk([_tc(0, "uuid-1", "read_file", '{"path": "docs/index.md"}')]),
+            _chunk([_tc(0, "uuid-2", "read_file", '{"path": "docs/README.md"}')]),
+            _chunk([_tc(0, "uuid-3", "read_file", '{"path": "docs/configuration.md"}')]),
+        ]
+    )
+    assert calls == [
+        ("uuid-1", "read_file", '{"path": "docs/index.md"}'),
+        ("uuid-2", "read_file", '{"path": "docs/README.md"}'),
+        ("uuid-3", "read_file", '{"path": "docs/configuration.md"}'),
+    ]

@@ -23,6 +23,7 @@ Most recent releases are shown at the top. Each release shows:
 - Compaction no longer summarizes away the `MEMORY.md` project memory message (which is only loaded once per session).
 - Cancelling a tool call (Ctrl-C or "No" at a permission prompt) now skips the remaining tool calls in the same batch, instead of prompting again for each one.
 - A tool call with malformed JSON arguments no longer breaks the session with Ollama models (every later request failed with `JSONDecodeError: Extra data`).
+- Parallel tool calls from Ollama models are no longer merged into one invalid call when streaming (e.g., several `read_file` calls failing with "Invalid arguments").
 - `/clear` now reloads `MEMORY.md` instead of dropping project memory for the rest of the session.
 
 

@@ -194,6 +194,7 @@ def stream_completion(completion_call, show_progress: bool = True):
         # Accumulate response
         accumulated_content = ""
         accumulated_tool_calls = []
+        tool_call_slots = {}  # stream index -> position in accumulated_tool_calls
         response_model = None
         response_usage = None
         finish_reason = None
@@ -248,8 +249,18 @@ def stream_completion(completion_call, show_progress: bool = True):
                 # Accumulate tool calls
                 if hasattr(delta, "tool_calls") and delta.tool_calls:
                     for tc in delta.tool_calls:
-                        # Ensure we have enough slots
-                        while len(accumulated_tool_calls) <= tc.index:
+                        # Find this chunk's call. Anthropic/OpenAI-style streams split one
+                        # call across chunks with the same index, sending the id only on the
+                        # first. Ollama (via LiteLLM) sends each complete call in its own
+                        # chunk, all with index 0 but a new id, so a different id at the same
+                        # index starts a new call (otherwise parallel calls are merged into
+                        # one invalid arguments string).
+                        slot = tool_call_slots.get(tc.index)
+                        if slot is None or (
+                            tc.id
+                            and accumulated_tool_calls[slot]["id"]
+                            and tc.id != accumulated_tool_calls[slot]["id"]
+                        ):
                             accumulated_tool_calls.append(
                                 {
                                     "id": None,
@@ -257,17 +268,17 @@ def stream_completion(completion_call, show_progress: bool = True):
                                     "function": {"name": "", "arguments": ""},
                                 }
                             )
+                            slot = len(accumulated_tool_calls) - 1
+                            tool_call_slots[tc.index] = slot
 
                         # Update tool call data
                         if tc.id:
-                            accumulated_tool_calls[tc.index]["id"] = tc.id
+                            accumulated_tool_calls[slot]["id"] = tc.id
                         if hasattr(tc, "function"):
                             if tc.function.name:
-                                accumulated_tool_calls[tc.index]["function"]["name"] = (
-                                    tc.function.name
-                                )
+                                accumulated_tool_calls[slot]["function"]["name"] = tc.function.name
                             if tc.function.arguments:
-                                accumulated_tool_calls[tc.index]["function"]["arguments"] += (
+                                accumulated_tool_calls[slot]["function"]["arguments"] += (
                                     tc.function.arguments
                                 )
 
