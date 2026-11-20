@@ -6,6 +6,7 @@ import os
 os.environ["PATCHPAL_ENABLE_MCP"] = "false"
 os.environ["PATCHPAL_STREAM_OUTPUT"] = "false"
 
+import json
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -1321,3 +1322,84 @@ def test_llm_timeout_passed_to_completion(monkeypatch):
         assert len(completion_kwargs) > 0
         assert "timeout" in completion_kwargs[0]
         assert completion_kwargs[0]["timeout"] == 300  # Default value
+
+
+def test_malformed_tool_arguments_dont_break_later_requests(monkeypatch):
+    """A malformed tool call must not poison the history.
+
+    Regression: qwen3.5:4b emitted read_file arguments with extra data after the JSON object.
+    PatchPal reported "Invalid arguments", but kept the raw string in the history, and LiteLLM's
+    Ollama adapter re-parses past tool call arguments on every request, so every later request
+    raised "JSONDecodeError: Extra data".
+    """
+    from litellm.llms.ollama.chat.transformation import OllamaChatConfig
+    from litellm.types.utils import ChatCompletionMessageToolCall, Function
+
+    from patchpal.agent import create_agent
+    from patchpal.agent.function_calling import TOOL_FUNCTIONS
+
+    monkeypatch.setenv("PATCHPAL_REQUIRE_PERMISSION", "false")
+    monkeypatch.setenv("PATCHPAL_STREAM_OUTPUT", "false")
+    bad_args = '{"path": "/repo/CONTRIBUTING.md"}{"path": "x"}'
+    executed = []
+    sent_messages = []
+
+    def mock_completion(*args, **kwargs):
+        # Convert messages as LiteLLM does for Ollama; raises on malformed history.
+        # LiteLLM serializes tool call objects to dicts before this step.
+        serialized = [
+            {
+                "role": m["role"],
+                "content": m.get("content") or "",
+                **(
+                    {"tool_calls": [tc.model_dump() for tc in m["tool_calls"]]}
+                    if m.get("tool_calls")
+                    else {}
+                ),
+            }
+            for m in kwargs["messages"]
+        ]
+        OllamaChatConfig().transform_request(
+            model="qwen3.5:4b",
+            messages=serialized,
+            optional_params={},
+            litellm_params={},
+            headers={},
+        )
+        sent_messages.append(kwargs["messages"])
+        response = MagicMock()
+        response.choices = [MagicMock()]
+        if len(sent_messages) == 1:
+            response.choices[0].message.content = ""
+            response.choices[0].message.tool_calls = [
+                ChatCompletionMessageToolCall(
+                    id="call_1",
+                    type="function",
+                    function=Function(name="read_file", arguments=bad_args),
+                )
+            ]
+        else:
+            response.choices[0].message.content = "Done."
+            response.choices[0].message.tool_calls = None
+        return response
+
+    original = TOOL_FUNCTIONS["read_file"]
+    TOOL_FUNCTIONS["read_file"] = lambda path: executed.append(path) or "contents"
+    try:
+        with patch(
+            "patchpal.agent.function_calling.litellm.completion", side_effect=mock_completion
+        ):
+            agent = create_agent(model_id="ollama_chat/qwen3.5:4b")
+            result = agent.run("Read CONTRIBUTING.md")
+    finally:
+        TOOL_FUNCTIONS["read_file"] = original
+
+    assert result == "Done."  # Second request succeeded instead of raising
+    assert executed == []  # Malformed call still isn't executed
+    tool_msg = next(m for m in agent.messages if m.get("role") == "tool")
+    assert tool_msg["content"] == "Error: Invalid JSON arguments for read_file"
+    # History keeps the first valid object, so it records what was attempted
+    assistant = next(m for m in agent.messages if m.get("tool_calls"))
+    assert json.loads(assistant["tool_calls"][0].function.arguments) == {
+        "path": "/repo/CONTRIBUTING.md"
+    }

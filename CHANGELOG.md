@@ -22,6 +22,7 @@ Most recent releases are shown at the top. Each release shows:
 - Fixed output reserve not being recomputed when the context limit is updated after detecting the underlying model of a Bedrock application inference profile (e.g., a 1M-token model kept the 20,480 reserve computed from the 128K default). Detected limits also no longer override `PATCHPAL_CONTEXT_LIMIT`.
 - Compaction no longer summarizes away the `MEMORY.md` project memory message (which is only loaded once per session).
 - Cancelling a tool call (Ctrl-C or "No" at a permission prompt) now skips the remaining tool calls in the same batch, instead of prompting again for each one.
+- A tool call with malformed JSON arguments no longer breaks the session with Ollama models (every later request failed with `JSONDecodeError: Extra data`).
 - `/clear` now reloads `MEMORY.md` instead of dropping project memory for the rest of the session.
 
 

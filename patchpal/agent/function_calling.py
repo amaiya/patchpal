@@ -312,6 +312,29 @@ def _supports_prompt_caching(model_id: str) -> bool:
     return False
 
 
+def _repair_tool_arguments(arguments: Any) -> str:
+    """Return a valid JSON object string for tool call arguments that failed to parse.
+
+    Small models sometimes emit malformed arguments, e.g. a valid object followed by extra
+    text or a second object ('{"path": "a.md"}{"path": "b.md"}'). Keeps the first JSON object
+    if there is one, so the history still records what was attempted; otherwise returns "{}".
+
+    Args:
+        arguments: The raw arguments string from the model
+
+    Returns:
+        A string that json.loads() parses to a dict
+    """
+    if isinstance(arguments, str):
+        try:
+            value, _ = json.JSONDecoder().raw_decode(arguments.lstrip())
+            if isinstance(value, dict):
+                return json.dumps(value)
+        except (json.JSONDecodeError, ValueError):
+            pass
+    return "{}"
+
+
 def _apply_prompt_caching(messages: List[Dict[str, Any]], model_id: str) -> List[Dict[str, Any]]:
     """Apply prompt caching markers to messages following OpenCode's strategy.
 
@@ -1479,6 +1502,11 @@ Repository root takes priority if both exist."""
                     except json.JSONDecodeError:
                         tool_result = f"Error: Invalid JSON arguments for {tool_name}"
                         print(f"\033[1;31m✗ {tool_name}: Invalid arguments\033[0m\n", flush=True)
+                        # Repair the stored call so the history stays valid JSON. Some
+                        # providers (e.g., LiteLLM's Ollama adapter) re-parse past tool call
+                        # arguments on every request, so one malformed call would otherwise
+                        # make every later request fail. The tool still isn't run.
+                        tool_call.function.arguments = _repair_tool_arguments(tool_args_str)
                     else:
                         # Get the tool function (check custom tools first, then built-in)
                         tool_func = self.custom_tool_funcs.get(tool_name)
