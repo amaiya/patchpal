@@ -670,3 +670,29 @@ def test_handoff_states_working_directory_and_labels_history_log(
     )
     # Working directory comes before the history path, right after the note
     assert content.index("Working directory:") < content.index(str(saved))
+
+
+def test_prune_handoff_history_keeps_newest_100(tmp_path):
+    """Saved histories are capped at 100 (one is written per compaction)."""
+    files = [tmp_path / f"handoff_20260101_{i:06d}_000000.md" for i in range(105)]
+    for f in files:
+        f.write_text("x")
+    (tmp_path / "notes.md").write_text("unrelated")
+
+    TinyAgent._prune_handoff_history(tmp_path, keep=files[-1])
+
+    assert sorted(tmp_path.glob("handoff_*.md")) == files[-100:]
+    assert (tmp_path / "notes.md").exists()  # Only handoff_*.md files are touched
+
+
+def test_handoff_compaction_survives_pruning_failure(small_agent, monkeypatch):
+    def failing_prune(history_dir, keep):
+        raise PermissionError("read-only")
+
+    monkeypatch.setattr(TinyAgent, "_prune_handoff_history", staticmethod(failing_prune))
+    agent = small_agent
+    agent.messages += _live_test_history()
+    _install_llm(agent)
+    agent._perform_auto_compaction()
+
+    assert agent.messages[1]["metadata"]["is_handoff"]  # Compaction still completed

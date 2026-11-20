@@ -37,6 +37,9 @@ TOOL_OUTPUT_FRACTION = 0.15
 # prefix (measured: ~47-53 for patchpal's own source files)
 CHARS_PER_CODE_LINE = 50
 
+# Saved handoff histories to keep per repo (~10-40KB each); older ones are deleted
+MAX_HANDOFF_HISTORY_FILES = 100
+
 SELECTIVE_READING_PROMPT = """
 
 ## Small context window
@@ -271,9 +274,28 @@ class TinyAgent(PatchPalAgent):
                     args = getattr(fn, "arguments", None) or (fn or {}).get("arguments", "")
                     lines.append(f"[tool call] {name}({args})\n")
             path.write_text("\n".join(lines), encoding="utf-8")
+            self._prune_handoff_history(history_dir, keep=path)
             return str(path)
         except Exception:
             return None
+
+    @staticmethod
+    def _prune_handoff_history(history_dir, keep) -> None:
+        """Delete the oldest saved handoff histories beyond MAX_HANDOFF_HISTORY_FILES.
+
+        One file is written per compaction and nothing else removes them. Only
+        handoff_*.md files are considered; the file just written is never deleted
+        (the handoff note points to it). Failures are ignored so compaction is never
+        interrupted.
+        """
+        try:
+            # Timestamped names sort chronologically, so no reliance on mtimes
+            files = sorted(history_dir.glob("handoff_*.md"))
+            for old in files[: max(0, len(files) - MAX_HANDOFF_HISTORY_FILES)]:
+                if old != keep:
+                    old.unlink(missing_ok=True)
+        except Exception:
+            pass
 
     def _perform_handoff_compaction(self):
         """Handoff compaction for small context windows.
