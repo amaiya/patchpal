@@ -662,7 +662,7 @@ def test_handoff_states_working_directory_and_labels_history_log(
     assert (
         f"Working directory: {project} (relative paths in this note are relative to it)" in content
     )
-    # The history path is labeled as PatchPal's own log, not part of the project
+    # The history path is labeled as a saved log, not part of the project
     saved = next((tmp_path / "history").glob("handoff_*.md"))
     assert (
         f"(not a project file; search it with grep/read_lines only if you need a detail from earlier): {saved}"
@@ -696,3 +696,23 @@ def test_handoff_compaction_survives_pruning_failure(small_agent, monkeypatch):
     agent._perform_auto_compaction()
 
     assert agent.messages[1]["metadata"]["is_handoff"]  # Compaction still completed
+
+
+def test_system_prompt_states_working_directory(monkeypatch):
+    """Live 16K regression: qwen3.5:4b's first call read ~/.patchpal/repos/patchpal/README.md.
+    The MEMORY.md message's path was the only absolute path the model had seen."""
+    from pathlib import Path
+
+    project = Path("/home/user/projects/patchpal")
+    monkeypatch.setattr("patchpal.tools.common.REPO_ROOT", project)
+    monkeypatch.setenv("PATCHPAL_CONTEXT_LIMIT", "16384")
+
+    prompt = create_tiny_agent().system_prompt
+    section = prompt.split("## Small context window", 1)[1]
+    assert f"Working directory: {project}. This is the project" in section
+    assert (
+        "Files under ~/.patchpal/ (memory, logs, saved conversation history) belong to" in section
+    )
+    assert "PatchPal" not in section  # The model is never told what PatchPal is
+    # PatchPalAgent's prompt is unchanged
+    assert "Working directory:" not in create_agent().system_prompt

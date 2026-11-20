@@ -44,6 +44,10 @@ SELECTIVE_READING_PROMPT = """
 
 ## Small context window
 
+Working directory: {workdir}. This is the project; relative paths
+resolve here. Files under ~/.patchpal/ (memory, logs, saved conversation history) belong to
+the assistant, not the project.
+
 You are running with a small context window ({limit:,} tokens). When the context fills up,
 the conversation is compacted to your current request plus a handoff note you write.
 Read only what you need:
@@ -140,7 +144,10 @@ class TinyAgent(PatchPalAgent):
             # Called before the context manager exists; finalized in _refresh_system_prompt()
             return base
         max_chars = self._max_tool_output_chars()
+        from patchpal.tools import common as tools_common
+
         return base + SELECTIVE_READING_PROMPT.format(
+            workdir=tools_common.REPO_ROOT,
             limit=self.context_manager.context_limit,
             max_chars=max_chars,
             max_lines=self._max_tool_output_lines_estimate(),
@@ -401,7 +408,7 @@ class TinyAgent(PatchPalAgent):
             f"(relative paths in this note are relative to it)"
         )
         history_line = (
-            f"\n\nPatchPal's saved log of the pre-compaction conversation (not a project file; "
+            f"\n\nSaved log of the earlier conversation (not a project file; "
             f"search it with grep/read_lines only if you need a detail from earlier): {history_path}"
             if history_path
             else ""
