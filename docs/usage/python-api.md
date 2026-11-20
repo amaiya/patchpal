@@ -35,6 +35,16 @@ print(response)
     ```
     See [Local Models - ReAct Mode](../models/local-models.md#react-mode-for-models-without-function-calling) for more details.
 
+!!! tip "Using Local Models With Small Context Windows"
+    For models served with small context windows (64K or less, common with local models), use `create_tiny_agent()`. It compacts into a short handoff note when the context fills up, caps tool output to the window size, and uses minimal tools by default:
+    ```python
+    from patchpal import create_tiny_agent
+
+    agent = create_tiny_agent(model_id="ollama_chat/qwen3.5:4b")
+    response = agent.run("What does the retry logic in client.py do?")
+    ```
+    Set `PATCHPAL_CONTEXT_LIMIT` to your served window size (e.g., `16384`). Unlike the CLI, `create_agent()` doesn't switch to TinyAgent automatically. See [Small Context Windows](../context-management.md#small-context-windows-tinyagent) for more details.
+
 ## Adding Custom Tools
 
 Custom tools can be used in three ways:

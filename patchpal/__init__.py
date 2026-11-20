@@ -2,7 +2,7 @@
 
 __version__ = "0.27.0"
 
-from patchpal.agent import create_agent, create_react_agent
+from patchpal.agent import create_agent, create_react_agent, create_tiny_agent
 from patchpal.cli.autopilot import autopilot_loop
 from patchpal.tools import (
     edit_file,
@@ -22,5 +22,6 @@ __all__ = [
     "run_shell",
     "create_agent",
     "create_react_agent",
+    "create_tiny_agent",
     "autopilot_loop",
 ]
