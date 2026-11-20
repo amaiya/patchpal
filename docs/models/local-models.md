@@ -160,7 +160,7 @@ For better performance with local models (both Ollama and vLLM), especially smal
 export PATCHPAL_MINIMAL_TOOLS=true
 
 # Match your served context window (enables TinyAgent; see "Small Context Windows" below)
-export PATCHPAL_CONTEXT_LIMIT=32000
+export PATCHPAL_CONTEXT_LIMIT=32768
 
 # Disable web tools for offline/faster operation
 export PATCHPAL_ENABLE_WEB=false
@@ -240,7 +240,7 @@ Reasoning models like **Qwen3.5:4b** generate internal "Chain of Thought" (CoT) 
 
 **Critical Requirement: Increase Context Window Size**
 
-To use reasoning models with PatchPal, you **must increase `num_ctx` to at least 32768**. Ollama already defaults to unlimited output generation (`num_predict=-1`), so the context window is the primary constraint.
+To use reasoning models with PatchPal, **increase `num_ctx` to 32768** (recommended). On resource-constrained machines, 16384 can work with [TinyAgent](#small-context-windows-tinyagent), but long reasoning outputs leave less room for work. Ollama already defaults to unlimited output generation (`num_predict=-1`), so the context window is the primary constraint.
 
 **Setting up with OLLAMA_CONTEXT_LENGTH (Simplest Method):**
 
@@ -254,11 +254,11 @@ export OLLAMA_CONTEXT_LENGTH=32768
 ollama serve
 
 # In another terminal, configure PatchPal to match and run
-export PATCHPAL_CONTEXT_LIMIT=32000
+export PATCHPAL_CONTEXT_LIMIT=32768
 patchpal --model ollama_chat/qwen3.5:4b
 ```
 
-**Important:** You must also set `PATCHPAL_CONTEXT_LIMIT` to match your Ollama context window. This tells PatchPal how much context is actually available, preventing premature context compaction. Set it slightly below `OLLAMA_CONTEXT_LENGTH` (e.g., 32000 for a 32768 window) to leave headroom. This also enables [TinyAgent](#small-context-windows-tinyagent).
+**Important:** You must also set `PATCHPAL_CONTEXT_LIMIT` to match your Ollama context window. This tells PatchPal how much context is actually available, so compaction triggers at the right point. Use the same value as `OLLAMA_CONTEXT_LENGTH` (PatchPal already reserves space for the response). This also enables [TinyAgent](#small-context-windows-tinyagent).
 
 **Alternative: Custom Modelfile (For Fine-Tuned Control):**
 
@@ -295,7 +295,7 @@ This creates a new model variant called `qwen-agent` with your custom configurat
 
 ```bash
 # Set PatchPal's context limit to match
-export PATCHPAL_CONTEXT_LIMIT=32000
+export PATCHPAL_CONTEXT_LIMIT=32768
 patchpal --model ollama_chat/qwen-agent
 ```
 
@@ -366,12 +366,19 @@ Local models are often served with small context windows (e.g., `OLLAMA_CONTEXT_
 - Caps tool output to the window size and prompts the model to read selectively
 - Compacts into a short handoff note when the context fills up
 
-PatchPal can't detect your server's window size, so set `PATCHPAL_CONTEXT_LIMIT` to match it (slightly below, to leave headroom):
+PatchPal can't detect your server's window size, so set `PATCHPAL_CONTEXT_LIMIT` to match it:
 
 ```bash
-export PATCHPAL_CONTEXT_LIMIT=32000
-patchpal --model ollama_chat/qwen3.5:4b   # Shows "🔧 Tiny agent (context window 32,000 ≤ 65,536): ..."
+# Typical: OLLAMA_CONTEXT_LENGTH=32768
+export PATCHPAL_CONTEXT_LIMIT=32768
+
+# Resource-constrained machines (e.g., qwen3.5:4b with OLLAMA_CONTEXT_LENGTH=16384)
+export PATCHPAL_CONTEXT_LIMIT=16384
+
+patchpal --model ollama_chat/qwen3.5:4b   # Shows "🔧 Tiny agent (context window 16,384 ≤ 65,536): ..."
 ```
+
+Reasoning models like Qwen3.5 produce long outputs, so use 32768 if your machine can handle it.
 
 `PATCHPAL_TINY_MODE=true` forces it on. TinyAgent doesn't apply in [ReAct mode](#react-mode-for-models-without-function-calling), which keeps its own compaction. See [Small Context Windows](../context-management.md#small-context-windows-tinyagent) for details.
 

@@ -146,7 +146,7 @@ Models with small context windows (64K tokens or less, e.g. many local models) u
 - `PATCHPAL_TINY_MODE=true` forces it on and `PATCHPAL_TINY_MODE=false` forces it off, whatever the context size
 
 !!! note "Local models"
-    PatchPal detects context limits from the model name, not from the server, so it can't see `OLLAMA_CONTEXT_LENGTH` or vLLM's `--max-model-len`. Most local models (Qwen, Llama, GLM, etc.) are detected as 128K or more. Set `PATCHPAL_CONTEXT_LIMIT` to the window size you're actually serving (e.g., `export PATCHPAL_CONTEXT_LIMIT=32000` for a 32,768 window, leaving some headroom). That makes compaction trigger at the right point and selects TinyAgent for windows of 64K or less.
+    PatchPal detects context limits from the model name, not from the server, so it can't see `OLLAMA_CONTEXT_LENGTH` or vLLM's `--max-model-len`. Most local models (Qwen, Llama, GLM, etc.) are detected as 128K or more. Set `PATCHPAL_CONTEXT_LIMIT` to the window size you're actually serving (e.g., `export PATCHPAL_CONTEXT_LIMIT=32768` to match `OLLAMA_CONTEXT_LENGTH=32768`). That makes compaction trigger at the right point and selects TinyAgent for windows of 64K or less.
 
 **What it does differently:**
 
