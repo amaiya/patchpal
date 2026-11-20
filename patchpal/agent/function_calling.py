@@ -777,6 +777,31 @@ Repository root takes priority if both exist."""
         """Return (max_lines, max_chars) for a single tool result (subclasses may tighten)."""
         return config.MAX_TOOL_OUTPUT_LINES, config.MAX_TOOL_OUTPUT_CHARS
 
+    def _should_stop_turn(self) -> Optional[str]:
+        """Return a message to end the current turn early, or None to continue.
+
+        Checked after each in-turn compaction. PatchPalAgent never stops early;
+        subclasses (e.g., TinyAgent) can use this to stop runaway compaction loops.
+        """
+        return None
+
+    def _truncation_hint(
+        self,
+        tool_name: str,
+        tool_args: Dict[str, Any],
+        truncated_output: str,
+        max_lines: int,
+        max_chars: int,
+    ) -> str:
+        """Return the hint appended to a truncated tool result (subclasses may customize)."""
+        return (
+            f"Output exceeded limits ({max_lines:,} lines or {max_chars:,} characters).\n"
+            f"Consider:\n"
+            f"- Using read_lines() to read files in chunks\n"
+            f"- Using shell commands to filter output (e.g., grep, head, tail)\n"
+            f"- Refining the command to produce less output"
+        )
+
     def _call_compaction_llm(self, msgs: List[Dict[str, Any]], max_tokens: int):
         """Call the LLM for compaction (summary or handoff note) and track usage.
 
@@ -1432,6 +1457,7 @@ Repository root takes priority if both exist."""
                 for tool_call in assistant_message.tool_calls:
                     tool_name = tool_call.function.name
                     tool_args_str = tool_call.function.arguments
+                    tool_args = {}  # Reset so a parse failure never reuses the previous call's args
 
                     # Once the user cancels one call (Ctrl-C or "No" at a permission prompt),
                     # skip the rest of this batch instead of prompting for each one. Every call
@@ -1831,13 +1857,12 @@ Repository root takes priority if both exist."""
                                 truncation_note = f"\n\n... output truncated to {max_output_chars:,} characters (was {result_size:,}) ...\n\n"
 
                             # Add helpful hint message
-                            hint = (
-                                f"{truncation_note}"
-                                f"Output exceeded limits ({max_output_lines:,} lines or {max_output_chars:,} characters).\n"
-                                f"Consider:\n"
-                                f"- Using read_lines() to read files in chunks\n"
-                                f"- Using shell commands to filter output (e.g., grep, head, tail)\n"
-                                f"- Refining the command to produce less output"
+                            hint = truncation_note + self._truncation_hint(
+                                tool_name,
+                                tool_args if isinstance(tool_args, dict) else {},
+                                truncated_str,
+                                max_output_lines,
+                                max_output_chars,
                             )
 
                             result_str = truncated_str + hint
@@ -1913,6 +1938,9 @@ Repository root takes priority if both exist."""
                     self.messages, actual_prompt_tokens=last_prompt_tokens
                 ):
                     self._perform_auto_compaction()
+                    stop_message = self._should_stop_turn()
+                    if stop_message:
+                        return stop_message
 
                 # Continue loop to let agent process tool results
                 continue

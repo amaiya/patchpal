@@ -82,7 +82,9 @@ def test_small_window_uses_handoff_and_always_shrinks(small_agent):
     handoff = agent.messages[1]
     assert handoff["role"] == "user"
     assert handoff["metadata"]["is_handoff"]
-    assert handoff["content"].startswith("What does this repo do?")
+    assert handoff["content"].startswith(
+        "Original request (already in progress - continue from the note below; don't restart from scratch):\nWhat does this repo do?"
+    )
     assert "Objective: explain the repo." in handoff["content"]
     assert agent.messages[2] == {
         "role": "assistant",
@@ -133,7 +135,9 @@ def test_handoff_works_with_few_messages(small_agent):
     assert len(calls) == 1
     # Mid-turn: no final reply kept; the request is preserved for the model to continue
     assert len(agent.messages) == 2
-    assert agent.messages[1]["content"].startswith("Summarize the README")
+    assert agent.messages[1]["content"].startswith(
+        "Original request (already in progress - continue from the note below; don't restart from scratch):\nSummarize the README"
+    )
 
 
 def test_loop_guard_only_skips_when_nothing_new(small_agent):
@@ -156,7 +160,9 @@ def test_loop_guard_only_skips_when_nothing_new(small_agent):
     ]
     agent._perform_auto_compaction()
     assert len(calls) == 2
-    assert agent.messages[1]["content"].startswith("What is the capital of France?")
+    assert agent.messages[1]["content"].startswith(
+        "Original request (already in progress - continue from the note below; don't restart from scratch):\nWhat is the capital of France?"
+    )
     assert agent.messages[2]["content"] == "Paris."
 
 
@@ -179,7 +185,9 @@ def test_second_handoff_in_one_turn_keeps_original_request(small_agent):
     agent._perform_auto_compaction()
 
     content = agent.messages[1]["content"]
-    assert content.startswith("Refactor context.py")
+    assert content.startswith(
+        "Original request (already in progress - continue from the note below; don't restart from scratch):\nRefactor context.py"
+    )
     assert "second note" in content
     assert "first note" not in content  # Old note isn't nested
 
@@ -405,3 +413,260 @@ def test_cli_uses_regular_agent_for_large_window(monkeypatch, capsys):
 
     from_agent.assert_not_called()
     assert "Tiny agent" not in capsys.readouterr().out
+
+
+# ---------------------------------------------------------------------------
+# Live 8K regression (qwen3.5:4b): "Read ./patchpal/agent/tiny.py" looped through
+# compactions, re-reading the whole file each time and calling a nonexistent grep tool.
+# ---------------------------------------------------------------------------
+
+
+def test_selective_reading_prompt_names_real_tools_and_line_budget(monkeypatch):
+    """A: the prompt must not suggest a 'grep' tool, and must give a realistic line budget."""
+    monkeypatch.setenv("PATCHPAL_CONTEXT_LIMIT", "8192")
+    agent = create_tiny_agent()
+    prompt = agent.system_prompt.split("## Small context window", 1)[1]
+
+    assert "run_shell with grep" in prompt
+    assert "use grep (" not in prompt  # Old wording led the model to call grep() directly
+    max_chars = agent._tool_output_limits()[1]
+    assert f"roughly {max_chars // 50} lines" in prompt  # 3,686 // 50 = 73
+    assert "summarize what matters" in prompt
+
+
+def _run_read(agent, tool_name, args, monkeypatch):
+    """Run one tool call through the real agent loop and return the tool result text."""
+    import json
+
+    import litellm
+
+    monkeypatch.setenv("PATCHPAL_REQUIRE_PERMISSION", "false")
+    monkeypatch.setenv("PATCHPAL_STREAM_OUTPUT", "false")
+    agent.enable_auto_compact = False
+
+    tool_call = MagicMock()
+    tool_call.id = "call_1"
+    tool_call.function.name = tool_name
+    tool_call.function.arguments = json.dumps(args)
+    first = _mock_response("")
+    first.choices[0].message.tool_calls = [tool_call]
+    second = _mock_response("Done.")
+    second.choices[0].message.tool_calls = None
+
+    from unittest.mock import patch
+
+    with patch.object(litellm, "completion", side_effect=[first, second]):
+        agent.run("read it")
+    return next(m for m in agent.messages if m.get("role") == "tool")["content"]
+
+
+def test_truncated_read_lines_says_where_to_continue(monkeypatch, tmp_path):
+    """B: a truncated read_lines result names the last complete line and the next call."""
+    monkeypatch.setenv("PATCHPAL_CONTEXT_LIMIT", "8192")
+    f = tmp_path / "code.py"
+    f.write_text(
+        "".join(f"value_{i} = compute(arg_{i}, other_{i})  # line {i}\n" for i in range(1, 501))
+    )
+    agent = create_tiny_agent()
+
+    result = _run_read(
+        agent, "read_lines", {"path": str(f), "start_line": 51, "end_line": 400}, monkeypatch
+    )
+
+    import re
+
+    m = re.search(r"Truncated after line (\d+).*start_line=(\d+), end_line=(\d+)", result)
+    assert m, result[-400:]
+    last, next_start, next_end = map(int, m.groups())
+    assert next_start == last + 1
+    assert 51 < last < 400
+    # The reported last line really is the last complete line in the output
+    assert f"# line {last}\n" in result
+    assert f"# line {last + 1}\n" not in result
+    assert next_end - next_start + 1 == agent._max_tool_output_lines_estimate()
+
+
+def test_truncated_read_file_says_where_to_continue(monkeypatch, tmp_path):
+    """B: read_file has no line numbers, so complete lines are counted."""
+    monkeypatch.setenv("PATCHPAL_CONTEXT_LIMIT", "8192")
+    f = tmp_path / "code.py"
+    f.write_text(
+        "".join(f"value_{i} = compute(arg_{i}, other_{i})  # line {i}\n" for i in range(1, 501))
+    )
+    agent = create_tiny_agent()
+
+    result = _run_read(agent, "read_file", {"path": str(f)}, monkeypatch)
+
+    import re
+
+    m = re.search(r"Truncated after line (\d+).*start_line=(\d+)", result)
+    assert m, result[-400:]
+    last, next_start = map(int, m.groups())
+    assert next_start == last + 1
+    assert f"# line {last}\n" in result
+    assert f"# line {last + 1}\n" not in result
+
+
+def test_truncation_hint_for_other_tools_suggests_run_shell(monkeypatch):
+    monkeypatch.setenv("PATCHPAL_CONTEXT_LIMIT", "8192")
+    agent = create_tiny_agent()
+    hint = agent._truncation_hint("run_shell", {"cmd": "cat big"}, "x" * 100, 2000, 3686)
+    assert "run_shell with grep" in hint
+    assert "Truncated after line" not in hint
+    # Missing/invalid args don't crash
+    assert "run_shell" in agent._truncation_hint("read_lines", {}, "x", 2000, 3686)
+
+
+def test_patchpal_agent_truncation_hint_unchanged():
+    agent = create_agent()
+    hint = agent._truncation_hint("read_lines", {"path": "a.py"}, "  1  x\n", 2000, 100000)
+    assert hint.startswith("Output exceeded limits (2,000 lines or 100,000 characters).")
+    assert "Truncated after line" not in hint
+
+
+def test_handoff_marks_request_as_in_progress(small_agent):
+    """C: after a handoff the original request reads as ongoing, not a fresh instruction."""
+    agent = small_agent
+    agent.messages += [
+        {"role": "user", "content": "Read ./patchpal/agent/tiny.py"},
+        {"role": "assistant", "content": "", "tool_calls": []},
+        {"role": "tool", "tool_call_id": "1", "name": "read_file", "content": README},
+    ]
+    _install_llm(agent, note="8. Already read - lines 1-50")
+    agent._perform_auto_compaction()
+
+    content = agent.messages[1]["content"]
+    assert content.startswith("Original request (already in progress")
+    assert "don't restart from scratch" in content
+    assert "Read ./patchpal/agent/tiny.py" in content
+    # The stored request stays verbatim, so repeated handoffs don't stack the label
+    assert agent.messages[1]["metadata"]["request"] == "Read ./patchpal/agent/tiny.py"
+    agent.messages += [
+        {"role": "assistant", "content": "", "tool_calls": []},
+        {"role": "tool", "tool_call_id": "2", "name": "read_file", "content": README},
+    ]
+    agent._perform_auto_compaction()
+    assert agent.messages[1]["content"].count("Original request (already in progress") == 1
+
+
+def _looping_run(agent, monkeypatch, tmp_path, turns_of_reads):
+    """Simulate the live loop: every LLM call reads the big file again, never finishing."""
+    import json
+
+    import litellm
+
+    monkeypatch.setenv("PATCHPAL_REQUIRE_PERMISSION", "false")
+    monkeypatch.setenv("PATCHPAL_STREAM_OUTPUT", "false")
+    big = tmp_path / "big.py"
+    big.write_text(
+        "".join(f"line_{i} = {i} * 2  # filler text to make it long\n" for i in range(2000))
+    )
+    _install_llm(agent, note="Remaining plan: keep reading.")
+
+    calls = {"n": 0}
+
+    def fake_completion(**kwargs):
+        calls["n"] += 1
+        if calls["n"] > turns_of_reads:
+            resp = _mock_response("Finished.")
+            resp.choices[0].message.tool_calls = None
+            return resp
+        tc = MagicMock()
+        tc.id = f"c{calls['n']}"
+        tc.function.name = "read_file"
+        tc.function.arguments = json.dumps({"path": str(big)})
+        resp = _mock_response("")
+        resp.choices[0].message.tool_calls = [tc]
+        return resp
+
+    from unittest.mock import patch
+
+    with patch.object(litellm, "completion", side_effect=fake_completion):
+        result = agent.run("Read big.py")
+    return result, calls["n"]
+
+
+def test_handoff_limit_stops_runaway_loop(small_agent, monkeypatch, tmp_path):
+    """D: stop after N handoffs in one turn instead of looping indefinitely."""
+    monkeypatch.delenv("PATCHPAL_MAX_HANDOFFS_PER_TURN", raising=False)  # default 5
+    agent = small_agent
+
+    result, llm_calls = _looping_run(agent, monkeypatch, tmp_path, turns_of_reads=1000)
+
+    assert agent._handoffs_this_turn == 5
+    assert result.startswith("I stopped after 5 context compactions")
+    assert "8,192-token context window" in result
+    assert "PATCHPAL_MAX_HANDOFFS_PER_TURN" in result
+    assert llm_calls < 50  # Stopped early rather than running to max_iterations
+
+
+def test_handoff_limit_allows_multiple_handoffs(small_agent, monkeypatch, tmp_path):
+    """D: tasks needing several handoffs (but fewer than the limit) still finish normally."""
+    monkeypatch.setenv("PATCHPAL_MAX_HANDOFFS_PER_TURN", "5")
+    agent = small_agent
+
+    result, _ = _looping_run(agent, monkeypatch, tmp_path, turns_of_reads=6)
+
+    assert result == "Finished."
+    assert 2 <= agent._handoffs_this_turn < 5
+
+
+def test_handoff_limit_resets_each_turn_and_can_be_disabled(small_agent, monkeypatch, tmp_path):
+    agent = small_agent
+    monkeypatch.setenv("PATCHPAL_MAX_HANDOFFS_PER_TURN", "2")
+    result, _ = _looping_run(agent, monkeypatch, tmp_path, turns_of_reads=1000)
+    assert result.startswith("I stopped after 2 context compactions")
+
+    # A new user message (e.g., "continue") starts a fresh count
+    from unittest.mock import patch
+
+    import litellm
+
+    done = _mock_response("ok")
+    done.choices[0].message.tool_calls = None
+    with patch.object(litellm, "completion", return_value=done):
+        agent.run("continue")
+    assert agent._handoffs_this_turn == 0
+
+    # 0 = unlimited
+    monkeypatch.setenv("PATCHPAL_MAX_HANDOFFS_PER_TURN", "0")
+    assert agent._should_stop_turn() is None
+    agent._handoffs_this_turn = 99
+    assert agent._should_stop_turn() is None
+
+
+def test_patchpal_agent_never_stops_turn_early():
+    assert create_agent()._should_stop_turn() is None
+
+
+def test_handoff_states_working_directory_and_labels_history_log(
+    small_agent, monkeypatch, tmp_path
+):
+    """Live 8K regression: after a handoff the model read
+    ~/.patchpal/repos/patchpal/agent/tiny.py, mistaking the saved-history location (the only
+    absolute path in the message) for the project root."""
+    from pathlib import Path
+
+    project = Path("/home/user/projects/patchpal")
+    monkeypatch.setattr("patchpal.tools.common.REPO_ROOT", project)
+    agent = small_agent
+    agent.messages += [
+        {"role": "user", "content": "read ./patchpal/agent/tiny.py"},
+        {"role": "assistant", "content": "", "tool_calls": []},
+        {"role": "tool", "tool_call_id": "1", "name": "read_file", "content": README},
+    ]
+    _install_llm(agent, note="Next action: read ./patchpal/agent/tiny.py from line 80.")
+    agent._perform_auto_compaction()
+
+    content = agent.messages[1]["content"]
+    assert (
+        f"Working directory: {project} (relative paths in this note are relative to it)" in content
+    )
+    # The history path is labeled as PatchPal's own log, not part of the project
+    saved = next((tmp_path / "history").glob("handoff_*.md"))
+    assert (
+        f"(not a project file; search it with grep/read_lines only if you need a detail from earlier): {saved}"
+        in content
+    )
+    # Working directory comes before the history path, right after the note
+    assert content.index("Working directory:") < content.index(str(saved))

@@ -154,14 +154,16 @@ Models with small context windows (64K tokens or less, e.g. many local models) u
 **What it does differently:**
 
 1. **Fewer tools by default**: Only `read_file`, `read_lines`, `edit_file`, `write_file`, and `run_shell` are enabled (plus `web_search`/`web_fetch` if web access is enabled), because full tool descriptions alone can fill much of a small window. `PATCHPAL_ENABLED_TOOLS` or `enabled_tools` overrides this.
-2. **Tool output capped to the window**: One tool result can be at most about 15% of the context window (minimum 2,000 characters).
-3. **Selective reading prompt**: The system prompt tells the model to find the right lines first (with `grep`, `wc -l`, or `head`) and then read small ranges with `read_lines`. It also says not to dump whole files or re-read ranges it has already seen.
+2. **Tool output capped to the window**: One tool result can be at most about 15% of the context window (minimum 2,000 characters). When a file read is truncated, the result says which line it stopped at and gives the `read_lines` call to continue from there.
+3. **Selective reading prompt**: The system prompt tells the model to find the right lines first (with `grep`, `wc -l`, or `head` via `run_shell`) and then read small ranges with `read_lines`. It also says not to dump whole files or re-read ranges it has already seen, and to summarize or ask for focus when a request needs more than fits.
 4. **Handoff compaction**: When the context fills up, the agent does not keep a summary plus the last turns. It replaces the whole conversation with:
     - Project memory (`MEMORY.md`)
-    - The current request plus a structured handoff note written by the LLM (capped at about 10% of the window)
+    - The current request (marked as already in progress) plus a structured handoff note written by the LLM (capped at about 10% of the window)
     - The last assistant reply, if the turn just ended (so a follow-up like "yes" still makes sense)
 
     The full pre-compaction history is saved to `~/.patchpal/repos/<repo>/history/handoff_<timestamp>.md`, so the agent can find details later with `grep` or `read_lines`. If the handoff note can't be created, PatchPal falls back to pruning tool outputs and suggests running `/clear`.
+
+    If a turn needs more than `PATCHPAL_MAX_HANDOFFS_PER_TURN` compactions (default: 5), the agent stops and suggests a narrower request. This usually means the request can't fit in the window (e.g., reading a large file in full). Reply "continue" to keep going.
 
 **Python API:**
 

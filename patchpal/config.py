@@ -342,6 +342,15 @@ class Config:
         return value.strip().lower() in ("true", "1", "yes")
 
     @property
+    def MAX_HANDOFFS_PER_TURN(self) -> int:
+        """TinyAgent: stop a turn after N handoff compactions without a new user message.
+
+        Prevents runaway loops when a request can't fit in the context window (e.g.,
+        "read this whole file" in an 8K window). Default 5; 0 = unlimited.
+        """
+        return int(os.getenv("PATCHPAL_MAX_HANDOFFS_PER_TURN", "5"))
+
+    @property
     def PROACTIVE_PRUNING(self) -> bool:
         """Proactively prune after tool calls when outputs exceed PRUNE_PROTECT (default: true)."""
         return _get_env_bool("PATCHPAL_PROACTIVE_PRUNING", "true")

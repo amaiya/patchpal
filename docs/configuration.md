@@ -226,6 +226,8 @@ export PATCHPAL_SMALL_CONTEXT_THRESHOLD=65536 # Use TinyAgent automatically for 
                                               # (default: 65536; set to 0 to disable automatic selection)
 export PATCHPAL_TINY_MODE=true               # Force TinyAgent on (true) or off (false)
                                               # Leave unset to choose automatically by context size
+export PATCHPAL_MAX_HANDOFFS_PER_TURN=5       # TinyAgent: stop a turn after N compactions without a
+                                              # new user message (default: 5; 0 = unlimited)
 ```
 
 See [Small Context Windows](context-management.md#small-context-windows-tinyagent) for details.

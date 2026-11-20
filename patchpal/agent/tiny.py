@@ -33,6 +33,10 @@ TINY_WEB_TOOLS = ["web_search", "web_fetch"]
 # Fraction of the context window a single tool result may use (~3 chars per token)
 TOOL_OUTPUT_FRACTION = 0.15
 
+# Typical characters per line of read_lines output for code, including its line-number
+# prefix (measured: ~47-53 for patchpal's own source files)
+CHARS_PER_CODE_LINE = 50
+
 SELECTIVE_READING_PROMPT = """
 
 ## Small context window
@@ -41,13 +45,15 @@ You are running with a small context window ({limit:,} tokens). When the context
 the conversation is compacted to your current request plus a handoff note you write.
 Read only what you need:
 
-- Each tool result is capped at about {max_chars:,} characters; longer output is truncated.
-- Locate before reading: use grep (e.g., `grep -n "def name" file`), `wc -l`, or `head` to find
-  the relevant lines, then read_lines a small range around them (about {max_lines} lines).
+- Each tool result is capped at about {max_chars:,} characters (roughly {max_lines} lines of code);
+  longer output is truncated, with a note saying where to continue.
+- Locate before reading: use run_shell with grep (e.g., `grep -n "def name" file`), `wc -l`,
+  or `head` to find the relevant lines, then read_lines a small range around them.
 - Never read whole large files or dump long command output. Filter with grep/head/tail.
-- Don't re-read ranges you've already read; note what you found instead.
-- If a request needs more than fits (e.g., "read this entire 2,000-line file"), say so and
-  work through it in targeted pieces, or ask the user to narrow the request."""
+- Don't re-read ranges you've already read; rely on your notes instead.
+- You can't hold a large file in context. If a request needs more than fits (e.g., "read this
+  entire file" or "show me all of X"), don't try to read everything: summarize what matters,
+  or ask the user what to focus on."""
 
 
 class TinyAgent(PatchPalAgent):
@@ -134,8 +140,12 @@ class TinyAgent(PatchPalAgent):
         return base + SELECTIVE_READING_PROMPT.format(
             limit=self.context_manager.context_limit,
             max_chars=max_chars,
-            max_lines=max(40, max_chars // 60),  # ~60 chars per line of code
+            max_lines=self._max_tool_output_lines_estimate(),
         )
+
+    def _max_tool_output_lines_estimate(self) -> int:
+        """Approximate lines of code that fit in one tool result."""
+        return max(20, self._max_tool_output_chars() // CHARS_PER_CODE_LINE)
 
     def _refresh_system_prompt(self) -> None:
         self.system_prompt = self._build_system_prompt()
@@ -145,9 +155,85 @@ class TinyAgent(PatchPalAgent):
         max_lines, max_chars = super()._tool_output_limits()
         return max_lines, min(max_chars, self._max_tool_output_chars())
 
+    def _truncation_hint(
+        self,
+        tool_name: str,
+        tool_args: Dict[str, Any],
+        truncated_output: str,
+        max_lines: int,
+        max_chars: int,
+    ) -> str:
+        """Tell the model exactly where a truncated file read stopped and how to continue.
+
+        A 4B model at 8K otherwise guessed ranges and re-read the same lines repeatedly.
+        """
+        path = tool_args.get("path")
+        if tool_name in ("read_file", "read_lines") and path:
+            last_line = self._last_line_shown(tool_name, tool_args, truncated_output)
+            if last_line:
+                next_start = last_line + 1
+                chunk = self._max_tool_output_lines_estimate()
+                return (
+                    f"[Truncated after line {last_line:,} (limit: ~{max_chars:,} characters). "
+                    f"To continue, call read_lines(path={path!r}, start_line={next_start}, "
+                    f"end_line={next_start + chunk - 1}). Read only the parts you need.]"
+                )
+        return (
+            f"[Output truncated to ~{max_chars:,} characters. Use run_shell with grep, head, "
+            f"or tail to filter, or read_lines for a small range.]"
+        )
+
+    @staticmethod
+    def _last_line_shown(
+        tool_name: str, tool_args: Dict[str, Any], truncated_output: str
+    ) -> Optional[int]:
+        """Return the last complete file line included in a truncated read, if known."""
+        import re
+
+        if tool_name == "read_lines":
+            # read_lines prefixes each line with its line number ("  123  text")
+            numbers = re.findall(r"^\s*(\d+)  ", truncated_output, flags=re.MULTILINE)
+            if len(numbers) >= 2:
+                return int(numbers[-2])  # The last one may be cut off mid-line
+            try:
+                return int(tool_args.get("start_line", 1)) if numbers else None
+            except (TypeError, ValueError):
+                return None
+        # read_file returns raw content: count complete lines
+        complete_lines = truncated_output.count("\n")
+        return complete_lines if complete_lines > 0 else None
+
     # ------------------------------------------------------------------
     # Handoff compaction
     # ------------------------------------------------------------------
+
+    def run(self, user_message: str, max_iterations: int = 100) -> str:
+        """Run the agent on a user message (resets the per-turn handoff count)."""
+        self._handoffs_this_turn = 0
+        return super().run(user_message, max_iterations)
+
+    def _should_stop_turn(self) -> Optional[str]:
+        """Stop the turn after too many handoffs without a new user message.
+
+        A request that can't fit in the window (e.g., "read this whole file" at 8K) would
+        otherwise compact and restart indefinitely. Reply "continue" to keep going.
+        """
+        limit = config.MAX_HANDOFFS_PER_TURN
+        count = getattr(self, "_handoffs_this_turn", 0)
+        if limit <= 0 or count < limit:
+            return None
+        print(
+            f"\033[1;33m⚠️  Stopping: {count} compactions this turn without finishing "
+            f"(PATCHPAL_MAX_HANDOFFS_PER_TURN={limit}).\033[0m\n"
+        )
+        return (
+            f"I stopped after {count} context compactions in this turn without finishing. "
+            f"This request may need more than fits in the {self.context_manager.context_limit:,}-token "
+            f"context window (e.g., reading a large file in full).\n\n"
+            f"💡 Try a narrower request (e.g., a specific function or question about the file), "
+            f"or type 'continue' to keep going. To change this limit, set "
+            f"PATCHPAL_MAX_HANDOFFS_PER_TURN (0 = unlimited)."
+        )
 
     def _perform_auto_compaction(self):
         """Compact by replacing the conversation with the request plus a handoff note."""
@@ -283,17 +369,28 @@ class TinyAgent(PatchPalAgent):
             self.last_prompt_tokens = None
             return
 
+        from patchpal.tools import common as tools_common
+
+        # State the project directory explicitly: a 4B model at 8K otherwise took the only
+        # absolute path in the message (the saved history under ~/.patchpal) for the project
+        # root and looked for project files there.
+        workdir_line = (
+            f"\n\nWorking directory: {tools_common.REPO_ROOT} "
+            f"(relative paths in this note are relative to it)"
+        )
         history_line = (
-            f"\n\nFull pre-compaction history (search with grep/read_lines if needed): {history_path}"
+            f"\n\nPatchPal's saved log of the pre-compaction conversation (not a project file; "
+            f"search it with grep/read_lines only if you need a detail from earlier): {history_path}"
             if history_path
             else ""
         )
         handoff_msg = {
             "role": "user",
             "content": (
-                f"{request_text}\n\n"
+                f"Original request (already in progress - continue from the note below; "
+                f"don't restart from scratch):\n{request_text}\n\n"
                 f"[HANDOFF NOTE - the conversation was compacted to fit the context window. "
-                f"Continue from this note.]\n\n{note}{history_line}"
+                f"Continue from this note.]\n\n{note}{workdir_line}{history_line}"
             ),
             "metadata": {
                 "is_handoff": True,
@@ -315,6 +412,7 @@ class TinyAgent(PatchPalAgent):
         self.messages = new_messages
         self.last_prompt_tokens = None  # Pre-compaction count is stale
         self._last_compaction_message_count = len(self.messages)
+        self._handoffs_this_turn = getattr(self, "_handoffs_this_turn", 0) + 1
 
         stats_after = self.context_manager.get_usage_stats(self.messages)
         print(
