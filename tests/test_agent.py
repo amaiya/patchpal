@@ -1324,7 +1324,7 @@ def test_llm_timeout_passed_to_completion(monkeypatch):
         assert completion_kwargs[0]["timeout"] == 300  # Default value
 
 
-def test_malformed_tool_arguments_dont_break_later_requests(monkeypatch):
+def test_malformed_tool_arguments_dont_break_later_requests(monkeypatch, capsys):
     """A malformed tool call must not poison the history.
 
     Regression: qwen3.5:4b emitted read_file arguments with extra data after the JSON object.
@@ -1397,9 +1397,26 @@ def test_malformed_tool_arguments_dont_break_later_requests(monkeypatch):
     assert result == "Done."  # Second request succeeded instead of raising
     assert executed == []  # Malformed call still isn't executed
     tool_msg = next(m for m in agent.messages if m.get("role") == "tool")
-    assert tool_msg["content"] == "Error: Invalid JSON arguments for read_file"
+    # The error says how to fix the call (one file per read_file call)
+    assert tool_msg["content"].startswith("Error: Invalid JSON arguments for read_file.")
+    assert "reads one file per call" in tool_msg["content"]
+    # The raw arguments are shown so malformed calls can be diagnosed
+    assert bad_args in capsys.readouterr().out
     # History keeps the first valid object, so it records what was attempted
     assistant = next(m for m in agent.messages if m.get("tool_calls"))
     assert json.loads(assistant["tool_calls"][0].function.arguments) == {
         "path": "/repo/CONTRIBUTING.md"
     }
+
+
+def test_invalid_arguments_message_explains_fix():
+    from patchpal.agent.function_calling import _invalid_arguments_message
+
+    for tool in ("read_file", "read_lines"):
+        msg = _invalid_arguments_message(tool)
+        assert msg.startswith(f"Error: Invalid JSON arguments for {tool}.")
+        assert f"make a separate {tool} call for each" in msg
+    msg = _invalid_arguments_message("edit_file")
+    assert msg.startswith("Error: Invalid JSON arguments for edit_file.")
+    assert "single JSON object" in msg
+    assert "read" not in msg.split(".", 1)[1]  # No file-reading advice for other tools

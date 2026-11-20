@@ -312,6 +312,28 @@ def _supports_prompt_caching(model_id: str) -> bool:
     return False
 
 
+def _invalid_arguments_message(tool_name: str) -> str:
+    """Return the tool result for a call whose arguments aren't valid JSON.
+
+    Small models often try to read several files with one read_file call (e.g., after
+    listing files with find), producing malformed arguments. Saying how to fix it, rather
+    than just that the JSON was invalid, stops them from retrying the same way.
+
+    Args:
+        tool_name: Name of the tool that was called
+
+    Returns:
+        Error message for the model
+    """
+    message = f"Error: Invalid JSON arguments for {tool_name}."
+    if tool_name in ("read_file", "read_lines"):
+        return (
+            f"{message} {tool_name} reads one file per call; to read several files, make a "
+            f"separate {tool_name} call for each (or use run_shell with grep/head)."
+        )
+    return f"{message} Arguments must be a single JSON object, with one tool call per action."
+
+
 def _repair_tool_arguments(arguments: Any) -> str:
     """Return a valid JSON object string for tool call arguments that failed to parse.
 
@@ -1500,8 +1522,14 @@ Repository root takes priority if both exist."""
                     try:
                         tool_args = json.loads(tool_args_str)
                     except json.JSONDecodeError:
-                        tool_result = f"Error: Invalid JSON arguments for {tool_name}"
-                        print(f"\033[1;31m✗ {tool_name}: Invalid arguments\033[0m\n", flush=True)
+                        tool_result = _invalid_arguments_message(tool_name)
+                        # Show the start of the raw arguments so malformed calls can be diagnosed
+                        raw_preview = str(tool_args_str or "")[:200].replace("\n", "\\n")
+                        print(
+                            f"\033[1;31m✗ {tool_name}: Invalid arguments\033[0m\n"
+                            f"\033[2m   {raw_preview}\033[0m\n",
+                            flush=True,
+                        )
                         # Repair the stored call so the history stays valid JSON. Some
                         # providers (e.g., LiteLLM's Ollama adapter) re-parse past tool call
                         # arguments on every request, so one malformed call would otherwise
