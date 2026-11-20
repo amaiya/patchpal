@@ -492,6 +492,8 @@ def _apply_prompt_caching(messages: List[Dict[str, Any]], model_id: str) -> List
 class PatchPalAgent:
     """Simple agent that uses LiteLLM for tool calling."""
 
+    agent_type = "function_calling"
+
     def __init__(
         self,
         model_id: str = "anthropic/claude-sonnet-4-5",
@@ -559,7 +561,8 @@ class PatchPalAgent:
         self.messages: List[Dict[str, Any]] = []
 
         # Initialize context manager
-        self.context_manager = ContextManager(self.model_id, SYSTEM_PROMPT)
+        self.system_prompt = self._build_system_prompt()
+        self.context_manager = ContextManager(self.model_id, self.system_prompt)
         # Count tool schemas toward context usage from the start (before the first call)
         self.context_manager.set_tools(self._build_tools())
 
@@ -654,7 +657,7 @@ class PatchPalAgent:
         try:
             from patchpal.tools.audit import log_session_start
 
-            log_session_start(agent_type="function_calling", model=self.model_id)
+            log_session_start(agent_type=self.agent_type, model=self.model_id)
         except Exception:
             pass  # Don't fail if audit logging fails
 
@@ -765,6 +768,68 @@ Repository root takes priority if both exist."""
                 tools.append(function_to_tool_schema(func))
 
         return tools
+
+    def _build_system_prompt(self) -> str:
+        """Return the system prompt for this agent (subclasses may extend it)."""
+        return SYSTEM_PROMPT
+
+    def _tool_output_limits(self):
+        """Return (max_lines, max_chars) for a single tool result (subclasses may tighten)."""
+        return config.MAX_TOOL_OUTPUT_LINES, config.MAX_TOOL_OUTPUT_CHARS
+
+    def _call_compaction_llm(self, msgs: List[Dict[str, Any]], max_tokens: int):
+        """Call the LLM for compaction (summary or handoff note) and track usage.
+
+        Args:
+            msgs: Conversation messages (system prompt is prepended here)
+            max_tokens: Maximum output tokens
+
+        Returns:
+            LiteLLM response
+        """
+        # Prepare messages with system prompt
+        messages = [{"role": "system", "content": self.system_prompt}] + msgs
+        # Apply prompt caching for supported models
+        messages = _apply_prompt_caching(messages, self.model_id)
+
+        response = litellm.completion(
+            model=self.model_id,
+            messages=messages,
+            max_tokens=max_tokens,
+            timeout=LLM_TIMEOUT,
+            **self.litellm_kwargs,
+        )
+
+        # Track token usage from compaction call
+        self.total_llm_calls += 1
+        if hasattr(response, "usage") and response.usage:
+            if hasattr(response.usage, "prompt_tokens"):
+                self.cumulative_input_tokens += response.usage.prompt_tokens
+            if hasattr(response.usage, "completion_tokens"):
+                self.cumulative_output_tokens += response.usage.completion_tokens
+            # Track cache statistics (Anthropic/Bedrock prompt caching)
+            if (
+                hasattr(response.usage, "cache_creation_input_tokens")
+                and response.usage.cache_creation_input_tokens
+            ):
+                self.cumulative_cache_creation_tokens += response.usage.cache_creation_input_tokens
+            if (
+                hasattr(response.usage, "cache_read_input_tokens")
+                and response.usage.cache_read_input_tokens
+            ):
+                self.cumulative_cache_read_tokens += response.usage.cache_read_input_tokens
+
+            # Track OpenAI cache tokens (prompt_tokens_details.cached_tokens)
+            # Only track for OpenAI models to avoid LiteLLM cross-contamination
+            if self._is_openai_model() and hasattr(response.usage, "prompt_tokens_details"):
+                prompt_details = response.usage.prompt_tokens_details
+                if hasattr(prompt_details, "cached_tokens") and prompt_details.cached_tokens:
+                    self.cumulative_openai_cached_tokens += prompt_details.cached_tokens
+
+        # Track cost from compaction call
+        self._calculate_cost(response)
+
+        return response
 
     def _perform_auto_compaction(self):
         """Perform automatic context window compaction.
@@ -891,54 +956,7 @@ Repository root takes priority if both exist."""
         try:
             # Create compaction using the LLM
             def compaction_completion(msgs):
-                # Prepare messages with system prompt
-                messages = [{"role": "system", "content": SYSTEM_PROMPT}] + msgs
-                # Apply prompt caching for supported models
-                messages = _apply_prompt_caching(messages, self.model_id)
-
-                response = litellm.completion(
-                    model=self.model_id,
-                    messages=messages,
-                    max_tokens=self.context_manager.output_reserve,  # Fits the context window
-                    timeout=LLM_TIMEOUT,
-                    **self.litellm_kwargs,
-                )
-
-                # Track token usage from compaction call
-                self.total_llm_calls += 1
-                if hasattr(response, "usage") and response.usage:
-                    if hasattr(response.usage, "prompt_tokens"):
-                        self.cumulative_input_tokens += response.usage.prompt_tokens
-                    if hasattr(response.usage, "completion_tokens"):
-                        self.cumulative_output_tokens += response.usage.completion_tokens
-                    # Track cache statistics (Anthropic/Bedrock prompt caching)
-                    if (
-                        hasattr(response.usage, "cache_creation_input_tokens")
-                        and response.usage.cache_creation_input_tokens
-                    ):
-                        self.cumulative_cache_creation_tokens += (
-                            response.usage.cache_creation_input_tokens
-                        )
-                    if (
-                        hasattr(response.usage, "cache_read_input_tokens")
-                        and response.usage.cache_read_input_tokens
-                    ):
-                        self.cumulative_cache_read_tokens += response.usage.cache_read_input_tokens
-
-                    # Track OpenAI cache tokens (prompt_tokens_details.cached_tokens)
-                    # Only track for OpenAI models to avoid LiteLLM cross-contamination
-                    if self._is_openai_model() and hasattr(response.usage, "prompt_tokens_details"):
-                        prompt_details = response.usage.prompt_tokens_details
-                        if (
-                            hasattr(prompt_details, "cached_tokens")
-                            and prompt_details.cached_tokens
-                        ):
-                            self.cumulative_openai_cached_tokens += prompt_details.cached_tokens
-
-                # Track cost from compaction call
-                self._calculate_cost(response)
-
-                return response
+                return self._call_compaction_llm(msgs, self.context_manager.output_reserve)
 
             # Keep project memory (MEMORY.md) out of compaction: it's loaded once at session
             # start and never restored, so summarizing it would lose its content
@@ -1233,7 +1251,7 @@ Repository root takes priority if both exist."""
             # a breakpoint (see COST_RECOMMENDATIONS_RANKED.md, Tier 2 fix).
             # Date/time is regenerated on each call to prevent staleness in long sessions.
             messages = (
-                [{"role": "system", "content": SYSTEM_PROMPT}]
+                [{"role": "system", "content": self.system_prompt}]
                 + self.messages
                 + [{"role": "system", "content": _get_current_datetime_message()}]
             )
@@ -1776,34 +1794,32 @@ Repository root takes priority if both exist."""
                         # Apply universal output limits to text results
                         lines = result_str.split("\n")
                         total_lines = len(lines)
+                        max_output_lines, max_output_chars = self._tool_output_limits()
 
                         # Check if output exceeds universal limits
-                        if (
-                            total_lines > config.MAX_TOOL_OUTPUT_LINES
-                            or result_size > config.MAX_TOOL_OUTPUT_CHARS
-                        ):
-                            truncated_by_lines = total_lines > config.MAX_TOOL_OUTPUT_LINES
-                            truncated_by_chars = result_size > config.MAX_TOOL_OUTPUT_CHARS
+                        if total_lines > max_output_lines or result_size > max_output_chars:
+                            truncated_by_lines = total_lines > max_output_lines
+                            truncated_by_chars = result_size > max_output_chars
 
                             # Truncate to limits
-                            truncated_lines = lines[: config.MAX_TOOL_OUTPUT_LINES]
+                            truncated_lines = lines[:max_output_lines]
                             truncated_str = "\n".join(truncated_lines)
 
                             # Also enforce character limit
-                            if len(truncated_str) > config.MAX_TOOL_OUTPUT_CHARS:
-                                truncated_str = truncated_str[: config.MAX_TOOL_OUTPUT_CHARS]
+                            if len(truncated_str) > max_output_chars:
+                                truncated_str = truncated_str[:max_output_chars]
 
                             removed_lines = total_lines - len(truncated_str.split("\n"))
 
                             if truncated_by_lines:
                                 truncation_note = f"\n\n... {removed_lines:,} lines truncated ({total_lines:,} total lines) ...\n\n"
                             else:
-                                truncation_note = f"\n\n... output truncated to {config.MAX_TOOL_OUTPUT_CHARS:,} characters (was {result_size:,}) ...\n\n"
+                                truncation_note = f"\n\n... output truncated to {max_output_chars:,} characters (was {result_size:,}) ...\n\n"
 
                             # Add helpful hint message
                             hint = (
                                 f"{truncation_note}"
-                                f"Output exceeded limits ({config.MAX_TOOL_OUTPUT_LINES:,} lines or {config.MAX_TOOL_OUTPUT_CHARS:,} characters).\n"
+                                f"Output exceeded limits ({max_output_lines:,} lines or {max_output_chars:,} characters).\n"
                                 f"Consider:\n"
                                 f"- Using read_lines() to read files in chunks\n"
                                 f"- Using shell commands to filter output (e.g., grep, head, tail)\n"
@@ -1813,11 +1829,11 @@ Repository root takes priority if both exist."""
                             result_str = truncated_str + hint
                             if truncated_by_lines:
                                 print(
-                                    f"\033[1;33m⚠️  Tool output truncated: {total_lines:,} lines → {config.MAX_TOOL_OUTPUT_LINES:,} lines\033[0m"
+                                    f"\033[1;33m⚠️  Tool output truncated: {total_lines:,} lines → {max_output_lines:,} lines\033[0m"
                                 )
                             elif truncated_by_chars:
                                 print(
-                                    f"\033[1;33m⚠️  Tool output truncated: {result_size:,} chars → {config.MAX_TOOL_OUTPUT_CHARS:,} chars\033[0m"
+                                    f"\033[1;33m⚠️  Tool output truncated: {result_size:,} chars → {max_output_chars:,} chars\033[0m"
                                 )
 
                         # Add truncated/normal text result to messages
