@@ -111,11 +111,12 @@ export PATCHPAL_MODEL=openai/gpt-5.2
 patchpal
 ```
 
-**Tip for Local Models:** Local models (i.e., models served by Ollama or vLLM) may work better with these settings:
-- `PATCHPAL_MINIMAL_TOOLS=true` and `PATCHPAL_ENABLE_WEB=false` - For models **with** function calling: Provides only essential tools (`read_file`, `read_lines`, `write_file`, `edit_file`, `run_shell`), reducing tool confusion
-- `PATCHPAL_CONTEXT_LIMIT` set to your served window (e.g., `32768` to match `OLLAMA_CONTEXT_LENGTH=32768`, or `16384` on resource-constrained machines) - At 64K or less, PatchPal uses [TinyAgent](https://amaiya.github.io/patchpal/context-management/#small-context-windows-tinyagent), which includes minimal tools plus small-window compaction and reading. `PATCHPAL_TINY_MODE=true` forces it.
-- `PATCHPAL_REACT_MODE=true` - For models **without** function calling: Enables text-based tool invocation (see [ReAct mode docs](https://amaiya.github.io/patchpal/models/local-models/#react-mode-for-models-without-function-calling))
-- For Ollama, additionally setting `PATCHPAL_STREAM_OUTPUT=false` [may help with tool call reliability](https://github.com/openclaw/openclaw/issues/5769)
+**Tip for Local Models:** Local models (i.e., models served by Ollama or vLLM) work best with these settings:
+- **Always:** set `PATCHPAL_CONTEXT_LIMIT` to your served window (e.g., `32768` to match `OLLAMA_CONTEXT_LENGTH=32768`, or `16384` on resource-constrained machines). PatchPal can't detect it from the server. At 64K or less, PatchPal uses [TinyAgent](https://amaiya.github.io/patchpal/context-management/#small-context-windows-tinyagent), which includes minimal tools plus small-window compaction and reading.
+- **Model with function calling, window over 64K:** `PATCHPAL_MINIMAL_TOOLS=true` limits tools to `read_file`, `read_lines`, `write_file`, `edit_file`, `run_shell`, reducing tool confusion.
+- **Model without function calling:** `PATCHPAL_REACT_MODE=true` enables text-based tool invocation (see [ReAct mode docs](https://amaiya.github.io/patchpal/models/local-models/#react-mode-for-models-without-function-calling)).
+- **Ollama:** `PATCHPAL_STREAM_OUTPUT=false` [may help with tool call reliability](https://github.com/openclaw/openclaw/issues/5769).
+- **Offline:** `PATCHPAL_ENABLE_WEB=false` disables web tools.
 
 
 ## Beyond Coding: General Problem-Solving
