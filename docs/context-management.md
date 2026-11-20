@@ -3,13 +3,50 @@
 
 PatchPal automatically manages the context window to prevent "input too long" errors during long coding sessions.
 
-**Features:**
+## Overview
+
 - **Automatic token tracking**: Monitors context usage in real-time
 - **Smart pruning**: Removes old tool outputs (keeps last 40k tokens) before resorting to full compaction
 - **Auto-compaction**: Summarizes conversation history when approaching 80% capacity
 - **Manual control**: Check status with `/status`, compact with `/compact`, prune with `/prune`
 
-**Commands:**
+## How It Works
+
+1. **Phase 1 - Pruning**: When context fills up, old tool outputs are pruned first
+   - Keeps last 40k tokens of tool outputs protected (only tool outputs, not conversation)
+   - Only prunes if it saves >20k tokens
+   - Pruning is transparent and fast
+   - Requires at least 5 messages in history
+
+2. **Phase 2 - Compaction**: If pruning isn't enough, full compaction occurs
+   - Requires at least 5 messages to be effective
+   - LLM summarizes the entire conversation
+   - Summary replaces old messages, keeping last 2 complete conversation turns
+   - Work continues seamlessly from the summary
+   - Preserves complete tool call/result pairs (important for Bedrock compatibility)
+
+### Example
+
+```
+Context Window Status
+======================================================================
+  Model: anthropic/claude-sonnet-4-5
+  Messages in history: 47
+  System prompt: 15,234 tokens
+  Conversation: 142,567 tokens
+  Output reserve: 4,096 tokens
+  Total: 161,897 / 200,000 tokens
+  Usage: 80%
+  [████████████████████████████████████████░░░░░░░░░]
+
+  Auto-compaction: Enabled (triggers at 80%)
+======================================================================
+```
+
+The system ensures you can work for extended periods without hitting context limits.
+
+## Commands
+
 ```bash
 # Check context window usage
 You: /status
@@ -44,7 +81,7 @@ You: /prune
 # Note: Keeps last 2 conversational turns; prunes all older tool outputs
 ```
 
-**Understanding Session Statistics:**
+## Session Statistics
 
 The `/status` command shows cumulative token usage:
 
@@ -61,7 +98,7 @@ The `/status` command shows cumulative token usage:
 
 **Important**: The token counts shown are raw totals and don't reflect prompt caching discounts. For accurate cost information, check your provider's usage dashboard which shows cache hits and actual billing.
 
-**Configuration:**
+## Configuration
 
 See the [Configuration](https://github.com/amaiya/patchpal?tab=readme-ov-file#configuration) section for context management settings including:
 - `PATCHPAL_DISABLE_AUTOCOMPACT` - Disable auto-compaction
@@ -70,7 +107,7 @@ See the [Configuration](https://github.com/amaiya/patchpal?tab=readme-ov-file#co
 - `PATCHPAL_PROACTIVE_PRUNING` - Prune tool outputs proactively after calls (default: true, uses smart summarization)
 - `PATCHPAL_PRUNE_PROTECT` / `PATCHPAL_PRUNE_MINIMUM` - Pruning controls
 
-**Testing Context Management:**
+## Testing Context Management
 
 You can test the context management system with small values to trigger compaction quickly:
 
@@ -101,40 +138,6 @@ You: search for "context" in all files
 #    Pruned old tool outputs (saved ~400 tokens)
 # ✓ Compaction complete. Saved 850 tokens (80% → 62%)
 ```
-
-**How It Works:**
-
-1. **Phase 1 - Pruning**: When context fills up, old tool outputs are pruned first
-   - Keeps last 40k tokens of tool outputs protected (only tool outputs, not conversation)
-   - Only prunes if it saves >20k tokens
-   - Pruning is transparent and fast
-   - Requires at least 5 messages in history
-
-2. **Phase 2 - Compaction**: If pruning isn't enough, full compaction occurs
-   - Requires at least 5 messages to be effective
-   - LLM summarizes the entire conversation
-   - Summary replaces old messages, keeping last 2 complete conversation turns
-   - Work continues seamlessly from the summary
-   - Preserves complete tool call/result pairs (important for Bedrock compatibility)
-
-**Example:**
-```
-Context Window Status
-======================================================================
-  Model: anthropic/claude-sonnet-4-5
-  Messages in history: 47
-  System prompt: 15,234 tokens
-  Conversation: 142,567 tokens
-  Output reserve: 4,096 tokens
-  Total: 161,897 / 200,000 tokens
-  Usage: 80%
-  [████████████████████████████████████████░░░░░░░░░]
-
-  Auto-compaction: Enabled (triggers at 80%)
-======================================================================
-```
-
-The system ensures you can work for extended periods without hitting context limits.
 
 ## Small Context Windows (TinyAgent)
 
