@@ -46,7 +46,8 @@ SELECTIVE_READING_PROMPT = """
 
 Working directory: {workdir}. This is the project; relative paths
 resolve here. Files under ~/.patchpal/ (memory, logs, saved conversation history) belong to
-the assistant, not the project.
+the assistant, not the project. For questions about this project, use its local files, not
+web search.
 
 You are running with a small context window ({limit:,} tokens). When the context fills up,
 the conversation is compacted to your current request plus a handoff note you write.

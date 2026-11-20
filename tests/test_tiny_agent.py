@@ -714,5 +714,6 @@ def test_system_prompt_states_working_directory(monkeypatch):
         "Files under ~/.patchpal/ (memory, logs, saved conversation history) belong to" in section
     )
     assert "PatchPal" not in section  # The model is never told what PatchPal is
+    assert "For questions about this project, use its local files, not\nweb search." in section
     # PatchPalAgent's prompt is unchanged
     assert "Working directory:" not in create_agent().system_prompt
