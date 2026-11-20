@@ -1,5 +1,6 @@
 """Context window management and token estimation."""
 
+import json
 from datetime import datetime
 from typing import Any, Callable, Dict, List, Tuple
 
@@ -258,11 +259,29 @@ Be comprehensive but concise. The goal is to continue work seamlessly without lo
         self.estimator = TokenEstimator(model_id)
         self.context_limit = self._get_context_limit()
         self.output_reserve = self._compute_output_reserve(self.context_limit)
+        # Estimated tokens for tool schemas sent with each request (see set_tools)
+        self.tool_tokens = 0
 
     @staticmethod
     def _compute_output_reserve(context_limit: int) -> int:
-        """Reserve 16% of context for output (min 4K, max 32K)."""
-        return min(32_000, max(4_000, int(context_limit * 0.16)))
+        """Reserve 16% of context for output (min 1K, max 32K).
+
+        Small windows get a proportional reserve (e.g., 8K -> ~1.3K) instead of
+        a fixed floor that would consume half the window.
+        """
+        return min(32_000, max(1_000, int(context_limit * 0.16)))
+
+    def set_tools(self, tools: List[Dict[str, Any]]) -> None:
+        """Record the tool schemas sent with each request so they count toward usage.
+
+        Tool schemas are part of every prompt but aren't in the message history,
+        so they must be estimated separately. This is approximate: providers may
+        reformat schemas and add their own tool-use instructions.
+
+        Args:
+            tools: List of tool schemas (OpenAI function-calling format)
+        """
+        self.tool_tokens = self.estimator.estimate_tokens(json.dumps(tools, default=str))
 
     def set_context_limit(self, limit: int) -> None:
         """Update the context limit (e.g., after detecting the underlying model).
@@ -373,7 +392,13 @@ Be comprehensive but concise. The goal is to continue work seamlessly without lo
         system_tokens = self.estimator.estimate_tokens(self.system_prompt)
         datetime_tokens = 30  # Approximate size of dynamic date/time message
         message_tokens = self.estimator.estimate_messages_tokens(messages)
-        total_tokens = system_tokens + datetime_tokens + message_tokens + self.output_reserve
+        total_tokens = (
+            system_tokens
+            + datetime_tokens
+            + self.tool_tokens
+            + message_tokens
+            + self.output_reserve
+        )
 
         # Check threshold
         usage_ratio = total_tokens / self.context_limit
@@ -393,14 +418,18 @@ Be comprehensive but concise. The goal is to continue work seamlessly without lo
         """
         # If we have actual prompt tokens from API (includes cache writes/reads), use those
         if actual_prompt_tokens is not None:
+            # Actual prompt tokens already include tool schemas - don't add them again,
+            # only split them out of the conversation count for display
             total_tokens = actual_prompt_tokens + self.output_reserve
-            # For display purposes, estimate system vs message breakdown
             system_tokens = self.estimator.estimate_tokens(self.system_prompt)
             datetime_tokens = 30
-            message_tokens = actual_prompt_tokens - system_tokens - datetime_tokens
+            message_tokens = (
+                actual_prompt_tokens - system_tokens - datetime_tokens - self.tool_tokens
+            )
 
             return {
                 "system_tokens": system_tokens + datetime_tokens,
+                "tool_tokens": self.tool_tokens,
                 "message_tokens": max(0, message_tokens),  # Ensure non-negative
                 "output_reserve": self.output_reserve,
                 "total_tokens": total_tokens,
@@ -413,10 +442,17 @@ Be comprehensive but concise. The goal is to continue work seamlessly without lo
         system_tokens = self.estimator.estimate_tokens(self.system_prompt)
         datetime_tokens = 30  # Approximate size of dynamic date/time message
         message_tokens = self.estimator.estimate_messages_tokens(messages)
-        total_tokens = system_tokens + datetime_tokens + message_tokens + self.output_reserve
+        total_tokens = (
+            system_tokens
+            + datetime_tokens
+            + self.tool_tokens
+            + message_tokens
+            + self.output_reserve
+        )
 
         return {
             "system_tokens": system_tokens + datetime_tokens,  # Include datetime in system count
+            "tool_tokens": self.tool_tokens,
             "message_tokens": message_tokens,
             "output_reserve": self.output_reserve,
             "total_tokens": total_tokens,

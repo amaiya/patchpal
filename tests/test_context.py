@@ -140,6 +140,70 @@ class TestContextManager:
         assert manager.context_limit == 8192
         assert manager.output_reserve == reserve_before
 
+    def test_output_reserve_scales_for_small_windows(self, monkeypatch):
+        """Small windows get a proportional reserve rather than a fixed 4K floor."""
+        monkeypatch.setenv("PATCHPAL_CONTEXT_LIMIT", "8192")
+        assert ContextManager("unknown/model", "test").output_reserve == 1_310
+
+        monkeypatch.setenv("PATCHPAL_CONTEXT_LIMIT", "4096")
+        assert ContextManager("unknown/model", "test").output_reserve == 1_000  # floor
+
+        monkeypatch.setenv("PATCHPAL_CONTEXT_LIMIT", "200000")
+        assert ContextManager("unknown/model", "test").output_reserve == 32_000  # cap
+
+    def test_tool_tokens_counted_in_estimates(self, monkeypatch):
+        """Tool schemas count toward compaction checks and estimated usage."""
+        monkeypatch.setenv("PATCHPAL_CONTEXT_LIMIT", "10000")
+        manager = ContextManager("unknown/model", "")
+        messages = [{"role": "user", "content": "hi"}]
+
+        before = manager.get_usage_stats(messages)
+        assert before["tool_tokens"] == 0
+        assert not manager.needs_compaction(messages)
+
+        tools = [{"type": "function", "function": {"name": "t", "description": "x" * 21_000}}]
+        manager.set_tools(tools)
+        assert manager.tool_tokens >= 7_000
+
+        after = manager.get_usage_stats(messages)
+        assert after["tool_tokens"] == manager.tool_tokens
+        assert after["total_tokens"] == before["total_tokens"] + manager.tool_tokens
+        assert manager.needs_compaction(messages)
+
+    def test_tool_tokens_not_double_counted_with_actual_tokens(self, monkeypatch):
+        """Actual prompt tokens already include tools; they're only split out for display."""
+        monkeypatch.setenv("PATCHPAL_CONTEXT_LIMIT", "100000")
+        manager = ContextManager("unknown/model", "")
+        manager.tool_tokens = 1_500
+
+        stats = manager.get_usage_stats([], actual_prompt_tokens=5_000)
+        assert stats["total_tokens"] == 5_000 + manager.output_reserve
+        assert stats["tool_tokens"] == 1_500
+        assert stats["message_tokens"] == 5_000 - 30 - 1_500
+
+    def test_agent_counts_tools_and_caps_max_tokens(self, monkeypatch):
+        """Agent registers tool schemas at init and uses the output reserve as max_tokens."""
+        from unittest.mock import MagicMock, patch
+
+        monkeypatch.setenv("PATCHPAL_CONTEXT_LIMIT", "8192")
+        agent = create_agent(enabled_tools=["read_file", "write_file"])
+        assert agent.context_manager.tool_tokens > 0
+
+        full_agent = create_agent()
+        assert full_agent.context_manager.tool_tokens > agent.context_manager.tool_tokens
+
+        mock_response = MagicMock()
+        mock_response.choices = [MagicMock()]
+        mock_response.choices[0].message.content = "ok"
+        mock_response.choices[0].message.tool_calls = None
+        mock_response.usage = MagicMock(prompt_tokens=10, completion_tokens=5, total_tokens=15)
+        with patch(
+            "patchpal.agent.function_calling.litellm.completion", return_value=mock_response
+        ) as mock_completion:
+            agent.run("hi")
+        assert mock_completion.call_args[1]["max_tokens"] == agent.context_manager.output_reserve
+        assert agent.context_manager.output_reserve == 1_310
+
     def test_model_matching_litellm_format(self):
         """Test that model matching works correctly with LiteLLM format (provider/model)."""
         import os

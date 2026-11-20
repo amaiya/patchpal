@@ -717,6 +717,7 @@ Supported models: Any LiteLLM-supported model
 
                 print(f"  Messages in history: {len(agent.messages)}")
                 print(f"  System prompt: {stats['system_tokens']:,} tokens")
+                print(f"  Tools: {stats.get('tool_tokens', 0):,} tokens (estimated)")
                 print(f"  Conversation: {stats['message_tokens']:,} tokens")
                 print(f"  Output reserve: {stats['output_reserve']:,} tokens")
                 print(f"  Total: {stats['total_tokens']:,} tokens")

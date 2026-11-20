@@ -14,7 +14,7 @@ Most recent releases are shown at the top. Each release shows:
 - Added an optional `operation_num` argument to the `log_action_blocked`/`log_action_approved`/`log_action_result` audit functions so an action's events can be joined with its `TOOL_EXECUTION` entry.
 
 ### changed:
-- N/A
+- Better small context window support: tool schemas count toward context usage, smaller output reserve, and `max_tokens` fits the window.
 
 ### fixed:
 - Browser tools now apply `nest_asyncio` lazily (on first browser use) instead of at import time, preventing intermittent "Unhandled exception in event loop" errors in the interactive CLI.

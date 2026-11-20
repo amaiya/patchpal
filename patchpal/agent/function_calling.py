@@ -560,6 +560,8 @@ class PatchPalAgent:
 
         # Initialize context manager
         self.context_manager = ContextManager(self.model_id, SYSTEM_PROMPT)
+        # Count tool schemas toward context usage from the start (before the first call)
+        self.context_manager.set_tools(self._build_tools())
 
         # Check if auto-compaction is enabled (default: True)
         self.enable_auto_compact = not config.DISABLE_AUTOCOMPACT
@@ -740,6 +742,30 @@ Repository root takes priority if both exist."""
             "openai" in model_lower or "gpt" in model_lower or self.model_id.startswith("openai/")
         )
 
+    def _build_tools(self) -> List[Dict[str, Any]]:
+        """Build the tool schema list sent with each request (built-in + custom).
+
+        Returns:
+            List of tool schemas
+        """
+        # Import from definitions to get ALL tools (including optional ones)
+        from patchpal.tools.definitions import TOOLS as ALL_TOOLS
+
+        if self.enabled_tools is not None:
+            # Filter tools if enabled_tools is specified
+            tools = [t for t in ALL_TOOLS if t["function"]["name"] in self.enabled_tools]
+        else:
+            # Use the default filtered list (excludes optional tools)
+            tools = list(TOOLS)
+
+        if self.custom_tools:
+            from patchpal.tools.tool_schema import function_to_tool_schema
+
+            for func in self.custom_tools:
+                tools.append(function_to_tool_schema(func))
+
+        return tools
+
     def _perform_auto_compaction(self):
         """Perform automatic context window compaction.
 
@@ -793,7 +819,8 @@ Repository root takes priority if both exist."""
         )
         print(
             f"\033[2m   Current: {stats_before['total_tokens']:,} / {stats_before['context_limit']:,} tokens "
-            f"(system: {stats_before['system_tokens']:,}, messages: {stats_before['message_tokens']:,}, "
+            f"(system: {stats_before['system_tokens']:,}, tools: {stats_before.get('tool_tokens', 0):,}, "
+            f"messages: {stats_before['message_tokens']:,}, "
             f"output reserve: {stats_before['output_reserve']:,})\033[0m"
         )
         print(
@@ -872,7 +899,7 @@ Repository root takes priority if both exist."""
                 response = litellm.completion(
                     model=self.model_id,
                     messages=messages,
-                    max_tokens=32000,  # Explicit output token limit for predictable context usage
+                    max_tokens=self.context_manager.output_reserve,  # Fits the context window
                     timeout=LLM_TIMEOUT,
                     **self.litellm_kwargs,
                 )
@@ -1216,24 +1243,8 @@ Repository root takes priority if both exist."""
 
             # Use LiteLLM for all providers
             try:
-                # Build tool list (built-in + custom)
-                # Import from definitions to get ALL tools (including optional ones)
-                from patchpal.tools.definitions import TOOLS as ALL_TOOLS
-
-                tools = list(ALL_TOOLS)
-
-                # Filter tools if enabled_tools is specified
-                if self.enabled_tools is not None:
-                    tools = [t for t in tools if t["function"]["name"] in self.enabled_tools]
-                else:
-                    # Use the default filtered list (excludes optional tools)
-                    tools = list(TOOLS)
-
-                if self.custom_tools:
-                    from patchpal.tools.tool_schema import function_to_tool_schema
-
-                    for func in self.custom_tools:
-                        tools.append(function_to_tool_schema(func))
+                tools = self._build_tools()
+                self.context_manager.set_tools(tools)
 
                 # Use streaming for better UX (with fallback to blocking)
                 def make_completion_call(stream: bool = False):
@@ -1242,7 +1253,7 @@ Repository root takes priority if both exist."""
                         "messages": messages,
                         "tools": tools,
                         "tool_choice": "auto",
-                        "max_tokens": 32000,  # Explicit output token limit for predictable context usage
+                        "max_tokens": self.context_manager.output_reserve,  # Fits the context window
                         "timeout": LLM_TIMEOUT,
                         "stream": stream,
                         **self.litellm_kwargs,
