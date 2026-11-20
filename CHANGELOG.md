@@ -18,6 +18,7 @@ Most recent releases are shown at the top. Each release shows:
 
 ### fixed:
 - Browser tools now apply `nest_asyncio` lazily (on first browser use) instead of at import time, preventing intermittent "Unhandled exception in event loop" errors in the interactive CLI.
+- Fixed output reserve not being recomputed when the context limit is updated after detecting the underlying model of a Bedrock application inference profile (e.g., a 1M-token model kept the 20,480 reserve computed from the 128K default). Detected limits also no longer override `PATCHPAL_CONTEXT_LIMIT`.
 
 
 ## 0.26.0 (2026-11-03)

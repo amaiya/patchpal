@@ -107,6 +107,39 @@ class TestContextManager:
             if original_limit is not None:
                 os.environ["PATCHPAL_CONTEXT_LIMIT"] = original_limit
 
+    def test_set_context_limit_recomputes_output_reserve(self, monkeypatch):
+        """Updating the limit after model detection must also update the output reserve."""
+        monkeypatch.delenv("PATCHPAL_CONTEXT_LIMIT", raising=False)
+
+        # Application inference profile ARN has no model name -> 128K default
+        manager = ContextManager(
+            "arn:aws:bedrock:us-east-1:123456789012:application-inference-profile/abc123", "test"
+        )
+        assert manager.context_limit == 128_000
+        assert manager.output_reserve == 20_480
+
+        manager.set_context_limit(1_000_000)
+        assert manager.context_limit == 1_000_000
+        assert manager.output_reserve == 32_000
+
+        manager.set_context_limit(200_000)
+        assert manager.output_reserve == 32_000
+
+        manager.set_context_limit(50_000)
+        assert manager.output_reserve == 8_000
+
+    def test_set_context_limit_respects_env_override(self, monkeypatch):
+        """PATCHPAL_CONTEXT_LIMIT must not be overwritten by detected model limits."""
+        monkeypatch.setenv("PATCHPAL_CONTEXT_LIMIT", "8192")
+
+        manager = ContextManager(
+            "arn:aws:bedrock:us-east-1:123456789012:application-inference-profile/abc123", "test"
+        )
+        reserve_before = manager.output_reserve
+        manager.set_context_limit(1_000_000)
+        assert manager.context_limit == 8192
+        assert manager.output_reserve == reserve_before
+
     def test_model_matching_litellm_format(self):
         """Test that model matching works correctly with LiteLLM format (provider/model)."""
         import os

@@ -257,10 +257,30 @@ Be comprehensive but concise. The goal is to continue work seamlessly without lo
         self.system_prompt = system_prompt
         self.estimator = TokenEstimator(model_id)
         self.context_limit = self._get_context_limit()
-        # Reserve 16% of context for output (min 4K, max 32K)
-        # This ensures older models like GPT-4 (8K) get 1.28K reserve
-        # while modern models get full 32K reserve
-        self.output_reserve = min(32_000, max(4_000, int(self.context_limit * 0.16)))
+        self.output_reserve = self._compute_output_reserve(self.context_limit)
+
+    @staticmethod
+    def _compute_output_reserve(context_limit: int) -> int:
+        """Reserve 16% of context for output (min 4K, max 32K)."""
+        return min(32_000, max(4_000, int(context_limit * 0.16)))
+
+    def set_context_limit(self, limit: int) -> None:
+        """Update the context limit (e.g., after detecting the underlying model).
+
+        Recomputes the output reserve so it stays consistent with the new limit.
+        Ignored if PATCHPAL_CONTEXT_LIMIT is set, so the user override always wins.
+
+        Args:
+            limit: New context window size in tokens
+        """
+        if config.CONTEXT_LIMIT:
+            try:
+                int(config.CONTEXT_LIMIT)
+                return  # Valid override in effect - don't replace it
+            except ValueError:
+                pass  # Invalid override is ignored elsewhere too
+        self.context_limit = int(limit)
+        self.output_reserve = self._compute_output_reserve(self.context_limit)
 
     def _get_context_limit(self) -> int:
         """Get context limit for model.

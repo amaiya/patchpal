@@ -628,7 +628,7 @@ class PatchPalAgent:
                         model_info = litellm.get_model_info(f"bedrock/{self.detected_model_name}")
                         max_input = model_info.get("max_input_tokens")
                         if max_input and isinstance(max_input, (int, float)) and max_input > 0:
-                            self.context_manager.context_limit = int(max_input)
+                            self.context_manager.set_context_limit(int(max_input))
                     except Exception:
                         pass  # Keep default limit
                 else:
