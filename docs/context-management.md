@@ -168,3 +168,5 @@ from patchpal.agent import create_tiny_agent
 agent = create_tiny_agent(model_id="ollama_chat/qwen3:8b")
 response = agent.run("Fix the failing test in tests/test_utils.py")
 ```
+
+**Background:** TinyAgent is based on [You don't need long context](https://arxiv.org/html/2611.05306v1) (Belcak et al., 2026), which found that frequent compaction to a structured handoff note, combined with selective reading of long inputs, preserves task accuracy with little to no loss in 8K–48K context windows. TinyAgent's handoff prompt is adapted from the paper's Appendix G, and its selective-reading guidance from Appendix E.

@@ -1,6 +1,7 @@
 """Tiny agent: a function-calling agent tuned for small context windows.
 
-Based on "You don't need long context" (arXiv:2611.05306), which found that frontier
+Based on "You don't need long context" (Belcak et al., 2026,
+https://arxiv.org/html/2611.05306v1), which found that frontier
 models keep their task accuracy in 8K-48K windows given two practices:
 
 1. Frequent compaction to a structured handoff note (a brief for the work yet to be
