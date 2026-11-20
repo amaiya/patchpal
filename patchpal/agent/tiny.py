@@ -45,9 +45,7 @@ SELECTIVE_READING_PROMPT = """
 ## Small context window
 
 Working directory: {workdir}. This is the project; relative paths
-resolve here. Files under ~/.patchpal/ (memory, logs, saved conversation history) belong to
-the assistant, not the project. For questions about this project, use its local files, not
-web search.
+resolve here. For questions about this project, use its local files, not web search.
 
 You are running with a small context window ({limit:,} tokens). When the context fills up,
 the conversation is compacted to your current request plus a handoff note you write.
@@ -129,6 +127,10 @@ class TinyAgent(PatchPalAgent):
                 tiny.enabled_tools += TINY_WEB_TOOLS
         tiny.context_manager.set_tools(tiny._build_tools())
         tiny._refresh_system_prompt()
+
+        # Replace the base agent's memory message (which includes file paths) with TinyAgent's
+        tiny.messages = [m for m in tiny.messages if not m.get("metadata", {}).get("is_memory")]
+        tiny._load_project_memory()
         return tiny
 
     # ------------------------------------------------------------------
@@ -217,6 +219,33 @@ class TinyAgent(PatchPalAgent):
     # ------------------------------------------------------------------
     # Handoff compaction
     # ------------------------------------------------------------------
+
+    def _load_project_memory(self):
+        """Load MEMORY.md without file paths, and skip it entirely if it's the empty template.
+
+        The standard memory message gives the file's absolute path under ~/.patchpal/. A 4B
+        model took that path for the project and looked for project files there. The empty
+        template carries nothing else, so it's skipped; real notes are kept (they're what
+        makes memory useful), just without the path or editing instructions.
+        """
+        try:
+            from patchpal.tools.common import get_memory_info
+
+            info = get_memory_info()
+            if not info["exists"] or not info["has_content"]:
+                return
+
+            self.messages.insert(
+                0,
+                {
+                    "role": "system",
+                    "content": f"# Project Memory\n\n{info['content']}",
+                    "metadata": {"is_memory": True},
+                },
+            )
+        except Exception:
+            # If loading fails, silently continue (don't break agent initialization)
+            pass
 
     def run(self, user_message: str, max_iterations: int = 100) -> str:
         """Run the agent on a user message (resets the per-turn handoff count)."""

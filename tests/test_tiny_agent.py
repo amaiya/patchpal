@@ -354,7 +354,8 @@ def test_from_agent_converts_without_redetecting(monkeypatch):
     assert isinstance(tiny, TinyAgent)
     assert tiny.detected_model_name == "anthropic.claude-test"
     assert tiny.prompt_caching_supported is True
-    assert tiny.messages == base.messages
+    # Same conversation, except the base agent's memory message (which includes file paths)
+    assert tiny.messages == [m for m in base.messages if not m.get("metadata", {}).get("is_memory")]
     assert "## Small context window" in tiny.system_prompt
     assert tiny.context_manager.tool_tokens < full_tool_tokens  # Minimal tools applied
     assert tiny.agent_type == "tiny"
@@ -710,10 +711,46 @@ def test_system_prompt_states_working_directory(monkeypatch):
     prompt = create_tiny_agent().system_prompt
     section = prompt.split("## Small context window", 1)[1]
     assert f"Working directory: {project}. This is the project" in section
-    assert (
-        "Files under ~/.patchpal/ (memory, logs, saved conversation history) belong to" in section
-    )
+    assert "For questions about this project, use its local files, not web search." in section
     assert "PatchPal" not in section  # The model is never told what PatchPal is
-    assert "For questions about this project, use its local files, not\nweb search." in section
+    # Don't mention the assistant's own data directory: a 4B model took it for the project
+    assert ".patchpal" not in section
     # PatchPalAgent's prompt is unchanged
     assert "Working directory:" not in create_agent().system_prompt
+
+
+def test_empty_memory_template_is_not_loaded(monkeypatch, tmp_path):
+    """The empty template only carries a path under ~/.patchpal/, which a 4B model took for
+    the project directory. TinyAgent skips it; PatchPalAgent still loads it."""
+    memory_path = tmp_path / "MEMORY.md"
+    memory_path.write_text("# Project Memory\n\nThis file persists across sessions.\n")
+    monkeypatch.setattr("patchpal.tools.common.MEMORY_FILE", memory_path)
+    monkeypatch.setattr(
+        "patchpal.tools.common.get_memory_info",
+        lambda: {"exists": True, "has_content": False, "path": memory_path, "content": ""},
+    )
+
+    tiny = create_tiny_agent()
+    assert not any(m.get("metadata", {}).get("is_memory") for m in tiny.messages)
+    assert str(memory_path) not in str(tiny.messages)
+    # Converting a base agent (as the CLI does) also drops it
+    base = create_agent()
+    assert any(m.get("metadata", {}).get("is_memory") for m in base.messages)
+    assert not any(
+        m.get("metadata", {}).get("is_memory") for m in TinyAgent.from_agent(base).messages
+    )
+
+
+def test_memory_notes_are_loaded_without_paths(monkeypatch, tmp_path):
+    memory_path = tmp_path / "MEMORY.md"
+    notes = "# Project Memory\n\n---\n\nThis is a FastAPI project with PostgreSQL backend.\n"
+    memory_path.write_text(notes)
+    monkeypatch.setattr("patchpal.tools.common.MEMORY_FILE", memory_path)
+
+    for agent in (create_tiny_agent(), TinyAgent.from_agent(create_agent())):
+        memory = [m for m in agent.messages if m.get("metadata", {}).get("is_memory")]
+        assert len(memory) == 1  # Kept (and tagged, so compaction preserves it)
+        content = memory[0]["content"]
+        assert "This is a FastAPI project with PostgreSQL backend." in content
+        assert str(memory_path) not in content
+        assert "edit_file" not in content
