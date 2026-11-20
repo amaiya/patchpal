@@ -266,3 +266,49 @@ def test_memory_creation_failure_graceful(temp_memory_dir, monkeypatch, caplog):
 
         # Should return the path even if creation failed
         assert result == temp_memory_dir / "MEMORY.md"
+
+
+def test_compaction_preserves_memory_message(temp_memory_dir, monkeypatch):
+    """Compaction must not summarize away MEMORY.md (it's loaded once and never restored)."""
+    from unittest.mock import MagicMock
+
+    memory_path = temp_memory_dir / "MEMORY.md"
+    memory_path.write_text(
+        "# Project Memory\n\n---\n\nThis is a FastAPI project with PostgreSQL backend.\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr("patchpal.tools.common.MEMORY_FILE", memory_path)
+
+    agent = create_agent()
+    memory_msg = agent.messages[0]
+    assert memory_msg.get("metadata", {}).get("is_memory") is True
+
+    # Mirror the live-test sequence: memory + 2 turns (second with two tool results) + a 3rd turn
+    agent.messages += [
+        {"role": "user", "content": "list files"},
+        {"role": "assistant", "content": "", "tool_calls": []},
+        {"role": "tool", "tool_call_id": "1", "name": "run_shell", "content": "ls output"},
+        {"role": "assistant", "content": "answer 1"},
+        {"role": "user", "content": "what does this repo do?"},
+        {"role": "assistant", "content": "", "tool_calls": []},
+        {"role": "tool", "tool_call_id": "2", "name": "read_file", "content": "README"},
+        {"role": "tool", "tool_call_id": "3", "name": "run_shell", "content": "pyproject"},
+        {"role": "assistant", "content": "answer 2"},
+        {"role": "user", "content": "capital of France?"},
+        {"role": "assistant", "content": "Paris."},
+    ]
+
+    summary = {"role": "assistant", "content": "[COMPACTION SUMMARY]\n\nsummary"}
+    agent.context_manager.create_compaction = MagicMock(return_value=(summary, "summary"))
+    agent._perform_auto_compaction()
+
+    # Memory was not sent for summarization
+    summarized = agent.context_manager.create_compaction.call_args[0][0]
+    assert all(not m.get("metadata", {}).get("is_memory") for m in summarized)
+
+    # Memory is first, followed by the summary and the last 2 turns
+    assert agent.messages[0] is memory_msg
+    assert agent.messages[1] is summary
+    assert agent.messages[2]["content"] == "what does this repo do?"
+    assert agent.messages[-1]["content"] == "Paris."
+    assert sum(1 for m in agent.messages if m.get("metadata", {}).get("is_memory")) == 1

@@ -940,28 +940,33 @@ Repository root takes priority if both exist."""
 
                 return response
 
+            # Keep project memory (MEMORY.md) out of compaction: it's loaded once at session
+            # start and never restored, so summarizing it would lose its content
+            memory_messages = [m for m in self.messages if m.get("metadata", {}).get("is_memory")]
+            conversation = [m for m in self.messages if not m.get("metadata", {}).get("is_memory")]
+
             summary_msg, summary_text = self.context_manager.create_compaction(
-                self.messages,
+                conversation,
                 compaction_completion,
             )
 
             # Replace message history with compacted version
-            # Strategy: Keep summary + recent complete turns (preserve tool call/result pairs)
+            # Strategy: Keep memory + summary + recent complete turns (preserve tool call/result pairs)
             # This ensures Bedrock's strict message structure requirements are met
 
             # Find complete assistant turns (assistant message + all its tool results)
             # Walk backwards and keep complete turns
             preserved_messages = []
-            i = len(self.messages) - 1
+            i = len(conversation) - 1
             turns_kept = 0
             max_turns_to_keep = 2  # Keep last 2 complete turns
 
             while i >= 0 and turns_kept < max_turns_to_keep:
-                msg = self.messages[i]
+                msg = conversation[i]
 
                 if msg.get("role") == "user":
                     # Found start of a turn, keep it and everything after
-                    preserved_messages = self.messages[i:]
+                    preserved_messages = conversation[i:]
                     turns_kept += 1
                     i -= 1
                 elif msg.get("role") == "assistant":
@@ -974,10 +979,10 @@ Repository root takes priority if both exist."""
                     i -= 1
 
             if preserved_messages:
-                self.messages = [summary_msg] + preserved_messages
+                self.messages = memory_messages + [summary_msg] + preserved_messages
             else:
                 # Fallback: keep all messages plus summary
-                self.messages = [summary_msg] + self.messages
+                self.messages = memory_messages + [summary_msg] + conversation
 
             # Show results
             stats_after = self.context_manager.get_usage_stats(self.messages)
