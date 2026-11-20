@@ -302,3 +302,42 @@ def test_main_displays_model_name(monkeypatch, capsys):
 
         captured = capsys.readouterr()
         assert "Using model: openai/gpt-4o" in captured.out
+
+
+def test_clear_reloads_project_memory(monkeypatch, tmp_path, capsys):
+    """/clear drops the conversation but reloads MEMORY.md (only loaded at session start)."""
+    from patchpal.agent import create_agent
+
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
+    monkeypatch.setattr(sys, "argv", ["patchpal"])
+
+    memory_path = tmp_path / "MEMORY.md"
+    memory_path.write_text("# Project Memory\n\n---\n\nOriginal note.\n", encoding="utf-8")
+    monkeypatch.setattr("patchpal.tools.common.MEMORY_FILE", memory_path)
+
+    agent = create_agent()
+    agent.messages += [
+        {"role": "user", "content": "hello"},
+        {"role": "assistant", "content": "hi"},
+    ]
+    agent.last_prompt_tokens = 1234
+
+    # Edit memory mid-session - /clear should pick up the new content
+    memory_path.write_text("# Project Memory\n\n---\n\nUpdated note.\n", encoding="utf-8")
+
+    with (
+        patch("patchpal.cli.interactive.create_agent", return_value=agent),
+        patch("patchpal.cli.interactive.pt_prompt", side_effect=["/clear", "y", "exit"]),
+    ):
+        from patchpal.cli.interactive import main
+
+        main()
+
+    assert len(agent.messages) == 1
+    memory_msg = agent.messages[0]
+    assert memory_msg.get("metadata", {}).get("is_memory") is True
+    assert "Updated note." in memory_msg["content"]
+    assert "Original note." not in memory_msg["content"]
+    assert agent.last_prompt_tokens is None
+    assert agent._last_compaction_message_count == 0
+    assert "Project memory (MEMORY.md) was reloaded" in capsys.readouterr().out

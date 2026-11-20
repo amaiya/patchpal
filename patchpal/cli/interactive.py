@@ -950,14 +950,20 @@ Supported models: Any LiteLLM-supported model
                     print("=" * 70 + "\n")
                     continue
 
-                # Clear conversation history
+                # Clear conversation history, then reload project memory (MEMORY.md is only
+                # loaded at session start, so it would otherwise be lost for the rest of the
+                # session). Re-reading also picks up any edits made during the session.
                 agent.messages = []
+                if hasattr(agent, "_load_project_memory"):
+                    agent._load_project_memory()
                 agent._last_compaction_message_count = 0
                 agent.last_prompt_tokens = None  # Reset stale token count from before clear
 
                 print("\n\033[1;32m✓ Context cleared successfully!\033[0m")
                 print("  Starting fresh with empty conversation history.")
                 print("  All previous context has been removed - ready for a new task.")
+                if agent.messages:
+                    print("  Project memory (MEMORY.md) was reloaded.")
                 print("=" * 70 + "\n")
                 continue
 
