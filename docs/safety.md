@@ -5,11 +5,11 @@ The agent operates with a security model inspired by Claude Code:
 
 - **Permission system**: User approval required for all shell commands and file modifications (can be customized)
 - **Write boundary enforcement**: Write operations restricted to repository (matches Claude Code)
-  - Read operations allowed anywhere (system files, libraries, debugging, automation)
-  - Write operations outside repository require explicit permission
+    - Read operations allowed anywhere (system files, libraries, debugging, automation)
+    - Write operations outside repository require explicit permission
 - **Privilege escalation blocking**: Platform-aware blocking of privilege escalation commands
-  - Unix/Linux/macOS: `sudo`, `su`
-  - Windows: `runas`, `psexec`
+    - Unix/Linux/macOS: `sudo`, `su`
+    - Windows: `runas`, `psexec`
 - **Dangerous pattern detection**: Blocks patterns like `> /dev/`, `rm -rf /`, `| dd`, `--force`
 - **Timeout protection**: Shell commands timeout after 30 seconds
 
@@ -31,6 +31,7 @@ patchpal-sandbox -- autopilot --prompt "..."
 This provides a fully isolated environment with restricted access to your host system. Permissions remain enabled in interactive mode but are automatically disabled when using the `autopilot` subcommand.
 
 **Benefits:**
+
 - Complete isolation from your host system
 - Network isolation support for air-gapped environments
 - Safe environment for testing untrusted code or prompts
@@ -42,6 +43,7 @@ This provides a fully isolated environment with restricted access to your host s
 PatchPal includes comprehensive security protections enabled by default:
 
 **Critical Security:**
+
 - **Permission prompts**: Agent asks for permission before executing commands or modifying files (like Claude Code)
 - **Sensitive file protection**: Blocks access to `.env`, credentials, API keys
 - **File size limits**: Prevents OOM and context explosions with configurable size limits (500KB default)
@@ -53,11 +55,12 @@ PatchPal includes comprehensive security protections enabled by default:
 - **Write boundary protection**: Requires permission for write operations
 
 **Operational Safety:**
+
 - **Operation audit logging**: All file operations and commands logged to `~/.patchpal/repos/<repo-name>/audit.log` (enabled by default)
-  - Includes user prompts to show what triggered each operation
-  - Rotates at 10 MB with 3 backups (40 MB total max)
+    - Includes user prompts to show what triggered each operation
+    - Rotates at 10 MB with 3 backups (40 MB total max)
 - **Command history**: User commands saved to `~/.patchpal/repos/<repo-name>/history.txt` (last 1000 commands)
-  - Clean, user-friendly format for reviewing past interactions
+    - Clean, user-friendly format for reviewing past interactions
 - **Automatic backups**: Optional auto-backup of files to `~/.patchpal/repos/<repo-name>/backups/` before modification
 - **Resource limits**: Configurable operation counter prevents infinite loops (10000 operations default)
 - **Git state awareness**: Warns when modifying files with uncommitted changes
@@ -100,6 +103,7 @@ Choice [1-3]:
 ```
 
 Format:
+
 - `"tool_name": true` - Grant all operations for this tool (no more prompts)
 - `"tool_name": ["pattern1", "pattern2"]` - Grant only specific patterns (e.g., specific commands or file names)
 

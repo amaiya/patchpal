@@ -131,6 +131,7 @@ patchpal
 ```
 
 **Tip for Local Models:** Local models (i.e., models served by Ollama or vLLM) work best with these settings:
+
 - **Always:** set `PATCHPAL_CONTEXT_LIMIT` to your served window (e.g., `32768` to match `OLLAMA_CONTEXT_LENGTH=32768`, or `16384` on resource-constrained machines). PatchPal can't detect it from the server. At 64K or less, PatchPal uses [TinyAgent](../context-management.md#small-context-windows-tinyagent), which includes minimal tools plus small-window compaction and reading.
 - **Model with function calling, window over 64K:** `PATCHPAL_MINIMAL_TOOLS=true` limits tools to `read_file`, `read_lines`, `write_file`, `edit_file`, `run_shell`, reducing tool confusion.
 - **Model without function calling:** `PATCHPAL_REACT_MODE=true` enables text-based tool invocation (see [ReAct mode docs](../models/local-models.md#react-mode-for-models-without-function-calling)).
