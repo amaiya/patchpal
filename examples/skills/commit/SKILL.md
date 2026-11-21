@@ -8,8 +8,8 @@ description: Create a well-formatted git commit following best practices
 Follow these steps to create a high-quality commit:
 
 ## 1. Review Changes
-- Use `git_status` to see what files have changed
-- Use `git_diff` to review the actual changes
+- Use `run_shell` to execute: `git status` to see what files have changed
+- Use `run_shell` to execute: `git diff` to review the actual changes
 - Ensure you understand what's being committed
 
 ## 2. Write Commit Message
@@ -25,8 +25,8 @@ Create a commit message that:
 - Use `run_shell` to execute: `git commit -m "Your message"`
 
 ## 4. Verify
-- Use `git_log` to confirm the commit was created correctly
-- Use `git_diff` with staged flag to ensure nothing unexpected was committed
+- Use `run_shell` to execute: `git log -1 --stat` to confirm the commit was created correctly
+- Use `run_shell` to execute: `git diff --staged` to ensure nothing unexpected was committed
 
 ## Format Example
 ```

@@ -156,7 +156,7 @@ description: Pre-deployment checklist
 ---
 # Instructions
 1. Check tests pass: `run_shell("pytest")`
-2. Verify git status is clean with `git_status`
+2. Verify git status is clean: `run_shell("git status")`
 3. Review CHANGELOG.md
 4. Confirm version bump
 5. Check CI/CD pipeline status

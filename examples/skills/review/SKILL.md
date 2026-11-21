@@ -8,8 +8,8 @@ description: Perform a thorough code review of recent changes
 Conduct a comprehensive code review by examining:
 
 ## 1. What Changed
-- Use `git_diff` to see all modifications
-- Use `git_log` to understand the commit history and context
+- Use `run_shell` to execute: `git diff` to see all modifications
+- Use `run_shell` to execute: `git log` to understand the commit history and context
 - Identify the scope and purpose of changes
 
 ## 2. Code Quality
