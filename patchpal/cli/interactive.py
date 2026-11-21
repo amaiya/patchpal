@@ -1011,16 +1011,8 @@ Supported models: Any LiteLLM-supported model
                 print("=" * 70)
 
                 # Get the actual system prompt from the agent
-                from patchpal.agent.react import ReActAgent
-
-                if isinstance(agent, ReActAgent):
-                    # ReAct agent stores system prompt
-                    actual_system_prompt = agent.system_prompt
-                else:
-                    # Function calling agent - import SYSTEM_PROMPT
-                    from patchpal.agent.function_calling import SYSTEM_PROMPT
-
-                    actual_system_prompt = SYSTEM_PROMPT
+                # (TinyAgent, for example, extends the base one)
+                actual_system_prompt = agent.system_prompt
 
                 # If specific message requested, show only that message
                 if specific_msg_num is not None:
