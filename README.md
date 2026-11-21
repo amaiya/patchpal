@@ -103,8 +103,7 @@ export HOSTED_VLLM_API_KEY=token-abc123
 patchpal --model hosted_vllm/openai/gpt-oss-120b
 
 # Use Ollama (local - set OLLAMA_CONTEXT_LENGTH and PATCHPAL_CONTEXT_LIMIT to the same window)
-# gemma4 needs a recent litellm (pip install -U litellm); older versions like 1.82.6 drop tool calls sent to Ollama
-export OLLAMA_CONTEXT_LENGTH=16384
+export OLLAMA_CONTEXT_LENGTH=16384 # or set the context length in the Ollama app's Settings
 PATCHPAL_CONTEXT_LIMIT=16384 patchpal --model ollama_chat/gemma4:e4b
 
 # Or set the model via environment variable
