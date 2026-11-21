@@ -45,7 +45,8 @@ SELECTIVE_READING_PROMPT = """
 ## Small context window
 
 Working directory: {workdir}. This is the project; relative paths
-resolve here. For questions about this project, use its local files, not web search.
+resolve here. For questions about this project, use its local files (read_file, read_lines,
+run_shell), not web_search or web_fetch.
 
 You are running with a small context window ({limit:,} tokens). When the context fills up,
 the conversation is compacted to your current request plus a handoff note you write.

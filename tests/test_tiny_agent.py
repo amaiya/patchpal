@@ -711,7 +711,10 @@ def test_system_prompt_states_working_directory(monkeypatch):
     prompt = create_tiny_agent().system_prompt
     section = prompt.split("## Small context window", 1)[1]
     assert f"Working directory: {project}. This is the project" in section
-    assert "For questions about this project, use its local files, not web search." in section
+    assert (
+        "For questions about this project, use its local files (read_file, read_lines,\n"
+        "run_shell), not web_search or web_fetch." in section
+    )
     assert "PatchPal" not in section  # The model is never told what PatchPal is
     # Don't mention the assistant's own data directory: a 4B model took it for the project
     assert ".patchpal" not in section
