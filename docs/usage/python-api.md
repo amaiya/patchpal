@@ -40,7 +40,7 @@ print(response)
     ```python
     from patchpal import create_tiny_agent
 
-    agent = create_tiny_agent(model_id="ollama_chat/qwen3.5:4b")
+    agent = create_tiny_agent(model_id="ollama_chat/gemma4:e4b")
     response = agent.run("What does the retry logic in client.py do?")
     ```
     Set `PATCHPAL_CONTEXT_LIMIT` to your served window size (e.g., `16384`). Unlike the CLI, `create_agent()` doesn't switch to TinyAgent automatically. See [Small Context Windows](../context-management.md#small-context-windows-tinyagent) for more details.

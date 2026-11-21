@@ -16,7 +16,7 @@ Most recent releases are shown at the top. Each release shows:
 
 ### changed:
 - Better small context window support: tool schemas count toward context usage, smaller output reserve, and `max_tokens` fits the window.
-- Unpinned LiteLLM (was `<=1.82.6`, pinned after the compromised 1.82.7/1.82.8 releases, which have since been removed from PyPI) and now require `litellm>=1.110.2`. LiteLLM 1.82.6 dropped assistant `tool_calls` when sending history to Ollama, so models whose chat format pairs tool results with calls (e.g., `gemma4`) never saw tool output and repeated the same call in a loop.
+- Unpinned LiteLLM (was `<=1.82.6`, pinned after the compromised 1.82.7/1.82.8 releases, which have since been removed from PyPI). Ollama models whose chat format pairs tool results with calls (e.g., `gemma4`) need a recent LiteLLM: 1.82.6 dropped assistant `tool_calls` when sending history to Ollama, so these models never saw tool output and repeated the same call in a loop. Other providers work with 1.82.6.
 
 ### fixed:
 - Browser tools now apply `nest_asyncio` lazily (on first browser use) instead of at import time, preventing intermittent "Unhandled exception in event loop" errors in the interactive CLI.

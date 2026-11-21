@@ -233,6 +233,7 @@ docker exec -it ollama ollama run glm-4.7-flash:q4_K_M
 - `glm-4.7-flash:q4_K_M` - Z.ai's GLM model, excellent tool calling
 - `qwen3.5` - Qwen3.5 model with good agentic capabilities
 - `qwen3-coder-next` - Specialized for coding tasks
+- `gemma4:e4b` - Google's Gemma 4 (~7.5B, 6.6 GB at Q4), runs on small GPUs; works well with TinyAgent at 16K (needs a recent `litellm`; older versions like 1.82.6 drop tool calls sent to Ollama, so the model repeats the same call in a loop)
 
 ### Configuring Ollama for Reasoning Models (Qwen3.5, DeepSeek-R1, etc.)
 
@@ -372,10 +373,10 @@ PatchPal can't detect your server's window size, so set `PATCHPAL_CONTEXT_LIMIT`
 # Typical: OLLAMA_CONTEXT_LENGTH=32768
 export PATCHPAL_CONTEXT_LIMIT=32768
 
-# Resource-constrained machines (e.g., qwen3.5:4b with OLLAMA_CONTEXT_LENGTH=16384)
+# Resource-constrained machines (e.g., gemma4:e4b or qwen3.5:4b with OLLAMA_CONTEXT_LENGTH=16384)
 export PATCHPAL_CONTEXT_LIMIT=16384
 
-patchpal --model ollama_chat/qwen3.5:4b   # Shows "🔧 Tiny agent (context window 16,384 ≤ 65,536): ..."
+patchpal --model ollama_chat/gemma4:e4b   # Shows "🔧 Tiny agent (context window 16,384 ≤ 65,536): ..."
 ```
 
 Reasoning models like Qwen3.5 produce long outputs, so use 32768 if your machine can handle it.
