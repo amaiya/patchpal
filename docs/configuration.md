@@ -402,6 +402,12 @@ export PATCHPAL_SYSTEM_PROMPT=~/.patchpal/my_prompt.md  # Use custom system prom
                                                           # Useful for: custom behavior, team standards, domain-specific instructions
 ```
 
+How each agent uses it:
+
+- **Standard agent:** the file replaces the built-in system prompt.
+- **TinyAgent:** the file replaces the base prompt, and TinyAgent still adds its small-context section (working directory, reading guidance, tool output limits) after it. This applies whenever the CLI switches to TinyAgent automatically. See [Small Context Windows](context-management.md#small-context-windows-tinyagent).
+- **ReAct agent:** not affected; it always uses its built-in prompt. To customize it, pass `custom_instructions` from the Python API (see [ReAct Mode](models/local-models.md#react-mode-for-models-without-function-calling)).
+
 ### Configuration Examples
 
 **Air-Gapped Environment (Offline, No Web Access):**
