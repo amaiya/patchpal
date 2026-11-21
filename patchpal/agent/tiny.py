@@ -12,7 +12,7 @@ TinyAgent differs from PatchPalAgent in four ways:
 - Handoff compaction: the conversation is replaced with the current request plus a
   handoff note, which always shrinks the context however large recent turns were.
 - Tool outputs are capped relative to the window size.
-- The system prompt adds selective-reading guidance.
+- The system prompt adds selective-reading guidance (prompts/tiny_prompt.md).
 - Minimal tools by default (unless enabled_tools is given), since full tool schemas
   alone can fill most of an 8K window.
 
@@ -21,6 +21,7 @@ PATCHPAL_SMALL_CONTEXT_THRESHOLD (default 65,536); PATCHPAL_TINY_MODE=true/false
 """
 
 from datetime import datetime
+from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
 from patchpal.agent.function_calling import PatchPalAgent
@@ -40,27 +41,20 @@ CHARS_PER_CODE_LINE = 50
 # Saved handoff histories to keep per repo (~10-40KB each); older ones are deleted
 MAX_HANDOFF_HISTORY_FILES = 100
 
-SELECTIVE_READING_PROMPT = """
+# Prompt section appended to the base system prompt (template in prompts/tiny_prompt.md)
+_TINY_PROMPT_PATH = Path(__file__).parent.parent / "prompts" / "tiny_prompt.md"
 
-## Small context window
 
-Working directory: {workdir}. This is the project; relative paths
-resolve here. For questions about this project, use its local files (read_file, read_lines,
-run_shell), not web_search or web_fetch.
+def _load_tiny_prompt() -> str:
+    """Load the small-context system prompt section.
 
-You are running with a small context window ({limit:,} tokens). When the context fills up,
-the conversation is compacted to your current request plus a handoff note you write.
-Read only what you need:
+    Returns:
+        The template, prefixed with a blank line to separate it from the base prompt
+    """
+    return "\n\n" + _TINY_PROMPT_PATH.read_text(encoding="utf-8").rstrip("\n")
 
-- Each tool result is capped at about {max_chars:,} characters (roughly {max_lines} lines of code);
-  longer output is truncated, with a note saying where to continue.
-- Locate before reading: use run_shell with grep (e.g., `grep -n "def name" file`), `wc -l`,
-  or `head` to find the relevant lines, then read_lines a small range around them.
-- Never read whole large files or dump long command output. Filter with grep/head/tail.
-- Don't re-read ranges you've already read; rely on your notes instead.
-- You can't hold a large file in context. If a request needs more than fits (e.g., "read this
-  entire file" or "show me all of X"), don't try to read everything: summarize what matters,
-  or ask the user what to focus on."""
+
+SELECTIVE_READING_PROMPT = _load_tiny_prompt()
 
 
 class TinyAgent(PatchPalAgent):
