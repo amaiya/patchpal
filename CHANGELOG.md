@@ -13,10 +13,14 @@ Most recent releases are shown at the top. Each release shows:
 - Added `TinyAgent` for small context windows (≤64K): handoff compaction, minimal tools, and selective reading, with a per-turn compaction limit (`PATCHPAL_MAX_HANDOFFS_PER_TURN`) to stop runaway loops. See [Small Context Windows](https://amaiya.github.io/patchpal/context-management/#small-context-windows-tinyagent).
 - Added `PATCHPAL_AUDIT_LOG_FULL` (`config.AUDIT_LOG_FULL`, default `false`) to disable truncation of prompts and responses in the audit log (and lift the secondary length cap on logged tool parameters), for research/analysis use cases. Note that tool parameters are still summarized at their call sites, so this does not capture complete tool arguments.
 - Added an optional `operation_num` argument to the `log_action_blocked`/`log_action_approved`/`log_action_result` audit functions so an action's events can be joined with its `TOOL_EXECUTION` entry.
+- `patchpal-sandbox --restrict-network` now works with local Ollama and vLLM servers: `OLLAMA_API_BASE` and `HOSTED_VLLM_API_BASE` are auto-detected, and each allowed URL is opened on its own port (e.g., `http://host.containers.internal:11434`). See [Local Models (Ollama)](https://amaiya.github.io/patchpal/usage/sandbox/#local-models-ollama).
 
 ### changed:
 - Better small context window support: tool schemas count toward context usage, smaller output reserve, and `max_tokens` fits the window.
 - Unpinned LiteLLM (was `<=1.82.6`, pinned after the compromised 1.82.7/1.82.8 releases, which have since been removed from PyPI). Ollama models whose chat format pairs tool results with calls (e.g., `gemma4`) need a recent LiteLLM: 1.82.6 dropped assistant `tool_calls` when sending history to Ollama, so these models never saw tool output and repeated the same call in a loop. Other providers work with 1.82.6.
+- `patchpal-sandbox` no longer sets `OLLAMA_CONTEXT_LENGTH` automatically (8192, or 32768 for some models). Ollama runs outside the container, so the setting had no effect on the server's context window, and its message suggested otherwise. Set `PATCHPAL_CONTEXT_LIMIT` to the window your server uses.
+- `patchpal-sandbox` now refuses `--restrict-network` together with `--host-network`, since the firewall would apply to the host's network. The error shows how to use a local server with bridge networking instead.
+- `--allow-url` entries with `http://` are now allowed on port 80 (previously every allowed URL was opened on port 443 only).
 
 ### fixed:
 - Browser tools now apply `nest_asyncio` lazily (on first browser use) instead of at import time, preventing intermittent "Unhandled exception in event loop" errors in the interactive CLI.
@@ -26,6 +30,7 @@ Most recent releases are shown at the top. Each release shows:
 - A tool call with malformed JSON arguments no longer breaks the session with Ollama models (every later request failed with `JSONDecodeError: Extra data`).
 - Parallel tool calls from Ollama models are no longer merged into one invalid call when streaming (e.g., several `read_file` calls failing with "Invalid arguments").
 - `/clear` now reloads `MEMORY.md` instead of dropping project memory for the rest of the session.
+- `patchpal-sandbox --restrict-network` now skips allowed URLs whose hostnames contain characters other than letters, digits, dots and hyphens, instead of inserting them into the firewall script.
 
 
 ## 0.26.0 (2026-11-03)

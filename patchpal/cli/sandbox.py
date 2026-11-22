@@ -12,6 +12,7 @@ Usage:
 
 import argparse
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -119,6 +120,33 @@ def is_interactive_command(patchpal_args):
     return True
 
 
+def parse_allowed_url(url):
+    """Split an allowed URL into (hostname, port) for the firewall.
+
+    The port defaults to 443 for https and 80 for http. A URL without a scheme is
+    treated as https. An explicit port (e.g., http://host.containers.internal:11434
+    for a local Ollama server) is kept, so non-HTTPS endpoints can be allowed.
+
+    Returns:
+        tuple: (hostname, port), or (None, None) if the URL has no valid hostname or port
+    """
+    from urllib.parse import urlsplit
+
+    if "://" not in url:
+        url = f"https://{url}"
+    try:
+        parts = urlsplit(url)
+        port = parts.port
+    except ValueError:
+        return None, None
+    hostname = parts.hostname
+    if not hostname:
+        return None, None
+    if port is None:
+        port = 80 if parts.scheme == "http" else 443
+    return hostname, port
+
+
 def detect_llm_endpoints_from_env():
     """Detect LLM provider API endpoints from environment variables.
 
@@ -165,6 +193,9 @@ def detect_llm_endpoints_from_env():
         "TOGETHER_API_BASE",
         "REPLICATE_API_BASE",
         "HUGGINGFACE_API_BASE",
+        # Local servers (e.g., OLLAMA_API_BASE=http://host.containers.internal:11434)
+        "OLLAMA_API_BASE",
+        "HOSTED_VLLM_API_BASE",
     ]
 
     for env_var in custom_endpoint_vars:
@@ -299,23 +330,27 @@ echo "=== Setting up network restrictions ==="
 ALLOWED_IPS=""
 """
 
-    # Add URL resolution for each allowed URL
+    # Add URL resolution for each allowed URL. Each resolved IP is paired with its
+    # URL's port ("IP PORT" per line), so non-HTTPS endpoints like a local Ollama
+    # server (port 11434) can be allowed alongside HTTPS APIs (port 443).
     for url in allowed_urls:
+        hostname, port = parse_allowed_url(url)
+        # Hostnames are interpolated into the shell script, so only allow safe characters
+        if not hostname or not re.fullmatch(r"[A-Za-z0-9.\-]+", hostname):
+            print(f"⚠️  Warning: Skipping invalid allowed URL: {url!r}", file=sys.stderr)
+            continue
         script += f"""
-# Resolve: {url}
-URL="{url}"
-HOSTNAME="${{URL#https://}}"
-HOSTNAME="${{HOSTNAME#http://}}"
-HOSTNAME="${{HOSTNAME%%/*}}"
+# Resolve: {hostname} (port {port})
+HOSTNAME="{hostname}"
 echo "Resolving: $HOSTNAME"
 IPS=$(getent hosts "$HOSTNAME" | awk '{{ print $1 }}' || true)
 if [ -z "$IPS" ]; then
     echo "  WARNING: Could not resolve $HOSTNAME"
 else
-    echo "$IPS" | while read -r IP; do
+    while read -r IP; do
         echo "  Resolved: $IP"
-    done
-    ALLOWED_IPS="$ALLOWED_IPS$IPS"$'\\n'
+        ALLOWED_IPS="$ALLOWED_IPS$IP {port}"$'\\n'
+    done <<< "$IPS"
 fi
 """
 
@@ -402,13 +437,13 @@ iptables -A OUTPUT -d 127.0.0.1/8 -j ACCEPT
 # Allow IPv6 localhost (if IPv6 is available)
 ip6tables -A OUTPUT -d ::1/128 -j ACCEPT 2>/dev/null || true
 
-# Allow each resolved IP
+# Allow each resolved IP on its URL's port
 if [ -n "$ALL_ALLOWED_IPS" ]; then
     echo "Allowed IPs:"
-    while IFS= read -r IP; do
+    while read -r IP PORT; do
         if [ -n "$IP" ]; then
-            echo "  $IP (HTTPS)"
-            iptables -A OUTPUT -d $IP -p tcp --dport 443 -j ACCEPT
+            echo "  $IP (port $PORT)"
+            iptables -A OUTPUT -d $IP -p tcp --dport $PORT -j ACCEPT
         fi
     done <<< "$ALL_ALLOWED_IPS"
 else
@@ -451,13 +486,17 @@ echo ""
 # Test 2: Allowed URLs (should succeed)
 """
         for url in allowed_urls:
-            hostname = url.replace("https://", "").replace("http://", "").split("/")[0]
+            hostname, port = parse_allowed_url(url)
+            if not hostname or not re.fullmatch(r"[A-Za-z0-9.\-]+", hostname):
+                continue
+            scheme = "https" if port == 443 else "http"
+            target = f"{hostname}" if port in (80, 443) else f"{hostname}:{port}"
             script += f"""
-echo "Test 2: Attempting to reach {hostname} (should be ALLOWED):"
-if curl -m 10 -s -I https://{hostname} > /dev/null 2>&1; then
-    echo "  ✓ PASSED: {hostname} accessible as expected"
+echo "Test 2: Attempting to reach {target} (should be ALLOWED):"
+if curl -m 10 -s -I {scheme}://{target} > /dev/null 2>&1; then
+    echo "  ✓ PASSED: {target} accessible as expected"
 else
-    echo "  ⚠ WARNING: {hostname} not reachable (may be a network issue)"
+    echo "  ⚠ WARNING: {target} not reachable (may be a network issue)"
 fi
 echo ""
 """
@@ -990,10 +1029,12 @@ SECURITY:
       * Detects custom endpoints from *_BASE_URL environment variables
       * Detects AWS Bedrock from AWS_REGION (standard or GovCloud)
       * Detects Azure OpenAI from AZURE_OPENAI_RESOURCE
+      * Detects local servers from OLLAMA_API_BASE and HOSTED_VLLM_API_BASE
       * No need to manually specify --allow-url for detected providers
 
       FIREWALL RULES:
-      - Only allowed URLs are accessible (auto-detected + --allow-url)
+      - Only allowed URLs are accessible (auto-detected + --allow-url), each on its
+        own port (443 for https, 80 for http, or the port in the URL, e.g. :11434)
       - DNS resolution permitted (A/AAAA records only for hostname lookup)
       - DNS exfiltration prevention: TXT, NULL, SRV records BLOCKED
       - Large DNS queries (>150 bytes) BLOCKED (prevents subdomain encoding)
@@ -1096,14 +1137,23 @@ EXAMPLES:
     # Test network restrictions (verify auto-detection and firewall)
     patchpal-sandbox --restrict-network --env-file .env --test-restrictions
 
+    # Network Restrictions: local Ollama (auto-detected from OLLAMA_API_BASE)
+    # Can't be combined with --host-network. Ollama must listen on all interfaces
+    # (OLLAMA_HOST=0.0.0.0). Docker: use http://host.docker.internal:11434
+    # WSL2 with Ollama on Windows: host.containers.internal won't reach Ollama;
+    # use the Windows machine's IP instead (http://<windows-ip>:11434)
+    export OLLAMA_API_BASE=http://host.containers.internal:11434
+    PATCHPAL_CONTEXT_LIMIT=32768 patchpal-sandbox --restrict-network -- --model ollama_chat/gemma4:e4b
+
     # Ollama: Linux/WSL requires host network to reach Ollama on localhost
     patchpal-sandbox --host-network -- --model ollama_chat/qwen3:8b # interactive
     patchpal-sandbox --host-network -- autopilot --model ollama_chat/qwen3:8b # autopilot
 
-    # Ollama: Windows/macOS requires setting OLLAMA_API_BASE
+    # Ollama: Windows/macOS requires setting OLLAMA_API_BASE (use bridge networking,
+    # not --host-network: these hostnames only work reliably on the default network)
     # Docker: export OLLAMA_API_BASE=http://host.docker.internal:11434
-    # PodMan: export OLLAMA_API_BASE=http://host.containers.internal:11434
-    patchpal-sandbox --host-network -- --model ollama_chat/qwen3:8b
+    # Podman: export OLLAMA_API_BASE=http://host.containers.internal:11434
+    patchpal-sandbox -- --model ollama_chat/qwen3:8b
 
     # Debugging: Drop into shell inside container
     patchpal-sandbox --env-file .env --shell
@@ -1215,6 +1265,28 @@ def main():
 
     if sandbox_args.allow_url and not sandbox_args.restrict_network:
         print("⚠️  Warning: --allow-url has no effect without --restrict-network", file=sys.stderr)
+
+    # With --host-network the container shares the host's network stack, so the
+    # firewall rules from --restrict-network would apply to the host itself
+    if sandbox_args.restrict_network and sandbox_args.host_network:
+        print(
+            "❌ Error: --restrict-network can't be combined with --host-network "
+            "(the firewall would apply to the host's network).",
+            file=sys.stderr,
+        )
+        print(
+            "    For a local server, use bridge networking and point to the host instead, e.g.:\n"
+            "\n"
+            "    export OLLAMA_API_BASE=http://host.containers.internal:11434\n"
+            "    PATCHPAL_CONTEXT_LIMIT=32768 patchpal-sandbox --restrict-network -- "
+            "--model ollama_chat/gemma4:e4b\n"
+            "\n"
+            "    (Docker: use http://host.docker.internal:11434. Ollama must listen on all\n"
+            "    interfaces: start it with OLLAMA_HOST=0.0.0.0. WSL2 with Ollama on Windows:\n"
+            "    use the Windows machine's IP instead of host.containers.internal.)",
+            file=sys.stderr,
+        )
+        sys.exit(1)
 
     # Handle network flags
     if sandbox_args.no_network:

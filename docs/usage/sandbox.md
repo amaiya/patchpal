@@ -162,6 +162,21 @@ patchpal-sandbox --host-network -- autopilot \
 
 **Note**: `--host-network` shares the host's network stack with the container (required for `localhost:11434` access). This bypasses network isolation - only use with trusted local models.
 
+**With network restrictions:** `--host-network` can't be combined with `--restrict-network`, because the firewall would apply to the host's network. Use bridge networking and point PatchPal at the host instead. Ollama must listen on all interfaces (start it with `OLLAMA_HOST=0.0.0.0`):
+
+```bash
+# Podman (Docker Desktop: http://host.docker.internal:11434)
+export OLLAMA_API_BASE=http://host.containers.internal:11434
+patchpal-sandbox --restrict-network -- --model ollama_chat/qwen3.5:4b
+```
+
+`OLLAMA_API_BASE` (and `HOSTED_VLLM_API_BASE` for vLLM) is auto-detected, and the firewall allows only that host and port.
+
+**WSL2 with Ollama on Windows:** `host.containers.internal` doesn't reach Ollama when PatchPal runs in WSL2 (e.g., rootless Podman in WSL with `networkingMode=mirrored`) and Ollama runs on Windows. The name points to the container network's gateway inside WSL, where nothing is listening, so you'll get `Connection refused`. Instead, either:
+
+- Start Ollama on Windows with `OLLAMA_HOST=0.0.0.0` and use the Windows machine's IP address (`export OLLAMA_API_BASE=http://<windows-ip>:11434`). You may need a Windows firewall rule for port 11434, and this exposes Ollama to your network.
+- Or use `--host-network` without `--restrict-network`.
+
 ## Network Restrictions
 
 For maximum security, use `--restrict-network` to isolate the container from the external network while allowing access to required LLM APIs:
@@ -210,7 +225,10 @@ Custom endpoints are also detected from variables like:
 - `OPENAI_BASE_URL`, `OPENAI_API_BASE`, `OPENAI_ENDPOINT`
 - `ANTHROPIC_BASE_URL`, `ANTHROPIC_API_BASE`
 - `AWS_BEDROCK_ENDPOINT`, `AWS_ENDPOINT_URL_BEDROCK_RUNTIME`
+- `OLLAMA_API_BASE`, `HOSTED_VLLM_API_BASE` (local servers)
 - Any `*_BASE_URL`, `*_API_BASE`, `*_ENDPOINT` pattern
+
+Each endpoint is allowed on its own port: 443 for `https://`, 80 for `http://`, or the port in the URL (e.g., `http://host.containers.internal:11434` allows port 11434).
 
 ### Testing Network Restrictions
 
@@ -544,7 +562,7 @@ docker run -it --rm \
 | Production automation | ✅ **YES** |
 | Personal projects | ⚠️ Optional (adds defense-in-depth) |
 | Trusted code + human oversight | ⚠️ Optional |
-| Local models only (Ollama) | ❌ NO (requires `--host-network`) |
+| Local models only (Ollama) | ⚠️ Optional (use `OLLAMA_API_BASE`, not `--host-network`; see [Local Models](#local-models-ollama)) |
 
 ## Examples
 
