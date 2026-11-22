@@ -7,7 +7,7 @@ Most recent releases are shown at the top. Each release shows:
 - **Fixed**: Bug fixes that don't change documented behaviour
 
 
-## 1.0.0 (TBD)
+## 1.0.0 (2026-11-22)
 
 ### new:
 - Added `TinyAgent` for small context windows (≤64K): handoff compaction, minimal tools, and selective reading, with a per-turn compaction limit (`PATCHPAL_MAX_HANDOFFS_PER_TURN`) to stop runaway loops. See [Small Context Windows](https://amaiya.github.io/patchpal/context-management/#small-context-windows-tinyagent).
