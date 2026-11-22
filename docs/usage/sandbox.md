@@ -11,7 +11,7 @@ patchpal-sandbox --env-file .env -- --model anthropic/claude-sonnet-4-5
 # Autopilot mode
 patchpal-sandbox --env-file .env -- autopilot --prompt-file task.md
 
-# With local Ollama (requires --host-network)
+# With local Ollama (see Local Models below for other setups)
 patchpal-sandbox --host-network -- --model ollama_chat/glm-4.7-flash:q4_K_M
 ```
 
@@ -149,7 +149,28 @@ In autopilot mode, permissions are automatically disabled for safety. See [Autop
 
 ### Local Models (Ollama)
 
-When using local Ollama models, use `--host-network` to access the host's Ollama service:
+How to reach a local Ollama depends on where Ollama and `patchpal-sandbox` run, and on whether you use `--restrict-network`. Find your setup:
+
+| Ollama runs on | `patchpal-sandbox` runs on | Without `--restrict-network` | With `--restrict-network` |
+|---|---|---|---|
+| Windows | WSL (rootless Podman) | `--host-network` ✅ tested | `allow_host_loopback` ✅ tested (Podman before 6) |
+| Windows | Windows (Podman machine) | `--host-network` ✅ tested | Expose Ollama ⚠️ untested |
+| Linux | Linux (rootless Podman) | `--host-network` (untested) | `allow_host_loopback` (untested, Podman before 6) |
+| Linux | Linux (Docker) | `--host-network` (untested) | Expose Ollama ⚠️ untested |
+| macOS or Windows | Docker Desktop | `host.docker.internal` (untested) | Expose Ollama ⚠️ untested |
+| macOS | Podman machine | Not documented yet | Not documented yet |
+
+**Podman 6:** `slirp4netns` is removed in Podman 6. Rootless Podman uses `pasta` instead (the default since Podman 5), and the `allow_host_loopback` option below doesn't apply to it. `pasta` has a `--map-host-loopback` option that is the likely equivalent, but it hasn't been tested with PatchPal (see Option 1 below). Check your version with `podman --version`.
+
+The Windows rows need WSL mirrored networking: add `networkingMode=mirrored` under `[wsl2]` in `%UserProfile%\.wslconfig` and restart WSL. This shares `localhost` between Windows and WSL, including the WSL2 VM that Podman uses on Windows. "Tested" means tested with Ollama on Windows and Podman 3.4.4 in WSL, and with Podman on Windows.
+
+`OLLAMA_API_BASE` (and `HOSTED_VLLM_API_BASE` for vLLM) is passed into the container. With `--restrict-network`, it's also auto-detected, and the firewall allows only that host and port.
+
+The examples use bash syntax. In the Windows Command Prompt, use `set VAR=value` instead of `export VAR=value`. In PowerShell, use `$env:VAR = "value"`. Write commands on one line, since `\` line breaks only work in bash.
+
+#### Host network (no network restrictions)
+
+When Ollama runs on the same computer, `--host-network` lets the container reach it on `localhost`. Don't set `OLLAMA_API_BASE`.
 
 ```bash
 patchpal-sandbox --host-network -- --model ollama_chat/glm-4.7-flash:q4_K_M
@@ -160,24 +181,55 @@ patchpal-sandbox --host-network -- autopilot \
   --prompt-file task.md
 ```
 
-**Note**: `--host-network` shares the host's network stack with the container (required for `localhost:11434` access). This bypasses network isolation - only use with trusted local models.
+**Note**: `--host-network` shares the host's network stack with the container. This bypasses network isolation - only use with trusted local models. On macOS, containers run in a VM, so `--host-network` reaches the VM's localhost rather than the Mac's, and won't find Ollama.
 
-**With network restrictions:** `--host-network` can't be combined with `--restrict-network`, because the firewall would apply to the host's network. Use bridge networking and point PatchPal at the host instead. Ollama must listen on all interfaces (start it with `OLLAMA_HOST=0.0.0.0`).
+#### Docker Desktop (no network restrictions)
 
-> **Warning:** Ollama has no authentication. With `OLLAMA_HOST=0.0.0.0`, anyone who can reach your machine on port 11434 can use your models and manage them through Ollama's API. Use a host firewall to allow port 11434 only from the container network, or use `--host-network` without `--restrict-network` instead.
+Docker Desktop provides `host.docker.internal` to reach the host. It isn't available by default with Docker on Linux. Untested.
 
 ```bash
-# Podman (Docker Desktop: http://host.docker.internal:11434)
+export OLLAMA_API_BASE=http://host.docker.internal:11434
+patchpal-sandbox -- --model ollama_chat/qwen3.5:4b
+```
+
+#### With network restrictions
+
+`--host-network` can't be combined with `--restrict-network`, because the firewall would apply to the host's network. The container needs another way to reach Ollama.
+
+**Option 1: `allow_host_loopback` (rootless Podman before Podman 6).** The container reaches localhost at `10.0.2.2`, and Ollama stays on `127.0.0.1`, so nothing is exposed to your network:
+
+```bash
+export OLLAMA_API_BASE=http://10.0.2.2:11434
+patchpal-sandbox --network slirp4netns:allow_host_loopback=true \
+  --restrict-network -- --model ollama_chat/qwen3.5:4b
+```
+
+- Tested with Ollama on Windows and rootless Podman 3.4.4 in WSL, with mirrored networking. In WSL, `10.0.2.2` leads to WSL's localhost, which mirrored networking shares with Windows.
+- This uses `slirp4netns`. Podman 5 defaults to `pasta`, so `slirp4netns` must be installed separately, and Podman 6 removes it. Check your version with `podman --version`.
+- **Podman 6 (untested):** `pasta`'s `--map-host-loopback ADDR` option makes `ADDR` in the container lead to the host's localhost, which should serve the same purpose. Podman passes `pasta` options after `pasta:`, separated by commas. Pick an address that isn't otherwise used inside the container (not `169.254.1.2`, which Podman uses for `host.containers.internal`), and set `OLLAMA_API_BASE` to it. For example:
+
+  ```bash
+  export OLLAMA_API_BASE=http://169.254.1.10:11434
+  patchpal-sandbox --network pasta:--map-host-loopback,169.254.1.10 \
+    --restrict-network -- --model ollama_chat/qwen3.5:4b
+  ```
+
+  This hasn't been tested with PatchPal. If you try it, run with `--test-restrictions` first to check that Ollama is reachable.
+- On Linux with rootless Podman before 6 and Ollama on the same machine, it's expected to work the same way, but this hasn't been tested.
+
+> **Warning:** `allow_host_loopback` lets the container reach every service listening on localhost (in WSL and, with mirrored networking, on Windows). Only use it with `--restrict-network`, which allows only the port in `OLLAMA_API_BASE`.
+
+**Option 2: expose Ollama to the container network (other setups, untested).** Ollama must listen on an address the container can reach. By default it listens only on `127.0.0.1`, so `host.containers.internal` and `host.docker.internal` get `Connection refused` when Ollama runs on Windows. One way is to listen on all interfaces (`OLLAMA_HOST=0.0.0.0`):
+
+```bash
+# Podman: http://host.containers.internal:11434
+# Docker Desktop: http://host.docker.internal:11434
+# Ollama on Windows: http://<windows-ip>:11434
 export OLLAMA_API_BASE=http://host.containers.internal:11434
 patchpal-sandbox --restrict-network -- --model ollama_chat/qwen3.5:4b
 ```
 
-`OLLAMA_API_BASE` (and `HOSTED_VLLM_API_BASE` for vLLM) is auto-detected, and the firewall allows only that host and port.
-
-**WSL2 or Podman on Windows, with Ollama on Windows:** `host.containers.internal` doesn't reach Ollama when the container runs in WSL2 and Ollama runs on Windows. This includes rootless Podman inside WSL (e.g., with `networkingMode=mirrored`) and Podman on Windows, whose machine is a WSL2 VM. Ollama listens only on `127.0.0.1` by default, and the name points to a different address (e.g., the container network's gateway), so you'll get `Connection refused`. Instead, either:
-
-- Use `--host-network` without `--restrict-network` (Ollama stays on localhost).
-- Or, to use `--restrict-network`, start Ollama on Windows with `OLLAMA_HOST=0.0.0.0` and use the Windows machine's IP address (`export OLLAMA_API_BASE=http://<windows-ip>:11434`). You may need a Windows firewall rule for port 11434. **Warning:** this exposes Ollama, which has no authentication, to your network; limit the firewall rule to the addresses that need access.
+> **Warning:** Ollama has no authentication. With `OLLAMA_HOST=0.0.0.0`, anyone who can reach your machine on port 11434 can use your models and manage them through Ollama's API. Use a host firewall to allow port 11434 only from the container network, or use `--host-network` without `--restrict-network` instead.
 
 ## Network Restrictions
 
@@ -564,7 +616,7 @@ docker run -it --rm \
 | Production automation | ✅ **YES** |
 | Personal projects | ⚠️ Optional (adds defense-in-depth) |
 | Trusted code + human oversight | ⚠️ Optional |
-| Local models only (Ollama) | ⚠️ Optional (use `OLLAMA_API_BASE`, not `--host-network`; see [Local Models](#local-models-ollama)) |
+| Local models only (Ollama) | ⚠️ Optional (see [Local Models](#local-models-ollama) for which setups support it) |
 
 ## Examples
 
