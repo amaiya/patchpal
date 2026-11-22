@@ -13,11 +13,18 @@ RUN apt-get update && apt-get install -y \
 # headless, network-restricted shell.
 RUN pip install --no-cache-dir ipython
 
-# Build arg to force cache invalidation on new releases
+# Build arg to force cache invalidation on new releases. CI sets it to the
+# PatchPal version on PyPI; local builds leave it at the default.
 ARG CACHEBUST=1
 
-# Install patchpal (always get latest from PyPI)
-RUN pip install --no-cache-dir --upgrade patchpal
+# Install patchpal. In CI, pin the exact version so a stale PyPI index fails the
+# build with a clear error instead of silently installing an older release.
+# Local builds (CACHEBUST=1) get the latest version.
+RUN if [ "$CACHEBUST" = "1" ]; then \
+      pip install --no-cache-dir --upgrade patchpal; \
+    else \
+      pip install --no-cache-dir "patchpal==${CACHEBUST}"; \
+    fi
 
 # Set working directory
 WORKDIR /workspace
