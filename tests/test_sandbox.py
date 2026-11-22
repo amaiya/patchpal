@@ -112,3 +112,35 @@ def test_restrict_network_with_host_network_is_rejected(monkeypatch, capsys):
     assert exc.value.code == 1
     build.assert_not_called()
     assert "can't be combined with --host-network" in capsys.readouterr().err
+
+
+class _SandboxArgs:
+    """Minimal stand-in for parsed sandbox args (unset options default to None)."""
+
+    network = "bridge"
+    env_file = None
+    dev = False
+    image = "ghcr.io/amaiya/patchpal-sandbox:latest"
+    env = []
+    volume = []
+
+    def __getattr__(self, name):
+        return None
+
+
+@pytest.mark.parametrize(
+    "var, value",
+    [
+        ("OLLAMA_API_BASE", "http://host.containers.internal:11434"),
+        ("HOSTED_VLLM_API_BASE", "http://10.0.0.5:8000"),
+    ],
+)
+def test_local_server_endpoints_reach_the_container(monkeypatch, var, value):
+    """An endpoint the firewall allows is useless unless PatchPal in the container sees it."""
+    monkeypatch.setenv(var, value)
+    with (
+        mock.patch.object(sandbox, "detect_runtime", return_value="podman"),
+        mock.patch.object(sandbox, "ensure_podman_machine"),
+    ):
+        args, _ = sandbox.build_container_args(_SandboxArgs(), ["--model", "x"])
+    assert f"{var}={value}" in args

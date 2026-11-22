@@ -645,6 +645,7 @@ def build_container_args(sandbox_args, patchpal_args, env_file_keys=None):
             "HUGGINGFACE",
             "REPLICATE",
             "TOGETHER",
+            "HOSTED_VLLM",  # e.g., HOSTED_VLLM_API_BASE, HOSTED_VLLM_API_KEY
         ]
         for key, value in os.environ.items():
             if any(key.startswith(prefix + "_") for prefix in provider_prefixes):
@@ -984,6 +985,7 @@ ENVIRONMENT VARIABLES:
       - All HUGGINGFACE_* variables (e.g., HUGGINGFACE_API_KEY)
       - All REPLICATE_* variables (e.g., REPLICATE_API_TOKEN)
       - All TOGETHER_* variables (e.g., TOGETHER_API_KEY)
+      - All HOSTED_VLLM_* variables (e.g., HOSTED_VLLM_API_BASE)
       - All OLLAMA_* variables (e.g., OLLAMA_API_BASE)
       - SSL_CERT_FILE and REQUESTS_CA_BUNDLE (auto-mounted if paths exist)
 
