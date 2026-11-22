@@ -655,9 +655,12 @@ def build_container_args(sandbox_args, patchpal_args, env_file_keys=None):
         # This allows you to set OLLAMA_API_BASE on the host to point to Ollama:
         #
         # For LOCAL Ollama on host machine:
-        #   - Linux/WSL2 with mirrored networking: Use --host-network (container shares host network)
+        #   - Linux, WSL2, and Podman on Windows (with WSL mirrored networking):
+        #     use --host-network and don't set OLLAMA_API_BASE
         #   - macOS/Windows Docker Desktop: export OLLAMA_API_BASE=http://host.docker.internal:11434
-        #   - Podman: export OLLAMA_API_BASE=http://host.containers.internal:11434
+        #   - Podman with bridge networking: export OLLAMA_API_BASE=http://host.containers.internal:11434
+        #     (only works if Ollama listens on an address the container can reach;
+        #     not the case for Ollama on Windows with its default localhost-only setting)
         #
         # For REMOTE Ollama:
         #   export OLLAMA_API_BASE=http://192.168.1.100:11434
@@ -1082,8 +1085,8 @@ NOTES:
     - Files in /workspace persist on host, other files are lost on exit
     - Container ~ = /root (not your host home directory)
     - Use --no-network for maximum isolation with local models only
-    - For Ollama on Windows with WSL: Enable mirrored networking in .wslconfig
-      (Add networkingMode=mirrored under [wsl2] to use localhost)
+    - For Ollama on Windows with WSL or Podman: Enable mirrored networking in .wslconfig
+      (Add networkingMode=mirrored under [wsl2] to use localhost with --host-network)
 
 CORPORATE NETWORKS (Linux/WSL):
     If you get SSL certificate errors behind a corporate proxy/firewall:
@@ -1141,20 +1144,22 @@ EXAMPLES:
 
     # Network Restrictions: local Ollama (auto-detected from OLLAMA_API_BASE)
     # Can't be combined with --host-network. Ollama must listen on all interfaces
-    # (OLLAMA_HOST=0.0.0.0). Docker: use http://host.docker.internal:11434
-    # WSL2 with Ollama on Windows: host.containers.internal won't reach Ollama;
-    # use the Windows machine's IP instead (http://<windows-ip>:11434)
+    # (OLLAMA_HOST=0.0.0.0). WARNING: Ollama has no authentication, so this lets
+    # anyone who can reach your machine use it; restrict port 11434 with a firewall.
+    # Docker: use http://host.docker.internal:11434
+    # WSL2 or Podman on Windows, with Ollama on Windows: host.containers.internal
+    # won't reach Ollama; use the Windows machine's IP instead (http://<windows-ip>:11434)
     export OLLAMA_API_BASE=http://host.containers.internal:11434
     PATCHPAL_CONTEXT_LIMIT=32768 patchpal-sandbox --restrict-network -- --model ollama_chat/gemma4:e4b
 
-    # Ollama: Linux/WSL requires host network to reach Ollama on localhost
+    # Ollama: Linux, WSL, and Podman on Windows use host network to reach Ollama on
+    # localhost (don't set OLLAMA_API_BASE). On Windows this requires WSL mirrored
+    # networking: networkingMode=mirrored under [wsl2] in .wslconfig
     patchpal-sandbox --host-network -- --model ollama_chat/qwen3:8b # interactive
     patchpal-sandbox --host-network -- autopilot --model ollama_chat/qwen3:8b # autopilot
 
-    # Ollama: Windows/macOS requires setting OLLAMA_API_BASE (use bridge networking,
-    # not --host-network: these hostnames only work reliably on the default network)
+    # Ollama: Docker Desktop (Windows/macOS). Use bridge networking (no --host-network):
     # Docker: export OLLAMA_API_BASE=http://host.docker.internal:11434
-    # Podman: export OLLAMA_API_BASE=http://host.containers.internal:11434
     patchpal-sandbox -- --model ollama_chat/qwen3:8b
 
     # Debugging: Drop into shell inside container
@@ -1284,8 +1289,13 @@ def main():
             "--model ollama_chat/gemma4:e4b\n"
             "\n"
             "    (Docker: use http://host.docker.internal:11434. Ollama must listen on all\n"
-            "    interfaces: start it with OLLAMA_HOST=0.0.0.0. WSL2 with Ollama on Windows:\n"
-            "    use the Windows machine's IP instead of host.containers.internal.)",
+            "    interfaces: start it with OLLAMA_HOST=0.0.0.0. WSL2 or Podman on Windows,\n"
+            "    with Ollama on Windows: use the Windows machine's IP instead of\n"
+            "    host.containers.internal.)\n"
+            "\n"
+            "    WARNING: Ollama has no authentication, so OLLAMA_HOST=0.0.0.0 lets anyone\n"
+            "    who can reach your machine use it. Restrict port 11434 with a firewall,\n"
+            "    or use --host-network without --restrict-network instead.",
             file=sys.stderr,
         )
         sys.exit(1)
