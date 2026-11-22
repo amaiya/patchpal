@@ -176,7 +176,6 @@ patchpal-sandbox --host-network -- autopilot \
 **Features:**
 - ✅ Pre-built image with patchpal installed (fast startup - no pip install delay)
 - ✅ Auto-detects Docker/Podman (prefers Podman for rootless)
-- ✅ Auto-sets `OLLAMA_CONTEXT_LENGTH` for Ollama models (8192 for agents, 32768 for reasoning models)
 - ✅ Loads API keys from `.env` file
 - ✅ Mounts current directory as `/workspace`
 - ✅ Auto-mounts `~/.patchpal` for custom tools and config
