@@ -153,17 +153,17 @@ How to reach a local Ollama depends on where Ollama and `patchpal-sandbox` run, 
 
 | Ollama runs on | `patchpal-sandbox` runs on | Without `--restrict-network` | With `--restrict-network` |
 |---|---|---|---|
-| Windows | WSL (rootless Podman) | [`--host-network`](#host-network-no-network-restrictions) ✅ tested | [`allow_host_loopback`](#with-network-restrictions) ✅ tested (Podman before 6) |
-| Windows | Windows (Podman machine) | [`--host-network`](#host-network-no-network-restrictions) ✅ tested | [Expose Ollama (`OLLAMA_HOST=0.0.0.0`)](#with-network-restrictions) ⚠️ untested |
+| Windows | WSL (rootless Podman) | [`--host-network`](#host-network-no-network-restrictions) | [`allow_host_loopback`](#with-network-restrictions) (Podman before 6) |
+| Windows | Windows (Podman machine) | [`--host-network`](#host-network-no-network-restrictions) | [`host.containers.internal`](#with-network-restrictions) (needs `OLLAMA_HOST=0.0.0.0`) |
 | Linux | Linux (rootless Podman) | [`--host-network`](#host-network-no-network-restrictions) | [`allow_host_loopback`](#with-network-restrictions) (Podman before 6) |
-| Linux | Linux (Docker) | [`--host-network`](#host-network-no-network-restrictions) | [Expose Ollama (`OLLAMA_HOST=0.0.0.0`)](#with-network-restrictions) ⚠️ untested |
-| Windows | Docker Desktop | [`host.docker.internal`](#docker-desktop-no-network-restrictions) ⚠️ untested (may need `OLLAMA_HOST=0.0.0.0`) | [Expose Ollama (`OLLAMA_HOST=0.0.0.0`)](#with-network-restrictions) ⚠️ untested |
+| Linux | Linux (Docker) | [`--host-network`](#host-network-no-network-restrictions) | [`172.17.0.1`](#with-network-restrictions) (needs `OLLAMA_HOST=0.0.0.0`) |
+| Windows | Docker Desktop | [`host.docker.internal`](#docker-desktop-no-network-restrictions) (may need `OLLAMA_HOST=0.0.0.0`) | [`host.docker.internal`](#with-network-restrictions) (may need `OLLAMA_HOST=0.0.0.0`) |
 
-`--host-network` and `allow_host_loopback` reach Ollama on its default address (`127.0.0.1`), so Ollama needs no configuration. Exposing Ollama makes it listen on all network interfaces, which lets other machines reach it too (see the warning under Option 2 in [With network restrictions](#with-network-restrictions)).
+`--host-network` and `allow_host_loopback` reach Ollama on its default address (`127.0.0.1`), so Ollama needs no configuration. `OLLAMA_HOST=0.0.0.0` makes Ollama listen on all network interfaces, which lets other machines reach it too (see the warning under Option 2 in [With network restrictions](#with-network-restrictions)).
 
 **Podman 6:** `slirp4netns` is removed in Podman 6. Rootless Podman uses `pasta` instead (the default since Podman 5), and the `allow_host_loopback` option below doesn't apply to it. `pasta` has a `--map-host-loopback` option that is the likely equivalent, but it hasn't been tested with PatchPal (see Option 1 below). Check your version with `podman --version`.
 
-The Windows rows need WSL mirrored networking: add `networkingMode=mirrored` under `[wsl2]` in `%UserProfile%\.wslconfig` and restart WSL. This shares `localhost` between Windows and WSL, including the WSL2 VM that Podman uses on Windows. "Tested" means tested with Ollama on Windows and Podman 3.4.4 in WSL, and with Podman on Windows.
+The Windows rows need WSL mirrored networking: add `networkingMode=mirrored` under `[wsl2]` in `%UserProfile%\.wslconfig` and restart WSL. This shares `localhost` between Windows and WSL, including the WSL2 VM that Podman uses on Windows.
 
 `OLLAMA_API_BASE` (and `HOSTED_VLLM_API_BASE` for vLLM) is passed into the container. With `--restrict-network`, it's also auto-detected, and the firewall allows only that host and port.
 
@@ -225,6 +225,7 @@ patchpal-sandbox --network slirp4netns:allow_host_loopback=true \
 ```bash
 # Podman: http://host.containers.internal:11434
 # Docker Desktop: http://host.docker.internal:11434
+# Docker on Linux: http://172.17.0.1:11434 (check with: ip -4 addr show docker0)
 # Ollama on Windows: http://<windows-ip>:11434
 export OLLAMA_API_BASE=http://host.containers.internal:11434
 patchpal-sandbox --restrict-network -- --model ollama_chat/qwen3.5:4b
