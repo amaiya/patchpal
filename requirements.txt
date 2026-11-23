@@ -1,0 +1,10 @@
+mkdocs-material>=9.5.0
+mkdocs-autorefs>=1.0.0
+# pymdown-extensions 12.2 (2026-10-10) made Highlight.__init__ require an
+# `md` argument. mkdocstrings 1.0.7 (same day) is the fix that passes it;
+# older mkdocstrings crashes with
+# "Highlight.__init__() missing 1 required positional argument: 'md'".
+# Require the fixed release. NOTE: mkdocstrings 1.0.7 needs Python >= 3.11,
+# so docs CI (.github/workflows/docs.yml) is pinned to Python 3.11.
+mkdocstrings>=1.0.7
+mkdocstrings-python>=1.7.0
