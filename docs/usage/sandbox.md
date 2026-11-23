@@ -167,6 +167,8 @@ The Windows rows need WSL mirrored networking: add `networkingMode=mirrored` und
 
 `OLLAMA_API_BASE` (and `HOSTED_VLLM_API_BASE` for vLLM) is passed into the container. With `--restrict-network`, it's also auto-detected, and the firewall allows only that host and port.
 
+Set the context window on the Ollama server (`OLLAMA_CONTEXT_LENGTH`), not in the container, and set `PATCHPAL_CONTEXT_LIMIT` to match it. `PATCHPAL_*` variables are passed into the container. See [Small Context Windows](../context-management.md#small-context-windows-tinyagent).
+
 The examples use bash syntax. In the Windows Command Prompt, use `set VAR=value` instead of `export VAR=value`. In PowerShell, use `$env:VAR = "value"`. Write commands on one line, since `\` line breaks only work in bash.
 
 #### Host network (no network restrictions)
@@ -562,7 +564,6 @@ patchpal-sandbox --env-file .env -- autopilot --prompt-file task.md
 ✅ Automatic container setup
 ✅ Pre-built image (fast startup)
 ✅ Auto-detects runtime (Podman/Docker)
-✅ Auto-configures Ollama context
 ✅ Auto-mounts custom tools
 ✅ Auto-mounts SSL certs
 ✅ Network restriction support

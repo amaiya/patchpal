@@ -151,6 +151,8 @@ Models with small context windows (64K tokens or less, e.g. many local models) u
 !!! note "Local models"
     PatchPal detects context limits from the model name, not from the server, so it can't see `OLLAMA_CONTEXT_LENGTH` or vLLM's `--max-model-len`. Most local models (Qwen, Llama, GLM, etc.) are detected as 128K or more. Set `PATCHPAL_CONTEXT_LIMIT` to the window size you're actually serving (e.g., `export PATCHPAL_CONTEXT_LIMIT=32768` to match `OLLAMA_CONTEXT_LENGTH=32768`). That makes compaction trigger at the right point and selects TinyAgent for windows of 64K or less.
 
+    Choose a window that still shows 100% GPU in `ollama ps`. Some models' memory grows quickly with the window (Qwen3.5 4B spills to the CPU above about 32K on a 6GB GPU), and even models that fit a long window generate much more slowly once it fills.
+
 **What it does differently:**
 
 1. **Fewer tools by default**: Only `read_file`, `read_lines`, `edit_file`, `write_file`, and `run_shell` are enabled (plus `web_search`/`web_fetch` if web access is enabled), because full tool descriptions alone can fill much of a small window. `PATCHPAL_ENABLED_TOOLS` or `enabled_tools` overrides this.
