@@ -153,12 +153,13 @@ How to reach a local Ollama depends on where Ollama and `patchpal-sandbox` run, 
 
 | Ollama runs on | `patchpal-sandbox` runs on | Without `--restrict-network` | With `--restrict-network` |
 |---|---|---|---|
-| Windows | WSL (rootless Podman) | `--host-network` ✅ tested | `allow_host_loopback` ✅ tested (Podman before 6) |
-| Windows | Windows (Podman machine) | `--host-network` ✅ tested | Expose Ollama ⚠️ untested |
-| Linux | Linux (rootless Podman) | `--host-network` (untested) | `allow_host_loopback` (untested, Podman before 6) |
-| Linux | Linux (Docker) | `--host-network` (untested) | Expose Ollama ⚠️ untested |
-| macOS or Windows | Docker Desktop | `host.docker.internal` (untested) | Expose Ollama ⚠️ untested |
-| macOS | Podman machine | Not documented yet | Not documented yet |
+| Windows | WSL (rootless Podman) | [`--host-network`](#host-network-no-network-restrictions) ✅ tested | [`allow_host_loopback`](#with-network-restrictions) ✅ tested (Podman before 6) |
+| Windows | Windows (Podman machine) | [`--host-network`](#host-network-no-network-restrictions) ✅ tested | [Expose Ollama (`OLLAMA_HOST=0.0.0.0`)](#with-network-restrictions) ⚠️ untested |
+| Linux | Linux (rootless Podman) | [`--host-network`](#host-network-no-network-restrictions) | [`allow_host_loopback`](#with-network-restrictions) (Podman before 6) |
+| Linux | Linux (Docker) | [`--host-network`](#host-network-no-network-restrictions) | [Expose Ollama (`OLLAMA_HOST=0.0.0.0`)](#with-network-restrictions) ⚠️ untested |
+| Windows | Docker Desktop | [`host.docker.internal`](#docker-desktop-no-network-restrictions) ⚠️ untested (may need `OLLAMA_HOST=0.0.0.0`) | [Expose Ollama (`OLLAMA_HOST=0.0.0.0`)](#with-network-restrictions) ⚠️ untested |
+
+`--host-network` and `allow_host_loopback` reach Ollama on its default address (`127.0.0.1`), so Ollama needs no configuration. Exposing Ollama makes it listen on all network interfaces, which lets other machines reach it too (see the warning under Option 2 in [With network restrictions](#with-network-restrictions)).
 
 **Podman 6:** `slirp4netns` is removed in Podman 6. Rootless Podman uses `pasta` instead (the default since Podman 5), and the `allow_host_loopback` option below doesn't apply to it. `pasta` has a `--map-host-loopback` option that is the likely equivalent, but it hasn't been tested with PatchPal (see Option 1 below). Check your version with `podman --version`.
 
@@ -185,7 +186,7 @@ patchpal-sandbox --host-network -- autopilot \
 
 #### Docker Desktop (no network restrictions)
 
-Docker Desktop provides `host.docker.internal` to reach the host. It isn't available by default with Docker on Linux. Untested.
+Docker Desktop provides `host.docker.internal` to reach the host. It isn't available by default with Docker on Linux. Untested: it may work with Ollama on its default `127.0.0.1`, or Ollama may need to listen on all interfaces (`OLLAMA_HOST=0.0.0.0`, see the warning under Option 2 below). To check, run `curl http://host.docker.internal:11434` inside a container; it prints `Ollama is running` if Ollama is reachable.
 
 ```bash
 export OLLAMA_API_BASE=http://host.docker.internal:11434
@@ -219,7 +220,7 @@ patchpal-sandbox --network slirp4netns:allow_host_loopback=true \
 
 > **Warning:** `allow_host_loopback` lets the container reach every service listening on localhost (in WSL and, with mirrored networking, on Windows). Only use it with `--restrict-network`, which allows only the port in `OLLAMA_API_BASE`.
 
-**Option 2: expose Ollama to the container network (other setups, untested).** Ollama must listen on an address the container can reach. By default it listens only on `127.0.0.1`, so `host.containers.internal` and `host.docker.internal` get `Connection refused` when Ollama runs on Windows. One way is to listen on all interfaces (`OLLAMA_HOST=0.0.0.0`):
+**Option 2: expose Ollama to the container network (other setups, untested).** Ollama must listen on an address the container can reach. By default it listens only on `127.0.0.1`, so `host.containers.internal` gets `Connection refused` when Ollama runs on Windows (`host.docker.internal` may too, untested). One way is to listen on all interfaces (`OLLAMA_HOST=0.0.0.0`):
 
 ```bash
 # Podman: http://host.containers.internal:11434
